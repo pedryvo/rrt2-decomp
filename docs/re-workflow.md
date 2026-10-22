@@ -21,3 +21,22 @@ Regras na ordem: `lib` (Function ID, região CRT a partir da primeira função F
 2. Para corrigir categoria ou subir o estado (`unknown` → `named` → `spec` → `verified`), edite a entrada em `re/coverage.toml` e adicione `manual = true`. Entradas manuais são preservadas integralmente a cada nova execução do `classify.py`.
 3. `spec` exige a função descrita em `docs/spec/` ou `docs/formats/`; `verified` exige teste diferencial (`docs/oracle.md`).
 4. Rode `classify.py` de novo para atualizar o resumo no topo do arquivo (contagens por categoria e estado, "sim spec coverage") e copie os números para o README e o `CHANGELOG.md`.
+
+## Exportar o C decompilado (`re/db/decomp/`)
+
+Para estudar o binário em paralelo sem disputar a sessão única do REA, exporte o C de todas as funções:
+
+```sh
+re/scripts/export_decomp.sh         # Ghidra headless: importa, analisa, aplica nomes, decompila (~140 s)
+```
+
+- `export_decomp.sh` roda `re/scripts/ghidra/export_decomp.java`: aplica de `re/symbols.toml` os nomes de funções e os rótulos de globais/tabelas/strings (com os comentários), decompila cada função não-thunk com `DecompInterface` (timeout de 60 s por função) e grava `re/db/decomp/<addr>_<nome>.c`. Cada arquivo começa com um cabeçalho: endereço, tamanho, categoria/estado de `re/coverage.toml`, chamadores e chamados (por nome).
+- Também escreve `INDEX.tsv` (addr, name, category, status, size, file) e `FAILURES.tsv` (funções cuja decompilação falhou; os arquivos delas levam `DECOMPILE FAILED` no cabeçalho). Última execução: 1835 funções exportadas, 2 falhas, 1108 thunks ignorados (2945 no total).
+- O diretório é limpo e regerado inteiro a cada execução (não é incremental; leva ~2,5 min). `re/db` é ignorado pelo git (derivado do binário).
+- Rode `classify.py` antes se quiser categoria/estado atualizados no cabeçalho.
+
+### Como os agentes usam
+
+1. Explore com `rg`/`grep` sobre `re/db/decomp` (por nome, string, constante, API, `INDEX.tsv` para filtrar por categoria/estado). Exemplo: `rg -l 'rng_state' re/db/decomp`.
+2. Confirme detalhes com o REA somente quando necessário (xrefs, disassembly, tipos, anotações).
+3. Depois de adicionar nomes a `re/symbols.toml`, rode `re/scripts/export_decomp.sh` de novo para propagar os nomes (nas próprias funções e nas chamadas dos vizinhos).

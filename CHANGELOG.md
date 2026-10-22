@@ -4,6 +4,7 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 
 ## Unreleased
 
+- RE: headless Ghidra export of every non-thunk function as decompiled C with our names (re/scripts/export_decomp.sh, re/db/decomp) for parallel grep-based analysis.
 - Feature: PK2 archive reader with filename-hash lookup and the `rt2-extract` tool.
 - Feature: LNG string-table parser (last definition wins, named `;t<NAME>_0` tables).
 - RE: PK2 filename hash, archive load order and precedence recovered from the executable.
