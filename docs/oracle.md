@@ -25,3 +25,4 @@
 - O heap emulado é só de bump e nunca liberado.
 - A lib Unicorn é do sistema (`libunicorn`, recurso `system-unicorn`, padrão). O CI compila a cópia embutida com `--no-default-features` (Linux) e não compila o crate no Windows.
 - O laço do hash de nomes (`0x4f4e60`, `0x4f5070`) é inline em funções que usam I/O de arquivo; não há unidade chamável isolada, então só o case fold (`0x4f0d70`) é testado.
+- A palavra de controle da FPU começa em 0 no Unicorn (precisão de 24 bits). Para código x87 que o original roda com o padrão do CRT MSVC, escreva `RegisterX86::FPCW = 0x27f` antes de chamar (`uc().reg_write`); ver `tests/sim_time_rng.rs` e `docs/spec/time.md`.

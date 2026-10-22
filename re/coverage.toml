@@ -3,11 +3,11 @@
 # Ver docs/re-workflow.md.
 #
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
-# Classificadas (categoria != unknown): 680 (23.1%)
-# Por categoria: lib=262, platform=93, render=11, audio=77, ui=233, sim=4, unknown=2265
-# Por estado:   unknown=2929, named=16, spec=0, verified=0
-# Entradas manuais: 0
-# sim spec coverage: 0.0% (0 de 4 funcoes sim em spec/verified)
+# Classificadas (categoria != unknown): 705 (23.9%)
+# Por categoria: lib=258, platform=100, render=9, audio=74, ui=233, sim=31, unknown=2240
+# Por estado:   unknown=2895, named=22, spec=17, verified=11
+# Entradas manuais: 34
+# sim spec coverage: 71.0% (22 de 31 funcoes sim em spec/verified)
 
 [[function]]
 addr = "0x401005"
@@ -138,9 +138,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x40108c"
 size = 5
-category = "unknown"
+category = "platform"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x46b650"
 
 [[function]]
 addr = "0x401091"
@@ -635,7 +635,7 @@ why = "no-evidence"
 [[function]]
 addr = "0x40127b"
 size = 5
-category = "audio"
+category = "platform"
 status = "unknown"
 why = "thunk->0x404e30"
 
@@ -4457,7 +4457,7 @@ why = "no-evidence"
 [[function]]
 addr = "0x4021f3"
 size = 5
-category = "render"
+category = "platform"
 status = "unknown"
 why = "thunk->0x49eff0"
 
@@ -7726,9 +7726,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x404e30"
 size = 582
-category = "audio"
-status = "unknown"
-why = "string:bella61m.raw"
+category = "sim"
+status = "spec"
+why = "time.md 4"
+manual = true
 
 [[function]]
 addr = "0x405080"
@@ -7754,9 +7755,10 @@ why = "only-called-by-lib:0x405540"
 [[function]]
 addr = "0x405540"
 size = 1556
-category = "lib"
-status = "unknown"
-why = "crt-api:GetTickCount"
+category = "sim"
+status = "spec"
+why = "time.md 5"
+manual = true
 
 [[function]]
 addr = "0x405b70"
@@ -10680,9 +10682,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x457fe0"
 size = 111
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "time.md 7.4"
+manual = true
 
 [[function]]
 addr = "0x458050"
@@ -11079,9 +11082,10 @@ why = "only-called-by-lib:0x464f60"
 [[function]]
 addr = "0x464f60"
 size = 239
-category = "lib"
-status = "unknown"
-why = "crt-api:GetVersionExA"
+category = "platform"
+status = "spec"
+why = "time.md 1; laco principal"
+manual = true
 
 [[function]]
 addr = "0x465050"
@@ -11822,9 +11826,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x46ae50"
 size = 21
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "time.md 5"
+manual = true
 
 [[function]]
 addr = "0x46ae70"
@@ -11920,9 +11925,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x46b650"
 size = 571
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "time.md 2; efeitos colaterais nao especificados"
+manual = true
 
 [[function]]
 addr = "0x46b890"
@@ -11983,16 +11989,18 @@ why = "string:chat.win"
 [[function]]
 addr = "0x46c650"
 size = 34
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "oracle: time.md 3"
+manual = true
 
 [[function]]
 addr = "0x46c680"
 size = 458
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "rng.md 2.4; checksum de sincronia"
+manual = true
 
 [[function]]
 addr = "0x46c850"
@@ -13327,9 +13335,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x49d920"
 size = 69
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "time.md 7.4"
+manual = true
 
 [[function]]
 addr = "0x49d970"
@@ -13355,9 +13364,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x49e0b0"
 size = 209
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "time.md 7.2; protocolo de rede nao especificado"
+manual = true
 
 [[function]]
 addr = "0x49e870"
@@ -13398,15 +13408,17 @@ why = "api:USER32!DestroyWindow"
 addr = "0x49ef70"
 size = 126
 category = "platform"
-status = "unknown"
-why = "api:USER32!DispatchMessageA,USER32!LoadAcceleratorsA,USER32!PeekMessageA"
+status = "spec"
+why = "time.md 1; message pump"
+manual = true
 
 [[function]]
 addr = "0x49eff0"
 size = 103
-category = "render"
-status = "unknown"
-why = "api:GDI32!GdiSetBatchLimit"
+category = "platform"
+status = "spec"
+why = "time.md 1; inicio do jogo"
+manual = true
 
 [[function]]
 addr = "0x49f060"
@@ -13593,16 +13605,18 @@ why = "no-evidence"
 [[function]]
 addr = "0x4a4950"
 size = 49
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "oracle: time.md 2"
+manual = true
 
 [[function]]
 addr = "0x4a4990"
 size = 85
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "oracle: time.md 2"
+manual = true
 
 [[function]]
 addr = "0x4a49f0"
@@ -13614,9 +13628,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4a4a30"
 size = 230
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "oracle: time.md 2"
+manual = true
 
 [[function]]
 addr = "0x4a4c60"
@@ -13628,37 +13643,42 @@ why = "no-evidence"
 [[function]]
 addr = "0x4a4d00"
 size = 1379
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "time.md 7.5"
+manual = true
 
 [[function]]
 addr = "0x4a5270"
 size = 170
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "time.md 7.3"
+manual = true
 
 [[function]]
 addr = "0x4a5320"
 size = 1110
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "time.md 7.4"
+manual = true
 
 [[function]]
 addr = "0x4a58f0"
 size = 79
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "time.md 6"
+manual = true
 
 [[function]]
 addr = "0x4a5cb0"
 size = 1706
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "time.md 6"
+manual = true
 
 [[function]]
 addr = "0x4a6a00"
@@ -13964,16 +13984,18 @@ why = "no-evidence"
 [[function]]
 addr = "0x4af2d0"
 size = 63
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "time.md 5.1"
+manual = true
 
 [[function]]
 addr = "0x4af3d0"
 size = 239
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "time.md 5.1"
+manual = true
 
 [[function]]
 addr = "0x4af500"
@@ -14048,9 +14070,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4afee0"
 size = 15
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "time.md 5"
+manual = true
 
 [[function]]
 addr = "0x4afef0"
@@ -14062,9 +14085,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4b0210"
 size = 3316
-category = "audio"
-status = "unknown"
-why = "string:addbu61m.raw"
+category = "sim"
+status = "named"
+why = "time.md 3; so casos de velocidade e semente"
+manual = true
 
 [[function]]
 addr = "0x4b1330"
@@ -14258,9 +14282,10 @@ why = "string:.MAP"
 [[function]]
 addr = "0x4b69b0"
 size = 2496
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "rng.md 2.4; inicio de partida em rede"
+manual = true
 
 [[function]]
 addr = "0x4b73a0"
@@ -16204,16 +16229,18 @@ why = "no-evidence"
 [[function]]
 addr = "0x4efd50"
 size = 322
-category = "lib"
-status = "unknown"
-why = "crt-api:GetTickCount"
+category = "platform"
+status = "named"
+why = "rng.md 4; id de sessao"
+manual = true
 
 [[function]]
 addr = "0x4efea0"
 size = 33
-category = "lib"
-status = "unknown"
-why = "crt-api:GetTickCount"
+category = "platform"
+status = "spec"
+why = "time.md 4; clock_ms"
+manual = true
 
 [[function]]
 addr = "0x4efed0"
@@ -16316,37 +16343,42 @@ why = "no-evidence"
 [[function]]
 addr = "0x4f0660"
 size = 107
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "oracle: rng.md 2.2"
+manual = true
 
 [[function]]
 addr = "0x4f06d0"
 size = 7
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "oracle: rng.md 2.4"
+manual = true
 
 [[function]]
 addr = "0x4f06e0"
 size = 6
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "oracle: rng.md 2.4"
+manual = true
 
 [[function]]
 addr = "0x4f06f0"
 size = 150
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "oracle: rng.md 3"
+manual = true
 
 [[function]]
 addr = "0x4f0790"
 size = 87
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "oracle: rng.md 4"
+manual = true
 
 [[function]]
 addr = "0x4f0830"
@@ -19215,15 +19247,17 @@ why = "crt-region>=0x51b000"
 addr = "0x51c12d"
 size = 10
 category = "lib"
-status = "unknown"
-why = "crt-region>=0x51b000"
+status = "verified"
+why = "oracle: CRT srand, rng.md 4"
+manual = true
 
 [[function]]
 addr = "0x51c137"
 size = 30
 category = "lib"
-status = "unknown"
-why = "crt-region>=0x51b000"
+status = "verified"
+why = "oracle: CRT rand, rng.md 4"
+manual = true
 
 [[function]]
 addr = "0x51c155"

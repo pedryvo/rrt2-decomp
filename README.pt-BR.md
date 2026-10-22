@@ -44,7 +44,7 @@ O **rrt2-decomp** estuda o executável original de _Railroad Tycoon II Platinum_
 | Layouts de interface (`.imb` `.win`) | 🔍 | Identificados, ainda não decodificados |
 | Áudio (`.raw` `.wav`) | 🔍 | A maioria parece PCM mono de 16 bits |
 | Mapas e saves (`.MAP` `.GAM`) | 🟡 | Grade de terreno, elevação, água e territórios decodificados nos 31 mapas · [spec](docs/formats/map-gam.md) |
-| Specs de simulação (trens, carga, economia…) | ⏳ | [`docs/spec/`](docs/spec/) |
+| Specs de simulação (trens, carga, economia…) | 🟡 | Tempo, calendário, laço principal e RNGs especificados e verificados contra o original · [tempo](docs/spec/time.md) · [rng](docs/spec/rng.md) |
 | Harness de teste diferencial (Unicorn) | ✅ | Roda funções do original num emulador para comparação bit a bit · [docs](docs/oracle.md) |
 | Motor gráfico (wgpu) | 🟡 | Visualizador de terreno: `cargo run --release -p rt2-viewer -- <mapa>` |
 | Simulação jogável | ⏳ | |
@@ -53,7 +53,7 @@ O **rrt2-decomp** estuda o executável original de _Railroad Tycoon II Platinum_
 
 <sub>✅ pronto · 🟡 parcial · 🔍 em análise · ⏳ planejado</sub>
 
-**Engenharia reversa:** 2945 funções no executável (1837 sem os thunks do linker) · 23 nomeadas em [`re/symbols.toml`](re/symbols.toml) · 680 classificadas (23%) · cobertura de specs da simulação **0%** ([`re/coverage.toml`](re/coverage.toml))
+**Engenharia reversa:** 2945 funções no executável (1837 sem os thunks do linker) · 73 símbolos em [`re/symbols.toml`](re/symbols.toml) · 705 classificadas (24%), 2240 ainda sem classificação · 28 funções especificadas (22 delas de simulação), 11 verificadas bit a bit contra o original ([`re/coverage.toml`](re/coverage.toml)). O percentual de cobertura da simulação será publicado quando a classificação estiver completa.
 
 ## 🧭 Roteiro
 

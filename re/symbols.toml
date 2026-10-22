@@ -162,3 +162,353 @@ name = "str_palt_pal_format"
 kind = "string"
 comment = "\"PALT%04d.PAL\": nome do banco de paleta de um registro LAD"
 spec = "docs/formats/lad.md"
+
+[[symbol]]
+addr = "0x4f0660"
+name = "rng_range"
+kind = "function"
+comment = "RNG do jogo: LCG ANSI (estado 0x55d2c0 *= 0x41c64e6d, +0x3039), saida (estado>>16)&0x7fff; devolve lo + saida % (hi-lo+1); fastcall(ECX=lo, EDX=hi); hi==lo devolve hi sem avancar; hi-lo>0x7fff compoe duas saidas (a<<15|b)"
+spec = "docs/spec/rng.md"
+
+[[symbol]]
+addr = "0x4f06d0"
+name = "rng_seed"
+kind = "function"
+comment = "grava a semente (estado) do RNG do jogo em 0x55d2c0; fastcall(ECX=semente)"
+spec = "docs/spec/rng.md"
+
+[[symbol]]
+addr = "0x4f06e0"
+name = "rng_get_state"
+kind = "function"
+comment = "le o estado do RNG do jogo (0x55d2c0)"
+spec = "docs/spec/rng.md"
+
+[[symbol]]
+addr = "0x4f06f0"
+name = "rng_hash_range"
+kind = "function"
+comment = "RNG sem estado: lo + ((0x3039 - seed*0x3e39b193)>>16 & 0x7fff) % (hi-lo+1); fastcall(ECX=seed, EDX=lo, pilha=hi), ret 4; faixas >0x7fff somam duas saidas com seed e seed+7"
+spec = "docs/spec/rng.md"
+
+[[symbol]]
+addr = "0x4f0790"
+name = "crt_rand_range"
+kind = "function"
+comment = "intervalo inclusivo sobre o rand() do CRT (MSVC LCG); fastcall(ECX=lo, EDX=hi); hi<lo devolve lo; usado por audio, UI, particulas e sementes de sessao"
+spec = "docs/spec/rng.md"
+
+[[symbol]]
+addr = "0x51c12d"
+name = "crt_srand"
+kind = "function"
+comment = "srand do CRT MSVC: grava 0x5609f0"
+spec = "docs/spec/rng.md"
+
+[[symbol]]
+addr = "0x51c137"
+name = "crt_rand"
+kind = "function"
+comment = "rand do CRT MSVC: estado = estado*214013+2531011, devolve (estado>>16)&0x7fff"
+spec = "docs/spec/rng.md"
+
+[[symbol]]
+addr = "0x55d2c0"
+name = "rng_state"
+kind = "global"
+comment = "estado u32 do RNG do jogo (LCG ANSI)"
+spec = "docs/spec/rng.md"
+
+[[symbol]]
+addr = "0x5609f0"
+name = "crt_rand_state"
+kind = "global"
+comment = "estado u32 do rand() do CRT, semeado com GetTickCount em 0x49eff0 e 0x4efd50"
+spec = "docs/spec/rng.md"
+
+[[symbol]]
+addr = "0x57486e"
+name = "game_seed"
+kind = "global"
+comment = "semente u32 da partida: crt_rand(1..32000)+clock_ms ao criar o jogo (0x410de0); usada por rng_hash_range (terreno) e re-semeadura multijogador"
+spec = "docs/spec/rng.md"
+
+[[symbol]]
+addr = "0x46c680"
+name = "net_sync_checksum_build"
+kind = "function"
+comment = "monta o registro de checksum de sincronia multijogador; guarda o estado do RNG (u16 baixo) no inicio e soma campos double das listas"
+spec = "docs/spec/rng.md"
+
+[[symbol]]
+addr = "0x4b0210"
+name = "cmd_execute"
+kind = "function"
+comment = "executa um comando da fila (jogo em rede e local); casos vistos: define velocidade (delta ou absoluta, limite 0..10) e rng_seed(arg)"
+spec = "docs/spec/time.md"
+
+[[symbol]]
+addr = "0x4b69b0"
+name = "net_game_start"
+kind = "function"
+comment = "inicio sincronizado de partida em rede: marca 0x578b00=1 e rng_seed(game_seed)"
+spec = "docs/spec/rng.md"
+
+[[symbol]]
+addr = "0x405540"
+name = "game_frame_update"
+kind = "function"
+comment = "passo por quadro do jogo: calcula minutos de jogo a avancar (velocidade x ms), chama sim_advance e os timers de UI"
+spec = "docs/spec/time.md"
+
+[[symbol]]
+addr = "0x404e30"
+name = "game_idle_tick"
+kind = "function"
+comment = "porteiro dos quadros: so roda a cada >100 ms, mede ms desde o ultimo quadro (limite 1000) e chama game_frame_update"
+spec = "docs/spec/time.md"
+
+[[symbol]]
+addr = "0x4efea0"
+name = "clock_ms"
+kind = "function"
+comment = "relogio em ms: GetTickCount menos a base gravada na primeira chamada (0x57b570)"
+spec = "docs/spec/time.md"
+
+[[symbol]]
+addr = "0x464f60"
+name = "game_main_loop"
+kind = "function"
+comment = "laco principal: inicializa e repete message_pump, despacho de eventos de UI e tick do jogo"
+spec = "docs/spec/time.md"
+
+[[symbol]]
+addr = "0x49eff0"
+name = "game_start"
+kind = "function"
+comment = "ponto de entrada do jogo (chamado do startup do CRT): evento RT2_TSC, cursor, crt_srand(GetTickCount), game_main_loop"
+spec = "docs/spec/time.md"
+
+[[symbol]]
+addr = "0x49ef70"
+name = "message_pump"
+kind = "function"
+comment = "PeekMessage/TranslateAccelerator/Dispatch"
+spec = "docs/spec/time.md"
+
+[[symbol]]
+addr = "0x46c650"
+name = "time_game_minutes_for_ms"
+kind = "function"
+comment = "minutos de jogo = ftol(time_speed_table[game_speed] * ms * 3.2); thiscall(ECX=ms)"
+spec = "docs/spec/time.md"
+
+[[symbol]]
+addr = "0x4a5cb0"
+name = "sim_advance"
+kind = "function"
+comment = "avanca o jogo N minutos: fila de comandos, rolagem de dias (semana a cada 7, mes no dia 28), data/hora, movimento de trens"
+spec = "docs/spec/time.md"
+
+[[symbol]]
+addr = "0x4a5940"
+name = "sim_day_rollover_unused"
+kind = "function"
+comment = "copia nao referenciada do passo de fim de dia (nao ha chamadas a seu thunk 0x401db6); Ghidra nao a cria como funcao"
+spec = "docs/spec/time.md"
+
+[[symbol]]
+addr = "0x4a5270"
+name = "sim_week_end"
+kind = "function"
+comment = "passo semanal (dias 7, 14, 21, 28): percorre duas listas de entidades"
+spec = "docs/spec/time.md"
+
+[[symbol]]
+addr = "0x4a5320"
+name = "sim_month_end"
+kind = "function"
+comment = "passo mensal (23:59 do dia 28): eventos, listas de entidades, decaimento x0.94, flags de relatorio e avanco de data (ou sim_year_end em dezembro)"
+spec = "docs/spec/time.md"
+
+[[symbol]]
+addr = "0x4a4d00"
+name = "sim_year_end"
+kind = "function"
+comment = "passo anual (23:59 de 28/dez): processamento de fim de ano, avanco para 1/jan, eventos historicos por ano"
+spec = "docs/spec/time.md"
+
+[[symbol]]
+addr = "0x4a4950"
+name = "date_to_minutes"
+kind = "function"
+comment = "(ano, mes, dia, hora, minuto) -> minutos: (((a*12+m)*28+d-29)*24+h)*60+min; fastcall(ECX=ano, EDX=mes, pilha=dia,hora,min) ret 12"
+spec = "docs/spec/time.md"
+
+[[symbol]]
+addr = "0x4a4990"
+name = "date_to_minutes_packed"
+kind = "function"
+comment = "igual a date_to_minutes com data empacotada u32 (ano u16, mes, dia) e hora u32 (hora, minuto); stdcall ret 8"
+spec = "docs/spec/time.md"
+
+[[symbol]]
+addr = "0x4a4a30"
+name = "minutes_to_date"
+kind = "function"
+comment = "inverso: minutos -> ano u16, mes, dia, hora, minuto (6 bytes); thiscall(ECX=minutos, pilha=ponteiro) ret 4"
+spec = "docs/spec/time.md"
+
+[[symbol]]
+addr = "0x46b650"
+name = "game_set_date"
+kind = "function"
+comment = "define data e hora (campos e minutos absolutos) ao iniciar ou carregar um jogo e zera contadores"
+spec = "docs/spec/time.md"
+
+[[symbol]]
+addr = "0x457fe0"
+name = "event_fire_trigger"
+kind = "function"
+comment = "dispara os eventos de cenario cujo gatilho (campo +0x34) vale N: 0 inicio de ano, 1 fim de ano, 2 inicio de mes, 3 fim de mes, 4 fim de mes (so com versao > 9004)"
+spec = "docs/spec/time.md"
+
+[[symbol]]
+addr = "0x4af3d0"
+name = "cmd_queue_run"
+kind = "function"
+comment = "executa a fila de comandos (lista 0x574c8c) via cmd_execute; em rede so os com tempo <= game_time_minutes"
+spec = "docs/spec/time.md"
+
+[[symbol]]
+addr = "0x4af2d0"
+name = "cmd_queue_next_time"
+kind = "function"
+comment = "tempo do proximo comando: 0 se vazia, game_time_minutes em jogo local, campo +8 do primeiro em rede"
+spec = "docs/spec/time.md"
+
+[[symbol]]
+addr = "0x4afee0"
+name = "time_horizon"
+kind = "function"
+comment = "limite de tempo concedido em rede (0x579220) ou game_time_minutes se 0"
+spec = "docs/spec/time.md"
+
+[[symbol]]
+addr = "0x46ae50"
+name = "net_player_count"
+kind = "function"
+comment = "numero de jogadores (1 em jogo local)"
+spec = "docs/spec/time.md"
+
+[[symbol]]
+addr = "0x49d920"
+name = "net_min_peer_version"
+kind = "function"
+comment = "menor versao dos jogadores em rede; em jogo local devolve 0x2334 (9012); comparada com 0x232c (9004) para ligar comportamento novo"
+spec = "docs/spec/time.md"
+
+[[symbol]]
+addr = "0x4a58f0"
+name = "trains_advance"
+kind = "function"
+comment = "avanca todos os trens (lista 0x574c64) N minutos via 0x4d0ce0"
+spec = "docs/spec/time.md"
+
+[[symbol]]
+addr = "0x49e0b0"
+name = "net_time_sync"
+kind = "function"
+comment = "sincronia diaria de tempo em jogo em rede (transmite game_time_minutes)"
+spec = "docs/spec/time.md"
+
+[[symbol]]
+addr = "0x4efd50"
+name = "net_session_init"
+kind = "function"
+comment = "inicializa o bloco de sessao de 0x48 bytes em 0x57b400 e sorteia um id de sessao (2 crt_rand mod 32000 +1, mais GetTickCount)"
+spec = "docs/spec/rng.md"
+
+[[symbol]]
+addr = "0x5704f4"
+name = "game_time_minutes"
+kind = "global"
+comment = "minutos absolutos desde o ano 0 do calendario (= date_to_minutes da data atual); avanca em sim_advance"
+spec = "docs/spec/time.md"
+
+[[symbol]]
+addr = "0x5704f8"
+name = "game_date"
+kind = "global"
+comment = "data u32: ano u16, mes u8 (+2), dia u8 (+3)"
+spec = "docs/spec/time.md"
+
+[[symbol]]
+addr = "0x5704fc"
+name = "game_time_of_day"
+kind = "global"
+comment = "hora u8 (+0), minuto u8 (+1)"
+spec = "docs/spec/time.md"
+
+[[symbol]]
+addr = "0x57050e"
+name = "game_speed"
+kind = "global"
+comment = "indice de velocidade 0..10 (0 = pausa; padrao 3)"
+spec = "docs/spec/time.md"
+
+[[symbol]]
+addr = "0x5707c2"
+name = "game_speed_resume"
+kind = "global"
+comment = "ultima velocidade nao nula, usada ao despausar"
+spec = "docs/spec/time.md"
+
+[[symbol]]
+addr = "0x536508"
+name = "time_speed_table"
+kind = "table"
+comment = "f32[11] = 0, 0.3, 0.6, 1.0, 1.7, 2.1, 3.0, 5.0, 8.0, 12.0, 18.0"
+spec = "docs/spec/time.md"
+
+[[symbol]]
+addr = "0x537578"
+name = "time_speed_scale"
+kind = "global"
+comment = "f64 = 3.2 (minutos de jogo por ms no multiplicador 1.0)"
+spec = "docs/spec/time.md"
+
+[[symbol]]
+addr = "0x57922c"
+name = "sim_busy"
+kind = "global"
+comment = "trava de reentrada: sim_advance nao roda com valor != 0"
+spec = "docs/spec/time.md"
+
+[[symbol]]
+addr = "0x5704e8"
+name = "game_running"
+kind = "global"
+comment = "jogo em andamento (libera o porteiro de 100 ms)"
+spec = "docs/spec/time.md"
+
+[[symbol]]
+addr = "0x574c8c"
+name = "cmd_queue"
+kind = "global"
+comment = "lista de comandos pendentes (registro com tempo no campo +8)"
+spec = "docs/spec/time.md"
+
+[[symbol]]
+addr = "0x5665d4"
+name = "report_due_flag"
+kind = "global"
+comment = "relatorio periodico pendente: ligado por sim_month_end conforme a opcao de frequencia (opcoes+0x23c)"
+spec = "docs/spec/time.md"
+
+[[symbol]]
+addr = "0x57b570"
+name = "clock_ms_base"
+kind = "global"
+comment = "GetTickCount da primeira chamada de clock_ms"
+spec = "docs/spec/time.md"
