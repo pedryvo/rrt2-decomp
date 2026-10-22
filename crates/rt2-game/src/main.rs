@@ -69,6 +69,19 @@ struct Args {
     /// Screenshot size in pixels, WIDTHxHEIGHT
     #[arg(long, default_value = "1920x1080", value_parser = parse_size)]
     size: (u32, u32),
+    /// With --screenshot --screen game: centre the camera on this tile (X,Y)
+    #[arg(long, value_parser = parse_point)]
+    focus: Option<(f32, f32)>,
+    /// With --focus: pixels per native pixel (1 = the original's full zoom)
+    #[arg(long, default_value_t = 1.0)]
+    zoom: f32,
+    /// With --focus: view rotation, 0..3
+    #[arg(long, default_value_t = 0)]
+    rotation: u8,
+    /// With --screenshot --screen game: render this many extra live frames (simulation running,
+    /// interpolated cars) and print the mean time per frame
+    #[arg(long, default_value_t = 0)]
+    bench: u32,
     /// With --screenshot --screen game: simulated days to advance before the shot
     #[arg(long, default_value_t = 0)]
     days: u32,
@@ -174,6 +187,9 @@ fn screenshot(init: Init, skin: rt2_ui::Skin, args: &Args, out: &std::path::Path
                 .unwrap_or_else(|| install.join("games").join("Example save game.GAM"));
             state.start(&file)?;
             state.advance_days(args.days);
+            if let Some((x, y)) = args.focus {
+                state.set_view(x, y, args.zoom, args.rotation);
+            }
             state.update(0.0);
             if matches!(args.screen, Screen::Info) && !state.show_info_screen(&args.info) {
                 bail!("unknown --info screen {:?}", args.info);
@@ -185,6 +201,18 @@ fn screenshot(init: Init, skin: rt2_ui::Skin, args: &Args, out: &std::path::Path
                 state.update(0.0);
             }
         }
+    }
+    if args.bench > 0 {
+        let t = std::time::Instant::now();
+        for _ in 0..args.bench {
+            state.update(16.7);
+            gfx::render_offscreen(&mut gfx, &mut state, args.size)?;
+        }
+        let ms = t.elapsed().as_secs_f64() * 1000.0 / f64::from(args.bench);
+        eprintln!(
+            "{ms:.2} ms/frame (incl. readback) over {} frames",
+            args.bench
+        );
     }
     let pixels = gfx::render_offscreen(&mut gfx, &mut state, args.size)?;
     if let Some(dir) = out.parent() {

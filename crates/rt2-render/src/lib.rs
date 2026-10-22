@@ -6,6 +6,7 @@ pub mod assets;
 pub mod atlas;
 pub mod camera;
 pub mod ground_map;
+pub mod live;
 pub mod mesh;
 pub mod renderer;
 pub mod scene;

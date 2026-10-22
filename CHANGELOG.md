@@ -148,3 +148,6 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - RE: `building_construct`/`building_destroy` especificados em `world-growth.md` 4.5: estrutura tipo 3 em cada celula da pegada (ordem de alocacao decide os ids dos marcadores dos trens), cantos de elevacao puxados para (h + media + 1) >> 1, `0x424c10` recalcula os bits 4/2/3 de `tile+6` numa janela 9x9, `tile+6 & 1` e o tile plano, elos `pool_58` por `station_catchment_test`; a demolicao nao devolve a elevacao
 - RE: `building_can_place` (0x4087a0) provado contra o original no emulador (78 400 casos): alem de rio e `tile+0 & 8`, rejeita estrada com celula `& 1`, ponte/vao/trilho (0x415f80) e, com o argumento `tentativas > 300`, celula `& 0x200` fora de estrada
 - RE: `0x4beae0` zera tambem `+0x59` e `+0x5d` (receitas do ano da estacao como origem e destino), alem dos tres contadores `u16`
+- Feature: the in-game map is live: engines, tenders and wagons are drawn from the car pool at their interpolated positions (record by direction and view rotation, depth-sorted with buildings and trees), with steam puffs from the animation pool
+- Improved: static map layers (buildings, track, stations) rebuild when the save's building/track/tile fingerprint changes
+- Feature: rrt2 --screenshot accepts --focus X,Y, --zoom, --rotation and --bench N for map shots and frame timing

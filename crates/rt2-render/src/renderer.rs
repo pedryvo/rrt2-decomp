@@ -7,10 +7,12 @@ use std::sync::Arc;
 use glam::{Mat4, Vec2, Vec3};
 use wgpu::util::DeviceExt;
 
-use crate::atlas::{ATLAS_MIPS, Atlas};
+use crate::atlas::{ATLAS_MIPS, Atlas, AtlasEntry};
 use crate::camera::Camera;
+use crate::live::LiveFrame;
+use crate::mesh::surface_elevation;
 use crate::mesh::{NATIVE_ZOOM, Vertex};
-use crate::scene::{Instance, Scene};
+use crate::scene::{Instance, SMOKE_GROUPS, Scene};
 use crate::textures::{LayerStack, MIP_LEVELS, TEXTURE_SIZE};
 
 pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
@@ -44,6 +46,15 @@ struct RotationGpu {
     count: u32,
     shadows: wgpu::Buffer,
     shadow_count: u32,
+    /// Painter's keys of the (sorted, far to near) static instances.
+    keys: Vec<f32>,
+    /// Atlas entry of every record of every bank, for the live layer.
+    bank_records: Vec<Vec<Option<AtlasEntry>>>,
+}
+
+/// Painter's key of a ground point: larger = farther from the viewer.
+fn painter_key(fwd: Vec2, x: f32, z: f32) -> f32 {
+    fwd.dot(Vec2::new(x, z))
 }
 
 pub struct Renderer {
@@ -63,6 +74,26 @@ pub struct Renderer {
     rotations: [Option<RotationGpu>; 4],
     water_frame: u32,
     anim: u32,
+    /// Live layer: the car/smoke state of the previous and the latest simulation step.
+    live_prev: LiveFrame,
+    live_next: LiveFrame,
+    /// Fraction of the way from the previous to the latest step (render-side only).
+    live_alpha: f32,
+    live_buffer: wgpu::Buffer,
+    live_capacity: usize,
+    live_scratch: Vec<(f32, Instance)>,
+    live_instances: Vec<Instance>,
+    /// Index into the static instances before which each live instance is drawn.
+    live_split: Vec<u32>,
+}
+
+fn live_buffer(device: &wgpu::Device, capacity: usize) -> wgpu::Buffer {
+    device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some("live instances"),
+        size: (capacity * size_of::<Instance>()) as u64,
+        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    })
 }
 
 fn depth_view(device: &wgpu::Device, size: (u32, u32)) -> wgpu::TextureView {
@@ -455,7 +486,53 @@ impl Renderer {
             rotations: [None, None, None, None],
             water_frame: 0,
             anim: 0,
+            live_prev: LiveFrame::default(),
+            live_next: LiveFrame::default(),
+            live_alpha: 1.0,
+            live_buffer: live_buffer(device, 1024),
+            live_capacity: 1024,
+            live_scratch: Vec::new(),
+            live_instances: Vec::new(),
+            live_split: Vec::new(),
         }
+    }
+
+    /// Swaps in a rebuilt scene (static layers changed: buildings, track, stations). The decoded
+    /// textures of the old scene are kept on the GPU; the mesh and sprite atlases are rebuilt
+    /// lazily.
+    pub fn replace_scene(&mut self, device: &wgpu::Device, scene: Arc<Scene>) {
+        self.vertices = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("terrain vertices"),
+            contents: bytemuck::cast_slice(&scene.mesh.vertices),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+        self.indices = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("terrain indices"),
+            contents: bytemuck::cast_slice(&scene.mesh.indices),
+            usage: wgpu::BufferUsages::INDEX,
+        });
+        self.index_count = scene.mesh.indices.len() as u32;
+        self.scene = scene;
+        self.rotations = [None, None, None, None];
+    }
+
+    /// Latest simulation step of the live layer; the previous one becomes the interpolation
+    /// start. Call once per batch of simulation steps.
+    pub fn push_live(&mut self, frame: LiveFrame) {
+        self.live_prev = std::mem::replace(&mut self.live_next, frame);
+        self.live_alpha = 0.0;
+    }
+
+    /// Position between the previous (0) and latest (1) step to draw the cars at.
+    pub fn set_live_alpha(&mut self, alpha: f32) {
+        self.live_alpha = alpha.clamp(0.0, 1.0);
+    }
+
+    /// Replaces the live state without interpolation (a new game was opened).
+    pub fn reset_live(&mut self, frame: LiveFrame) {
+        self.live_prev = frame.clone();
+        self.live_next = frame;
+        self.live_alpha = 1.0;
     }
 
     /// Call when the target size (physical pixels) changes.
@@ -486,10 +563,9 @@ impl Renderer {
         let fwd = Camera::ground_forward(r as u8);
         let mut instances = sprites.instances;
         let shadows = sprites.shadows;
-        instances.sort_by(|a, b| {
-            let key = |i: &Instance| fwd.dot(Vec2::new(i.pos[0], i.pos[2]));
-            key(b).total_cmp(&key(a))
-        });
+        let key = |i: &Instance| painter_key(fwd, i.pos[0], i.pos[2]);
+        instances.sort_by(|a, b| key(b).total_cmp(&key(a)));
+        let keys: Vec<f32> = instances.iter().map(key).collect();
         let view = upload_atlas(device, queue, &sprites.atlas);
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("sprite atlas"),
@@ -521,7 +597,104 @@ impl Renderer {
             count: instances.len() as u32,
             shadows: shadow_buffer,
             shadow_count: shadows.len() as u32,
+            keys,
+            bank_records: sprites.bank_records,
         });
+    }
+
+    /// Builds this frame's live instances (cars at their interpolated positions, smoke puffs),
+    /// sorted far to near, and uploads them.
+    fn build_live(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, rotation: u8) {
+        self.live_instances.clear();
+        self.live_split.clear();
+        let r = (rotation % 4) as usize;
+        let Some(rot) = &self.rotations[r] else {
+            return;
+        };
+        let scene = &self.scene;
+        let fwd = Camera::ground_forward(r as u8);
+        let hs = scene.height_scale;
+        let (w, h) = (scene.map.width, scene.map.height);
+        let ground = |x: f32, y: f32| -> f32 {
+            let x = x.clamp(0.0, w as f32 - 0.001);
+            let y = y.clamp(0.0, h as f32 - 0.001);
+            let (tx, ty) = (x as usize, y as usize);
+            surface_elevation(&scene.map, tx, ty, x - tx as f32, y - ty as f32) * hs
+        };
+        let scratch = &mut self.live_scratch;
+        scratch.clear();
+        let cars = self.live_prev.lerp(&self.live_next, self.live_alpha);
+        for c in &cars {
+            let Some(bank) = scene
+                .plan
+                .vehicle_banks
+                .get(c.vehicle as usize)
+                .copied()
+                .flatten()
+            else {
+                continue;
+            };
+            let recs = &rot.bank_records[bank as usize];
+            // Screen direction clockwise from "up" (`sprite-catalog.md` section 8: record
+            // `(d + 1) & 7` at rotation 0); each view quarter turn moves it two steps back.
+            let dir8 = (c.dir as usize + 1 + 8 - 2 * r) & 7;
+            let rec = match recs.len() {
+                0 => continue,
+                1..=7 => dir8 & 3,
+                _ => dir8,
+            };
+            let Some(Some(e)) = recs.get(rec) else {
+                continue;
+            };
+            let pos = [c.x, ground(c.x, c.y), c.y];
+            scratch.push((
+                painter_key(fwd, c.x, c.y),
+                Instance {
+                    pos,
+                    shade: 1.0,
+                    rect: e.rect,
+                    uv: e.uv,
+                },
+            ));
+        }
+        if let Some(bank) = scene.plan.smoke_bank {
+            let recs = &rot.bank_records[bank as usize];
+            for p in &self.live_next.smoke {
+                let idx = p.seq as usize * SMOKE_GROUPS + p.frame as usize;
+                let Some(Some(e)) = recs.get(idx) else {
+                    continue;
+                };
+                let mut rect = e.rect;
+                rect[1] -= p.height;
+                scratch.push((
+                    // Puffs rise above the cars of the same spot: drawn just after them.
+                    painter_key(fwd, p.x, p.y) - 0.3,
+                    Instance {
+                        pos: [p.x, ground(p.x, p.y), p.y],
+                        shade: -1.0,
+                        rect,
+                        uv: e.uv,
+                    },
+                ));
+            }
+        }
+        scratch.sort_by(|a, b| b.0.total_cmp(&a.0));
+        for (k, inst) in scratch.iter() {
+            self.live_split
+                .push(rot.keys.partition_point(|s| s > k) as u32);
+            self.live_instances.push(*inst);
+        }
+        if self.live_instances.len() > self.live_capacity {
+            self.live_capacity = self.live_instances.len().next_power_of_two();
+            self.live_buffer = live_buffer(device, self.live_capacity);
+        }
+        if !self.live_instances.is_empty() {
+            queue.write_buffer(
+                &self.live_buffer,
+                0,
+                bytemuck::cast_slice(&self.live_instances),
+            );
+        }
     }
 
     /// Draw one frame into `target`, which must have the size given to `new`/`resize`.
@@ -533,10 +706,12 @@ impl Renderer {
         camera: &Camera,
     ) {
         let sprite_scale = camera.zoom / NATIVE_ZOOM;
+        let live = !self.live_next.cars.is_empty() || !self.live_next.smoke.is_empty();
         let draw_sprites =
-            sprite_scale >= MIN_SPRITE_SCALE && !self.scene.plan.placements.is_empty();
+            sprite_scale >= MIN_SPRITE_SCALE && (!self.scene.plan.placements.is_empty() || live);
         if draw_sprites {
             self.ensure_rotation(device, queue, camera.rotation);
+            self.build_live(device, queue, camera.rotation);
         }
         // Direction towards the light: from the north, high in the sky (up-left on screen).
         let light = Vec3::new(-0.3, 0.7, -0.65).normalize();
@@ -589,8 +764,30 @@ impl Renderer {
                 pass.set_bind_group(1, &rot.bind_group, &[]);
                 pass.set_vertex_buffer(0, rot.shadows.slice(..));
                 pass.draw(0..4, 0..rot.shadow_count);
-                pass.set_vertex_buffer(0, rot.instances.slice(..));
-                pass.draw(0..4, 0..rot.count);
+                // Static sprites (sorted far to near) with the live ones merged in by their
+                // painter's keys: one draw per run, vertex buffer swapped between them.
+                let mut s = 0u32;
+                let mut i = 0usize;
+                let n = self.live_instances.len();
+                while i < n {
+                    let ins = self.live_split[i];
+                    if ins > s {
+                        pass.set_vertex_buffer(0, rot.instances.slice(..));
+                        pass.draw(0..4, s..ins);
+                        s = ins;
+                    }
+                    let mut j = i + 1;
+                    while j < n && self.live_split[j] == ins {
+                        j += 1;
+                    }
+                    pass.set_vertex_buffer(0, self.live_buffer.slice(..));
+                    pass.draw(0..4, i as u32..j as u32);
+                    i = j;
+                }
+                if rot.count > s {
+                    pass.set_vertex_buffer(0, rot.instances.slice(..));
+                    pass.draw(0..4, s..rot.count);
+                }
             }
         }
         queue.submit([encoder.finish()]);

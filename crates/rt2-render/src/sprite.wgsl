@@ -85,7 +85,10 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
         discard;
     }
     // Premultiplied, gamma encoded -> premultiplied linear.
+    // A negative shade marks a translucent sprite (smoke): |shade| tints, the alpha is scaled.
+    let k = select(1.0, 0.7, in.shade < 0.0);
+    let a = c.a * k;
     let straight = c.rgb / c.a;
-    let lin = srgb_to_linear(clamp(straight * in.shade, vec3<f32>(0.0), vec3<f32>(1.0)));
-    return vec4<f32>(lin * c.a, c.a);
+    let lin = srgb_to_linear(clamp(straight * abs(in.shade), vec3<f32>(0.0), vec3<f32>(1.0)));
+    return vec4<f32>(lin * a, a);
 }

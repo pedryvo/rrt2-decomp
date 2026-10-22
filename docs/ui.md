@@ -156,3 +156,5 @@ Lacunas (marcadas TODO na tela): lucro do trem e estado da programação; popula
 - A coluna "This year" mostra $0 em 12 de janeiro com trens rodando. Confirmar se o original só acumula no fechamento do mês (finance.md) ou se a tela lê o campo errado.
 - A barra de atalhos abaixo do HUD fica parcialmente atrás do painel aberto.
 - zh-CN: a data usa os nomes completos dos meses (`一月`), o que dá "1876年一月12日". O usual seria "1876年1月12日": dar ao formato de data acesso à tabela de meses abreviados (ids 1426+, `1月`) ou a um mês numérico.
+- Mapa vivo (Example, 1080p): perto da curva que entra na estação, um trem aparece com os vagões empilhados verticalmente. Verificar direção e offset dos carros em curvas e diagonais (`rt2-render/src/live.rs`) contra `trains.md` 10, e se não é um trem parado com carros sobrepostos no próprio original.
+- A altura da fumaça foi tratada como pixels de sprite; a spec não dá a unidade.

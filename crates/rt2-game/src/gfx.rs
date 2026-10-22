@@ -55,16 +55,29 @@ impl Gfx {
     pub fn draw(&mut self, state: &mut AppState, target: &wgpu::TextureView, water_frame: u32) {
         self.ui.set_script(state.script());
         if let Some(scene) = state.take_scene() {
-            self.map = Some(Renderer::new(
-                &self.device,
-                &self.queue,
-                self.format,
-                self.size,
-                scene,
-            ));
+            match &mut self.map {
+                Some(m) => m.replace_scene(&self.device, scene),
+                None => {
+                    self.map = Some(Renderer::new(
+                        &self.device,
+                        &self.queue,
+                        self.format,
+                        self.size,
+                        scene,
+                    ));
+                }
+            }
         }
         match (state.camera(), &mut self.map) {
             (Some(camera), Some(map)) => {
+                if let Some((frame, reset)) = state.take_live() {
+                    if reset {
+                        map.reset_live(frame);
+                    } else {
+                        map.push_live(frame);
+                    }
+                }
+                map.set_live_alpha(state.live_alpha());
                 map.set_water_frame(water_frame);
                 map.render(&self.device, &self.queue, target, &camera);
                 self.ui.render(

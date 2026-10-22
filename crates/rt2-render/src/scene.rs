@@ -76,7 +76,15 @@ pub enum BankKind {
     Station,
     /// `{name}{rot}.imb`.
     Tree,
+    /// `cr{rot+1}{name}.imb` (`sprite-catalog.md` section 8): engines, tenders and wagons.
+    Vehicle,
+    /// `SMOKE.imb` (no rotation digit; `sprite-catalog.md` section 3, `trains.md` 10.6).
+    Smoke,
 }
+
+/// Frame stride of the flattened smoke bank (`record * SMOKE_GROUPS + frame`; the records of
+/// `SMOKE.imb` hold 12 images in group 0).
+pub const SMOKE_GROUPS: usize = 16;
 
 /// One sprite bank family; the file depends on the view rotation (`rot + 1` digit, section 2.3).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -98,6 +106,8 @@ impl BankSpec {
             ],
             BankKind::Station => vec![format!("bl{d}{}.imb", self.stem)],
             BankKind::Tree => vec![format!("{}{d}.imb", self.stem)],
+            BankKind::Vehicle => vec![format!("cr{d}{}.imb", self.stem)],
+            BankKind::Smoke => vec![format!("{}.imb", self.stem)],
         }
     }
 }
@@ -116,6 +126,10 @@ pub struct Placement {
 pub struct SpritePlan {
     pub banks: Vec<BankSpec>,
     pub placements: Vec<Placement>,
+    /// Bank of each vehicle type (`vehicle_type_table` index), for the live layer.
+    pub vehicle_banks: Vec<Option<u32>>,
+    /// Bank of the smoke puffs.
+    pub smoke_bank: Option<u32>,
 }
 
 /// One sprite instance as the GPU reads it.
@@ -136,6 +150,9 @@ pub struct RotationSprites {
     pub instances: Vec<Instance>,
     /// Ground shadows of trees, drawn before every sprite.
     pub shadows: Vec<Instance>,
+    /// Atlas entry of every record of every bank (`[bank][record]`); the live layer (vehicles,
+    /// smoke) picks its sprites here. Smoke records are flattened `record * SMOKE_GROUPS + frame`.
+    pub bank_records: Vec<Vec<Option<crate::atlas::AtlasEntry>>>,
 }
 
 /// A soft elliptical shadow, premultiplied black. The original darkens the ground beside each
@@ -174,8 +191,30 @@ impl SpritePlan {
     }
 
     /// Plan trees and, with a save, the buildings of the object pool.
-    pub fn build(map: &Map, save: Option<&Save>, water: &[bool]) -> SpritePlan {
+    pub fn build(
+        map: &Map,
+        save: Option<&Save>,
+        water: &[bool],
+        vehicle_names: &[String],
+    ) -> SpritePlan {
         let mut plan = SpritePlan::default();
+        if save.is_some() {
+            for name in vehicle_names {
+                let b = (name.len() == 5).then(|| {
+                    plan.bank(BankSpec {
+                        kind: BankKind::Vehicle,
+                        stem: name.clone(),
+                        shade: 0,
+                    })
+                });
+                plan.vehicle_banks.push(b);
+            }
+            plan.smoke_bank = Some(plan.bank(BankSpec {
+                kind: BankKind::Smoke,
+                stem: "SMOKE".into(),
+                shade: NATURAL_SHADE,
+            }));
+        }
         // Trees: one to eight sprites per tile by the density byte (`tile[3]`), scattered with a
         // position hash (the original's own scatter uses `rng_hash_range`, not decoded).
         for ty in 0..map.height {
@@ -274,10 +313,18 @@ impl SpritePlan {
             let mut per_record = Vec::new();
             if let Some(b) = &loaded {
                 for r in 0..b.record_count() {
-                    per_record.push(b.image(r, 0, 0, spec.shade).map(|img| {
-                        images.push(img);
-                        images.len() - 1
-                    }));
+                    let groups = if spec.kind == BankKind::Smoke {
+                        SMOKE_GROUPS
+                    } else {
+                        1
+                    };
+                    for g in 0..groups {
+                        // frames for smoke
+                        per_record.push(b.image(r, 0, g, spec.shade).map(|img| {
+                            images.push(img);
+                            images.len() - 1
+                        }));
+                    }
                 }
             }
             lookup.push(per_record);
@@ -318,10 +365,19 @@ impl SpritePlan {
                 uv: entry.uv,
             });
         }
+        let bank_records = lookup
+            .iter()
+            .map(|recs| {
+                recs.iter()
+                    .map(|i| i.and_then(|i| atlas.entries[i]))
+                    .collect()
+            })
+            .collect();
         RotationSprites {
             atlas,
             instances,
             shadows,
+            bank_records,
         }
     }
 }
@@ -330,8 +386,12 @@ impl SpritePlan {
 pub struct Scene {
     pub assets: Arc<GameAssets>,
     pub mesh: TerrainMesh,
-    pub textures: TerrainTextures,
+    pub textures: Arc<TerrainTextures>,
     pub plan: SpritePlan,
+    /// The terrain the scene was built from (the live layer reads elevations from it).
+    pub map: Map,
+    /// Short names of the vehicle types (`vehicle_type_table`, `+0`), by type index.
+    pub vehicle_names: Arc<Vec<String>>,
     /// Map size in tiles.
     pub size: (usize, usize),
     /// World height per elevation unit.
@@ -356,8 +416,43 @@ impl Scene {
         save: Option<&Save>,
         options: SceneOptions,
     ) -> Scene {
+        Scene::build_with(assets, map, save, options, Arc::default())
+    }
+
+    /// Like [`Scene::build`], with the vehicle names the live layer needs.
+    pub fn build_with(
+        assets: Arc<GameAssets>,
+        map: &Map,
+        save: Option<&Save>,
+        options: SceneOptions,
+        vehicle_names: Arc<Vec<String>>,
+    ) -> Scene {
+        let textures = Arc::new(TerrainTextures::load(&assets));
+        Scene::assemble(assets, textures, map, save, options, vehicle_names)
+    }
+
+    /// Rebuilds the static layers (terrain mesh with track, buildings, trees) for a changed map
+    /// or save, reusing the decoded terrain textures.
+    pub fn rebuild(&self, map: &Map, save: Option<&Save>) -> Scene {
+        Scene::assemble(
+            self.assets.clone(),
+            self.textures.clone(),
+            map,
+            save,
+            SceneOptions { sprites: true },
+            self.vehicle_names.clone(),
+        )
+    }
+
+    fn assemble(
+        assets: Arc<GameAssets>,
+        textures: Arc<TerrainTextures>,
+        map: &Map,
+        save: Option<&Save>,
+        options: SceneOptions,
+        vehicle_names: Arc<Vec<String>>,
+    ) -> Scene {
         let scale = height_scale();
-        let textures = TerrainTextures::load(&assets);
         let ground_layers = textures.ground.len() as u16;
         let grid = build_grid(map);
         let water: Vec<bool> = grid
@@ -382,7 +477,7 @@ impl Scene {
         }
         let mesh = TerrainMesh::build(map, scale, &looks);
         let plan = if options.sprites {
-            SpritePlan::build(map, save, &water)
+            SpritePlan::build(map, save, &water, &vehicle_names)
         } else {
             SpritePlan::default()
         };
@@ -391,6 +486,8 @@ impl Scene {
             mesh,
             textures,
             plan,
+            map: map.clone(),
+            vehicle_names,
             size: (map.width, map.height),
             height_scale: scale,
         }

@@ -9,6 +9,7 @@ use std::sync::Arc;
 use anyhow::{Context, Result, bail};
 use rt2_audio::Event;
 use rt2_formats::map::Save;
+use rt2_render::live::LiveFrame;
 use rt2_render::{Camera, GameAssets, Scene, SceneOptions};
 use rt2_sim::calendar::{DEFAULT_SPEED, Date, SpeedTable};
 use rt2_sim::data::GameData;
@@ -102,6 +103,35 @@ struct GameState {
     map_only: bool,
     /// The open information screen (finance, trains, ...), if any.
     info: Option<InfoState>,
+    /// Fingerprint of what the static map layers show (buildings, track, stations).
+    scene_fp: u64,
+}
+
+/// Hash of the parts of the save the static layers are built from: building type and tile,
+/// track piece shapes and the tiles' track/structure ids (`scene.rs`). Cheap enough to run after
+/// every batch of simulation steps; changes only when something is built or removed.
+fn scene_fingerprint(save: &rt2_formats::map::Save) -> u64 {
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    let mut put = |b: u8| {
+        h ^= u64::from(b);
+        h = h.wrapping_mul(0x100_0000_01b3);
+    };
+    for r in &save.objects.records {
+        put(r.slot as u8);
+        for &o in &[6usize, 0x22, 0x23, 0x24, 0x25, 0x52] {
+            put(r.data.get(o).copied().unwrap_or(0));
+        }
+    }
+    for r in &save.track_pieces.records {
+        put(r.slot as u8);
+        put(r.data.first().copied().unwrap_or(0));
+        put(r.data.get(0x23).copied().unwrap_or(0) & 1);
+    }
+    for t in &save.map.tiles {
+        put(t.track_id);
+        put(t.struct_id);
+    }
+    h
 }
 
 enum Screen {
@@ -128,6 +158,13 @@ pub struct AppState {
     texts: Texts,
     binds: Bindings,
     data: Option<GameData>,
+    vehicle_names: Arc<Vec<String>>,
+    /// Live layer update for the renderer: (frame, reset interpolation).
+    pending_live: Option<(LiveFrame, bool)>,
+    live_alpha: f32,
+    /// The scene the renderer shows, and whether its static layers are out of date.
+    current_scene: Option<Arc<Scene>>,
+    rebuild_scene: bool,
     pub ui: Ui,
     scale: UiScale,
     scale_pinned: bool,
@@ -190,6 +227,11 @@ impl AppState {
             texts,
             binds,
             data: None,
+            vehicle_names: Arc::default(),
+            pending_live: None,
+            live_alpha: 1.0,
+            current_scene: None,
+            rebuild_scene: false,
             ui: Ui::new(init.scale),
             scale: init.scale,
             scale_pinned: init.scale_pinned,
@@ -230,8 +272,33 @@ impl AppState {
         &self.binds.invalid
     }
 
+    /// A new scene for the renderer: a freshly opened game, or the same one with its static
+    /// layers rebuilt after something was built or removed.
     pub fn take_scene(&mut self) -> Option<Arc<Scene>> {
-        self.pending_scene.take()
+        if let Some(s) = self.pending_scene.take() {
+            self.current_scene = Some(s.clone());
+            self.rebuild_scene = false;
+            return Some(s);
+        }
+        if std::mem::take(&mut self.rebuild_scene)
+            && let (Some(cur), Screen::Game(g)) = (&self.current_scene, &self.screen)
+            && let Some(save) = g.world.save_ref()
+        {
+            let s = Arc::new(cur.rebuild(&save.map, Some(save)));
+            self.current_scene = Some(s.clone());
+            return Some(s);
+        }
+        None
+    }
+
+    /// Live-layer update since the last call: the frame and whether to restart interpolation.
+    pub fn take_live(&mut self) -> Option<(LiveFrame, bool)> {
+        self.pending_live.take()
+    }
+
+    /// Interpolation position between the last two simulation steps (render-side only).
+    pub fn live_alpha(&self) -> f32 {
+        self.live_alpha
     }
 
     /// Audio triggers since the last call: the music category of the current screen (menu and
@@ -255,6 +322,15 @@ impl AppState {
         match &self.screen {
             Screen::Game(g) => Some(g.camera),
             Screen::Menu(_) => None,
+        }
+    }
+
+    /// Centres the camera on a tile (screenshots); `zoom` is in native pixels per pixel.
+    pub fn set_view(&mut self, x: f32, y: f32, zoom: f32, rotation: u8) {
+        if let Screen::Game(g) = &mut self.screen {
+            g.camera.target = rt2_render::camera::Vec2::new(x, y);
+            g.camera.zoom = (zoom * rt2_render::NATIVE_ZOOM).clamp(0.02, 200.0);
+            g.camera.rotation = rotation % 4;
         }
     }
 
@@ -552,6 +628,18 @@ impl AppState {
                 steps += 1;
             }
         }
+        if steps > 0
+            && let Some(save) = g.world.save_ref()
+        {
+            self.pending_live = Some((LiveFrame::from_save(save), false));
+            let fp = scene_fingerprint(save);
+            if fp != g.scene_fp {
+                // Something was built or removed: rebuild the static layers.
+                g.scene_fp = fp;
+                self.rebuild_scene = true;
+            }
+        }
+        self.live_alpha = (g.accum_ms / STEP_MS).clamp(0.0, 1.0);
         g.cash_timer -= dt_ms;
         if g.cash_timer <= 0.0 {
             g.cash_timer = 500.0;
@@ -714,6 +802,15 @@ impl AppState {
             let exe =
                 Exe::from_bytes(std::fs::read(&path).with_context(|| path.display().to_string())?)
                     .context("reading RT2_PLAT.EXE")?;
+            // `vehicle_type_table` (0x53ddb8, 0x39 bytes, 175 records): short names, `+0`.
+            let names = (0..rt2_sim::trains::VEHICLE_COUNT as u32)
+                .map(|t| {
+                    exe.read(0x0053_ddb8 + t * 0x39, 5)
+                        .map(|b| String::from_utf8_lossy(b).into_owned())
+                        .unwrap_or_default()
+                })
+                .collect();
+            self.vehicle_names = Arc::new(names);
             self.data = Some(GameData::load(&exe).context("loading the data tables")?);
         }
         Ok(self.data.as_ref().expect("just loaded"))
@@ -740,13 +837,20 @@ impl AppState {
                 (w, data.speed_table, true)
             }
         };
-        let scene = Scene::build(
+        let scene = Scene::build_with(
             self.assets.clone(),
             &map,
             save.as_ref(),
             SceneOptions { sprites: true },
+            self.vehicle_names.clone(),
         );
         self.pending_scene = Some(Arc::new(scene));
+        self.pending_live = save
+            .as_ref()
+            .map(|s| (LiveFrame::from_save(s), true))
+            .or(Some((LiveFrame::default(), true)));
+        self.live_alpha = 1.0;
+        let scene_fp = save.as_ref().map_or(0, scene_fingerprint);
         let name = path
             .file_stem()
             .map(|s| s.to_string_lossy().into_owned())
@@ -765,6 +869,7 @@ impl AppState {
             hud: HudIds::default(),
             map_only,
             info: None,
+            scene_fp,
         }));
         self.rebuild_ui();
         Ok(())
@@ -779,6 +884,13 @@ impl AppState {
                 let dt = 320.min(total - done) as i32;
                 g.world.advance(dt);
                 done += i64::from(dt);
+            }
+            if let Some(save) = g.world.save_ref() {
+                self.pending_live = Some((LiveFrame::from_save(save), true));
+                if scene_fingerprint(save) != g.scene_fp {
+                    g.scene_fp = scene_fingerprint(save);
+                    self.rebuild_scene = true;
+                }
             }
         }
     }
