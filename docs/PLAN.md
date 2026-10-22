@@ -22,7 +22,7 @@ Reimplementar Railroad Tycoon II Platinum em Rust, fiel à jogabilidade e à per
 | Texto | `default2.lng` e `credits2.lng`: texto puro com linhas numeradas, fácil de ler. |
 | Vídeo | `anim/*.smk` (Smacker), que o ffmpeg decodifica. |
 | Áudio | `data2/*.mp3` (músicas) e `.MP2` (efeitos, provavelmente dentro de PK2 ou soltos). |
-| Modelos | 12 arquivos `.m3d`. O RT2 renderiza trens e prédios a partir de modelos 3D em software, o que é ótimo para nós: podemos renderizar esses modelos na GPU com projeção ortográfica e obter nitidez real em 4K, sem precisar aumentar sprites. |
+| Gráficos | Sprites isométricos **pré-renderizados** em formato próprio ("LAD": 8 bits indexados, RLE por linha, várias camadas), mais bancos de paletas, em `docs/formats/pk2-contents.md`. Os `.m3d` em `data2/Miles` são só plugins de áudio 3D do Miles, não modelos. Para alta resolução, a estratégia é upscaling de alta qualidade (xBRZ/ScaleFX, ou modelos de IA rodando offline) gerado uma vez num cache, com pacotes de sprites HD opcionais no futuro. A UI, o texto e o terreno são gerados nativamente em qualquer resolução. |
 | Docs | `Manual.html`, `Strategy Guide.html`, `editor3.txt`. São uma fonte valiosa de fórmulas e regras, a cruzar com o código. |
 
 ## 3. Arquitetura proposta
@@ -32,9 +32,9 @@ Workspace Cargo com crates pequenas e fronteiras claras:
 ```
 railroad/
 ├─ crates/
-│  ├─ rt2-formats/     # parsers puros: PK2, LNG, MAP/GAM, M3D, imagens, paletas. Sem I/O de jogo, 100% testável.
+│  ├─ rt2-formats/     # parsers puros: PK2, LNG, MAP/GAM, sprites LAD, paletas, áudio. Sem I/O de jogo, 100% testável.
 │  ├─ rt2-sim/         # simulação determinística (sem gráficos, sem relógio de parede, RNG semeado, aritmética de ponto fixo onde o original usa)
-│  ├─ rt2-render/      # wgpu: terreno, trilhos, modelos M3D, sprites, câmera ortográfica isométrica
+│  ├─ rt2-render/      # wgpu: terreno, trilhos, sprites (com upscaling), câmera ortográfica isométrica
 │  ├─ rt2-ui/          # UI escalável (layout em pontos lógicos × fator de escala), skin com a arte original
 │  ├─ rt2-audio/       # música e efeitos (kira ou rodio)
 │  ├─ rt2-game/        # binário: loop, estados, input, glue entre sim/render/ui
@@ -70,11 +70,11 @@ Cada fase termina com um entregável verificável e commits convencionais.
 ### Fase 1 — Formatos de arquivo e extração
 1. **PK2:** achar a rotina que abre `.\data\*.pk2`, documentar o diretório (provável hash de nome, offset e tamanho) e o algoritmo de compressão, e recuperar a função de hash para mapear nomes. Entrega: `rt2-extract` lista e extrai todos os arquivos.
 2. **Imagens e paletas** dentro do PK2 (formatos a identificar).
-3. **M3D:** modelos de trens e prédios, com geometria, texturas e animação.
+3. **Sprites LAD e paletas:** decodificar as camadas, ligar cada sprite à sua paleta e montar o pipeline de upscaling para o cache.
 4. **MAP/GAM:** heightmap, tipos de terreno, cidades, indústrias, trilhos e estado completo do save.
 5. **LNG:** tabela de strings, incluindo uma tradução PT-BR como bônus.
 6. Smacker e áudio via ffmpeg (conversão no cache).
-- **Pronto quando:** 100% das entradas dos PK2 extraídas, um visualizador de debug mostrando imagens, modelos e mapas, testes de round-trip nos parsers, e `docs/formats/*.md` escritos.
+- **Pronto quando:** 100% das entradas dos PK2 extraídas, um visualizador de debug mostrando sprites, paletas e mapas, testes de round-trip nos parsers, e `docs/formats/*.md` escritos.
 
 ### Fase 2 — Decompilação dirigida por subsistema
 Não vamos decompilar as 3.082 funções igualmente. A triagem segue strings e xrefs, e a prioridade fica assim:
@@ -98,7 +98,7 @@ Não vamos decompilar as 3.082 funções igualmente. A triagem segue strings e x
 
 ### Fase 3 — Motor gráfico (em paralelo à Fase 2)
 - Janela, câmera isométrica com zoom contínuo e scroll suave, e renderização do terreno a partir do heightmap.
-- Trilhos, cidades e indústrias renderizados; modelos M3D na GPU com iluminação parecida com o original.
+- Trilhos, cidades, indústrias e trens renderizados a partir dos sprites com upscaling, com filtragem nítida em qualquer zoom.
 - HiDPI e escala: teste em 1080p, 1440p, 4K e ultrawide.
 - **Pronto quando:** um `.MAP` original abre e é navegável a 60+ fps em 4K.
 

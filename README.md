@@ -23,7 +23,7 @@ _The 1998 classic you know, from the same isometric viewpoint,<br>now native at 
 
 **rrt2-decomp** studies the original _Railroad Tycoon II Platinum_ executable (PopTop Software, 1998–2001) to understand every game rule, then rewrites the game from scratch in Rust. It keeps the gameplay and the 2D isometric ("fake 3D") view, and modernizes everything else:
 
-- 🖥️ **Any resolution**: 1080p, 1440p, 4K and ultrawide, with a scalable UI and HiDPI support. The original trains and buildings are 3D models, so they are rendered on the GPU at full sharpness instead of upscaled sprites.
+- 🖥️ **Any resolution**: 1080p, 1440p, 4K and ultrawide, with a scalable UI and HiDPI support. UI, text and terrain render natively at any resolution, and the original sprites go through a high-quality upscaling pass (xBRZ-class or offline AI models) cached on first run.
 - 🔍 **Continuous zoom**, smooth scrolling and camera rotation.
 - 🧮 **Faithful, deterministic simulation**: economy, cargo, cities, industries, stock market and AI, validated against the original game.
 - 🛠️ **Quality of life**: drag-to-build track with cost preview, undo, demand and profit overlays, a fleet manager, autosave and rebindable keys.
@@ -40,10 +40,9 @@ _The 1998 classic you know, from the same isometric viewpoint,<br>now native at 
 | **PK2** archives | ✅ | Layout, filename hash and archive precedence · [spec](docs/formats/pk2.md) |
 | **LNG** string tables | ✅ | 2807 strings and named tables · [spec](docs/formats/lng.md) |
 | Filenames inside PK2 | 🟡 | 328 names recovered from the EXE, out of 2898 hashes |
-| Images (`.imb` `.pcx` `.pal`) | 🔍 | Under analysis |
-| UI layouts (`.win`) | 🔍 | Under analysis |
-| Audio (`.raw` `.wav`) | 🔍 | Under analysis |
-| 3D models (`.m3d`) | ⏳ | |
+| Sprites (LAD) and palettes | 🟡 | Sprites decode; palette mapping in progress · [notes](docs/formats/pk2-contents.md) |
+| UI layouts (`.imb` `.win`) | 🔍 | Identified, not decoded |
+| Audio (`.raw` `.wav`) | 🔍 | Most look like 16-bit mono PCM |
 | Maps and saves (`.MAP` `.GAM`) | ⏳ | |
 | Simulation specs (trains, cargo, economy…) | ⏳ | [`docs/spec/`](docs/spec/) |
 | Rendering engine (wgpu) | ⏳ | |

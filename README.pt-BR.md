@@ -23,7 +23,7 @@ _O mesmo jogo de 1998 que você conhece, a mesma perspectiva isométrica,<br>ago
 
 O **rrt2-decomp** estuda o executável original de _Railroad Tycoon II Platinum_ (PopTop Software, 1998–2001) para entender cada regra do jogo e reescrevê-lo do zero em Rust, mantendo a jogabilidade e a visão 2D isométrica ("falso 3D") do original e modernizando o resto:
 
-- 🖥️ **Qualquer resolução**: 1080p, 1440p, 4K e ultrawide, com interface escalável e HiDPI. Os trens e prédios do original são modelos 3D, então são renderizados na GPU com nitidez real, sem esticar sprites.
+- 🖥️ **Qualquer resolução**: 1080p, 1440p, 4K e ultrawide, com interface escalável e HiDPI. A interface, o texto e o terreno são gerados nativamente em qualquer resolução, e os sprites originais passam por um upscaling de alta qualidade (classe xBRZ ou modelos de IA offline), feito uma vez e guardado em cache.
 - 🔍 **Zoom contínuo**, scroll suave e rotação da câmera.
 - 🧮 **Simulação fiel e determinística**: economia, carga, cidades, indústrias, bolsa de valores e IA, validadas contra o jogo original.
 - 🛠️ **Qualidade de vida**: trilho por arrastar com prévia de custo, desfazer, overlays de demanda e lucro, gerenciador de frota, autosave e atalhos remapeáveis.
@@ -40,10 +40,9 @@ O **rrt2-decomp** estuda o executável original de _Railroad Tycoon II Platinum_
 | Contêiner **PK2** | ✅ | Layout, hash de nomes e precedência entre pacotes · [spec](docs/formats/pk2.md) |
 | Textos **LNG** | ✅ | 2807 strings e tabelas nomeadas · [spec](docs/formats/lng.md) |
 | Nomes dos arquivos nos PK2 | 🟡 | 328 nomes recuperados do EXE, de 2898 hashes |
-| Imagens (`.imb` `.pcx` `.pal`) | 🔍 | Em análise |
-| Layouts de interface (`.win`) | 🔍 | Em análise |
-| Áudio (`.raw` `.wav`) | 🔍 | Em análise |
-| Modelos 3D (`.m3d`) | ⏳ | |
+| Sprites (LAD) e paletas | 🟡 | Os sprites decodificam; mapeamento de paletas em andamento · [notas](docs/formats/pk2-contents.md) |
+| Layouts de interface (`.imb` `.win`) | 🔍 | Identificados, ainda não decodificados |
+| Áudio (`.raw` `.wav`) | 🔍 | A maioria parece PCM mono de 16 bits |
 | Mapas e saves (`.MAP` `.GAM`) | ⏳ | |
 | Specs de simulação (trens, carga, economia…) | ⏳ | [`docs/spec/`](docs/spec/) |
 | Motor gráfico (wgpu) | ⏳ | |
