@@ -183,3 +183,27 @@ Cada tipo de tarefa vai para o modelo mais barato que a resolve bem. Os agentes 
 1. Fase 0: workspace, agentes e persistência de símbolos.
 2. Fase 1.1: RE do PK2 (`re-deep`) em paralelo à triagem de funções CRT e bibliotecas (`bulk-labeler`).
 3. `rt2-extract` funcional, para destravar todo o resto.
+
+## 10. Práticas adotadas do OpenRCT2
+
+Pesquisa feita em 2026-10-22, quando o OpenRCT2 estava na v0.5.6. O que vale replicar, em ordem de prioridade:
+
+| # | Prática | No OpenRCT2 | Aqui | Quando |
+|---|---|---|---|---|
+| 1 | **Camada de comandos** | Toda mutação de estado é uma `GameAction` serializável | Toda mudança na simulação passa por um `enum Command`. É a base de replays, desfazer e multiplayer | Ao criar `rt2-sim` |
+| 2 | **Replays como teste de regressão** | `.parkrep`: semente, comandos por tick e checksum do estado; a suíte roda em todo PR; `replay_normalise` regrava os checksums depois de mudanças intencionais | Formato próprio de replay, testes "golden" no `rt2-sim` e um subcomando `rt2 replay bless` | Formato junto com `rt2-sim`; volume de replays durante a Fase 4 |
+| 3 | **Determinismo verificável** | Os checksums de x86 e x64 divergem, então o CI só confere x64 | Na simulação: sem iteração de `HashMap`, sem relógio de parede e com RNG semeado. Inteiros ou ponto fixo por padrão; float só onde o original usa, e sem funções transcendentais da libm. CI em duas arquiteturas | Desde o primeiro commit do `rt2-sim` |
+| 4 | **Snapshots e diff de estado** | Buffer circular de 32 snapshots para depurar dessincronização | Helper de teste que compara dois estados campo a campo. Também serve para comparar com o original no Wine | Fase 4 |
+| 5 | **Teste diferencial contra o original** | O OpenRCT2 começou injetando uma DLL no `rct2.exe` e trocando função por função | Não vamos hospedar o EXE. Em vez disso, comparamos o estado da nossa simulação com o do original (wine+gdb) para as mesmas entradas, um subsistema por vez | Fases 2 e 4 |
+| 6 | **Localizar a instalação original** | `rct2Path`, comando `set-rct2` e detecção automática de Steam e Flatpak | `rt2 set-path`, detecção de GOG, Lutris e Steam, e checagem de sha256 dos PK2 | Fase 3 |
+| 7 | **Manifesto de assets livres** | `assets.json` com URL e sha256 de repositórios separados (OpenMusic, OpenSFX, objects) | Mesmo modelo para qualquer dado gerado ou livre que não venha do jogo | Pós-1.0 |
+| 8 | **Save próprio e importador separado** | `.park` em chunks com `target-version`, `min-version` e digest; `.sv6`/`.sc6` são só importados | Save nativo em chunks com versão alvo e mínima. O importador de `.GAM`/`.MAP` fica em `rt2-formats`, separado | Fase 5 |
+| 9 | **Objetos orientados a dados** | `.parkobj` em JSON, com fallback para os objetos binários originais | Locomotivas, cargas e indústrias definidas em RON/TOML, com o loader dos dados originais como um backend | Fase 4 |
+| 10 | **Correções de bugs do original atrás de flags** | Bugs corrigidos marcados com `(original bug)` no changelog; opções de jogo e cheats salvos no save | Modo fiel por padrão. Cada desvio tem uma flag nomeada, e o save e o replay guardam a versão das regras, para replays antigos continuarem válidos | Fase 4 |
+| 11 | **CLI como ferramenta de RE e de CI** | `simulate`, `convert`, `sprite`, `scan-objects`, `--headless` | `rt2 simulate <save> <ticks>` (imprime o checksum), `convert`, `sprite`, `scan-assets` | `sprite` e `convert` na Fase 1; `simulate` na Fase 4 |
+| 12 | **Changelog e higiene de PR** | `changelog.txt` com `- Feature/Improved/Change/Fix: [#n] texto`, checado no CI; template de PR com pergunta sobre uso de IA | `CHANGELOG.md` no mesmo estilo, templates de PR e issue e CI com fmt, clippy e testes | **Agora** |
+| 13 | **Divisão em crates documentada** | `libopenrct2`, `openrct2-ui`, `openrct2-cli`, com um readme por diretório | Já seguimos essa divisão. A regra: `rt2-sim` não depende de UI nem de I/O | Contínuo |
+| 14 | **API de scripts versionada** | Plugins em JS (Duktape) com `kPluginApiVersion` e tipos TypeScript publicados | Rhai ou WASM pós-1.0. Até lá, reservar uma fronteira de determinismo clara | Pós-1.0 |
+| 15 | **Fluxo de localização** | Só `en-GB.txt` no repositório principal; traduções num repositório separado, mescladas toda noite | Todo texto de UI em tabelas de strings desde o início. Repositório separado quando houver tradutores | Estrutura agora, fluxo pós-1.0 |
+
+**Não verificado na pesquisa:** o modelo de sandbox dos plugins e se existe uma opção única de "corrigir bugs originais".
