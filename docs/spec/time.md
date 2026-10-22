@@ -179,7 +179,7 @@ Roda 23:59 de 28/dez após todo o passo mensal: loops sobre o conjunto de jogado
 
 ## Em aberto
 - Estado da FPU no original (precisão do x87): o oráculo roda a 24 bits por padrão do Unicorn (CW 0), o teste fixa 53 bits (`0x27f`); falta confirmar com `fldcw`/DirectDraw no processo real (Wine + gdb).
-- Origem dos limites de ano (início e fim do jogo) e valor de `game_time_minutes` ao carregar um `.GAM` (`0x46b650` é chamado de `0x453970`, `0x472980`, `0x473590`, `0x474280`, `0x479a30`).
+- Origem dos limites de ano (início e fim do jogo) e valor de `game_time_minutes` ao carregar um `.GAM` (resolvido: o arquivo guarda minutos, data e hora no bloco de estado em 0x8865/0x8869/0x886D, ver docs/formats/map-gam.md 5.1) (`0x46b650` é chamado de `0x453970`, `0x472980`, `0x473590`, `0x474280`, `0x479a30`).
 - Identidade das listas de entidades (`0x574c5c`, `0x574c60`, `0x574c64`, `0x574c68`, `0x574c6c`, `0x574c74`, `0x574c78`, `0x574c7c`, `0x574c84`, `0x574ca8`): tamanhos dos registros vêm dos construtores em `0x472bb0..0x472f37`; os papéis (empresa, trem, estação, cidade, indústria) serão fixados nas specs de terreno, trens e carga.
 - `0x46a010` (meses 2 e 8) e `0x431660` (sorteio mensal): papel exato; `0x436d60`, `0x4399d0`, `0x4a7590`, `0x4d4390`, `0x4bebf0`, `0x46bb10`, `0x4283e0`: conteúdo dos passos por entidade.
 - Condição da limpeza de `0x574c7c` no passo mensal (7.4, item 5).

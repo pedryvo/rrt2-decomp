@@ -186,3 +186,136 @@ fn britain_water_fraction_is_plausible() {
     assert!((0.3..0.9).contains(&water), "water fraction {water}");
     assert!(map.tiles.iter().all(|t| t.region >= 1));
 }
+
+fn read_game_file(dir: &std::path::Path, sub: &str, name: &str) -> Vec<u8> {
+    std::fs::read(dir.join(sub).join(name)).unwrap()
+}
+
+#[test]
+fn every_map_and_save_parses_with_state_to_the_last_byte() {
+    let Some(dir) = game_dir() else {
+        eprintln!("RT2_DIR not set; skipping");
+        return;
+    };
+    let mut count = 0;
+    for sub in ["maps", "games"] {
+        for entry in std::fs::read_dir(dir.join(sub)).unwrap() {
+            let path = entry.unwrap().path();
+            let ext = path
+                .extension()
+                .and_then(|e| e.to_str())
+                .map(str::to_ascii_uppercase);
+            if !matches!(ext.as_deref(), Some("MAP" | "GAM")) {
+                continue;
+            }
+            let raw = std::fs::read(&path).unwrap();
+            let save = rt2_formats::map::Save::parse(&raw)
+                .unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+            assert_eq!(
+                i64::from(save.game_time_minutes),
+                save.minutes_from_date(),
+                "{}",
+                path.display()
+            );
+            assert_eq!(save.places.count, save.places.records.len());
+            count += 1;
+        }
+    }
+    assert_eq!(count, 33);
+}
+
+#[test]
+fn tutorial_save_state() {
+    let Some(dir) = game_dir() else {
+        eprintln!("RT2_DIR not set; skipping");
+        return;
+    };
+    let save =
+        rt2_formats::map::Save::parse(&read_game_file(&dir, "games", "Tutorial.GAM")).unwrap();
+    assert_eq!(save.date.year, 1870);
+    assert_eq!((save.date.month, save.date.day), (2, 4));
+    assert_eq!((save.hour, save.minute), (19, 3));
+    assert_eq!(save.game_time_minutes, 904_826_583);
+    assert_eq!(save.game_speed, 3);
+    assert_eq!(save.game_seed, 183_274);
+    let places = save.place_list();
+    assert_eq!(places.len(), 103);
+    let london = &places[0];
+    assert_eq!(london.name, "London");
+    assert_eq!((london.x, london.y), (260, 237));
+    assert_eq!(london.bbox, [249, 226, 271, 248]);
+    let names: Vec<_> = save.company_list().into_iter().map(|c| c.name).collect();
+    assert_eq!(
+        names,
+        [
+            "Great Western",
+            "Liverpool & Manchester",
+            "Middleton Colliery"
+        ]
+    );
+    assert_eq!(save.rules.len(), 5);
+    assert!(save.stations.records.is_empty() && save.trains.records.is_empty());
+}
+
+#[test]
+fn example_save_state() {
+    let Some(dir) = game_dir() else {
+        eprintln!("RT2_DIR not set; skipping");
+        return;
+    };
+    let save =
+        rt2_formats::map::Save::parse(&read_game_file(&dir, "games", "Example save game.GAM"))
+            .unwrap();
+    assert_eq!(save.date.year, 1875);
+    assert_eq!((save.date.month, save.date.day), (12, 10));
+    assert_eq!((save.hour, save.minute), (5, 21));
+    assert_eq!(save.game_time_minutes, 907_656_801);
+    let companies = save.company_list();
+    assert_eq!(companies.len(), 5);
+    assert_eq!(companies[4].name, "Nottingham Northern");
+    assert_eq!(companies[3].name, "CSX");
+    let stations = save.station_names();
+    assert_eq!(&stations[..3], ["Oxford", "Slough", "London"]);
+    assert_eq!(stations.len(), 10);
+    assert_eq!(save.train_names()[0], "Slough Bullet");
+    assert_eq!(save.train_extras.len(), 9);
+    assert_eq!(save.person_list()[0].name, "Isambard Kingdom Brunel");
+    // Track pieces are what the tiles' `track_id` points at.
+    let used: std::collections::BTreeSet<u8> = save
+        .map
+        .tiles
+        .iter()
+        .map(|t| t.track_id)
+        .filter(|&t| t != 0)
+        .collect();
+    assert_eq!(used.len(), save.track_pieces.records.len());
+}
+
+#[test]
+fn bo_scenario_places_and_seed() {
+    let Some(dir) = game_dir() else {
+        eprintln!("RT2_DIR not set; skipping");
+        return;
+    };
+    let save =
+        rt2_formats::map::Save::parse(&read_game_file(&dir, "maps", "#01B&O~1.MAP")).unwrap();
+    assert_eq!(save.game_seed, 16451);
+    assert_eq!(save.date.year, 1830);
+    let places = save.place_list();
+    let baltimore = places.iter().find(|p| p.name == "Baltimore").unwrap();
+    assert_eq!((baltimore.x, baltimore.y), (72, 53));
+    assert_eq!(baltimore.bbox, [65, 46, 79, 60]);
+    // Every tile `struct_id` indexes the structure pool.
+    let ids: std::collections::BTreeSet<u8> = save
+        .map
+        .tiles
+        .iter()
+        .map(|t| t.struct_id)
+        .filter(|&t| t != 0)
+        .collect();
+    assert_eq!(ids.len(), save.structures.records.len());
+    assert!(
+        ids.iter()
+            .all(|&i| save.structures.get(usize::from(i)).is_some())
+    );
+}

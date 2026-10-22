@@ -149,7 +149,7 @@ Verificação: 20 000 chamadas (rand direto e intervalo) com re-semeadura; estad
 - Fidelidade: o clone deve usar A com o mesmo algoritmo, a mesma semente de partida (ou a de um `.GAM`, onde o estado `0x55d2c0` precisa ser lido do arquivo: ver "Em aberto") e a mesma ordem de chamadas. B é puro. C não pode ser reproduzido; onde afeta o estado de simulação (suspeita em `0x4d0400`, `0x4d2360`, `0x4d29e0`) isso será uma divergência documentada.
 
 ## Em aberto
-- Onde o estado `0x55d2c0` e `game_seed` (`0x57486e`) ficam no `.GAM` (necessário para o teste de nível 2).
+- Resolvido (docs/formats/map-gam.md 5.2): `game_seed` fica no `.GAM` em 0xB24F; o estado `0x55d2c0` **não é gravado** (o load preserva o do processo), então o teste de nível 2 precisa re-semear o RNG explicitamente após carregar.
 - Papel de cada chamador de `rng_range` e se os de `crt_rand_range` em `0x4d0400`, `0x4d2360`, `0x4d29e0`, `0x412a90`, `0x4a0410`, `0x4a42f0` alteram estado de simulação.
 - As sequências inline com multiplicador `0x41c64e6d` em `0x41f594` e `0x42a492` (dois pontos; hash de posição para variação de tile).
 - Registro apontado por `0x46a8a0(0)` e o campo f64 `+0x12a` usados na re-semeadura diária em rede.
