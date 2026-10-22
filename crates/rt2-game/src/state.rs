@@ -29,6 +29,8 @@ use crate::paths;
 use crate::sound::{Cue, MusicRequester};
 use crate::text::Texts;
 
+mod build_dialogs;
+mod build_ui;
 mod dialogs;
 mod info_ui;
 mod mainwin;
@@ -114,6 +116,8 @@ struct GameState {
     info: Option<InfoState>,
     /// Fingerprint of what the static map layers show (buildings, track, stations).
     scene_fp: u64,
+    /// The construction tools (`build_ui.rs`).
+    build: build_ui::BuildState,
 }
 
 /// Hash of the parts of the save the static layers are built from: building type and tile,
@@ -296,8 +300,15 @@ impl AppState {
     /// layers rebuilt after something was built or removed.
     pub fn take_scene(&mut self) -> Option<Arc<Scene>> {
         if let Some(s) = self.pending_scene.take() {
+            // Something may have been built before the first frame (screenshots, tests).
+            let s = match (std::mem::take(&mut self.rebuild_scene), &self.screen) {
+                (true, Screen::Game(g)) if g.world.save_ref().is_some() => {
+                    let save = g.world.save_ref().expect("checked");
+                    Arc::new(s.rebuild(&save.map, Some(save)))
+                }
+                _ => s,
+            };
             self.current_scene = Some(s.clone());
-            self.rebuild_scene = false;
             return Some(s);
         }
         if std::mem::take(&mut self.rebuild_scene)
@@ -388,10 +399,16 @@ impl AppState {
             && let (Some((px, py)), Screen::Game(g)) = (self.cursor, &mut self.screen)
         {
             g.camera.drag(x - px, y - py);
+            if g.build.tool.is_some() {
+                // The tool's overlay follows the map.
+                self.cursor = Some((x, y));
+                self.rebuild_ui();
+            }
         }
         self.cursor = Some((x, y));
         let ev = self.ui.input(Input::CursorMoved { x, y });
         self.handle_events(ev);
+        self.tool_hover((x, y));
         self.update_status();
     }
 
@@ -413,14 +430,25 @@ impl AppState {
             Input::MouseUp(b)
         });
         if pressed {
-            self.drag = self.in_game() && !self.ui.over_ui();
+            // With a construction tool the left button acts on the map instead of panning it.
+            let tool = left && self.tool_active() && !self.ui.over_ui() && !self.has_dialog();
+            self.drag = self.in_game() && !self.ui.over_ui() && !tool;
             self.press = (left && self.drag).then_some(self.cursor).flatten();
+            if tool {
+                self.tool_press();
+            }
+            if !left && self.tool_active() {
+                self.cancel_tool_drag();
+            }
             if left && self.ui.over_ui() {
                 // sound.md 1.3 id 2: button pressed (ButtonDown, 0x50cc60).
                 self.cues.push(Cue::Event(Event::ButtonDown));
             }
         } else {
             self.drag = false;
+            if left {
+                self.tool_release();
+            }
             if left && let Some(p) = self.press.take() {
                 self.map_click(p);
             }
@@ -451,6 +479,9 @@ impl AppState {
             && let Screen::Game(g) = &mut self.screen
         {
             g.camera.zoom_by(ZOOM_STEP.powf(notches));
+            if g.build.tool.is_some() {
+                self.rebuild_ui();
+            }
         }
     }
 
@@ -563,6 +594,9 @@ impl AppState {
             Screen::Game(g) => Some(self.fit_camera(g.map_size.0, g.map_size.1)),
             Screen::Menu(_) => None,
         };
+        if !ctrl && code == KeyCode::Escape && !self.has_dialog() && self.cancel_tool() {
+            return;
+        }
         if !ctrl && self.mainwin_key(code) {
             return;
         }
@@ -664,12 +698,14 @@ impl AppState {
             axis(&b.pan_down, &b.pan_up),
         );
         let ctrl = self.ctrl;
+        let mut overlay_stale = false;
         let Screen::Game(g) = &mut self.screen else {
             return;
         };
         if (dx != 0.0 || dy != 0.0) && !ctrl && g.info.is_none() && g.dialogs.is_empty() {
             let k = PAN_SPEED * dt_ms / 1000.0;
             g.camera.pan(dx * k, dy * k);
+            overlay_stale = g.build.tool.is_some();
         }
         // Dialogs and the information screens hold the simulation (the original's "keep the
         // game running in dialogs" option defaults to off for modal windows).
@@ -714,6 +750,9 @@ impl AppState {
             g.last_year = year;
             self.offer_year_end(i32::from(year) - 1);
         }
+        if overlay_stale {
+            self.rebuild_ui();
+        }
         self.mainwin_refresh();
         self.center_refresh();
         self.info_refresh();
@@ -732,6 +771,7 @@ impl AppState {
                 UiEvent::Pointer(a, fx, fy) => {
                     if a == mainwin::A_RADAR {
                         self.radar_pointer(fx, fy);
+                    } else if self.via_mouse && self.build_pointer(a, fx, fy) {
                     } else {
                         self.dialog_pointer(a, fx);
                     }
@@ -766,12 +806,16 @@ impl AppState {
     /// A list selection that belongs to the menus or the main window; true if consumed.
     fn row_event(&mut self, action: u32, row: usize) -> bool {
         let e = UiEvent::Selected(action, row);
-        self.menu_event(&e) || self.mainwin_event(&e)
+        self.menu_event(&e) || self.mainwin_event(&e) || self.build_row_event(action, row)
     }
 
     fn activated(&mut self, action: u32) {
         if self.in_game() {
-            if self.dialog_activated(action) || self.mainwin_activated(action) {
+            if self.dialog_activated(action)
+                || self.build_dialog_activated(action)
+                || self.build_activated(action)
+                || self.mainwin_activated(action)
+            {
                 return;
             }
             if self.info_activated(action) {
@@ -970,6 +1014,7 @@ impl AppState {
             map_only,
             info: None,
             scene_fp,
+            build: build_ui::BuildState::default(),
         }));
         self.rebuild_ui();
         Ok(())
@@ -1049,6 +1094,7 @@ impl AppState {
         match &self.screen {
             Screen::Menu(_) => self.build_menu(&mut ui),
             Screen::Game(_) => {
+                self.build_overlay(&mut ui);
                 self.build_mainwin(&mut ui);
                 self.build_info(&mut ui);
                 self.build_dialogs(&mut ui);
@@ -1201,3 +1247,6 @@ mod tests {
         assert_eq!(format_date(d, &Texts::none()), "January 12, 1876");
     }
 }
+
+#[cfg(test)]
+mod build_tests;

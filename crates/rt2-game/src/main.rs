@@ -10,6 +10,7 @@
 mod app;
 mod app_strings;
 mod artwork;
+mod buildtools;
 mod catalog;
 mod config;
 mod founding;
@@ -94,6 +95,18 @@ struct Args {
     /// With --screenshot --screen game: simulated days to advance before the shot
     #[arg(long, default_value_t = 0)]
     days: u32,
+    /// With `--screen game`: select a construction tool (track, station, bulldoze)
+    #[arg(long)]
+    tool: Option<String>,
+    /// With `--tool`: the tile under the cursor (X,Y in map tiles)
+    #[arg(long, value_parser = parse_point)]
+    hover: Option<(f32, f32)>,
+    /// With `--tool track`: the tile the drag started on (X,Y in map tiles)
+    #[arg(long, value_parser = parse_point)]
+    drag_from: Option<(f32, f32)>,
+    /// With `--tool`: send the tool's command (as a click or the end of the drag would)
+    #[arg(long)]
+    apply: bool,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -219,6 +232,15 @@ fn screenshot(init: Init, skin: rt2_ui::Skin, args: &Args, out: &std::path::Path
                 if !state.show_dialog(name) {
                     bail!("unknown --page dialog {name:?}");
                 }
+            }
+            if let Some(tool) = &args.tool {
+                let t = |p: Option<(f32, f32)>| p.map(|(x, y)| (x as i32, y as i32));
+                if !state.show_tool(tool, t(args.drag_from), t(args.hover)) {
+                    bail!("cannot select the tool {tool:?} (unknown, or no playable save)");
+                }
+            }
+            if args.apply {
+                state.apply_tool();
             }
             if let Some((x, y)) = args.click {
                 state.cursor_moved(x, y);

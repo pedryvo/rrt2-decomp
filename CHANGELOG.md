@@ -174,3 +174,9 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Feature: rt2-sim output queue World::take_messages (scenario dialogs/newspapers/choices, year-end historical notices, economy change, first building of a type, town bonus offers, AI company started/connected/bankrupt, stock split) and World::game_over (bronze/silver/gold/lose)
 - Feature: rt2-sim command 0x26 (start company) with the window checks of 0x4bd950, company_init and the founder's share purchase (World::apply_found)
 - RE: the founding dialog "You buy" rounds the founder's shares to the nearest 1000 (half up), so the cost can exceed the investment (150,000 buys 3,000 shares for 157,500 at 52.50); rt2_sim::found::founding_preview is the single source for the UI
+- Feature: construction tools in the main window: Lay Track (single/double, electric, bridge by year, drag from track or station with a live path and cost preview), Build Station (size, direction, style, catchment overlay), Bulldozer
+- Feature: station window with the station picture and its purchased improvements, Buy dialog (`0x18`), Purchase Train (`0x19`) with route copy, editable train window with map router, stop insert/delete (`0x1d`, `0x1e`), engine replacement (`0x20`) and sale (`0x1f`)
+- Feature: industry window with Buy and Sell (`0x2d`) and territory rights window (`0x2a`)
+- Improved: construction previews run the real command on a clone of the world, so the shown path, cost and refusal always match the result
+- Docs: docs/reference/screens.md and docs/ui.md updated for the construction and train screens
+- RE: the original Example save is in the old 0x233C record layout, which `rt2-sim` cannot play; a new bought train is not yet put on the track by the train step (`vehicle_place` head branch), so it does not earn

@@ -508,7 +508,7 @@ impl UiRenderer {
             match &ui.node(id).kind {
                 Kind::Panel { fill } => match fill {
                     Fill::None => {}
-                    Fill::Solid(c) => self.solid(&mut layer.quads, r, *c),
+                    Fill::Solid(c) | Fill::Overlay(c) => self.solid(&mut layer.quads, r, *c),
                     Fill::Frame(c) => self.outline(&mut layer.quads, r, *c, k),
                     Fill::Panel => self.panel(&mut layer.quads, r, k),
                 },

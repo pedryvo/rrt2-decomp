@@ -76,6 +76,35 @@ pub(super) enum Dialog {
     Message(Message),
     /// Placeholder of an action icon whose tool is not built yet (index into the eight icons).
     Tool(usize),
+    /// The detail of one of the player's stations with the picture and the Buy button.
+    Station {
+        station: i32,
+    },
+    /// The Buy dialog: `mask` = checked improvements, `last` = the row whose text is shown.
+    StationBuy {
+        station: i32,
+        mask: u32,
+        last: u32,
+    },
+    /// Purchase Train (or Replace engine of `replace`): selected engine and route to copy.
+    TrainBuy {
+        sel: usize,
+        copy: usize,
+        replace: Option<i32>,
+    },
+    /// The editable train detail.
+    TrainEdit {
+        train: i32,
+        sel: usize,
+        pick: usize,
+        confirm: bool,
+    },
+    Industry {
+        building: i32,
+    },
+    Rights {
+        territory: i32,
+    },
     FileOptions,
     /// The scenario briefing and its goals.
     Goals,
@@ -252,7 +281,7 @@ impl AppState {
                 let i = n["tool-".len()..].parse::<usize>().unwrap_or(0).min(7);
                 Dialog::Tool(i)
             }
-            _ => return false,
+            n => return self.show_build_screen(n),
         };
         self.push_dialog(d);
         true
@@ -452,6 +481,14 @@ impl AppState {
                 self.build_message(ui, &name, &body, &ok);
             }
             Dialog::FileOptions => self.build_file_options(ui),
+            d @ (Dialog::Station { .. }
+            | Dialog::StationBuy { .. }
+            | Dialog::TrainBuy { .. }
+            | Dialog::TrainEdit { .. }
+            | Dialog::Industry { .. }
+            | Dialog::Rights { .. }) => {
+                self.build_build_dialog(ui, &d);
+            }
             Dialog::Goals => self.build_goals(ui),
             Dialog::Founding { f, name } => self.build_founding(ui, &f, &name),
             Dialog::YearEnd { year, tab, company } => self.build_year_end(ui, year, tab, company),

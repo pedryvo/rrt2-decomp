@@ -495,6 +495,20 @@ impl AppState {
 
     /// Opens the page for what a map click found.
     pub(super) fn open_pick(&mut self, pick: Pick) {
+        // With a company the construction windows take over: the station window (Buy), the
+        // industry window (Buy / Sell) and the territory rights.
+        if self.player().is_some() {
+            match pick {
+                Pick::Station(s) => return self.open_station(s as i32),
+                Pick::Industry(s) => return self.open_industry(s as i32),
+                Pick::Territory(s) => {
+                    return self.push_dialog(super::dialogs::Dialog::Rights {
+                        territory: s as i32,
+                    });
+                }
+                Pick::Place(_) => {}
+            }
+        }
         self.open_info(match pick {
             Pick::Industry(s) => InfoScreen::IndustryDetail(s),
             Pick::Station(s) => InfoScreen::StationDetail(s),

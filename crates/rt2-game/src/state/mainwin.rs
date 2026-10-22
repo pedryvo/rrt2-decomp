@@ -377,86 +377,93 @@ impl AppState {
             panel(Fill::Solid(INSET)),
             at(center_x, inset, center_w, center_h),
         );
-        let strip_h = (28.0 * dz).round();
         let mut center_node = None;
-        self.build_center_table(
-            ui,
-            cbox,
-            center_tab,
-            center_sel,
-            center_scroll,
-            center_w,
-            center_h - strip_h,
-            dz,
-            &mut center_node,
-        );
-        // The strip under the table: date, cash, the four tabs and the list-screen button.
-        let strip_y = center_h - strip_h;
-        ui.add(
-            cbox,
-            panel(Fill::Solid(Color(0x16, 0x1c, 0x16, 0xf0))),
-            at(0.0, strip_y, center_w, strip_h),
-        );
-        let date_w = (150.0 * dz).min(center_w * 0.30);
-        let cash_w = (120.0 * dz).min(center_w * 0.24);
-        let date = ui.add(
-            cbox,
-            label("", font(1, dz), TEXT, Align::Left),
-            at(6.0 * dz, strip_y, date_w, strip_h),
-        );
-        let cash = ui.add(
-            cbox,
-            label("", font(1, dz), HEAD, Align::Left),
-            at(6.0 * dz + date_w, strip_y, cash_w, strip_h),
-        );
-        let tabs_x = 6.0 * dz + date_w + cash_w + 4.0 * dz;
-        let list_w = (30.0 * dz).round();
-        let tabs_w = (center_w - tabs_x - list_w - 6.0 * dz).max(80.0);
-        let tab_w = tabs_w / 4.0;
-        let tab_tips = [1800u32, 1801, 1802, 1803];
-        let tab_en = [
-            "Show stations in this list box.",
-            "Show trains in this list box.",
-            "Show players in this list box.",
-            "Show companies in this list box.",
-        ];
-        for (i, name) in self.center_tab_names().iter().enumerate() {
-            let t = ui.add(
+        let mut date_cash: Option<(NodeId, NodeId)> = None;
+        if self.tool_active() {
+            // A construction tool's palette takes the place of the list (`bp*.win`).
+            self.build_tool_panel(ui, cbox, center_w, center_h, dz, &mut tips);
+        } else {
+            let strip_h = (28.0 * dz).round();
+            self.build_center_table(
+                ui,
                 cbox,
-                Kind::Toggle {
-                    text: name.clone(),
-                    font: font(1, dz * 0.92),
-                    action: A_CENTER_TAB + i as u32,
-                    on: i == center_tab,
-                    enabled: true,
+                center_tab,
+                center_sel,
+                center_scroll,
+                center_w,
+                center_h - strip_h,
+                dz,
+                &mut center_node,
+            );
+            // The strip under the table: date, cash, the four tabs and the list-screen button.
+            let strip_y = center_h - strip_h;
+            ui.add(
+                cbox,
+                panel(Fill::Solid(Color(0x16, 0x1c, 0x16, 0xf0))),
+                at(0.0, strip_y, center_w, strip_h),
+            );
+            let date_w = (150.0 * dz).min(center_w * 0.30);
+            let cash_w = (120.0 * dz).min(center_w * 0.24);
+            let date = ui.add(
+                cbox,
+                label("", font(1, dz), TEXT, Align::Left),
+                at(6.0 * dz, strip_y, date_w, strip_h),
+            );
+            let cash = ui.add(
+                cbox,
+                label("", font(1, dz), HEAD, Align::Left),
+                at(6.0 * dz + date_w, strip_y, cash_w, strip_h),
+            );
+            let tabs_x = 6.0 * dz + date_w + cash_w + 4.0 * dz;
+            let list_w = (30.0 * dz).round();
+            let tabs_w = (center_w - tabs_x - list_w - 6.0 * dz).max(80.0);
+            let tab_w = tabs_w / 4.0;
+            let tab_tips = [1800u32, 1801, 1802, 1803];
+            let tab_en = [
+                "Show stations in this list box.",
+                "Show trains in this list box.",
+                "Show players in this list box.",
+                "Show companies in this list box.",
+            ];
+            for (i, name) in self.center_tab_names().iter().enumerate() {
+                let t = ui.add(
+                    cbox,
+                    Kind::Toggle {
+                        text: name.clone(),
+                        font: font(1, dz * 0.92),
+                        action: A_CENTER_TAB + i as u32,
+                        on: i == center_tab,
+                        enabled: true,
+                    },
+                    at(
+                        tabs_x + i as f32 * tab_w,
+                        strip_y + 2.0,
+                        tab_w - 2.0,
+                        strip_h - 4.0,
+                    ),
+                );
+                tips.push((t, tip(tab_tips[i], tab_en[i], self)));
+            }
+            let ls = ui.add(
+                cbox,
+                Kind::Icon {
+                    up: self.icons.get(8).map(|i| i.0),
+                    down: self.icons.get(8).map(|i| i.1),
+                    fallback: "=".to_owned(),
+                    font: font(1, dz),
+                    action: A_LIST_SCREEN,
+                    on: false,
                 },
                 at(
-                    tabs_x + i as f32 * tab_w,
+                    center_w - list_w - 4.0 * dz,
                     strip_y + 2.0,
-                    tab_w - 2.0,
+                    list_w,
                     strip_h - 4.0,
                 ),
             );
-            tips.push((t, tip(tab_tips[i], tab_en[i], self)));
+            tips.push((ls, tip(1799, "Go to the list screen", self)));
+            date_cash = Some((date, cash));
         }
-        let ls = ui.add(
-            cbox,
-            Kind::Icon {
-                up: self.icons.get(8).map(|i| i.0),
-                down: self.icons.get(8).map(|i| i.1),
-                fallback: "=".to_owned(),
-                font: font(1, dz),
-                action: A_LIST_SCREEN,
-                on: false,
-            },
-            at(
-                center_w - list_w - 4.0 * dz,
-                strip_y + 2.0,
-                list_w,
-                strip_h - 4.0,
-            ),
-        );
-        tips.push((ls, tip(1799, "Go to the list screen", self)));
 
         // ---- the eight action icons, down the left edge -----------------------------------
         let avail = ch - ph - 16.0;
@@ -478,7 +485,7 @@ impl AppState {
                     fallback: (*caption).to_owned(),
                     font: font(1, dz * 0.9),
                     action: A_TOOL + i as u32,
-                    on: false,
+                    on: self.tool_kind() == super::build_ui::ToolKind::from_icon(i),
                 },
                 Layout::at(Anchor::TopLeft, bw, bh),
             );
@@ -575,8 +582,8 @@ impl AppState {
 
         if let Screen::Game(g) = &mut self.screen {
             g.hud = MainIds {
-                date: Some(date),
-                cash: Some(cash),
+                date: date_cash.map(|d| d.0),
+                cash: date_cash.map(|d| d.1),
                 speed: Some(speed),
                 pause: Some(pause),
                 toast: Some(toast),
@@ -690,11 +697,19 @@ impl AppState {
     fn camera_op(&mut self, f: impl FnOnce(&mut rt2_render::Camera)) {
         if let Screen::Game(g) = &mut self.screen {
             f(&mut g.camera);
+            if g.build.tool.is_some() {
+                self.rebuild_ui();
+            }
         }
     }
 
     fn tool_clicked(&mut self, i: usize) {
+        if let Some(kind) = super::build_ui::ToolKind::from_icon(i) {
+            self.select_tool(kind);
+            return;
+        }
         match i {
+            4 => self.open_train_buy(),
             5 => self.toggle_tab(1),
             7 => self.push_dialog(Dialog::FileOptions),
             n => self.push_dialog(Dialog::Tool(n)),
@@ -763,7 +778,7 @@ impl AppState {
             return;
         };
         match tab {
-            0 => self.open_info(InfoScreen::StationDetail(id)),
+            0 => self.open_station(id as i32),
             1 => self.open_info(InfoScreen::TrainDetail(id)),
             // Players and companies: the company report (no player detail screen yet, `docs/
             // reference/screens.md` H1).

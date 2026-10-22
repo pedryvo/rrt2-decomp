@@ -48,6 +48,27 @@ pub fn screen_to_tile(
         .then_some((tx, ty))
 }
 
+/// Physical-pixel position of the ground point `(fx, fy)` (tile units, the tile `(x, y)` is
+/// `[x, x + 1)`), lifted by the terrain elevation there: the inverse of [`screen_to_tile`].
+pub fn tile_to_screen(
+    cam: &Camera,
+    viewport: (u32, u32),
+    map: &Map,
+    fx: f32,
+    fy: f32,
+) -> (f32, f32) {
+    let h = elevation(map, fx, fy) * height_scale();
+    let m = cam.view_proj(viewport).to_cols_array();
+    let (cx, cy) = (
+        m[0] * fx + m[4] * h + m[8] * fy + m[12],
+        m[1] * fx + m[5] * h + m[9] * fy + m[13],
+    );
+    (
+        (cx + 1.0) / 2.0 * viewport.0 as f32,
+        (1.0 - cy) / 2.0 * viewport.1 as f32,
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -92,6 +113,24 @@ mod tests {
                     "rotation {rotation}"
                 );
             }
+        }
+    }
+
+    #[test]
+    fn tile_to_screen_inverts_picking_with_relief() {
+        let mut map = flat_map(16, 16);
+        for (i, e) in map.elevation.iter_mut().enumerate() {
+            *e = ((i % 17) * 3) as i16;
+        }
+        let vp = (1280, 720);
+        let cam = Camera {
+            target: rt2_render::camera::Vec2::new(8.0, 8.0),
+            zoom: 40.0,
+            rotation: 1,
+        };
+        for &(tx, ty) in &[(4, 5), (8, 8), (11, 3)] {
+            let p = tile_to_screen(&cam, vp, &map, tx as f32 + 0.5, ty as f32 + 0.5);
+            assert_eq!(screen_to_tile(&cam, vp, p, &map), Some((tx, ty)));
         }
     }
 

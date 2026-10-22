@@ -174,6 +174,9 @@ pub enum Fill {
     Solid(Color),
     /// A one-pixel outline only (does not take the mouse): a camera frame over a minimap.
     Frame(Color),
+    /// A translucent solid fill that does not take the mouse: highlights drawn over the map
+    /// (the track preview, the station catchment).
+    Overlay(Color),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -590,7 +593,7 @@ impl Ui {
 
     fn blocks(&self, id: NodeId) -> bool {
         match &self.nodes[id.0].kind {
-            Kind::Panel { fill } => !matches!(fill, Fill::None | Fill::Frame(_)),
+            Kind::Panel { fill } => !matches!(fill, Fill::None | Fill::Frame(_) | Fill::Overlay(_)),
             Kind::Button { .. }
             | Kind::Toggle { .. }
             | Kind::Icon { .. }
@@ -1010,6 +1013,30 @@ mod tests {
         ui.layout((1000, 800));
         // the hidden button takes no space: the next one moved up into its place
         assert_ne!(ui.hit(430.0, 280.0), Some(a));
+    }
+
+    #[test]
+    fn overlay_fill_is_drawn_but_never_takes_the_mouse() {
+        let mut ui = Ui::new(UiScale::default());
+        ui.add_root(
+            Kind::Panel {
+                fill: Fill::Overlay(Color(255, 0, 0, 80)),
+            },
+            Layout::at(Anchor::TopLeft, 100.0, 100.0),
+        );
+        ui.add_root(
+            Kind::Panel {
+                fill: Fill::Solid(Color(0, 0, 0, 255)),
+            },
+            Layout::at(Anchor::TopLeft, 50.0, 50.0).offset(200.0, 0.0),
+        );
+        ui.layout((800, 600));
+        assert_eq!(
+            ui.hit(10.0, 10.0),
+            None,
+            "the map under an overlay stays clickable"
+        );
+        assert!(ui.hit(210.0, 10.0).is_some());
     }
 
     #[test]

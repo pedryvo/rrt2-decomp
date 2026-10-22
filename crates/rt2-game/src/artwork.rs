@@ -56,6 +56,9 @@ pub struct DialogArt {
     pub plaque: Option<SpriteId>,
     pub medal_gold: Option<SpriteId>,
     pub medal_silver: Option<SpriteId>,
+    /// `bl1stV{NN}.imb` record 0 (map sprite codec), the 24 station buildings in the
+    /// Victorian style (shape `size * 8 + orientation`), for the station detail's picture.
+    pub stations: [Option<SpriteId>; 24],
 }
 
 pub struct Artwork {
@@ -212,7 +215,13 @@ pub fn load(assets: &GameAssets) -> Artwork {
         plaque: add("winlose.imb", 0),
         medal_gold: add("winlose.imb", 1),
         medal_silver: add("winlose.imb", 2),
+        stations: [None; 24],
     };
+    let mut dialogs = dialogs;
+    for (shape, slot) in dialogs.stations.iter_mut().enumerate() {
+        let name = format!("bl1stV{}{}.imb", shape / 8 + 1, shape % 8);
+        *slot = record(assets, &name, 0).map(|i| b.add(to_skin_image(&i, 1)));
+    }
     let mut skin = b.build(Theme::dark());
     skin.button = buttons.map(|(up, down)| rt2_ui::ButtonSkin {
         up: NineSlice {
