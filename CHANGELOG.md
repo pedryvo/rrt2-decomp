@@ -142,3 +142,4 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Feature: The game is multilingual: translation files overlay the game strings by id, the main menu has a language selector (native language names) that switches at runtime, and `language` in config.toml (default: system locale) remembers the choice.
 - Improved: Vendored Cyrillic (Cormorant SC, Oswald, Marck Script) and Chinese (Noto Sans SC subset) fonts so Russian and Chinese text renders in every UI style.
 - Change: The clone's own UI texts (Menu, Save, screen titles, hints) are translatable through an `[app]` table with ids from 100000.
+- Feature: clone-only interface strings translated to Spanish, German, Chinese and Russian.

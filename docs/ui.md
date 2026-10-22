@@ -155,3 +155,4 @@ Lacunas (marcadas TODO na tela): lucro do trem e estado da programação; popula
 - Tela de finanças, Example 0x2348 após 30 dias: o patrimônio (book value, $3.493.896) supera os ativos ($3.434.896) em $59.000 com dívida zero. Conferir a fórmula de valor contábil contra `finance.md`: o original pode incluir um item não listado na tela (participações, terrenos?) ou a tela soma algo errado.
 - A coluna "This year" mostra $0 em 12 de janeiro com trens rodando. Confirmar se o original só acumula no fechamento do mês (finance.md) ou se a tela lê o campo errado.
 - A barra de atalhos abaixo do HUD fica parcialmente atrás do painel aberto.
+- zh-CN: a data usa os nomes completos dos meses (`一月`), o que dá "1876年一月12日". O usual seria "1876年1月12日": dar ao formato de data acesso à tabela de meses abreviados (ids 1426+, `1月`) ou a um mês numérico.
