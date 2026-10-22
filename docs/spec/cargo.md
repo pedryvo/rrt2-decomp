@@ -544,3 +544,5 @@ A preparação é a do jogo: `price = ftol(price * 1.4)` e `+8 = dias * 1440` na
 - O crédito de $2000 à própria empresa quando ela é dona da estação (6, item 3) parece dupla contagem; mantido por fidelidade.
 - Efeitos `0x29` (usado por `0x4d2c10`) e demais ids de efeito não usados pela carga; compra de indústria (modelo expert), fora desta spec.
 - Ligação exata dos totais de passageiros, correio e carga aos lançamentos `0x65/0x66/0x67` (6, item 6).
+
+> **Resolvido (2026-10-22):** a precisão x87 da thread principal, medida com o jogo rodando no Wine, é **53 bits** (control word `0x27F`) em todas as amostras: frame gate, `sim_advance` e receita. Ver `docs/dynamic-analysis.md`. Os testes do oracle devem fixar `0x27F`.

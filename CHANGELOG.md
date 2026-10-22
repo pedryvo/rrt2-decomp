@@ -41,3 +41,4 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - RE: o `crt_rand_range(0, 3)` dos trens (`0x4d0400`, `0x4d2360`, `0x4d29e0`) só escolhe som; quebras usam o RNG do jogo; `/nowreck` multiplica a chance por 1e-4 em vez de zerar
 - RE: oráculo `tests/trains.rs`: rampa, curva de velocidade, passo de aceleração e chance de quebra idênticos ao original em 70 000 casos aleatórios
 - Docs: preços do apêndice do guia que divergem do executável (GP9, SD45, E60CP, Eurostar, TGVs) anotados em `docs/spec/trains.md`
+- RE: precisão x87 medida no original sob Wine (winedbg --gdb + gdb): thread principal em FPCW 0x27F (53 bits) no porteiro de quadros e em sim_advance; sandbox e sondas em re/scripts/wine/ (docs/dynamic-analysis.md)

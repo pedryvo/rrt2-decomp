@@ -441,3 +441,5 @@ Locomotivas (espécie 0) e tênderes (espécie 1) ocupam os demais registros; o 
 | 167 | fwool | 43 (?) | 35 | 55 | 1800-9999 |
 | 172 | fmetb | 39 (?) | 20 | 35 | 1800-9999 |
 | 173 | fmety | 42 (?) | 20 | 35 | 1800-9999 |
+
+> **Resolvido (2026-10-22):** a precisão x87 da thread principal, medida com o jogo rodando no Wine, é **53 bits** (control word `0x27F`) em todas as amostras: frame gate, `sim_advance` e receita. Ver `docs/dynamic-analysis.md`. Os testes do oracle devem fixar `0x27F`.

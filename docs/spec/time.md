@@ -186,3 +186,5 @@ Roda 23:59 de 28/dez após todo o passo mensal: loops sobre o conjunto de jogado
 - Valores de `0x566e14` (modo de jogo: 1 = partida em andamento; 3, 0xb e 0xc têm tratamento próprio) e de `0x574bc8+0x50`/`0x57fee4` (pausa por UI).
 - Ids de string do painel de velocidade (`0x553788`) e o mapeamento tecla -> comando.
 - A razão `3.0`/`10.0` que corrige `dt` em rede (`0x405540`) e `net_time_sync` (`0x49e0b0`): fora do escopo da primeira passada (multijogador).
+
+> **Resolvido (2026-10-22):** a precisão x87 da thread principal, medida com o jogo rodando no Wine, é **53 bits** (control word `0x27F`) em todas as amostras: frame gate, `sim_advance` e receita. Ver `docs/dynamic-analysis.md`. Os testes do oracle devem fixar `0x27F`.
