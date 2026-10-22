@@ -1932,3 +1932,10 @@ name = "track_elec_base_default"
 kind = "global"
 comment = "6000"
 spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x4ef4d0"
+name = "buffer_checksum"
+kind = "function"
+comment = "checksum de um buffer (soma de bytes + hash rotativo); o gravador 0x477540 grava o resultado em +0x86f7 do arquivo 0x2348, com esse campo zerado durante o calculo"
+spec = "docs/formats/map-gam.md"

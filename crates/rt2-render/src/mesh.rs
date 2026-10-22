@@ -168,6 +168,7 @@ mod tests {
             region: 1,
         };
         Map {
+            version: rt2_formats::map::MAGIC,
             name: String::new(),
             title: String::new(),
             width: w,

@@ -7,7 +7,7 @@ PNGs de prova (scratchpad, não versionados), pasta `/tmp/claude-1000/-home-pedr
 
 ## 1. Versões e cabeçalho
 
-Todos os 33 `.MAP`/`.GAM` do jogo têm a versão `0x233C` no primeiro u32 (`DAT_00567b38`). O carregador aceita versões até `0x2348` e converte as antigas (muitos `if (versao < N)`), e o gravador **sempre grava `0x2348`**. Os `.MP2` do Platinum já são `0x2348` (blocos maiores: cabeçalho `0x898a` em vez de `0x878f`, estado `0x3a74` em vez de `0x29c8`, registros maiores) e **não** são cobertos por `Save::parse`. Tudo abaixo é a versão `0x233C` salvo indicação.
+Todos os 33 `.MAP`/`.GAM` do jogo têm a versão `0x233C` no primeiro u32 (`DAT_00567b38`). O carregador aceita versões até `0x2348` e converte as antigas (muitos `if (versao < N)`), e o gravador **sempre grava `0x2348`**. Os 95 `.MP2` do Platinum e qualquer save gravado pelo jogo são `0x2348` (seção 1.1); `Save::parse` lê as duas versões. Tudo abaixo é a versão `0x233C` salvo indicação.
 
 O arquivo é a imagem de blocos de globais, na ordem (confiança alta, vem do código):
 
@@ -40,6 +40,31 @@ O último byte da última regra é o fim do arquivo (verificado nos 33 arquivos 
 | 0x7474..0x8793 | restante do bloco (opções, tabelas por tipo); em maps é quase só zeros. Inclui **53 registros de 9 bytes** em `0x5702cb` (arquivo 0x2793..0x297c): u8 ligado (1), u32 = 100, u32 = 2 por padrão, indexados por tipo de indústria (`0x433370`, `0x433550`: testam o byte 0 e pulam o tipo se for 0) |
 
 O "bloco quase todo zero até 0xB2D6" da primeira passada **não é um bloco só**: é o fim do cabeçalho, o bloco `0x86`, a vista, o **estado global** e o bloco do `game_seed`.
+
+### 1.1 Diferenças 0x233C vs 0x2348 (alta; verificado em 95 `.MP2` e em 3 saves gerados pelo oráculo)
+
+As versões `0x2341..0x2348` têm os mesmos tamanhos de bloco de nível alto; as diferenças vêm dos `if (versao < N)` do carregador `0x477a60`. Todos os `.MP2` são `0x2348`; `Save::parse` os consome até o último byte e o checksum confere nos 95. As amostras do oráculo (Tutorial avançado 0 e 1 dia, Example avançado 1 dia, por `re/scripts/wine/advance_save.py`; não versionadas) também.
+
+| Item | 0x233C | 0x2348 |
+|---|---|---|
+| bloco de cabeçalho (após o u32 de versão) | 0x878F | **0x898A** (<0x2341 o loader converte: as 38 entradas de 9 bytes de `0x5702cb` viram 53) |
+| bloco 0x86, vista 0x40 | iguais | iguais |
+| estado global | 0x29C8 | **0x3A74** (o início, incluindo data/hora/velocidade, tem os mesmos offsets) |
+| bloco `game_seed` (0xB6) | igual, `game_seed` em +0x2E | igual |
+| início dos tiles | 0xB2D7 | **0xC57E** (`4 + 0x898A + 0x86 + 0x40 + 0x3A74 + 0xB6`) |
+| estado em | 0x8859 | 0x8A54 |
+| tile 10 bytes, elevação i16 | iguais | iguais |
+| cabeçalho de cada pool | igual | igual (o tamanho de registro gravado no arquivo é o novo) |
+| tamanho de registro das pools no arquivo | estações 0x39B, pessoas 0x4DC, empresas 0x196C, pool `c7c` 0x11, trens 0x143, lugares 0x96, territórios 0x27A | estações **0x4C7**, pessoas **0x576**, empresas **0x4E86**, `c7c` **0x15**, trens **0x14D**, lugares **0xB4**, territórios **0x314** |
+| demais pools (`c54`, `c70`, `c74`, `c78`, `c58`, `c80`, `c84`, `c88`) | | mesmos tamanhos (7, 0x4F, 0x9F, 0x23, 0xE, 5, 0x24, 7) |
+| carro de trem (extra) | 10 bytes | **14 bytes** (= o registro da memória) |
+| passo de rota | u16, u16, u8, u8, u8 = 7 | u16, u16, u8, u8, **u16** = 8 (o último array foi alargado em 0x2348; o loader zera e recalcula para <0x2348) |
+| parte fixa da regra (`rule_read` `0x457c90`) | 0x2C8 | **0x362**; contagem de tokens continua em +4; o resto (texto + arrays + 4 textos) é igual |
+| checksum | campo em +0x86F7 é 0 | u32 em **+0x86F7**, soma sobre o arquivo todo com esse campo zerado, algoritmo `0x4ef4d0` (`rt2_formats::map::checksum`) |
+
+Os campos já decodificados mantêm os offsets nos registros maiores (os conversores só inserem campos novos depois deles: nome da estação em +26, nome do trem em +12, lugar em +4..+54, empresa +4/+0x148, pessoa +8/+0x27), então `place_list`, `company_list`, `station_names` etc. funcionam nas duas versões.
+
+Pendências: (1) os bytes de tile de `0x2348` não passam pelo remapeamento de terreno (`<0x233d` e `<0x2342` usam as tabelas `0x552b00`/`0x552cd4`), então os ids de `ground` dos `.MP2` podem não ser os mesmos dos `.MAP` (o teste `is_water` usa os ids de `0x233C`); (2) os campos novos dos registros de `0x2348` (estação +0x39B.., empresa +0x4DEC.., pessoa +0x4DC.., trem +0x143.., lugar +0x96.., território +0x27A..) ficam crus; (3) a versão intermediária `0x2341..0x2347` não é aceita (nenhum arquivo do jogo a usa).
 
 ## 2. Mapa de seções do arquivo (alta)
 
@@ -167,9 +192,9 @@ Ambos os `.GAM` derivam de **Britain.MAP** (mesmo `game_seed` 183274, 300x300), 
 2. Função dos pools 5, 7, 8, 9, 10, 15 e do pool 6 (objetos); campos de empresas e lugares além dos listados; o estado global além de data/velocidade.
 3. Bloco `0x86` em 0x8793 e vista em 0x8819.
 4. O estado do RNG **não** está no arquivo: como o original o semeia ao carregar (valor residual do processo), necessário para o teste de nível 2.
-5. Formato `0x2348` (`.MP2`/saves novos): registros maiores (`0x4C7`, `0x576`, `0x4E86`), checksum em `+0x86f7`.
+5. Campos novos dos registros `0x2348` (ver 1.1): significado desconhecido; é onde o diff campo a campo do oráculo deve começar.
 6. Nível do mar e limite 510 de elevação.
 
 ## 8. Implementação
 
-`crates/rt2-formats/src/map.rs`: `Map::parse` (terreno) e `Save::parse` (versão `0x233C`; data/hora, `game_seed`, os 15 pools, extras e regras; visões `place_list`, `company_list`, `person_list`, `station_names`, `train_names`). Testes com `RT2_DIR` em `crates/rt2-formats/tests/original_data.rs`.
+`crates/rt2-formats/src/map.rs`: `Map::parse` (terreno) e `Save::parse` (versões `0x233C` e `0x2348` via `Layout`; data/hora, `game_seed`, os 15 pools, extras e regras; visões `place_list`, `company_list`, `person_list`, `station_names`, `train_names`). Testes com `RT2_DIR` em `crates/rt2-formats/tests/original_data.rs`.

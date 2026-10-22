@@ -319,3 +319,94 @@ fn bo_scenario_places_and_seed() {
             .all(|&i| save.structures.get(usize::from(i)).is_some())
     );
 }
+
+#[test]
+fn every_mp2_parses_as_version_2348_to_the_last_byte() {
+    let Some(dir) = game_dir() else {
+        eprintln!("RT2_DIR not set; skipping");
+        return;
+    };
+    let mut count = 0;
+    for entry in std::fs::read_dir(dir.join("maps")).unwrap() {
+        let path = entry.unwrap().path();
+        let is_mp2 = path
+            .extension()
+            .and_then(|e| e.to_str())
+            .is_some_and(|e| e.eq_ignore_ascii_case("mp2"));
+        if !is_mp2 {
+            continue;
+        }
+        let raw = std::fs::read(&path).unwrap();
+        let save = rt2_formats::map::Save::parse(&raw)
+            .unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+        assert_eq!(save.map.version, 0x2348, "{}", path.display());
+        assert_eq!(
+            i64::from(save.game_time_minutes),
+            save.minutes_from_date(),
+            "{}",
+            path.display()
+        );
+        assert_eq!(
+            save.stored_checksum,
+            rt2_formats::map::file_checksum(&raw).unwrap(),
+            "{}",
+            path.display()
+        );
+        count += 1;
+    }
+    assert_eq!(count, 95);
+}
+
+/// Saves written by the original game's saver (always 0x2348) cannot be committed, so they are
+/// produced locally with `re/scripts/wine/advance_save.py` and passed in `RT2_SAVE_2348` (one
+/// path, or several separated like `PATH`). The date is read independently of `Save::parse`, the
+/// way `re/scripts/wine/advance_check.py` does it.
+#[test]
+fn saves_written_by_the_original_parse_to_the_last_byte() {
+    let Some(paths) = std::env::var_os("RT2_SAVE_2348") else {
+        eprintln!("RT2_SAVE_2348 not set; skipping");
+        return;
+    };
+    for path in std::env::split_paths(&paths) {
+        let raw = std::fs::read(&path).unwrap();
+        let save = rt2_formats::map::Save::parse(&raw)
+            .unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+        assert_eq!(save.map.version, 0x2348);
+        // advance_check.py: STATE = 4 + 0x898A + 0x86 + 0x40, +0xC minutes, +0x10 date, +0x14 time.
+        let state = 4 + 0x898A + 0x86 + 0x40;
+        let le32 = |o: usize| i32::from_le_bytes(raw[o..o + 4].try_into().unwrap());
+        assert_eq!(save.game_time_minutes, le32(state + 0xC));
+        assert_eq!(
+            u16::from_le_bytes([raw[state + 0x10], raw[state + 0x11]]),
+            save.date.year
+        );
+        assert_eq!(
+            (raw[state + 0x12], raw[state + 0x13]),
+            (save.date.month, save.date.day)
+        );
+        assert_eq!(
+            (raw[state + 0x14], raw[state + 0x15]),
+            (save.hour, save.minute)
+        );
+        assert_eq!(i64::from(save.game_time_minutes), save.minutes_from_date());
+        assert_eq!(
+            save.stored_checksum,
+            rt2_formats::map::file_checksum(&raw).unwrap()
+        );
+        assert_eq!(save.places.count, save.places.records.len());
+        eprintln!(
+            "{}: {:?} {:02}:{:02}, {} trains ({} with routes), {} stations, {} rules",
+            path.display(),
+            save.date,
+            save.hour,
+            save.minute,
+            save.trains.count,
+            save.train_extras
+                .iter()
+                .filter(|t| !t.route_raw.is_empty())
+                .count(),
+            save.stations.count,
+            save.rules.len()
+        );
+    }
+}

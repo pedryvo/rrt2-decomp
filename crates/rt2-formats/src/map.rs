@@ -1,7 +1,9 @@
 //! Scenario maps and saves (`maps/*.MAP`, `games/*.GAM`), see `docs/formats/map-gam.md`.
 //!
-//! `Map::parse` reads the terrain; `Save::parse` (version 0x233C files) also reads the date, the
-//! seed and the entity pools after the elevation grid. Layout, all little-endian:
+//! `Map::parse` reads the terrain; `Save::parse` also reads the date, the seed and the entity
+//! pools after the elevation grid. Two versions are supported: 0x233C (the shipped `.MAP`/`.GAM`)
+//! and 0x2348 (the `.MP2` files and everything the original game saves); see [`Layout`] for what
+//! differs. Layout of a 0x233C file, all little-endian:
 //!
 //! ```text
 //! 0x000  u32 0x233C            magic/version
@@ -11,14 +13,17 @@
 //! 0xB2D7 w*h * [u8; 10]        tile records, row by row (y*w + x), north at the top
 //! next   (w+1)*(h+1) * i16     corner elevations, row by row
 //! ```
+//! In a 0x2348 file the tiles start at 0xC57E instead (the header and state blocks are larger).
 
-/// Magic/version word at offset 0.
+/// Magic/version word at offset 0 of the shipped `.MAP`/`.GAM` files.
 pub const MAGIC: u32 = 0x233C;
+/// Version written by the game's own saver (`0x477540`) and used by the `.MP2` files.
+pub const MAGIC_2348: u32 = 0x2348;
 const NAME_OFFSET: usize = 0x004;
 const TITLE_OFFSET: usize = 0x131;
 const TITLE_END: usize = 0x150;
 const SIZE_OFFSET: usize = 0x231;
-/// Start of the tile records (fixed: the header has a fixed size).
+/// Start of the tile records of a 0x233C file (fixed: the header has a fixed size).
 pub const TILES_OFFSET: usize = 0xB2D7;
 pub const TILE_SIZE: usize = 10;
 /// Ground ids 0x61 and 0x62 are water (ocean, lakes, bays); high confidence.
@@ -30,7 +35,7 @@ const MAX_DIM: usize = 4096;
 pub enum MapError {
     #[error("file is {len} bytes, too short for {what}")]
     Truncated { len: usize, what: &'static str },
-    #[error("bad magic {0:#x}, expected 0x233c")]
+    #[error("unsupported version {0:#x}, expected 0x233c or 0x2348")]
     BadMagic(u32),
     #[error("implausible map size {width}x{height}")]
     BadSize { width: usize, height: usize },
@@ -85,6 +90,8 @@ impl Tile {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Map {
+    /// File version word: 0x233C or 0x2348.
+    pub version: u32,
     /// Short name at 0x004 (the 8.3 file name for the numbered scenarios).
     pub name: String,
     /// Scenario title at 0x131 (medium confidence; may be empty).
@@ -112,15 +119,14 @@ impl Map {
             });
         }
         let magic = u32::from_le_bytes(raw[0..4].try_into().unwrap());
-        if magic != MAGIC {
-            return Err(MapError::BadMagic(magic));
-        }
+        let layout = Layout::for_version(magic).ok_or(MapError::BadMagic(magic))?;
+        let tiles_offset = layout.tiles_offset();
         let width = u16::from_le_bytes([raw[SIZE_OFFSET], raw[SIZE_OFFSET + 1]]) as usize;
         let height = u16::from_le_bytes([raw[SIZE_OFFSET + 2], raw[SIZE_OFFSET + 3]]) as usize;
         if width == 0 || height == 0 || width > MAX_DIM || height > MAX_DIM {
             return Err(MapError::BadSize { width, height });
         }
-        let tiles_end = TILES_OFFSET + TILE_SIZE * width * height;
+        let tiles_end = tiles_offset + TILE_SIZE * width * height;
         let corners = (width + 1) * (height + 1);
         let elev_end = tiles_end + 2 * corners;
         if raw.len() < elev_end {
@@ -129,7 +135,7 @@ impl Map {
                 what: "the tile and elevation grids",
             });
         }
-        let tiles = raw[TILES_OFFSET..tiles_end]
+        let tiles = raw[tiles_offset..tiles_end]
             .as_chunks::<TILE_SIZE>()
             .0
             .iter()
@@ -142,6 +148,7 @@ impl Map {
             .map(|c| i16::from_le_bytes(*c))
             .collect();
         Ok(Map {
+            version: magic,
             name: c_string(&raw[NAME_OFFSET..TITLE_OFFSET]),
             title: c_string(&raw[TITLE_OFFSET..TITLE_END]),
             width,
@@ -168,12 +175,11 @@ impl Map {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Game state after the elevation grid, and the blocks before the tiles (version 0x233C only).
+// Game state after the elevation grid, and the blocks before the tiles (versions 0x233C, 0x2348).
 //
 // Source: the game's own loader `0x477a60` (reads) and saver `0x477540` (writes version 0x2348);
-// see `docs/formats/map-gam.md` sections 2 and 5. The shipped `.MAP`/`.GAM` files all use the old
-// version 0x233C, whose block sizes are the ones below. Newer files (`.MP2`, magic 0x2348) differ
-// and are rejected by `Save::parse`.
+// see `docs/formats/map-gam.md` sections 1, 2 and 5. The shipped `.MAP`/`.GAM` files use version
+// 0x233C; the constants below are its block sizes. `Layout` carries the per-version values.
 // ---------------------------------------------------------------------------------------------
 
 /// Size of the header block read into the game's globals at `0x567b38` (version word included).
@@ -192,6 +198,109 @@ const STATE_MINUTES: usize = 0x0C;
 const STATE_DATE: usize = 0x10;
 const STATE_TIME: usize = 0x14;
 const STATE_SPEED: usize = 0x26;
+
+/// Block sizes and record sizes that depend on the file version. The loader (`0x477a60`) branches
+/// on `version < 0x2341` (header 0x878F -> 0x898A, state 0x29C8 -> 0x3A74, station/person/company/
+/// place/territory records and rule fixed part grow), `< 0x2344`, `< 0x2346` (pool record sizes,
+/// the file then carries the sizes itself) and `< 0x2347`/`< 0x2348` (train car and route
+/// records). Only the two versions that exist in the install are supported.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Layout {
+    pub version: u32,
+    /// Header block length including the 4-byte version word (the loader reads the word, then
+    /// 0x878F or 0x898A bytes).
+    pub header_len: usize,
+    /// Global state block length (`game_running` onwards).
+    pub state_len: usize,
+    /// Record size passed to the pool reader per pool (0 = use the size stored in the file).
+    pool_sizes: [usize; 15],
+    /// Bytes per train car record in the file (10 in 0x233C, 14 = the in-memory size in 0x2348).
+    pub car_size: usize,
+    /// Bytes per route step: u16, u16, u8, u8 and a last array that is u8 in 0x233C, u16 in 0x2348.
+    pub route_step: usize,
+    /// Fixed part of a scenario rule (0x2C8 before 0x2341, 0x362 after).
+    pub rule_fixed: usize,
+}
+
+impl Layout {
+    pub const V233C: Layout = Layout {
+        version: MAGIC,
+        header_len: HEADER_LEN,
+        state_len: STATE_LEN,
+        pool_sizes: [
+            0, 0x39B, 0x4DC, 0x196C, 0, 0, 0, 0, 0x11, 0, 0, 0x143, 0x96, 0x27A, 0,
+        ],
+        car_size: 10,
+        route_step: 7,
+        rule_fixed: 0x2C8,
+    };
+    pub const V2348: Layout = Layout {
+        version: MAGIC_2348,
+        header_len: 4 + 0x898A,
+        state_len: 0x3A74,
+        pool_sizes: [0; 15],
+        car_size: 14,
+        route_step: 8,
+        rule_fixed: 0x362,
+    };
+
+    pub fn for_version(version: u32) -> Option<Layout> {
+        match version {
+            MAGIC => Some(Layout::V233C),
+            MAGIC_2348 => Some(Layout::V2348),
+            _ => None,
+        }
+    }
+
+    /// Camera/view block (0x40 bytes), after the 0x86-byte block that follows the header.
+    pub fn view_offset(&self) -> usize {
+        self.header_len + 0x86
+    }
+
+    pub fn state_offset(&self) -> usize {
+        self.view_offset() + 0x40
+    }
+
+    /// The 0xB6-byte block holding `game_seed`.
+    pub fn trailer_offset(&self) -> usize {
+        self.state_offset() + self.state_len
+    }
+
+    pub fn game_seed_offset(&self) -> usize {
+        self.trailer_offset() + 0x2E
+    }
+
+    pub fn tiles_offset(&self) -> usize {
+        self.trailer_offset() + 0xB6
+    }
+}
+
+/// File offset of the checksum the 0x2348 saver patches in (`0x477540`: `*(buf + 0x86f7)`).
+pub const CHECKSUM_OFFSET: usize = 0x86F7;
+
+/// The game's buffer checksum (`FUN_004ef4d0`) over `data`.
+pub fn checksum(data: &[u8]) -> u32 {
+    let (mut a, mut sum) = (0u32, 0u32);
+    for &b in data {
+        let b = u32::from(b);
+        sum = sum.wrapping_add(b);
+        a = ((a >> 22) & 0x3FC)
+            .wrapping_add(b.wrapping_mul(0x20001))
+            .wrapping_add(a.wrapping_mul(2));
+    }
+    a = (sum >> 16)
+        .wrapping_add(a)
+        .wrapping_add(sum.wrapping_mul(0x10001));
+    (a >> 16).wrapping_add(a)
+}
+
+/// Checksum of a whole 0x2348 file as the saver computes it: the 4 bytes at
+/// [`CHECKSUM_OFFSET`] count as zero.
+pub fn file_checksum(raw: &[u8]) -> Option<u32> {
+    let mut copy = raw.to_vec();
+    copy.get_mut(CHECKSUM_OFFSET..CHECKSUM_OFFSET + 4)?.fill(0);
+    Some(checksum(&copy))
+}
 
 /// Calendar date (`game_date` `0x5704f8`): year u16, month u8 1..=12, day u8 1..=28.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -286,9 +395,10 @@ pub struct Person {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TrainExtra {
     pub slot: usize,
-    /// `count_3b` entries of 10 bytes (the old file format; memory uses 14).
+    /// `count_3b` entries of `Layout::car_size` bytes (10 in 0x233C, 14 in 0x2348).
     pub cars_raw: Vec<u8>,
-    /// Route arrays (`+0x59` entries each: u16, u16, u8, u8, u8), empty when absent.
+    /// Route arrays (`+0x59` entries each: u16, u16, u8, u8, then u8 in 0x233C or u16 in 0x2348),
+    /// empty when absent.
     pub route_raw: Vec<u8>,
 }
 
@@ -314,8 +424,13 @@ pub struct Rule {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Save {
     pub map: Map,
-    /// Raw 0x29C8-byte global state block.
+    /// Block layout of the file version.
+    pub layout: Layout,
+    /// Raw global state block (0x29C8 bytes in 0x233C, 0x3A74 in 0x2348; the offsets used by the
+    /// decoded fields are the same in both).
     pub state: Vec<u8>,
+    /// Checksum field of a 0x2348 file at [`CHECKSUM_OFFSET`] (0 in 0x233C files).
+    pub stored_checksum: u32,
     /// `game_time_minutes` (`0x5704f4`): `((((year*12+month)*28+day-29)*24+hour)*60)+minute`.
     pub game_time_minutes: i32,
     pub date: GameDate,
@@ -346,12 +461,6 @@ pub struct Save {
     pub train_extras: Vec<TrainExtra>,
     pub rules: Vec<Rule>,
 }
-
-/// Record sizes passed to the pool reader by the loader for version 0x233C (0 = use the file's).
-const POOL_SIZES: [usize; 15] = [
-    0, 0x39B, 0x4DC, 0x196C, 0, 0, 0, 0, 0x11, 0, 0, 0x143, 0x96, 0x27A, 0,
-];
-const RULE_FIXED_LEN: usize = 0x2C8;
 
 struct Reader<'a> {
     raw: &'a [u8],
@@ -459,20 +568,18 @@ fn u16_at(b: &[u8], off: usize) -> u16 {
 }
 
 impl Save {
-    /// Parses a complete version-0x233C `.MAP`/`.GAM` file. The pools and rules must end exactly
-    /// at the end of the file; trailing bytes are reported as an error.
+    /// Parses a complete version-0x233C or 0x2348 file (`.MAP`/`.GAM`/`.MP2`/saves written by the
+    /// game). The pools and rules must end exactly at the end of the file; trailing bytes are
+    /// reported as an error.
     pub fn parse(raw: &[u8]) -> Result<Save, MapError> {
         let map = Map::parse(raw)?;
-        let grids_end = TILES_OFFSET
+        let layout = Layout::for_version(map.version).expect("Map::parse checked the version");
+        let grids_end = layout.tiles_offset()
             + TILE_SIZE * map.width * map.height
             + 2 * (map.width + 1) * (map.height + 1);
-        if raw.len() < TRAILER_OFFSET + 0xB6 {
-            return Err(MapError::Truncated {
-                len: raw.len(),
-                what: "the state blocks",
-            });
-        }
-        let state = raw[STATE_OFFSET..STATE_OFFSET + STATE_LEN].to_vec();
+        // `Map::parse` already checked that the grids fit, which covers all the blocks before them.
+        let state_offset = layout.state_offset();
+        let state = raw[state_offset..state_offset + layout.state_len].to_vec();
         let game_time_minutes =
             i32::from_le_bytes(state[STATE_MINUTES..STATE_MINUTES + 4].try_into().unwrap());
         let date = GameDate {
@@ -480,8 +587,10 @@ impl Save {
             month: state[STATE_DATE + 2],
             day: state[STATE_DATE + 3],
         };
-        let game_seed = u32::from_le_bytes(
-            raw[GAME_SEED_OFFSET..GAME_SEED_OFFSET + 4]
+        let seed_offset = layout.game_seed_offset();
+        let game_seed = u32::from_le_bytes(raw[seed_offset..seed_offset + 4].try_into().unwrap());
+        let stored_checksum = u32::from_le_bytes(
+            raw[CHECKSUM_OFFSET..CHECKSUM_OFFSET + 4]
                 .try_into()
                 .unwrap(),
         );
@@ -490,8 +599,8 @@ impl Save {
             raw,
             pos: grids_end,
         };
-        let mut pools = Vec::with_capacity(POOL_SIZES.len());
-        for &size in &POOL_SIZES {
+        let mut pools = Vec::with_capacity(layout.pool_sizes.len());
+        for &size in &layout.pool_sizes {
             pools.push(r.pool(size)?);
         }
         let mut it = pools.into_iter();
@@ -515,11 +624,12 @@ impl Save {
         let mut train_extras = Vec::new();
         for rec in trains.ordered() {
             let cars = rec.data[0x3B] as usize;
-            let cars_raw = r.take(cars * 10, "train cars")?.to_vec();
+            let cars_raw = r.take(cars * layout.car_size, "train cars")?.to_vec();
             let n = i32::from_le_bytes(rec.data[0x59..0x5D].try_into().unwrap());
             let flag = i32::from_le_bytes(rec.data[0x65..0x69].try_into().unwrap());
             let route_raw = if n > 0 && flag != 0 {
-                r.take(n as usize * 7, "train route")?.to_vec()
+                r.take(n as usize * layout.route_step, "train route")?
+                    .to_vec()
             } else {
                 Vec::new()
             };
@@ -533,7 +643,7 @@ impl Save {
         let rule_count = r.len("the rule count")?;
         let mut rules = Vec::with_capacity(rule_count.min(4096));
         for _ in 0..rule_count {
-            let fixed = r.take(RULE_FIXED_LEN, "a rule")?.to_vec();
+            let fixed = r.take(layout.rule_fixed, "a rule")?.to_vec();
             let tokens = i32::from_le_bytes(fixed[4..8].try_into().unwrap());
             let tokens = usize::try_from(tokens).map_err(|_| MapError::Truncated {
                 len: raw.len(),
@@ -577,7 +687,9 @@ impl Save {
             minute: state[STATE_TIME + 1],
             game_speed: state[STATE_SPEED],
             map,
+            layout,
             state,
+            stored_checksum,
             game_time_minutes,
             date,
             game_seed,
@@ -714,6 +826,119 @@ mod tests {
         assert!((map.water_fraction() - 1.0 / 6.0).abs() < 1e-9);
     }
 
+    /// A minimal save of the given layout: zeroed blocks, `w*h` tiles, empty pools, no rules.
+    fn synthetic_save(layout: &Layout, w: usize, h: usize) -> Vec<u8> {
+        let mut raw = vec![0u8; layout.tiles_offset()];
+        raw[0..4].copy_from_slice(&layout.version.to_le_bytes());
+        raw[SIZE_OFFSET..SIZE_OFFSET + 2].copy_from_slice(&(w as u16).to_le_bytes());
+        raw[SIZE_OFFSET + 2..SIZE_OFFSET + 4].copy_from_slice(&(h as u16).to_le_bytes());
+        let state = layout.state_offset();
+        raw[state + STATE_MINUTES..state + STATE_MINUTES + 4]
+            .copy_from_slice(&904_826_583i32.to_le_bytes());
+        raw[state + STATE_DATE..state + STATE_DATE + 4].copy_from_slice(&[0x5E, 0x07, 2, 4]);
+        raw[state + STATE_TIME..state + STATE_TIME + 2].copy_from_slice(&[19, 3]);
+        let seed = layout.game_seed_offset();
+        raw[seed..seed + 4].copy_from_slice(&183_274u32.to_le_bytes());
+        raw.resize(raw.len() + TILE_SIZE * w * h + 2 * (w + 1) * (h + 1), 0);
+        for _ in 0..15 {
+            // slots = 1, record size = 4, not linked, five header ints, then head/tail and the
+            // free bitmap (slot 0 free).
+            for v in [1i32, 4, 0, 1, 0, 1, 0, 0] {
+                raw.extend_from_slice(&v.to_le_bytes());
+            }
+            raw.extend_from_slice(&[0, 0, 0, 0, 1]);
+        }
+        raw.extend_from_slice(&0i32.to_le_bytes()); // no rules
+        raw
+    }
+
+    #[test]
+    fn layouts_of_both_versions() {
+        assert_eq!(Layout::V233C.tiles_offset(), TILES_OFFSET);
+        assert_eq!(Layout::V233C.state_offset(), STATE_OFFSET);
+        assert_eq!(Layout::V2348.state_offset(), 0x8A54);
+        assert_eq!(Layout::V2348.tiles_offset(), 0xC57E);
+        assert_eq!(Layout::for_version(0x2340), None);
+    }
+
+    #[test]
+    fn parses_synthetic_saves_of_both_versions() {
+        for layout in [Layout::V233C, Layout::V2348] {
+            let raw = synthetic_save(&layout, 3, 2);
+            let save = Save::parse(&raw).unwrap_or_else(|e| panic!("{:#x}: {e}", layout.version));
+            assert_eq!(save.map.version, layout.version);
+            assert_eq!(save.layout, layout);
+            assert_eq!(save.state.len(), layout.state_len);
+            assert_eq!(save.game_seed, 183_274);
+            assert_eq!(save.game_time_minutes, 904_826_583);
+            assert_eq!(
+                save.date,
+                GameDate {
+                    year: 1886,
+                    month: 2,
+                    day: 4
+                }
+            );
+            assert_eq!((save.hour, save.minute), (19, 3));
+            assert_eq!(save.structures.slots, 1);
+            assert!(save.rules.is_empty());
+            // Trailing garbage is rejected.
+            let mut long = raw.clone();
+            long.push(0);
+            assert!(matches!(
+                Save::parse(&long),
+                Err(MapError::Truncated { .. })
+            ));
+        }
+    }
+
+    #[test]
+    fn train_extras_use_the_version_record_sizes() {
+        for (layout, cars, steps) in [(Layout::V233C, 10, 7), (Layout::V2348, 14, 8)] {
+            let mut raw = synthetic_save(&layout, 2, 2);
+            // Replace the 12th pool (trains, linked, one live record) and append its extras.
+            let pools_start = layout.tiles_offset() + TILE_SIZE * 4 + 2 * 9;
+            let pool_len = 8 * 4 + 5;
+            let at = pools_start + 11 * pool_len;
+            let mut pool = Vec::new();
+            for v in [2i32, 0x143, 1, 2, 1, 1, 1, 1] {
+                pool.extend_from_slice(&v.to_le_bytes());
+            }
+            pool.extend_from_slice(&[1, 0, 1, 0]); // head = tail = 1
+            pool.push(0b01); // slot 0 free, slot 1 live
+            let mut rec = vec![0u8; 0x143];
+            rec[0x3B] = 2; // two cars
+            rec[0x59..0x5D].copy_from_slice(&3i32.to_le_bytes()); // three route steps
+            rec[0x65] = 1;
+            pool.extend_from_slice(&rec);
+            pool.extend_from_slice(&[0, 0, 0, 0, 0, 0, 0, 0]); // next[2], prev[2]
+            let mut extras = vec![0xCCu8; 2 * cars + 3 * steps];
+            extras.extend_from_slice(&0i32.to_le_bytes()); // rule count
+            raw.splice(at..at + pool_len, pool);
+            let end = raw.len() - 4;
+            raw.truncate(end);
+            raw.extend_from_slice(&extras);
+            let save = Save::parse(&raw).unwrap();
+            assert_eq!(save.trains.count, 1);
+            assert_eq!(save.train_extras[0].cars_raw.len(), 2 * cars);
+            assert_eq!(save.train_extras[0].route_raw.len(), 3 * steps);
+        }
+    }
+
+    #[test]
+    fn checksum_matches_the_games_algorithm() {
+        assert_eq!(checksum(&[]), 0);
+        // Hand-computed: one byte 1 -> a = 0x20001, sum = 1;
+        // a = 0 + 0x20001 + 0x10001 = 0x30002; result = 0 + 0x30002 + 3 = 0x30005.
+        assert_eq!(checksum(&[1]), 0x30005);
+        let mut raw = synthetic_save(&Layout::V2348, 2, 2);
+        let sum = file_checksum(&raw).unwrap();
+        // The field itself is excluded from the sum.
+        raw[CHECKSUM_OFFSET..CHECKSUM_OFFSET + 4].copy_from_slice(&sum.to_le_bytes());
+        assert_eq!(file_checksum(&raw), Some(sum));
+        assert_eq!(Save::parse(&raw).unwrap().stored_checksum, sum);
+    }
+
     #[test]
     fn rejects_bad_input() {
         let mut raw = synthetic(3, 2);
@@ -730,5 +955,8 @@ mod tests {
         assert!(matches!(Map::parse(&raw), Err(MapError::BadSize { .. })));
         raw[0] = 0;
         assert!(matches!(Map::parse(&raw), Err(MapError::BadMagic(_))));
+        raw[0] = 0x40; // 0x2340 is a real but unsupported intermediate version
+        raw[1] = 0x23;
+        assert!(matches!(Map::parse(&raw), Err(MapError::BadMagic(0x2340))));
     }
 }
