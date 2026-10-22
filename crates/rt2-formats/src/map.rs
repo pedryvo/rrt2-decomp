@@ -19,10 +19,10 @@
 pub const MAGIC: u32 = 0x233C;
 /// Version written by the game's own saver (`0x477540`) and used by the `.MP2` files.
 pub const MAGIC_2348: u32 = 0x2348;
-const NAME_OFFSET: usize = 0x004;
-const TITLE_OFFSET: usize = 0x131;
-const TITLE_END: usize = 0x150;
-const SIZE_OFFSET: usize = 0x231;
+pub(crate) const NAME_OFFSET: usize = 0x004;
+pub(crate) const TITLE_OFFSET: usize = 0x131;
+pub(crate) const TITLE_END: usize = 0x150;
+pub(crate) const SIZE_OFFSET: usize = 0x231;
 /// Start of the tile records of a 0x233C file (fixed: the header has a fixed size).
 pub const TILES_OFFSET: usize = 0xB2D7;
 pub const TILE_SIZE: usize = 10;
@@ -104,7 +104,7 @@ pub struct Map {
     pub elevation: Vec<i16>,
 }
 
-fn c_string(raw: &[u8]) -> String {
+pub(crate) fn c_string(raw: &[u8]) -> String {
     let end = raw.iter().position(|&b| b == 0).unwrap_or(raw.len());
     // Latin-1 is a superset of the ASCII text actually seen.
     raw[..end].iter().map(|&b| b as char).collect()
@@ -194,7 +194,7 @@ pub const TRAILER_OFFSET: usize = 0xB221;
 /// `game_seed` (`0x57486e`) is 0x2E bytes into the trailer block.
 pub const GAME_SEED_OFFSET: usize = TRAILER_OFFSET + 0x2E;
 /// Offsets inside the state block (they equal the offsets from `game_running` `0x5704e8`).
-const STATE_MINUTES: usize = 0x0C;
+pub(crate) const STATE_MINUTES: usize = 0x0C;
 const STATE_DATE: usize = 0x10;
 const STATE_TIME: usize = 0x14;
 const STATE_SPEED: usize = 0x26;
@@ -339,6 +339,11 @@ pub struct Pool {
     pub records: Vec<PoolRecord>,
     /// Live slots in list order (head to tail) for linked pools, slot order otherwise.
     pub order: Vec<usize>,
+    /// The raw free bitmap (`(slots + 8) >> 3` bytes, bit set = free slot).
+    pub bitmap: Vec<u8>,
+    /// `next`/`prev` link arrays (`slots` entries each) of a linked pool, empty otherwise.
+    pub next: Vec<u16>,
+    pub prev: Vec<u16>,
 }
 
 impl Pool {
@@ -426,6 +431,11 @@ pub struct Save {
     pub map: Map,
     /// Block layout of the file version.
     pub layout: Layout,
+    /// Every byte before the state block (`0..state_offset`): version word, header block (name,
+    /// map size, preview image, options), the 0x86-byte block and the camera/view block.
+    pub header: Vec<u8>,
+    /// The 0xB6-byte block after the state block (holds `game_seed` at +0x2E).
+    pub trailer: Vec<u8>,
     /// Raw global state block (0x29C8 bytes in 0x233C, 0x3A74 in 0x2348; the offsets used by the
     /// decoded fields are the same in both).
     pub state: Vec<u8>,
@@ -528,9 +538,19 @@ impl<'a> Reader<'a> {
             }
         }
         let mut order: Vec<usize> = records.iter().map(|r| r.slot).collect();
+        let (mut next_links, mut prev_links) = (Vec::new(), Vec::new());
         if linked {
             let next = self.take(slots * 2, WHAT)?;
-            self.take(slots * 2, WHAT)?; // prev array, derivable from next
+            let prev = self.take(slots * 2, WHAT)?;
+            let links = |b: &[u8]| -> Vec<u16> {
+                b.as_chunks::<2>()
+                    .0
+                    .iter()
+                    .map(|c| u16::from_le_bytes(*c))
+                    .collect()
+            };
+            next_links = links(next);
+            prev_links = links(prev);
             let mut walk = Vec::with_capacity(records.len());
             let mut cur = head as usize;
             while cur != 0 && cur < slots && walk.len() <= records.len() {
@@ -554,6 +574,9 @@ impl<'a> Reader<'a> {
             tail,
             records,
             order,
+            bitmap: bitmap.to_vec(),
+            next: next_links,
+            prev: prev_links,
         })
     }
 
@@ -587,6 +610,9 @@ impl Save {
             month: state[STATE_DATE + 2],
             day: state[STATE_DATE + 3],
         };
+        let header = raw[..state_offset].to_vec();
+        let trailer_offset = layout.trailer_offset();
+        let trailer = raw[trailer_offset..trailer_offset + 0xB6].to_vec();
         let seed_offset = layout.game_seed_offset();
         let game_seed = u32::from_le_bytes(raw[seed_offset..seed_offset + 4].try_into().unwrap());
         let stored_checksum = u32::from_le_bytes(
@@ -688,6 +714,8 @@ impl Save {
             game_speed: state[STATE_SPEED],
             map,
             layout,
+            header,
+            trailer,
             state,
             stored_checksum,
             game_time_minutes,

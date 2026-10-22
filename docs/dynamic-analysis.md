@@ -95,7 +95,39 @@ Em 1 e 7 dias o RNG do jogo não é consumido (fica na semente); o primeiro cons
 
 ### 5.4 Limitações
 - **Aquecimento do sandbox:** nos primeiros runs de um sandbox o jogo cria/reescreve `rt2_tsc.CFG` e `ddraw.ini`, e o save sai com bytes diferentes (ponteiros do heap em registros de trens, um u32 em ~0x117FAD no Tutorial, preview e checksum). `advance_save.py` repete runs de 0 dias até dois seguidos serem idênticos (marcador `.advance_warm`), uma vez por sandbox (~35 s). Depois disso, determinismo byte a byte.
-- **Entre sandboxes (caminhos diferentes) os bytes também diferem** nos mesmos campos: ponteiros do heap gravados crus nos registros de trem (`+0x45..+0x55` das listas de passos) e o checksum. A comparação com o clone deve mascará-los.
+- **Entre sandboxes (caminhos diferentes) os bytes também diferem** nos mesmos campos: ponteiros do heap gravados crus (registros de trem, parte fixa das regras, um campo de pessoa) e o checksum. A lista exata e versionada está em `rt2_formats::savefields::MASKS` (seção 5.5); `rt2-savediff` mascara por padrão.
 - O passo de movimento (`--step`) altera o resultado dos trens, pois `sim_advance` usa `dt` variável (ver `time.md` seção 9); o oráculo fixa 320 min, e o clone precisa usar o mesmo.
 - Não roda o resto de `game_frame_update` (`0x405240`, `0x405390`, `0x406080`: UI/ambiente) nem comandos de jogador; só um jogador local; a velocidade do arquivo (3) não importa.
 - Uma instância por vez (usa e mata o `winedbg`/`wineserver` do prefixo do sandbox).
+
+### 5.5 `rt2-savediff`: comparação campo a campo e campos voláteis
+
+`rt2-savediff a.GAM b.GAM [--no-mask] [--only <prefixo>] [--json]` (`crates/rt2-tools/src/bin/rt2-savediff.rs`) imprime os campos diferentes (`caminho: a -> b`) agrupados por entidade (`state`, `trains[3]`, `tiles`...), com um resumo por seção; código de saída 0 se iguais depois das máscaras, 1 se diferem. A lista de campos vem de `Save::fields()` (`crates/rt2-formats/src/savefields.rs`): **todos os bytes** do arquivo, na ordem do arquivo, com nomes estáveis (`state.date`, `places[12].name`, `tiles[x,y].rest`, `pool_78.next[i]`) para o que está decodificado e pedaços crus de até 4 bytes alinhados (`trains[3].raw[0x40..0x44]`, offset dentro do registro/bloco) para o resto. Índices de pool são o número do slot; registro presente só em um dos lados aparece como `<absent>`. Entre versões diferentes (0x233C contra 0x2348 do mesmo mundo) só os campos nomeados são comparados (os crus e as propriedades do layout, como `record_size` e os 2 primeiros bytes do tile, que o loader remapeia, são ignorados). O Example original contra o mesmo avançado 0 dias no original difere só em `pool_58` (a conversão no load acrescenta 10 registros: 72 -> 82).
+
+Máscaras (`MASKS`, por versão; todas verificadas comparando saves iguais gerados em sandboxes diferentes, que ficam idênticos depois delas):
+
+| Campo | Offset | Por quê |
+|---|---|---|
+| `header.checksum` | +0x86F7 | checksum do buffer inteiro, cobre os bytes voláteis abaixo |
+| preview | `header` +0x387..+0x7474 | imagem 170x170 desenhada da tela ao salvar; muda com o estado da janela (só varia em sandbox ainda não aquecido) |
+| `trains[*]` | +0x37..+0x3B e +0x45..+0x59 | 6 ponteiros do heap gravados crus (valores `0x02xxxxxx` num sandbox, `0x03xxxxxx` em outro) |
+| `rules[*].fixed` | +0x00, +0x08..+0x10, +0x50..+0x60 | ponteiros do heap crus na parte fixa da regra (`0x02xxxxxx`/`0x01xxxxxx`) |
+| `persons[*]` (só 0x2348) | +0x54C..+0x554 | campo novo do registro: um ponteiro do heap e um número pequeno; muda entre sandboxes |
+
+(O aviso anterior sobre "ponteiros em registros de trem" só valia para o Example; no Tutorial, que não tem trens, os ponteiros estão nas regras.)
+
+Teste: `RT2_SAVE_2348=a.GAM:b.GAM cargo nextest run -p rt2-formats savefields` (cada arquivo contra si mesmo é igual; dois dias do mesmo mundo diferem em `state.date`).
+
+### 5.6 O que muda ao avançar o mundo (amostras do oráculo)
+
+Medido com `rt2-savediff` sobre saves gerados por `advance_save.py` (semente 1234, passo 320, sandbox aquecido; depois das máscaras não sobra ruído). Campos citados por caminho, offsets dentro do registro; "registros" = slots que mudaram.
+
+- **Tutorial, 0 -> 1 dia** (1870-02-04 -> 02-05): só `state.game_time_minutes` (+1440) e `state.date`. Nada mais muda: sem trens, sem RNG consumido.
+- **Tutorial, 1 -> 7 dias** (-> 02-11): além do estado, 4 registros de `objects` (pool `c74`, +0x4C u32 crescente, +0x54 u32, +0x64 e +0x88 passam de 0 a 1) e **4 registros novos em `pool_7c`** (`c7c`, 0x15 bytes: contagem 150 -> 154, `field_04` e bitmap acompanham).
+- **Tutorial, 7 -> 30 dias** (-> 03-06, cruza o mês): `state.raw[0x230..0x240]` (3 dwords), `objects` (+0x4C, +0x54, +0x64, +0x88, 86 campos) e `pool_7c` (129), e `persons[1..4].raw[0x12c..0x130]` (um u32 por pessoa, só no virar do mês).
+- **Example, 0 -> 1 dia** (1875-12-10 -> 12-11), 1200 campos em 277 registros: `state` (2), `tiles[x,y].rest` em 7 tiles (struct_id e o byte seguinte: estruturas novas), `structures` (+8 registros: `count`, `field_04`, bitmap, e ids novos/removidos), `pool_70` (0x4F: 25 registros, +0x14..+0x20, +0x30..+0x40), `pool_78` (0x23, lista ligada: 129 registros, `next`/`prev` mudam: registros criados/removidos a cada dia), `pool_80` (6), `track_pieces` (27 campos: +0x04..+0x0C, +0x14..+0x24) e `trains` (92 campos em 9 trens: +0x60 u32, +0x69..+0x70, +0x98, +0xBC, +0xC8, +0xF8 e as listas `route`/`cars` do trem em movimento). Nenhuma mudança em `stations`, `companies`, `persons`, `places` nem `elevation`.
+- **Example, 1 -> 7 dias**: os mesmos conjuntos, 3201 campos em 497 registros; entra `stations` (351 campos em 10 estações: +0xBC/+0xC0, +0x168, +0x320..+0x334; significado ainda não decodificado), `objects` (40), `pool_7c` (51), `elevation` e `tiles` (8).
+- **Example, 7 -> 30 dias** (-> 1876-01-12, cruza o ano): 8277 campos. `state` muda 1105 dwords crus (tabelas mensais/anuais em `state.raw[0x598..0x5c4]`, `0x718..0x7b4`, `0x1254..0x12f4`, `0x2aa0..0x3824` etc.), `header.raw[0x88e8..0x896c]` (19 dwords: as 53 entradas de 9 bytes de `0x5702cb` passam de 100 para 500, `0x64 -> 0x1f4`, no virar do ano), `companies` (820 campos, ex.: `companies[4].raw[0x134..0x148]`, `0x664`), `objects` (1906: +0x34, +0x48, +0x64, +0x68, +0x90, +0x94 em 342 registros), `places` (113: um dword em +0x2C, dentro dos 32 bytes do campo do nome, em 88 lugares, e +0x3C..+0x44 em 8), `persons` (74), `stations`, `track_pieces` (438), `territories`, `elevation` (4 cantos) e `tiles` (48).
+- **Mesmo mundo, sandbox diferente** (Example 7 dias, `rt2sandbox` e `rt2sandbox3`): 0 diferenças depois das máscaras (6951 campos mascarados, 9 trens x 8 + 6 + regras + checksum + pessoa).
+
+Implicações para o tick do mundo: a cada dia só `state.game_time_minutes`/`date` são certos; o resto (estruturas, `pool_78`/`pool_70`/`pool_7c`, `objects`, trens, estações) muda por regras ainda não especificadas; os campos mensais/anuais do estado e do cabeçalho só mudam ao cruzar o mês/ano.
