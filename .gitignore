@@ -2,3 +2,4 @@
 /assets-extracted
 /re/snapshots
 *.log
+/re/bin
