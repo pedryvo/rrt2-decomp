@@ -154,3 +154,4 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Fix: the language selector in the main menu no longer clips its labels at any UI scale or language (it stacks into two lines when the canvas is narrow)
 - Fix: Chinese dates read "1876年1月12日" (the date string can use the abbreviated month with %4)
 - Docs: the stacked cars near the Example station curve are not a drawing bug: a diagonal map direction is vertical on screen and the double-track lanes are 0.54 tile apart (docs/ui.md)
+- Docs: inventory of the original game's screens with references and implementation status (docs/reference/screens.md).
