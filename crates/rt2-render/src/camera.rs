@@ -1,8 +1,12 @@
 //! Classic RT2-style isometric camera: orthographic, 2:1 dimetric (30 degree elevation and a 45
 //! degree yaw, so a square ground tile appears as a diamond twice as wide as it is tall), rotated
 //! in 90 degree steps.
+//!
+//! Rotation 0 matches the original's projection `sprite-catalog.md` section 2.1: tile `(0, 0)` is
+//! the top of the map diamond, `+x` runs down and to the right, `+y` down and to the left.
 
-use glam::{Mat4, Vec2, Vec3};
+pub use glam::Vec2;
+use glam::{Mat4, Vec3};
 
 /// Elevation of the view direction above the ground plane. sin(30 deg) = 1/2 gives the 2:1 diamond.
 const PITCH: f32 = 30.0 * std::f32::consts::PI / 180.0;
@@ -36,12 +40,20 @@ impl Camera {
     }
 
     fn yaw(&self) -> f32 {
-        std::f32::consts::FRAC_PI_4 + self.rotation as f32 * std::f32::consts::FRAC_PI_2
+        -std::f32::consts::FRAC_PI_4 + self.rotation as f32 * std::f32::consts::FRAC_PI_2
     }
 
-    /// Unit ground direction that points up the screen.
+    /// Unit ground direction (x east, z south) that points up the screen at a view rotation.
+    pub fn ground_forward(rotation: u8) -> Vec2 {
+        let yaw =
+            -std::f32::consts::FRAC_PI_4 + (rotation % 4) as f32 * std::f32::consts::FRAC_PI_2;
+        let (s, c) = yaw.sin_cos();
+        Vec2::new(s, -c)
+    }
+
+    /// Unit ground direction that points up the screen. At rotation 0 the eye sits south-east of
+    /// the target looking north-west, so up on screen is `(-1, -1) / sqrt(2)`.
     pub fn forward(&self) -> Vec2 {
-        // The eye sits to the south-west of the target at yaw 45 degrees, looking north-east.
         let (s, c) = self.yaw().sin_cos();
         Vec2::new(s, -c)
     }
@@ -109,6 +121,26 @@ mod tests {
             (diag.length() / other.length() - 2.0).abs() < 1e-3
                 || (other.length() / diag.length() - 2.0).abs() < 1e-3
         );
+    }
+
+    #[test]
+    fn rotation_zero_has_x_down_right_and_y_down_left() {
+        // `sprite-catalog.md` 2.1: tela_x = 64 (X - Y), tela_y = 32 (X + Y).
+        let cam = Camera {
+            target: Vec2::ZERO,
+            zoom: 90.0,
+            rotation: 0,
+        };
+        let vp = (800, 600);
+        let o = screen(&cam, Vec3::ZERO, vp);
+        let east = screen(&cam, Vec3::X, vp) - o; // +x
+        let south = screen(&cam, Vec3::Z, vp) - o; // +y of the map
+        assert!(
+            east.x > 0.0 && east.y < 0.0,
+            "x runs right and down (y up is positive here)"
+        );
+        assert!(south.x < 0.0 && south.y < 0.0, "y runs left and down");
+        assert!((Camera::ground_forward(0) - cam.forward()).length() < 1e-6);
     }
 
     #[test]

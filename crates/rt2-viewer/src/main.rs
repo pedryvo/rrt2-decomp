@@ -1,4 +1,5 @@
-//! `rt2-viewer <file.MAP|file.GAM>`: look at an original map in the classic isometric view.
+//! `rt2-viewer <file.MAP|file.GAM>`: look at an original map in the classic isometric view, drawn
+//! with the game's own graphics (read from the install directory, `--game-dir` or `RT2_DIR`).
 //!
 //! Controls: drag with any mouse button or use WASD / arrows to pan, mouse wheel to zoom,
 //! Q / E to rotate by 90 degrees, Home to re-frame the map, Esc to quit.
@@ -11,9 +12,8 @@ use std::time::Instant;
 
 use anyhow::{Context, Result, bail};
 use clap::Parser;
-use rt2_formats::map::Map;
-use rt2_render::mesh::DEFAULT_HEIGHT_SCALE;
-use rt2_render::{Camera, Renderer, TerrainMesh};
+use rt2_formats::map::{Map, Save};
+use rt2_render::{Camera, GameAssets, NATIVE_ZOOM, Renderer, Scene, SceneOptions};
 use winit::application::ApplicationHandler;
 use winit::dpi::PhysicalPosition;
 use winit::event::{ElementState, MouseScrollDelta, WindowEvent};
@@ -43,6 +43,25 @@ struct Args {
     /// Initial zoom as a multiple of the fit-to-window zoom
     #[arg(long, default_value_t = 1.0)]
     zoom: f32,
+    /// Absolute zoom in screen pixels per native pixel (1 = the original's maximum zoom, 2 = twice
+    /// as large); overrides `--zoom`
+    #[arg(long)]
+    scale: Option<f32>,
+    /// Centre the view on this tile, `X,Y`
+    #[arg(long, value_parser = parse_tile)]
+    center: Option<(f32, f32)>,
+    /// The game installation (the folder with `data/RT2.PK2`)
+    #[arg(long, env = "RT2_DIR")]
+    game_dir: PathBuf,
+    /// Do not draw trees, buildings and stations
+    #[arg(long)]
+    no_sprites: bool,
+}
+
+fn parse_tile(s: &str) -> Result<(f32, f32), String> {
+    let (x, y) = s.split_once(',').ok_or("expected X,Y")?;
+    let parse = |v: &str| v.trim().parse::<f32>().map_err(|e| e.to_string());
+    Ok((parse(x)?, parse(y)?))
 }
 
 fn parse_size(s: &str) -> Result<(u32, u32), String> {
@@ -55,11 +74,37 @@ fn parse_size(s: &str) -> Result<(u32, u32), String> {
     Ok(size)
 }
 
+/// Frame the view as the command line asks.
+fn initial_camera(args: &Args, map_size: (usize, usize), viewport: (u32, u32)) -> Camera {
+    let mut camera = Camera::fit(map_size.0, map_size.1, viewport);
+    camera.rotation = args.rotation % 4;
+    camera.zoom_by(args.zoom);
+    if let Some(scale) = args.scale {
+        camera.zoom = scale * NATIVE_ZOOM;
+        camera.zoom_by(1.0); // clamp
+    }
+    if let Some((x, y)) = args.center {
+        camera.target = glam_vec2(x, y);
+    }
+    camera
+}
+
+fn glam_vec2(x: f32, y: f32) -> rt2_render::camera::Vec2 {
+    rt2_render::camera::Vec2::new(x, y)
+}
+
 fn main() -> Result<()> {
     let args = Args::parse();
     let raw =
         std::fs::read(&args.path).with_context(|| format!("reading {}", args.path.display()))?;
-    let map = Map::parse(&raw).with_context(|| format!("parsing {}", args.path.display()))?;
+    // Saves carry the buildings and the pre-built track; plain terrain is the fallback.
+    let (map, save) = match Save::parse(&raw) {
+        Ok(save) => (save.map.clone(), Some(save)),
+        Err(_) => (
+            Map::parse(&raw).with_context(|| format!("parsing {}", args.path.display()))?,
+            None,
+        ),
+    };
     eprintln!(
         "{}: {}x{} tiles, {:.0}% water",
         map.name,
@@ -67,13 +112,20 @@ fn main() -> Result<()> {
         map.height,
         map.water_fraction() * 100.0
     );
-    let mesh = TerrainMesh::build(&map, DEFAULT_HEIGHT_SCALE);
-    let mut camera = Camera::fit(map.width, map.height, args.size);
-    camera.rotation = args.rotation % 4;
-    camera.zoom_by(args.zoom);
+    let assets = GameAssets::open(&args.game_dir)
+        .with_context(|| format!("opening the game in {}", args.game_dir.display()))?;
+    let scene = Arc::new(Scene::build(
+        Arc::new(assets),
+        &map,
+        save.as_ref(),
+        SceneOptions {
+            sprites: !args.no_sprites,
+        },
+    ));
+    let camera = initial_camera(&args, (map.width, map.height), args.size);
 
     if let Some(out) = &args.screenshot {
-        let pixels = rt2_render::render_offscreen(&mesh, &camera, args.size)?;
+        let pixels = rt2_render::render_offscreen(scene, &camera, args.size)?;
         rt2_render::write_png(out, args.size, &pixels)?;
         eprintln!("wrote {}", out.display());
         return Ok(());
@@ -83,13 +135,14 @@ fn main() -> Result<()> {
     event_loop.set_control_flow(ControlFlow::Poll);
     let mut app = App {
         map_size: (map.width, map.height),
-        mesh,
+        scene,
         camera,
-        args_zoom: args.zoom,
+        args,
         gfx: None,
         keys: HashSet::new(),
         cursor: None,
         dragging: false,
+        started: Instant::now(),
         last_frame: Instant::now(),
         error: None,
     };
@@ -110,14 +163,15 @@ struct Gfx {
 }
 
 impl Gfx {
-    fn new(window: Arc<Window>, mesh: &TerrainMesh) -> Result<Gfx> {
+    fn new(window: Arc<Window>, scene: Arc<Scene>) -> Result<Gfx> {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
         let surface = instance.create_surface(window.clone())?;
         let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
             compatible_surface: Some(&surface),
             ..Default::default()
         }))?;
-        let (device, queue) = pollster::block_on(adapter.request_device(&Default::default()))?;
+        let (device, queue) =
+            pollster::block_on(adapter.request_device(&rt2_render::renderer::device_descriptor()))?;
         // Always the physical size: on HiDPI screens this is the real pixel count.
         let size = window.inner_size();
         let mut config = surface
@@ -130,7 +184,13 @@ impl Gfx {
         }
         config.present_mode = wgpu::PresentMode::Fifo; // vsync
         surface.configure(&device, &config);
-        let renderer = Renderer::new(&device, config.format, (config.width, config.height), mesh);
+        let renderer = Renderer::new(
+            &device,
+            &queue,
+            config.format,
+            (config.width, config.height),
+            scene,
+        );
         Ok(Gfx {
             window,
             surface,
@@ -151,7 +211,8 @@ impl Gfx {
         self.renderer.resize(&self.device, (width, height));
     }
 
-    fn draw(&mut self, camera: &Camera) {
+    fn draw(&mut self, camera: &Camera, water_frame: u32) {
+        self.renderer.set_water_frame(water_frame);
         use wgpu::CurrentSurfaceTexture as Cst;
         let frame = match self.surface.get_current_texture() {
             Cst::Success(frame) => frame,
@@ -174,7 +235,7 @@ impl Gfx {
         self.render_frame(frame, camera);
     }
 
-    fn render_frame(&self, frame: wgpu::SurfaceTexture, camera: &Camera) {
+    fn render_frame(&mut self, frame: wgpu::SurfaceTexture, camera: &Camera) {
         let view = frame.texture.create_view(&Default::default());
         self.renderer
             .render(&self.device, &self.queue, &view, camera);
@@ -185,9 +246,10 @@ impl Gfx {
 
 struct App {
     map_size: (usize, usize),
-    mesh: TerrainMesh,
+    scene: Arc<Scene>,
     camera: Camera,
-    args_zoom: f32,
+    args: Args,
+    started: Instant,
     gfx: Option<Gfx>,
     keys: HashSet<KeyCode>,
     cursor: Option<PhysicalPosition<f64>>,
@@ -228,8 +290,7 @@ impl App {
     }
 
     fn reframe(&mut self) {
-        self.camera = Camera::fit(self.map_size.0, self.map_size.1, self.viewport());
-        self.camera.zoom_by(self.args_zoom);
+        self.camera = initial_camera(&self.args, self.map_size, self.viewport());
     }
 }
 
@@ -242,7 +303,7 @@ impl ApplicationHandler for App {
         let result = event_loop
             .create_window(attrs)
             .map_err(anyhow::Error::from)
-            .and_then(|w| Gfx::new(Arc::new(w), &self.mesh));
+            .and_then(|w| Gfx::new(Arc::new(w), self.scene.clone()));
         match result {
             Ok(gfx) => {
                 self.gfx = Some(gfx);
@@ -315,8 +376,10 @@ impl ApplicationHandler for App {
             WindowEvent::RedrawRequested => {
                 self.update();
                 let camera = self.camera;
+                // The ocean animates at about 8 frames per second.
+                let frame = (self.started.elapsed().as_millis() / 125) as u32;
                 if let Some(gfx) = &mut self.gfx {
-                    gfx.draw(&camera);
+                    gfx.draw(&camera, frame);
                 }
             }
             _ => {}

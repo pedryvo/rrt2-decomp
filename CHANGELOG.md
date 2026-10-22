@@ -82,3 +82,7 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Feature: Save::to_bytes writes 0x233C/0x2348 saves byte for byte (checksum 0x4ef4d0 included); rt2-advance tool advances a save N days like advance_save.py
 - RE: first end-to-end comparison against the original (docs/fidelity-status.md): Tutorial 1 day equal, 7 and 30 days differ in 3 fields; runtime industry type row 28 differs from the exe .data
 - Docs: fidelity scoreboard docs/fidelity-status.md
+- Feature: rt2-viewer draws original maps with the game's own graphics (ground, ocean and track textures, trees, houses, industries, stations) read from the install dir (--game-dir / RT2_DIR)
+- Improved: terrain relief now uses the original's 2 px per elevation unit at native zoom; view rotation 0 matches the original projection
+- Feature: sprite upscaling for high DPI: Scale2x bake into an atlas at load plus a sharp-bilinear sampler
+- RE: ground ids are ordered like ground.imb records (ground 0x00 only uses ids 0-2); ground.imb families listed in code; map object pool (0x574c74) byte 6 = building type, i16 x/y at +0x22/+0x24

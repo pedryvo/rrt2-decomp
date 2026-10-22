@@ -1,22 +1,50 @@
 //! CPU-side terrain mesh built from the corner elevation grid.
 //!
 //! World space: `x` east (tile columns), `z` south (tile rows), `y` up. One tile is one world unit
-//! wide. Every tile gets its own four vertices so it can carry a flat colour, while the lighting
-//! normals are smooth (central differences of the corner grid).
+//! wide. Every tile gets its own four vertices so it can carry its own texture layers, while the
+//! lighting normals are smooth (central differences of the corner grid).
 
-use rt2_formats::map::{Map, Tile};
+use rt2_formats::map::Map;
 
-/// World units of height per elevation unit. The original's scale is unknown, this only makes the
-/// relief readable.
-pub const DEFAULT_HEIGHT_SCALE: f32 = 1.0 / 12.0;
+/// Screen pixels per world unit along the screen x axis at the original's maximum zoom: a tile is
+/// a 128x64 diamond, so one tile edge spans `64 * sqrt(2)` px horizontally
+/// (`docs/formats/sprite-catalog.md` section 2.1).
+pub const NATIVE_ZOOM: f32 = 64.0 * std::f32::consts::SQRT_2;
+
+/// World units of height per elevation unit: the original draws 2 px per elevation unit at native
+/// zoom (`tela_y = 32 (X + Y) - 2 elevation`, section 2.1). In the 30 degree camera a world unit
+/// of height covers `cos(30 deg) * NATIVE_ZOOM` px, hence the division.
+pub fn height_scale() -> f32 {
+    2.0 / (NATIVE_ZOOM * (30.0f32).to_radians().cos())
+}
+
+/// Marks "no layer" in the per-vertex layer fields.
+pub const NO_LAYER: u32 = u32::MAX;
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct Vertex {
     pub position: [f32; 3],
     pub normal: [f32; 3],
-    /// Linear RGB.
-    pub color: [f32; 3],
+    /// Texture coordinate over the tile, `(0, 0)` at the tile's north corner `(x, y)`, `u` along
+    /// `+x` and `v` along `+y` (the 64x64 texture is mapped onto the diamond as-is).
+    pub uv: [f32; 2],
+    /// `[ground layer, ocean layer, track layer, quarter turns]`; a layer is [`NO_LAYER`] when the
+    /// tile has none of that kind.
+    pub layers: [u32; 4],
+}
+
+/// What a tile is drawn with (decided by the scene builder, the mesh only carries it).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TileLook {
+    /// Layer in the ground stack, `None` for open water.
+    pub ground: Option<u16>,
+    /// Layer in the ocean stack (variant 0..4); the shader adds the animation frame.
+    pub water: Option<u16>,
+    /// Layer in the track stack.
+    pub track: Option<u16>,
+    /// Quarter turns applied to the ground texture.
+    pub turns: u8,
 }
 
 #[derive(Debug, Clone)]
@@ -28,33 +56,6 @@ pub struct TerrainMesh {
     pub height: usize,
     /// Highest vertex, in world units (for camera framing).
     pub max_y: f32,
-}
-
-fn srgb_to_linear(c: [f32; 3]) -> [f32; 3] {
-    c.map(|v| v.powf(2.2))
-}
-
-fn lerp3(a: [f32; 3], b: [f32; 3], t: f32) -> [f32; 3] {
-    [0, 1, 2].map(|i| a[i] + (b[i] - a[i]) * t)
-}
-
-/// Land colour ramp (sRGB 0..1) over `t` in 0..=1 of the height above sea level.
-fn land_ramp(t: f32) -> [f32; 3] {
-    const STOPS: [(f32, [f32; 3]); 5] = [
-        (0.0, [0.45, 0.62, 0.30]),
-        (0.25, [0.52, 0.64, 0.30]),
-        (0.5, [0.62, 0.55, 0.32]),
-        (0.75, [0.52, 0.46, 0.40]),
-        (1.0, [0.95, 0.95, 0.95]),
-    ];
-    let t = t.clamp(0.0, 1.0);
-    for pair in STOPS.windows(2) {
-        let ((t0, c0), (t1, c1)) = (pair[0], pair[1]);
-        if t <= t1 {
-            return lerp3(c0, c1, (t - t0) / (t1 - t0));
-        }
-    }
-    STOPS[STOPS.len() - 1].1
 }
 
 /// Sea level of the map: the median elevation of the corners of water tiles (the original has no
@@ -75,26 +76,22 @@ pub fn sea_level(map: &Map) -> f32 {
     levels[levels.len() / 2] as f32
 }
 
-fn tile_color(tile: &Tile, height_above_sea: f32, range: f32) -> [f32; 3] {
-    let srgb = if tile.is_water() {
-        [0.16, 0.36, 0.58]
-    } else {
-        let t = (height_above_sea / range).clamp(0.0, 1.0).sqrt();
-        let base = land_ramp(t);
-        // Forest: darker green, up to ~35% at the densest.
-        let forest = tile.trees as f32 / 28.0 * 0.35;
-        lerp3(base, [0.12, 0.28, 0.10], forest)
-    };
-    srgb_to_linear(srgb)
+/// Elevation of the surface at tile-local coordinates `(fx, fy)` in `0..=1` (bilinear over the four
+/// corners; the mesh splits tiles in triangles, this is the close planar approximation).
+pub fn surface_elevation(map: &Map, tx: usize, ty: usize, fx: f32, fy: f32) -> f32 {
+    let c = |dx: usize, dy: usize| map.corner(tx + dx, ty + dy) as f32;
+    let top = c(0, 0) * (1.0 - fx) + c(1, 0) * fx;
+    let bottom = c(0, 1) * (1.0 - fx) + c(1, 1) * fx;
+    top * (1.0 - fy) + bottom * fy
 }
 
 impl TerrainMesh {
-    pub fn build(map: &Map, height_scale: f32) -> TerrainMesh {
+    /// `looks` has one entry per tile, row-major. `scale` is the world height per elevation unit
+    /// (normally [`height_scale`]).
+    pub fn build(map: &Map, scale: f32, looks: &[TileLook]) -> TerrainMesh {
         let (w, h) = (map.width, map.height);
-        let sea = sea_level(map);
-        let top = map.elevation.iter().copied().max().unwrap_or(0) as f32;
-        let range = (top - sea).max(1.0);
-        let world_y = |x: usize, y: usize| map.corner(x, y) as f32 * height_scale;
+        assert_eq!(looks.len(), w * h, "one look per tile");
+        let world_y = |x: usize, y: usize| map.corner(x, y) as f32 * scale;
 
         // Smooth normal at corner (x, y) from central differences.
         let normal = |x: usize, y: usize| -> [f32; 3] {
@@ -106,27 +103,30 @@ impl TerrainMesh {
             [-dx / len, 1.0 / len, -dz / len]
         };
 
+        let layer = |l: Option<u16>| l.map_or(NO_LAYER, u32::from);
         let mut vertices = Vec::with_capacity(w * h * 4);
         let mut indices = Vec::with_capacity(w * h * 6);
         let mut max_y = 0.0f32;
         for ty in 0..h {
             for tx in 0..w {
-                let tile = map.tile(tx, ty);
+                let look = looks[ty * w + tx];
+                let layers = [
+                    layer(look.ground),
+                    layer(look.water),
+                    layer(look.track),
+                    look.turns as u32 & 3,
+                ];
                 let corners = [(tx, ty), (tx + 1, ty), (tx, ty + 1), (tx + 1, ty + 1)];
-                let avg = corners
-                    .iter()
-                    .map(|&(x, y)| map.corner(x, y) as f32)
-                    .sum::<f32>()
-                    / 4.0;
-                let color = tile_color(tile, avg - sea, range);
+                let uvs = [[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]];
                 let base = vertices.len() as u32;
-                for (x, y) in corners {
+                for (&(x, y), uv) in corners.iter().zip(uvs) {
                     let py = world_y(x, y);
                     max_y = max_y.max(py);
                     vertices.push(Vertex {
                         position: [x as f32, py, y as f32],
                         normal: normal(x, y),
-                        color,
+                        uv,
+                        layers,
                     });
                 }
                 indices.extend_from_slice(&[
@@ -178,9 +178,32 @@ mod tests {
         }
     }
 
+    fn looks(n: usize) -> Vec<TileLook> {
+        vec![
+            TileLook {
+                ground: Some(5),
+                water: None,
+                track: None,
+                turns: 1,
+            };
+            n
+        ]
+    }
+
+    #[test]
+    fn two_pixels_per_elevation_unit_at_native_zoom() {
+        // A world unit of height is cos(30 deg) * NATIVE_ZOOM px on screen.
+        let px = height_scale() * (30.0f32).to_radians().cos() * NATIVE_ZOOM;
+        assert!((px - 2.0).abs() < 1e-4);
+        // The tile diamond is 128 px wide at native zoom: east and south edges each cover
+        // cos(45 deg) * NATIVE_ZOOM = 64 px horizontally.
+        let half = (45.0f32).to_radians().cos() * NATIVE_ZOOM;
+        assert!((half - 64.0).abs() < 1e-3);
+    }
+
     #[test]
     fn mesh_has_four_vertices_and_two_triangles_per_tile() {
-        let mesh = TerrainMesh::build(&flat_map(4, 3, 10), 0.5);
+        let mesh = TerrainMesh::build(&flat_map(4, 3, 10), 0.5, &looks(12));
         assert_eq!(mesh.vertices.len(), 48);
         assert_eq!(mesh.indices.len(), 72);
         assert!(
@@ -189,11 +212,12 @@ mod tests {
                 .all(|&i| (i as usize) < mesh.vertices.len())
         );
         assert_eq!(mesh.max_y, 5.0);
+        assert_eq!(mesh.vertices[0].layers, [5, NO_LAYER, NO_LAYER, 1]);
     }
 
     #[test]
     fn flat_terrain_has_up_normals() {
-        let mesh = TerrainMesh::build(&flat_map(2, 2, 7), 1.0);
+        let mesh = TerrainMesh::build(&flat_map(2, 2, 7), 1.0, &looks(4));
         for v in &mesh.vertices {
             assert_eq!(v.normal, [0.0, 1.0, 0.0]);
         }
@@ -207,7 +231,7 @@ mod tests {
                 map.elevation[y * 3 + x] = (x * 4) as i16; // rises towards +x
             }
         }
-        let mesh = TerrainMesh::build(&map, 1.0);
+        let mesh = TerrainMesh::build(&map, 1.0, &looks(4));
         assert!(mesh.vertices.iter().all(|v| v.normal[0] < 0.0));
     }
 
@@ -217,5 +241,14 @@ mod tests {
         map.tiles[0].ground = 0x61;
         map.elevation[0] = -1;
         assert_eq!(sea_level(&map), -1.0);
+    }
+
+    #[test]
+    fn surface_elevation_interpolates_the_corners() {
+        let mut map = flat_map(1, 1, 0);
+        map.elevation = vec![0, 10, 20, 30];
+        assert_eq!(surface_elevation(&map, 0, 0, 0.0, 0.0), 0.0);
+        assert_eq!(surface_elevation(&map, 0, 0, 1.0, 1.0), 30.0);
+        assert_eq!(surface_elevation(&map, 0, 0, 0.5, 0.5), 15.0);
     }
 }
