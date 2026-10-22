@@ -13,7 +13,7 @@
 
 _O mesmo jogo de 1998 que você conhece, a mesma perspectiva isométrica,<br>agora nativo em 1080p, 4K e ultrawide._
 
-[English](README.md) · **Português**
+[English](README.md) · **Português** · [Español](README.es.md) · [Deutsch](README.de.md) · [中文](README.zh-CN.md) · [Русский](README.ru.md)
 
 </div>
 

@@ -13,7 +13,7 @@
 
 _The 1998 classic you know, from the same isometric viewpoint,<br>now native at 1080p, 4K and ultrawide._
 
-**English** · [Português](README.pt-BR.md)
+**English** · [Português](README.pt-BR.md) · [Español](README.es.md) · [Deutsch](README.de.md) · [中文](README.zh-CN.md) · [Русский](README.ru.md)
 
 </div>
 
