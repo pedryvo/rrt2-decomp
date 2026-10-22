@@ -1,6 +1,6 @@
 # Cenários: regras, condições, efeitos e vitória
 
-Fonte: `RT2_PLAT.EXE` (sha256 `510b9e44...`), lido no C exportado (`re/db/decomp/`) e no disassembly do rizin; as tabelas saem do `.data` do executável e as regras de 128 arquivos do jogo (`maps/*.MAP`, `maps/*.MP2`, `games/*.GAM`). O manual do editor (`editor3.txt`, `EDITOR2.TXT`) e `docs/reference/manual-rules.md` serviram só de pista (nomes dos efeitos, ordem de avaliação); as divergências estão na seção 8. Testes: `crates/rt2-formats/tests/scenarios.rs` (dados reais, sem o exe) e `crates/rt2-oracle/tests/scenarios.rs` (diferencial contra o exe emulado); o código de apoio (tabela de 118 tokens, tokenizador, compilador, redutor, agregação de classe) está em `crates/rt2-formats/tests/scenarios/lang.rs` e deve ser promovido para um módulo do `rt2-sim` na implementação.
+Fonte: `RT2_PLAT.EXE` (sha256 `510b9e44...`), lido no C exportado (`re/db/decomp/`) e no disassembly do rizin; as tabelas saem do `.data` do executável e as regras de 128 arquivos do jogo (`maps/*.MAP`, `maps/*.MP2`, `games/*.GAM`). O manual do editor (`editor3.txt`, `EDITOR2.TXT`) e `docs/reference/manual-rules.md` serviram só de pista (nomes dos efeitos, ordem de avaliação); as divergências estão na seção 8. Testes: `crates/rt2-sim/tests/scenarios.rs` (dados reais, sem o exe) e `crates/rt2-sim/tests/scenario_engine.rs` (motor em mundo simulado) e `crates/rt2-oracle/tests/scenarios.rs` (diferencial contra o exe emulado); o código (tabela de 118 tokens, tokenizador, compilador, redutor, agregação de classe, regras, efeitos, gatilhos) está em `crates/rt2-sim/src/scenario/`.
 
 ## 1. Resumo do modelo
 
@@ -534,7 +534,7 @@ Depois de qualquer mudança de `[0x573d70]`, `event_fire_trigger` encerra a varr
 
 ## 7. Testes
 
-- `crates/rt2-formats/tests/scenarios.rs` (precisa de `RT2_DIR`): compilação x tokens gravados, ids, flags de escopo derivadas, forma das condições, efeitos; separação de palavras e números.
+- `crates/rt2-sim/tests/scenarios.rs` (precisa de `RT2_DIR`): compilação x tokens gravados, ids, flags de escopo derivadas, forma das condições, efeitos; separação de palavras e números.
 - `crates/rt2-oracle/tests/scenarios.rs` (executável emulado): `token_table_matches_executable` (118 entradas), `effect_table_shape`, `shipped_effect_values_are_in_range` (precisa de `RT2_DIR`), `reducer_matches_original_on_well_formed_expressions` (6000 expressões aleatórias, valor, sucesso, estados do RNG do jogo e do CRT), `reducer_matches_original_on_malformed_token_streams` (4000), `class_aggregation_matches_original` (600 casos nas três dimensões, pools montados na memória emulada), `class_parameter_error_paths_match_original`, `every_shipped_condition_reduces_like_the_original` (3649 condições reais com o avaliador de funções trocado por um stub que devolve 7, 6 falham nos dois, 141 regras de classe puladas), `effect_money_scale_matches_original`.
 
 ## 8. Divergências do manual (o código vale)

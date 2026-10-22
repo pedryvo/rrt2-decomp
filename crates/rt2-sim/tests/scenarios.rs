@@ -4,14 +4,14 @@
 //! condition must reduce (shape-wise) without an evaluation error. Skipped unless `RT2_DIR` points
 //! at an install.
 
-#[path = "scenarios/lang.rs"]
-mod lang;
-
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
-use lang::{Ctx, Env, N_ENTRIES, compile, loop_flags, reduce};
 use rt2_formats::map::Save;
+use rt2_sim::rng::GameRng;
+use rt2_sim::scenario::{
+    Ctx, Eval, N_ENTRIES, ScenarioEnv, compile, loop_flags, parse_number, reduce, split_words,
+};
 
 fn game_dir() -> Option<PathBuf> {
     std::env::var_os("RT2_DIR").map(PathBuf::from)
@@ -43,9 +43,12 @@ fn files(dir: &std::path::Path) -> Vec<PathBuf> {
 /// Environment that answers every function with a fixed small value (shape check only).
 struct Dummy;
 
-impl Env for Dummy {
-    fn value(&mut self, _: usize, _: i32, _: i32, _: i32, _: i32, _: bool) -> i32 {
+impl ScenarioEnv for Dummy {
+    fn value(&mut self, _: usize, _: i32, _: i32, _: i32, _: i32) -> i32 {
         7
+    }
+    fn crt_range(&mut self, lo: i32, _: i32) -> i32 {
+        lo
     }
     fn companies(&self) -> Vec<i32> {
         vec![1, 2]
@@ -154,6 +157,16 @@ fn every_shipped_rule_compiles_to_its_stored_tokens() {
                     r.title
                 );
             }
+            // the decoded engine rule agrees with the raw record
+            let rule = rt2_sim::scenario::Rule::from_file(r);
+            assert_eq!(u32::from(rule.trigger), u32_at(&r.fixed, 0x34), "{at}");
+            assert_eq!(rule.tokens, r.tokens_a, "{at}");
+            let stride = if len == 0x362 { 0x15e } else { 0x111 };
+            for k in 0..2 {
+                for e in 0..stride {
+                    assert_eq!(rule.effects[k][e] as u8, r.fixed[0x64 + k * stride + e]);
+                }
+            }
             match compile(&r.condition) {
                 Ok((ids, vals)) => {
                     if ids != r.tokens_a || vals != r.tokens_b {
@@ -172,7 +185,10 @@ fn every_shipped_rule_compiles_to_its_stored_tokens() {
                     territory: 1,
                     crt_rand: false,
                 };
-                if let Err(code) = reduce(&mut Dummy, &r.tokens_a, &r.tokens_b, &ctx) {
+                let mut rng = GameRng::new(1);
+                let mut dummy = Dummy;
+                let mut ev = Eval::new(&mut dummy, &mut rng, ctx);
+                if let Err(code) = reduce(&mut ev, &r.tokens_a, &r.tokens_b) {
                     shape_errors.push(format!("{at}: error {code:#x}: {}", r.condition));
                 }
                 // loop flags the original derives (0x457a30) vs the stored fields
@@ -218,7 +234,6 @@ fn every_shipped_rule_compiles_to_its_stored_tokens() {
 
 #[test]
 fn word_splitting_and_numbers() {
-    use lang::{parse_number, split_words};
     assert_eq!(
         split_words("GameYear>=1900 and (A+B)*3"),
         [

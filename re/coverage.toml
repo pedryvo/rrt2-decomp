@@ -5,7 +5,7 @@
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
 # Classificadas (categoria != unknown): 1077 (36.6%)
 # Por categoria: lib=258, platform=117, render=11, audio=70, ui=250, sim=371, unknown=1868
-# Por estado:   unknown=2642, named=81, spec=170, verified=52
+# Por estado:   unknown=2642, named=81, spec=168, verified=54
 # Entradas manuais: 344
 # sim spec coverage: 53.9% (200 de 371 funcoes sim em spec/verified)
 
@@ -10792,15 +10792,15 @@ addr = "0x455e70"
 size = 182
 category = "ui"
 status = "spec"
-why = "scenarios/rule_show_message (2.4)"
+why = "scenarios 2.4; message request passed to ScenarioWorld::show_message, window not ported"
 manual = true
 
 [[function]]
 addr = "0x455f30"
 size = 6432
 category = "sim"
-status = "spec"
-why = "scenarios/rule_evaluate (docs/spec/scenarios.md 2.3, 4)"
+status = "verified"
+why = "scenarios 2.3/4.2/4.4/5; rt2-sim scenario::evaluate_rule, tests/scenario_engine.rs"
 manual = true
 
 [[function]]
@@ -10839,8 +10839,8 @@ manual = true
 addr = "0x457fe0"
 size = 111
 category = "sim"
-status = "spec"
-why = "scenarios/event_fire_trigger (2.2)"
+status = "verified"
+why = "scenarios 2.2; rt2-sim scenario::fire_trigger, tests/scenario_engine.rs"
 manual = true
 
 [[function]]
@@ -10856,7 +10856,7 @@ addr = "0x458210"
 size = 160
 category = "sim"
 status = "spec"
-why = "scenarios/rule_collect_status (2.2)"
+why = "scenarios 2.2; fire_trigger(7) with the world appending to the status buffer"
 manual = true
 
 [[function]]

@@ -1,15 +1,12 @@
 //! Differential tests for the scenario rule system (docs/spec/scenarios.md): the token table, the
 //! effect table, and the condition reducer `0x454270` (with the function evaluator `0x454ae0` for
 //! the language functions that only read plain globals and the two RNGs) against the Rust port in
-//! `rt2-formats/tests/scenarios/lang.rs`. The data checks need `RT2_DIR`; everything is skipped
+//! `rt2-sim::scenario`. The data checks need `RT2_DIR`; everything is skipped
 //! when the executable is absent. The x87 control word is pinned to 53-bit precision.
 
-#[path = "../../rt2-formats/tests/scenarios/lang.rs"]
-mod lang;
-
-use lang::{Ctx, Env, N_ENTRIES, TABLE};
 use rt2_oracle::Oracle;
 use rt2_sim::rng::GameRng;
+use rt2_sim::scenario::{self as lang, Ctx, Eval, N_ENTRIES, ScenarioEnv, TABLE};
 use unicorn_engine::RegisterX86;
 
 fn exe_path() -> String {
@@ -117,6 +114,24 @@ fn effect_table(o: &Oracle) -> Vec<Effect> {
             }
         })
         .collect()
+}
+
+/// The run-time loader of `rt2-sim` reads the same 350 rows as the emulated image holds.
+#[test]
+fn effect_table_loader_matches_executable_memory() {
+    let Some(o) = oracle() else { return };
+    let exe = rt2_sim::exe::Exe::from_bytes(std::fs::read(exe_path()).unwrap()).unwrap();
+    let table = rt2_sim::scenario::EffectTable::load(&exe).unwrap();
+    assert_eq!(table.rows.len(), N_EFFECTS);
+    let mem = rd(&o, EFFECT_TABLE, 16 * N_EFFECTS);
+    assert_eq!(table, rt2_sim::scenario::EffectTable::from_bytes(&mem));
+    for (i, (row, want)) in table.rows.iter().zip(effect_table(&o)).enumerate() {
+        assert_eq!(row.instant, want.instant, "row {i}");
+        assert_eq!(
+            (row.min, row.max, row.name_lng),
+            (want.min, want.max, want.name_lng)
+        );
+    }
 }
 
 #[test]
@@ -238,25 +253,13 @@ impl World {
     }
 }
 
-impl Env for World {
-    fn value(
-        &mut self,
-        id: usize,
-        param: i32,
-        company: i32,
-        _p: i32,
-        territory: i32,
-        crt_rand: bool,
-    ) -> i32 {
+impl ScenarioEnv for World {
+    fn crt_range(&mut self, lo: i32, hi: i32) -> i32 {
+        lo + self.crt_rand() % (hi - lo + 1)
+    }
+    fn value(&mut self, id: usize, param: i32, company: i32, _p: i32, territory: i32) -> i32 {
         let _ = param;
         match id {
-            0 => {
-                if crt_rand {
-                    1 + self.crt_rand() % 10000
-                } else {
-                    self.rng.as_mut().unwrap().range(1, 10000)
-                }
-            }
             1 => 1,
             2 => 0,
             3 => self.n_players as i32,
@@ -527,8 +530,12 @@ fn run_original(
 
 fn run_rust(w: &World, ids: &[i32], vals: &[i32], ctx: &Ctx) -> (Result<i32, u32>, u32, u32) {
     let mut w = w.clone();
-    let r = lang::reduce(&mut w, ids, vals, ctx);
-    (r, w.rng.as_ref().unwrap().state(), w.crt)
+    let mut rng = w.rng.take().unwrap();
+    let r = {
+        let mut ev = Eval::new(&mut w, &mut rng, *ctx);
+        lang::reduce(&mut ev, ids, vals)
+    };
+    (r, rng.state(), w.crt)
 }
 
 fn compare(
@@ -692,8 +699,15 @@ fn every_shipped_condition_reduces_like_the_original() {
     ];
     o.write_mem(0x0045_4ae0, &stub).unwrap();
     struct Seven;
-    impl Env for Seven {
-        fn value(&mut self, _: usize, _: i32, _: i32, _: i32, _: i32, _: bool) -> i32 {
+    impl ScenarioEnv for Seven {
+        fn value(&mut self, _: usize, _: i32, _: i32, _: i32, _: i32) -> i32 {
+            7
+        }
+        fn crt_range(&mut self, _: i32, _: i32) -> i32 {
+            7
+        }
+        // the stub of 0x454ae0 returns 7 for every id, `Random1To10000` included
+        fn random(&mut self, _: &mut GameRng, _: bool) -> i32 {
             7
         }
         fn companies(&self) -> Vec<i32> {
@@ -733,8 +747,9 @@ fn every_shipped_condition_reduces_like_the_original() {
                 // class rules that fail before any function is evaluated
                 if has_class {
                     let mut seven = Seven;
+                    let mut rng = GameRng::new(1);
                     if !matches!(
-                        lang::reduce(&mut seven, ids, vals, &ctx),
+                        lang::reduce(&mut Eval::new(&mut seven, &mut rng, ctx), ids, vals),
                         Err(lang::err::BAD_CLASS)
                     ) {
                         skipped += 1;
@@ -744,7 +759,8 @@ fn every_shipped_condition_reduces_like_the_original() {
                 let toks: Vec<(i32, i32)> = ids.iter().copied().zip(vals.iter().copied()).collect();
                 let want = run_original(&mut o, &w, 2, ids, vals, &ctx);
                 let mut seven = Seven;
-                let got = lang::reduce(&mut seven, ids, vals, &ctx);
+                let mut rng = GameRng::new(1);
+                let got = lang::reduce(&mut Eval::new(&mut seven, &mut rng, ctx), ids, vals);
                 total += 1;
                 assert_eq!(got.is_ok(), want.ok, "{}: {toks:?}", r.condition);
                 if let Ok(v) = got {
