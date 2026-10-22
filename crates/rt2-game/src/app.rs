@@ -253,6 +253,7 @@ impl ApplicationHandler for App {
                         .window
                         .set_fullscreen(fs.then_some(Fullscreen::Borderless(None)));
                 }
+                Effect::SaveLanguage(locale) => save_language(&locale),
             }
         }
     }
@@ -261,5 +262,19 @@ impl ApplicationHandler for App {
         if let Some(s) = &self.surface {
             s.window.request_redraw();
         }
+    }
+}
+
+/// Remembers the chosen language in config.toml (a failure is only logged).
+fn save_language(locale: &str) {
+    let Some(path) = crate::paths::config_file() else {
+        return;
+    };
+    let result = crate::config::Config::load(&path).and_then(|mut c| {
+        c.language = Some(locale.to_owned());
+        c.save(&path)
+    });
+    if let Err(e) = result {
+        eprintln!("cannot save the language: {e:#}");
     }
 }

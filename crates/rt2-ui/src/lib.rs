@@ -15,7 +15,7 @@ pub mod scale;
 pub mod skin;
 pub mod ui;
 
-pub use font::{Face, FontStyle, game_font};
+pub use font::{Face, FontStyle, Script, game_font};
 pub use geom::Rect;
 pub use render::UiRenderer;
 pub use scale::UiScale;

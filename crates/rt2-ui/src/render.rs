@@ -27,7 +27,7 @@ struct Vertex {
 #[derive(Clone, PartialEq)]
 struct TextKey {
     text: String,
-    face: font::Face,
+    family: &'static str,
     size_px: f32,
     weight: u16,
     w: f32,
@@ -72,6 +72,7 @@ pub struct UiRenderer {
     vertices: wgpu::Buffer,
     vertex_capacity: u64,
     font_system: FontSystem,
+    script: font::Script,
     swash: SwashCache,
     viewport: Viewport,
     atlas: TextAtlas,
@@ -247,6 +248,7 @@ impl UiRenderer {
             vertices,
             vertex_capacity,
             font_system,
+            script: font::Script::Latin,
             swash: SwashCache::new(),
             viewport,
             atlas,
@@ -254,6 +256,12 @@ impl UiRenderer {
             texts: BTreeMap::new(),
             frame: 0,
         }
+    }
+
+    /// Selects the writing system whose faces draw the text (a language change). Cached text
+    /// layouts are keyed by family, so they rebuild by themselves.
+    pub fn set_script(&mut self, script: font::Script) {
+        self.script = script;
     }
 
     pub fn skin(&self) -> &Skin {
@@ -437,7 +445,7 @@ impl UiRenderer {
     fn ensure_text(&mut self, job: &TextJob) {
         let key = TextKey {
             text: job.text.clone(),
-            face: job.font.face,
+            family: job.font.face.family_for(self.script),
             size_px: job.font.size,
             weight: job.font.weight,
             w: job.rect.w,
@@ -453,7 +461,8 @@ impl UiRenderer {
             return;
         }
         let line = (job.font.size * 1.25).round();
-        let mut buffer = Buffer::new(&mut self.font_system, Metrics::new(job.font.size, line));
+        let em = job.font.size * job.font.face.size_factor(self.script);
+        let mut buffer = Buffer::new(&mut self.font_system, Metrics::new(em, line));
         buffer.set_wrap(if job.wrap {
             Wrap::WordOrGlyph
         } else {
@@ -461,7 +470,7 @@ impl UiRenderer {
         });
         buffer.set_size(Some(job.rect.w), Some(job.rect.h.max(line)));
         let attrs = Attrs::new()
-            .family(Family::Name(job.font.face.family()))
+            .family(Family::Name(job.font.face.family_for(self.script)))
             .weight(glyphon::Weight(job.font.weight));
         let align = match job.align {
             Align::Left => cosmic_text::Align::Left,

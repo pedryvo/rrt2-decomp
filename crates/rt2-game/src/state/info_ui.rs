@@ -658,11 +658,11 @@ impl AppState {
         let t = &self.texts;
         let names = [
             t.get(lng::FINANCES, "Finances"),
-            "Market".to_owned(),
+            self.texts.a("Market"),
             t.get(lng::TRAINS, "Trains"),
-            "Stations".to_owned(),
+            self.texts.a("Stations"),
             t.get(lng::CITIES, "Cities"),
-            "Industries".to_owned(),
+            self.texts.a("Industries"),
         ];
         let keys = ["F", "M", "T", "G", "C", "I"];
         let bar = ui.add_root(
@@ -716,7 +716,7 @@ impl AppState {
         let (title, subtitle) = match &content {
             Some(Content::List(l)) => (l.title.clone(), String::new()),
             Some(Content::Page(p)) => (p.title.clone(), p.subtitle.clone()),
-            None => ("Not available".to_owned(), String::new()),
+            None => (self.texts.a("Not available"), String::new()),
         };
         let nav = if company_nav {
             2.0 * 120.0 + 8.0
@@ -769,17 +769,17 @@ impl AppState {
                 navx + 120.0,
             );
         } else if screen.parent().is_some() {
-            nbtn(ui, "Back".to_owned(), A_BACK, navx);
+            nbtn(ui, self.texts.a("Back"), A_BACK, navx);
         }
 
         // Tabs.
         let names = [
             self.texts.get(lng::FINANCES, "Finances"),
-            "Market".to_owned(),
+            self.texts.a("Market"),
             self.texts.get(lng::TRAINS, "Trains"),
-            "Stations".to_owned(),
+            self.texts.a("Stations"),
             self.texts.get(lng::CITIES, "Cities"),
-            "Industries".to_owned(),
+            self.texts.a("Industries"),
         ];
         let gap = 6.0;
         let tw = ((inner_w - 7.0 * gap) / 7.0).min(170.0);
@@ -799,7 +799,7 @@ impl AppState {
         ui.add(
             panel,
             Kind::Button {
-                text: "Close".to_owned(),
+                text: self.texts.a("Close"),
                 font: font(13.0),
                 action: A_CLOSE,
                 enabled: true,
@@ -813,7 +813,12 @@ impl AppState {
         let Some(content) = content else {
             ui.add(
                 panel,
-                label("No game state to show.", font(16.0), MUTED, Align::Left),
+                label(
+                    &self.texts.a("No game state to show."),
+                    font(16.0),
+                    MUTED,
+                    Align::Left,
+                ),
                 at(PAD, body_y, inner_w, 24.0),
             );
             return;
@@ -834,16 +839,18 @@ impl AppState {
             Content::Page(page) => draw_page(ui, panel, &page, PAD, body_y, inner_w, bottom, pw),
         }
         let hint = match screen {
-            InfoScreen::Finance(_) => "Left / Right: company   Esc: close",
-            InfoScreen::Stock => {
-                "* = human chairman   Click a row for the company report   Esc: close"
-            }
-            s if s.parent().is_some() => "Backspace: back   Esc: close",
-            _ => "Click a row for details   Wheel, PgUp, PgDn: scroll   Esc: close",
+            InfoScreen::Finance(_) => self.texts.a("Left / Right: company   Esc: close"),
+            InfoScreen::Stock => self
+                .texts
+                .a("* = human chairman   Click a row for the company report   Esc: close"),
+            s if s.parent().is_some() => self.texts.a("Backspace: back   Esc: close"),
+            _ => self
+                .texts
+                .a("Click a row for details   Wheel, PgUp, PgDn: scroll   Esc: close"),
         };
         ui.add(
             panel,
-            label(hint, font(12.0), MUTED, Align::Left),
+            label(&hint, font(12.0), MUTED, Align::Left),
             at(PAD, ph - 26.0, inner_w, 18.0),
         );
     }
@@ -886,7 +893,12 @@ impl AppState {
         if list.table.rows.is_empty() {
             ui.add(
                 panel,
-                label("Nothing to show.", font(16.0), MUTED, Align::Left),
+                label(
+                    &self.texts.a("Nothing to show."),
+                    font(16.0),
+                    MUTED,
+                    Align::Left,
+                ),
                 at(x + 12.0, y + 40.0, w, rowh),
             );
         }

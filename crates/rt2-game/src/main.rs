@@ -8,12 +8,14 @@
 //! ```
 
 mod app;
+mod app_strings;
 mod artwork;
 mod catalog;
 mod config;
 mod gfx;
 mod info;
 mod keys;
+mod locales;
 mod paths;
 mod pick;
 mod sound;
@@ -47,6 +49,9 @@ struct Args {
     /// UI scale in percent, 100 to 300 (default: from the monitor DPI, or config.toml)
     #[arg(long)]
     ui_scale: Option<u32>,
+    /// UI language tag such as pt-BR (default: `language` of config.toml, else the system locale)
+    #[arg(long, env = "RRT2_LANG")]
+    language: Option<String>,
     /// Render one frame offscreen to this PNG and exit
     #[arg(long, value_name = "PNG")]
     screenshot: Option<PathBuf>,
@@ -108,10 +113,13 @@ fn main() -> Result<()> {
     if let Some(Cmd::SetPath { dir }) = args.command {
         return set_path(&dir, config_path);
     }
-    let config = match &config_path {
+    let mut config = match &config_path {
         Some(p) => Config::load(p)?,
         None => Config::default(),
     };
+    if args.language.is_some() {
+        config.language.clone_from(&args.language);
+    }
     let install = paths::resolve_install(args.game_dir.clone(), &config)?;
     let assets = Arc::new(
         GameAssets::open(&install)

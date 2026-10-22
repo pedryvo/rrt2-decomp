@@ -53,6 +53,7 @@ impl Gfx {
     }
 
     pub fn draw(&mut self, state: &mut AppState, target: &wgpu::TextureView, water_frame: u32) {
+        self.ui.set_script(state.script());
         if let Some(scene) = state.take_scene() {
             self.map = Some(Renderer::new(
                 &self.device,

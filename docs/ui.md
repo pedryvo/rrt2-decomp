@@ -34,7 +34,7 @@ O tamanho da tela em unidades lógicas é `físico / escala`; todo o layout é r
 
 ## Fontes
 
-Todas SIL OFL 1.1, em `assets/fonts/` com a licença ao lado (`OFL-*.txt`). O `FontSystem` só enxerga estas quatro (sem fontes do sistema: aparência igual em qualquer máquina).
+Todas SIL OFL 1.1, em `assets/fonts/` com a licença ao lado (`OFL-*.txt`). O `FontSystem` só enxerga as fontes vendorizadas (sem fontes do sistema: aparência igual em qualquer máquina).
 
 | Fonte original | Estilo | Face vetorial | Tamanho lógico (px) | Por quê |
 |---|---|---|---|---|
@@ -50,6 +50,23 @@ Todas SIL OFL 1.1, em `assets/fonts/` com a licença ao lado (`OFL-*.txt`). O `F
 | 10 `htra46` | idem, "transparente" | Anton | 53, caixa alta | mesma face (a transparência vira alfa da cor) |
 
 Tamanho = altura original x fator por face (Copperplate 1,65; Franklin 1,3; script 1,7; Haettenschweiler 1,15), calibrado visualmente nos screenshots (`game_font` em `rt2-ui/src/font.rs`). As fontes Cinzel, Libre Franklin e Dancing Script são variáveis; o peso 700 é pedido para a família Cinzel. Não há kerning nem as métricas bit a bit do bitmap: a largura de texto vem da face vetorial, e o layout não depende das larguras originais.
+
+### Idiomas e fontes
+
+Cinzel, Anton e Dancing Script não têm cirílico; nada acima tem CJK. O `rt2-ui` escolhe a família de cada estilo pelo *sistema de escrita* do idioma atual (`Script::of_locale`, `UiRenderer::set_script`; o `Gfx` informa o script do `AppState` a cada quadro, então trocar de idioma em tempo de execução refaz todos os textos):
+
+| Estilo | Latim | Cirílico (`ru`) | CJK (`zh-CN`) |
+|---|---|---|---|
+| Copperplate | Cinzel | Cormorant SC (Bold, o peso que o `game_font` pede; subconjunto Latim+Cirílico, 0,3 MB) | Noto Sans SC |
+| Franklin | Libre Franklin | Libre Franklin (já tem cirílico) | Noto Sans SC |
+| Display | Anton | Oswald (variável, 0,17 MB) | Noto Sans SC |
+| Script | Dancing Script | Marck Script (0,08 MB) | Noto Sans SC |
+
+Cormorant SC é o versalete serifado de aparência mais próxima de Cinzel entre os OFL com cirílico (Forum e Playfair Display SC foram os outros candidatos; Cormorant tem o desenho mais fino e gravado). Oswald é a condensada pesada com cirílico mais próxima de Anton.
+
+**CJK: fonte vendorizada, não do sistema.** Usamos `NotoSansSC-subset.ttf` (2,3 MB): Noto Sans SC instanciada no peso 500 (a variável original tem 17 MB) e reduzida a GB2312 (6763 hanzi), pontuação CJK, Latim básico/estendido e símbolos comuns. Motivos: o resto do projeto já não depende de fontes do sistema (aparência e testes iguais em qualquer máquina, o screenshot é reproduzível), e o subconjunto custa só 2,3 MB no binário. Limite conhecido: um hanzi fora do GB2312 (raro em texto de jogo) aparece como "tofu"; se isso virar problema, o próximo passo é carregar também uma fonte CJK do sistema via fontconfig como último recurso. Um único peso e uma única família sem serifa para os quatro estilos em chinês: o Copperplate e o script não têm equivalente CJK com a mesma personalidade, e a hierarquia continua pelo tamanho e pela sombra.
+
+A cadeia de fallback é a do cosmic-text: a família do estilo primeiro, depois qualquer fonte vendorizada que tenha o glifo (por exemplo, letras latinas dentro do texto chinês, ou "中文" no seletor de idioma enquanto o jogo está em inglês).
 
 ## Skin
 

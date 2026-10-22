@@ -42,6 +42,8 @@ const A_FASTER: u32 = 21;
 const A_SLOWER: u32 = 22;
 const A_SAVE: u32 = 23;
 const A_MENU: u32 = 24;
+/// Language buttons of the main menu: `A_LANG + index` in `Texts::languages()`.
+const A_LANG: u32 = 200;
 
 /// Wall time of one simulation frame (`calendar::NOMINAL_FRAME_MS`).
 const STEP_MS: f32 = rt2_sim::calendar::NOMINAL_FRAME_MS as f32;
@@ -56,10 +58,12 @@ const HUD_HEIGHT: f32 = 46.0;
 const TOAST_SECS: f32 = 4.0;
 
 /// Things the window loop must do for the state.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Effect {
     Quit,
     ToggleFullscreen,
+    /// The player chose a language: remember it in `config.toml`.
+    SaveLanguage(String),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -156,7 +160,7 @@ fn format_money(v: f64) -> String {
 }
 
 fn format_date(d: Date, texts: &Texts) -> String {
-    format!("{} {}, {}", texts.month(d.month), d.day, d.year)
+    texts.date(d.month, d.day, d.year)
 }
 
 /// Cash of the player's company: account 0 of the first company (`finance.md` 2: `+0x4766`).
@@ -170,7 +174,14 @@ fn player_cash(save: &Save) -> Option<f64> {
 
 impl AppState {
     pub fn new(init: Init) -> AppState {
-        let texts = Texts::load(&init.install);
+        let locales = crate::locales::discover(crate::locales::override_dir().as_deref());
+        let wanted = init
+            .config
+            .language
+            .clone()
+            .or_else(crate::locales::system_locale)
+            .unwrap_or_else(|| crate::locales::ENGLISH.to_owned());
+        let texts = Texts::load(&init.install, locales, &wanted);
         let binds = Bindings::from_config(&init.config.keys);
         let mut s = AppState {
             install: init.install,
@@ -202,6 +213,17 @@ impl AppState {
         };
         s.rebuild_ui();
         s
+    }
+
+    /// The writing system of the current language, for the font choice.
+    pub fn script(&self) -> rt2_ui::Script {
+        rt2_ui::Script::of_locale(self.texts.locale())
+    }
+
+    /// Switches the language at runtime: every text is laid out again.
+    pub fn set_language(&mut self, locale: &str) {
+        self.texts.set_locale(locale);
+        self.rebuild_ui();
     }
 
     pub fn invalid_keys(&self) -> &[String] {
@@ -619,6 +641,13 @@ impl AppState {
             A_SLOWER => self.apply_command(Command::SetSpeed(SpeedChange::Delta(-1))),
             A_SAVE => self.save_game(),
             A_MENU => self.go_to_menu(),
+            a if a >= A_LANG && !self.in_game() => {
+                if let Some((locale, _)) = self.texts.languages().get((a - A_LANG) as usize) {
+                    let locale = locale.clone();
+                    self.set_language(&locale);
+                    self.effects.push(Effect::SaveLanguage(locale));
+                }
+            }
             _ => {}
         }
     }
@@ -764,8 +793,14 @@ impl AppState {
     fn save_game(&mut self) {
         let result = self.try_save();
         match result {
-            Ok(p) => self.toast(format!("Saved {}", p.display())),
-            Err(e) => self.toast(format!("Cannot save: {e}")),
+            Ok(p) => {
+                let m = self.texts.af("Saved %1", &[p.display().to_string()]);
+                self.toast(m);
+            }
+            Err(e) => {
+                let m = self.texts.af("Cannot save: %1", &[e.to_string()]);
+                self.toast(m);
+            }
         }
     }
 
@@ -805,7 +840,9 @@ impl AppState {
                         .entries
                         .iter()
                         .map(|e| match e.source {
-                            Source::Own => format!("{}  (saved)", e.title),
+                            Source::Own => {
+                                self.texts.af("%1  (saved)", std::slice::from_ref(&e.title))
+                            }
                             _ => e.title.clone(),
                         })
                         .collect(),
@@ -879,11 +916,14 @@ impl AppState {
                         Layout::at(Anchor::Top, bw, bh),
                     );
                 }
-                let version = format!(
-                    "rrt2 {}   |   UI scale {}%  (Ctrl +/- to change)   |   {}",
-                    env!("CARGO_PKG_VERSION"),
-                    self.scale.percent(),
-                    self.install.display()
+                self.language_row(ui, layer, cw);
+                let version = t.af(
+                    "rrt2 %1   |   UI scale %2%  (Ctrl +/- to change)   |   %3",
+                    &[
+                        env!("CARGO_PKG_VERSION").to_owned(),
+                        self.scale.percent().to_string(),
+                        self.install.display().to_string(),
+                    ],
                 );
                 ui.add(
                     layer,
@@ -961,6 +1001,45 @@ impl AppState {
         }
     }
 
+    /// One button per available language, labelled with its own name; the current one is
+    /// disabled (it reads as selected).
+    fn language_row(&self, ui: &mut Ui, layer: NodeId, canvas_w: f32) {
+        let langs = self.texts.languages();
+        let (gap, label_w) = (8.0, 100.0);
+        let n = langs.len() as f32;
+        let bw = ((canvas_w - label_w - 24.0) / n - gap).clamp(90.0, 190.0);
+        let w = label_w + n * (bw + gap);
+        let row = ui.add(
+            layer,
+            Kind::Panel { fill: Fill::None },
+            Layout::at(Anchor::Bottom, w, 34.0).offset(0.0, 40.0),
+        );
+        ui.set_stack(row, Stack::row(gap, 0.0));
+        ui.add(
+            row,
+            label(
+                &self.texts.a("Language"),
+                game_font(6).with_shadow(),
+                Align::Right,
+                Color::rgb(0xf2, 0xe9, 0xd0),
+            ),
+            Layout::at(Anchor::Left, label_w, 34.0),
+        );
+        for (i, (locale, name)) in langs.iter().enumerate() {
+            ui.add(
+                row,
+                Kind::Button {
+                    text: name.clone(),
+                    font: game_font(2),
+                    action: A_LANG + i as u32,
+                    enabled: locale != self.texts.locale(),
+                    hotkey: None,
+                },
+                Layout::at(Anchor::Left, bw, 34.0),
+            );
+        }
+    }
+
     fn build_hud(&mut self, ui: &mut Ui) {
         let bar = ui.add_root(
             Kind::Panel { fill: Fill::Panel },
@@ -972,18 +1051,18 @@ impl AppState {
         let left = ui.add(
             bar,
             Kind::Panel { fill: Fill::None },
-            Layout::at(Anchor::Left, 190.0, HUD_HEIGHT).offset(8.0, 0.0),
+            Layout::at(Anchor::Left, 260.0, HUD_HEIGHT).offset(8.0, 0.0),
         );
         ui.set_stack(left, Stack::row(8.0, 0.0));
         ui.add(
             left,
-            button("Menu", f, A_MENU, None),
-            Layout::at(Anchor::Left, 80.0, 32.0).offset(0.0, 7.0),
+            button(&self.texts.a("Menu"), f, A_MENU, None),
+            Layout::at(Anchor::Left, 110.0, 32.0).offset(0.0, 7.0),
         );
         ui.add(
             left,
-            button("Save", f, A_SAVE, None),
-            Layout::at(Anchor::Left, 80.0, 32.0).offset(0.0, 7.0),
+            button(&self.texts.a("Save"), f, A_SAVE, None),
+            Layout::at(Anchor::Left, 140.0, 32.0).offset(0.0, 7.0),
         );
         // Centre: date.
         let date = ui.add(

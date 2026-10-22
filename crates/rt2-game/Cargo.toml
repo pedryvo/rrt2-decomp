@@ -4,6 +4,8 @@ description = "The playable Railroad Tycoon II clone: menu, map view and simulat
 edition.workspace = true
 version.workspace = true
 
+build = "build.rs"
+
 [[bin]]
 name = "rrt2"
 path = "src/main.rs"

@@ -84,6 +84,9 @@ pub struct Config {
     /// UI scale in percent (100-300); absent = from the monitor DPI.
     pub ui_scale: Option<u32>,
     pub keys: Keys,
+    /// UI language tag (`pt-BR`, `de`, `zh-CN`...; docs/i18n.md); absent = the system locale,
+    /// else English.
+    pub language: Option<String>,
     /// Volumes and mute (`docs/ui.md`, "Som").
     pub audio: crate::sound::AudioSettings,
 }

@@ -314,12 +314,20 @@ impl<'a> Info<'a> {
         self.texts.get(id, fb)
     }
 
+    /// One of the clone's own texts, translated (`docs/i18n.md`, `[app]`).
+    fn a(&self, english: &str) -> String {
+        self.texts.a(english)
+    }
+
+    /// Like [`Info::a`] with `%1`.. replaced by `args`.
+    fn af(&self, english: &str, args: &[String]) -> String {
+        self.texts.af(english, args)
+    }
+
     fn banner(&self) -> Option<Block> {
         (!self.detailed()).then(|| {
             Block::Note(
-                "This save uses the old 0x233C record layout: only names and positions are \
-                 decoded, the other fields show \"-\". TODO: record conversion on load."
-                    .to_owned(),
+                self.a("This save uses the old 0x233C record layout: only names and positions are decoded, the other fields show \"-\". TODO: record conversion on load."),
             )
         })
     }
@@ -332,11 +340,11 @@ impl<'a> Info<'a> {
     }
 
     fn cargo_name(&self, c: u8) -> String {
-        capitalize(
-            &self
-                .texts
-                .table("CARGO_TYPES", u32::from(c), &format!("cargo {c}")),
-        )
+        capitalize(&self.texts.table(
+            "CARGO_TYPES",
+            u32::from(c),
+            &self.af("cargo %1", &[c.to_string()]),
+        ))
     }
 
     // ---- companies ------------------------------------------------------------------------
@@ -438,9 +446,9 @@ impl<'a> Info<'a> {
             (&self.t(43, "Price"), 1.1, true),
             (&self.t(280, "Shares"), 1.3, true),
             (&self.t(45, "Share Value"), 1.9, true),
-            ("Dividend", 1.3, true),
-            ("Book Value", 1.4, true),
-            ("Rating", 1.0, true),
+            (&self.a("Dividend"), 1.3, true),
+            (&self.a("Book Value"), 1.4, true),
+            (&self.a("Rating"), 1.0, true),
         ]);
         for r in self.save.companies.ordered() {
             let rr = Rec(&r.data);
@@ -484,7 +492,7 @@ impl<'a> Info<'a> {
         let Some(r) = rec(&self.save.companies, slot) else {
             return Page {
                 title: self.t(111, "Finances"),
-                left: self.with_banner(vec![Block::Note("No such company.".into())]),
+                left: self.with_banner(vec![Block::Note(self.a("No such company."))]),
                 ..Page::default()
             };
         };
@@ -505,8 +513,8 @@ impl<'a> Info<'a> {
         // newest archive row (`+0x42ee`), "lifetime" the never-reset accumulator (`+0x46fe`).
         let mut inc = Table::new(&[
             ("", 3.2, false),
-            ("This year", 1.5, true),
-            ("Last year", 1.5, true),
+            (&self.a("This year"), 1.5, true),
+            (&self.a("Last year"), 1.5, true),
             (&self.t(2368, "Lifetime"), 1.5, true),
         ]);
         let sum = |c: &[f64; 13], a: usize, b: usize| c[a..b].iter().sum::<f64>();
@@ -605,7 +613,7 @@ impl<'a> Info<'a> {
                 s.price.map_or(DASH.into(), |_| self.grade(s.rating)),
             ),
             (
-                "Founded".to_owned(),
+                self.a("Founded"),
                 if d {
                     co.founded.to_string()
                 } else {
@@ -679,7 +687,7 @@ impl<'a> Info<'a> {
         let n = r.text(12, 0x37);
         // Unnamed trains (the sample save names only one) show their id.
         if n.is_empty() {
-            format!("Train {}", r.i32(0x3d))
+            self.af("Train %1", &[r.i32(0x3d).to_string()])
         } else {
             n
         }
@@ -710,21 +718,22 @@ impl<'a> Info<'a> {
             return DASH.into();
         }
         let id = u32::from(self.data.image.u16(0x0055_34f4 + 2 * engine as u32));
-        self.texts.get(id, &format!("Engine {engine}"))
+        self.texts
+            .get(id, &self.af("Engine %1", &[engine.to_string()]))
     }
 
     fn vehicle_label(&self, car: &Rec) -> String {
         let Some(v) = self.data.vehicles.get(usize::from(car.u8(8))) else {
-            return format!("Vehicle {}", car.u8(8));
+            return self.af("Vehicle %1", &[car.u8(8).to_string()]);
         };
         match v.species {
             0 => self.engine_name(v.engine),
-            1 => "Tender".to_owned(),
+            1 => self.a("Tender"),
             _ => match v.cargo {
-                0x2c => "Restaurant car".to_owned(),
-                0x2d => "Caboose".to_owned(),
-                c if c == NO_CARGO => "Car".to_owned(),
-                c => format!("{} car", self.cargo_name(c)),
+                0x2c => self.a("Restaurant car"),
+                0x2d => self.a("Caboose"),
+                c if c == NO_CARGO => self.a("Car"),
+                c => self.af("%1 car", &[self.cargo_name(c)]),
             },
         }
     }
@@ -762,18 +771,18 @@ impl<'a> Info<'a> {
 
     fn mph(&self, train: &Rec) -> String {
         // `+0x69`: current speed, mph in 16.16 fixed point (trains.md 1.1).
-        format!("{} mph", train.i32(0x69) >> 16)
+        self.af("%1 mph", &[(train.i32(0x69) >> 16).to_string()])
     }
 
     pub fn trains_list(&self) -> ListPage {
         let mut t = Table::new(&[
             (&self.t(216, "Name"), 2.4, false),
             (&self.t(178, "Company"), 3.2, false),
-            ("Engine", 2.2, false),
-            ("Cars", 0.8, true),
-            ("Route", 3.6, false),
-            ("Speed", 1.0, true),
-            ("Age", 0.7, true),
+            (&self.a("Engine"), 2.2, false),
+            (&self.a("Cars"), 0.8, true),
+            (&self.a("Route"), 3.6, false),
+            (&self.a("Speed"), 1.0, true),
+            (&self.a("Age"), 0.7, true),
             (&self.t(36, "Profit"), 1.2, true),
         ]);
         let d = self.detailed();
@@ -846,7 +855,7 @@ impl<'a> Info<'a> {
                 },
             ),
             (
-                "Engine".to_owned(),
+                self.a("Engine"),
                 if d {
                     self.train_engine(&cars)
                 } else {
@@ -854,7 +863,7 @@ impl<'a> Info<'a> {
                 },
             ),
             (
-                "Purchased".to_owned(),
+                self.a("Purchased"),
                 if d {
                     rr.u16(0xbd).to_string()
                 } else {
@@ -862,31 +871,31 @@ impl<'a> Info<'a> {
                 },
             ),
             (
-                "Age".to_owned(),
+                self.a("Age"),
                 if d {
-                    format!("{} years", (self.year - i32::from(rr.u16(0xbd))).max(0))
+                    self.af(
+                        "%1 years",
+                        &[(self.year - i32::from(rr.u16(0xbd))).max(0).to_string()],
+                    )
                 } else {
                     DASH.into()
                 },
             ),
+            (self.a("Speed"), if d { self.mph(&rr) } else { DASH.into() }),
             (
-                "Speed".to_owned(),
-                if d { self.mph(&rr) } else { DASH.into() },
-            ),
-            (
-                "Status".to_owned(),
+                self.a("Status"),
                 if !d {
                     DASH.into()
                 } else if rr.u8(0x99) != 0 {
-                    "stopped".into()
+                    self.a("stopped")
                 } else {
-                    "running".into()
+                    self.a("running")
                 },
             ),
             (
-                "Weight".to_owned(),
+                self.a("Weight"),
                 if d {
-                    format!("{} t", rr.i32(0xaf))
+                    self.af("%1 t", &[rr.i32(0xaf).to_string()])
                 } else {
                     DASH.into()
                 },
@@ -894,21 +903,21 @@ impl<'a> Info<'a> {
             (self.t(36, "Profit"), DASH.to_owned()),
         ];
         if d && rr.u8(0xed) != 0 {
-            facts.push(("Condition".to_owned(), "broken down".to_owned()));
+            facts.push((self.a("Condition"), self.a("broken down")));
         }
         let mut car_t = Table::new(&[
             ("#", 0.5, true),
-            ("Vehicle", 3.0, false),
-            ("Cargo", 2.0, false),
+            (&self.a("Vehicle"), 3.0, false),
+            (&self.a("Cargo"), 2.0, false),
         ]);
         for (i, c) in cars.iter().enumerate() {
             // Car `+0x2d`: cargo lot id, 0 = empty; the lot's byte 0 is the cargo (cargo.md 2).
             let lot = c.u16(0x2d);
             let load = if lot == 0 {
-                "empty".to_owned()
+                self.a("empty")
             } else {
                 rec(&self.save.pool_7c, u32::from(lot))
-                    .map_or("loaded".to_owned(), |l| self.cargo_name(l.u8(0)))
+                    .map_or(self.a("loaded"), |l| self.cargo_name(l.u8(0)))
             };
             car_t.push(
                 i as u32,
@@ -917,15 +926,15 @@ impl<'a> Info<'a> {
         }
         let mut stop_t = Table::new(&[
             ("#", 0.5, true),
-            ("Station", 3.0, false),
-            ("Wait", 2.0, false),
+            (&self.a("Station"), 3.0, false),
+            (&self.a("Wait"), 2.0, false),
         ]);
         for (i, (st, bits)) in stops.iter().enumerate() {
             // Stop bits (trains.md 10.1): 0x08 waypoint, 0xc0 wait (0x40 half full, 0x80 full).
             let wait = match bits & 0xc0 {
-                0x40 => "half full",
-                0x80 => "full",
-                _ => "no wait",
+                0x40 => self.a("half full"),
+                0x80 => self.a("full"),
+                _ => self.a("no wait"),
             };
             let here = if i as i32 == cur { ">" } else { "" };
             stop_t.push(
@@ -933,11 +942,11 @@ impl<'a> Info<'a> {
                 vec![
                     format!("{}{}", i + 1, here),
                     if bits & 0x08 != 0 {
-                        "waypoint".to_owned()
+                        self.a("waypoint")
                     } else {
                         self.station_name(*st)
                     },
-                    wait.to_owned(),
+                    wait,
                 ],
             );
         }
@@ -947,19 +956,17 @@ impl<'a> Info<'a> {
             left: self.with_banner(vec![
                 Block::Facts(facts),
                 Block::Table {
-                    title: "Consist".to_owned(),
+                    title: self.a("Consist"),
                     table: car_t,
                 },
             ]),
             right: vec![
                 Block::Table {
-                    title: "Route".to_owned(),
+                    title: self.a("Route"),
                     table: stop_t,
                 },
                 Block::Note(
-                    "TODO: profit, cargo carried per stop and the schedule status are not \
-                     decoded in the save yet."
-                        .to_owned(),
+                    self.a("TODO: profit, cargo carried per stop and the schedule status are not decoded in the save yet."),
                 ),
             ],
         }
@@ -973,8 +980,11 @@ impl<'a> Info<'a> {
         (0..30u32)
             .filter(|b| PURCHASABLE & (1 << b) != 0 && mask & (1 << b) != 0)
             .map(|b| {
-                self.texts
-                    .table("STATION_BUILDINGS", b, &format!("Improvement bit {b}"))
+                self.texts.table(
+                    "STATION_BUILDINGS",
+                    b,
+                    &self.af("Improvement bit %1", &[b.to_string()]),
+                )
             })
             .filter(|s| !s.is_empty())
             .collect()
@@ -988,7 +998,7 @@ impl<'a> Info<'a> {
         } else {
             0
         };
-        self.texts.table("STATION_BUILDINGS", b, "Station")
+        self.texts.table("STATION_BUILDINGS", b, &self.a("Station"))
     }
 
     /// Lots waiting at a station for a cargo: the chain head is `+0x61 + 2*c`, each lot links the
@@ -1006,10 +1016,10 @@ impl<'a> Info<'a> {
     pub fn stations_list(&self) -> ListPage {
         let mut t = Table::new(&[
             (&self.t(216, "Name"), 2.6, false),
-            ("Owner", 2.4, false),
+            (&self.a("Owner"), 2.4, false),
             (&self.t(545, "Size"), 1.6, false),
-            ("Improvements", 1.4, true),
-            ("Cargo waiting", 1.4, true),
+            (&self.a("Improvements"), 1.4, true),
+            (&self.a("Cargo waiting"), 1.4, true),
             (&self.t(191, "Supply"), 1.1, true),
             (&self.t(192, "Demand"), 1.1, true),
         ]);
@@ -1043,7 +1053,7 @@ impl<'a> Info<'a> {
             );
         }
         ListPage {
-            title: "Stations".to_owned(),
+            title: self.a("Stations"),
             table: t,
         }
     }
@@ -1051,7 +1061,7 @@ impl<'a> Info<'a> {
     pub fn station_page(&self, slot: u32) -> Page {
         let Some(st) = rec(&self.save.stations, slot) else {
             return Page {
-                title: "Stations".into(),
+                title: self.a("Stations"),
                 ..Page::default()
             };
         };
@@ -1059,7 +1069,7 @@ impl<'a> Info<'a> {
         let mask = st.u32(0x49);
         let facts = vec![
             (
-                "Owner".to_owned(),
+                self.a("Owner"),
                 if d {
                     self.company_name(st.i32(0x39).max(0) as u32)
                 } else {
@@ -1067,7 +1077,7 @@ impl<'a> Info<'a> {
                 },
             ),
             (
-                "Location".to_owned(),
+                self.a("Location"),
                 format!("{}, {}", st.i32(0xa), st.i32(0xe)),
             ),
             (
@@ -1079,7 +1089,7 @@ impl<'a> Info<'a> {
                 },
             ),
             (
-                "Linked buildings".to_owned(),
+                self.a("Linked buildings"),
                 if d {
                     st.u8(0x41).to_string()
                 } else {
@@ -1094,22 +1104,22 @@ impl<'a> Info<'a> {
         };
         let imp_facts: Vec<(String, String)> = if imps.is_empty() {
             vec![(
-                "Improvements".to_owned(),
-                if d { "none".into() } else { DASH.into() },
+                self.a("Improvements"),
+                if d { self.a("none") } else { DASH.into() },
             )]
         } else {
-            imps.into_iter().map(|n| (n, "built".to_owned())).collect()
+            imps.into_iter().map(|n| (n, self.a("built"))).collect()
         };
         // Cargo rows: any cargo produced, demanded or waiting (cargo.md 2: `+0x169` produced by
         // an industry (1) or a house (2), `+0x195` demanded, `+0x321` price level 0..9, `+0x271`
         // delivery counter).
         let mut cargo = Table::new(&[
-            ("Cargo", 2.0, false),
+            (&self.a("Cargo"), 2.0, false),
             (&self.t(191, "Supply"), 1.5, false),
-            ("Waiting", 1.3, true),
+            (&self.a("Waiting"), 1.3, true),
             (&self.t(192, "Demand"), 1.3, true),
-            ("Level", 1.0, true),
-            ("Delivered", 1.4, true),
+            (&self.a("Level"), 1.0, true),
+            (&self.a("Delivered"), 1.4, true),
         ]);
         if d {
             for c in 0..44usize {
@@ -1127,9 +1137,9 @@ impl<'a> Info<'a> {
                         self.cargo_name(c as u8),
                         match prod {
                             0 => DASH.to_owned(),
-                            1 => "industry".to_owned(),
-                            2 => "houses".to_owned(),
-                            _ => format!("code {prod}"),
+                            1 => self.a("industry"),
+                            2 => self.a("houses"),
+                            _ => self.af("code %1", &[prod.to_string()]),
                         },
                         lots.to_string(),
                         if dem != 0 {
@@ -1154,7 +1164,7 @@ impl<'a> Info<'a> {
                  supply and demand pass has not run)."
                     .to_owned()
             } else {
-                "Supply and demand are not decoded for the old 0x233C layout.".to_owned()
+                self.a("Supply and demand are not decoded for the old 0x233C layout.")
             }));
         } else {
             right.push(Block::Table {
@@ -1164,7 +1174,7 @@ impl<'a> Info<'a> {
         }
         Page {
             title: self.station_name(slot),
-            subtitle: "Station".to_owned(),
+            subtitle: self.a("Station"),
             left: self.with_banner(vec![
                 Block::Facts(facts),
                 Block::Facts(imp_facts),
@@ -1180,13 +1190,19 @@ impl<'a> Info<'a> {
     // ---- cities and territories ------------------------------------------------------------
 
     fn size_name(&self, class: u8) -> String {
-        self.texts
-            .table("CITY_SIZE", u32::from(class), &format!("Class {class}"))
+        self.texts.table(
+            "CITY_SIZE",
+            u32::from(class),
+            &self.af("Class %1", &[class.to_string()]),
+        )
     }
 
     fn place_kind(&self, kind: u8) -> String {
-        self.texts
-            .table("CITY_TYPE", u32::from(kind), &format!("Type {kind}"))
+        self.texts.table(
+            "CITY_TYPE",
+            u32::from(kind),
+            &self.af("Type %1", &[kind.to_string()]),
+        )
     }
 
     fn place_name(&self, slot: u32) -> String {
@@ -1199,13 +1215,13 @@ impl<'a> Info<'a> {
     pub fn places_list(&self) -> ListPage {
         let mut t = Table::new(&[
             (&self.t(216, "Name"), 2.6, false),
-            ("Kind", 1.2, false),
+            (&self.a("Kind"), 1.2, false),
             (&self.t(545, "Size"), 1.4, false),
-            ("Houses", 0.9, true),
-            ("Growth", 0.9, true),
-            ("Delivered", 1.0, true),
-            ("Shipped", 1.0, true),
-            ("Location", 1.3, true),
+            (&self.a("Houses"), 0.9, true),
+            (&self.a("Growth"), 0.9, true),
+            (&self.a("Delivered"), 1.0, true),
+            (&self.a("Shipped"), 1.0, true),
+            (&self.a("Location"), 1.3, true),
         ]);
         let d = self.detailed();
         for r in self.save.places.ordered() {
@@ -1255,7 +1271,7 @@ impl<'a> Info<'a> {
         let kind = p.u8(0x10);
         let mut facts = vec![
             (
-                "Kind".to_owned(),
+                self.a("Kind"),
                 if d {
                     self.place_kind(kind)
                 } else {
@@ -1270,36 +1286,36 @@ impl<'a> Info<'a> {
                     DASH.into()
                 },
             ),
-            ("Location".to_owned(), format!("{}, {}", p.i16(4), p.i16(6))),
+            (self.a("Location"), format!("{}, {}", p.i16(4), p.i16(6))),
             (
-                "Extent".to_owned(),
+                self.a("Extent"),
                 format!("{},{} to {},{}", p.i16(8), p.i16(10), p.i16(12), p.i16(14)),
             ),
         ];
         if d {
             facts.extend([
-                ("Houses".to_owned(), p.u8(0x48).to_string()),
-                ("Growth index".to_owned(), format!("{}%", p.i32(0x2e))),
-                ("Intensity".to_owned(), format!("{}%", p.u16(0x46))),
-                ("Trend".to_owned(), p.i8(0x49).to_string()),
-                ("Land tiles".to_owned(), p.i32(0x32).to_string()),
+                (self.a("Houses"), p.u8(0x48).to_string()),
+                (self.a("Growth index"), format!("{}%", p.i32(0x2e))),
+                (self.a("Intensity"), format!("{}%", p.u16(0x46))),
+                (self.a("Trend"), p.i8(0x49).to_string()),
+                (self.a("Land tiles"), p.i32(0x32).to_string()),
                 (
-                    "Connection bonus".to_owned(),
+                    self.a("Connection bonus"),
                     if p.i32(0x36) == 0 {
-                        "none".into()
+                        self.a("none")
                     } else {
                         money(f64::from(p.i32(0x36)))
                     },
                 ),
-                ("Lots delivered (yr)".to_owned(), p.u16(0x3e).to_string()),
-                ("Lots shipped (yr)".to_owned(), p.u16(0x40).to_string()),
+                (self.a("Lots delivered (yr)"), p.u16(0x3e).to_string()),
+                (self.a("Lots shipped (yr)"), p.u16(0x40).to_string()),
             ]);
         }
         // Industries that belong to the place (building `+2` = place id).
         let mut inds = Table::new(&[
-            ("Industry", 3.0, false),
-            ("Built", 1.0, true),
-            ("Rating", 1.0, true),
+            (&self.a("Industry"), 3.0, false),
+            (&self.a("Built"), 1.0, true),
+            (&self.a("Rating"), 1.0, true),
         ]);
         for o in self.save.objects.ordered() {
             let b = Rec(&o.data);
@@ -1317,18 +1333,16 @@ impl<'a> Info<'a> {
         }
         let mut right = Vec::new();
         if inds.rows.is_empty() {
-            right.push(Block::Note(
-                "No industries belong to this place.".to_owned(),
-            ));
+            right.push(Block::Note(self.a("No industries belong to this place.")));
         } else {
             right.push(Block::Table {
-                title: "Industries".to_owned(),
+                title: self.a("Industries"),
                 table: inds,
             });
         }
-        right.push(Block::Note(
-            "TODO: population and cargo demand per place are not decoded in the save.".to_owned(),
-        ));
+        right.push(Block::Note(self.a(
+            "TODO: population and cargo demand per place are not decoded in the save.",
+        )));
         Page {
             title: self.place_name(slot),
             subtitle: self.t(103, "Cities"),
@@ -1367,11 +1381,11 @@ impl<'a> Info<'a> {
             })
             .count();
         let facts = vec![
-            ("Region".to_owned(), region.to_string()),
-            ("Tiles".to_owned(), int(tiles as i64)),
-            ("Cities and regions".to_owned(), places.to_string()),
+            (self.a("Region"), region.to_string()),
+            (self.a("Tiles"), int(tiles as i64)),
+            (self.a("Cities and regions"), places.to_string()),
             (
-                "Industries".to_owned(),
+                self.a("Industries"),
                 self.save
                     .objects
                     .ordered()
@@ -1384,10 +1398,9 @@ impl<'a> Info<'a> {
             title: t.text(4, 0x24),
             subtitle: self.t(2369, "Territories"),
             left: self.with_banner(vec![Block::Facts(facts)]),
-            right: vec![Block::Note(
-                "TODO: territory effects, company rights and goodwill are not decoded here."
-                    .to_owned(),
-            )],
+            right: vec![Block::Note(self.a(
+                "TODO: territory effects, company rights and goodwill are not decoded here.",
+            ))],
         }
     }
 
@@ -1395,8 +1408,10 @@ impl<'a> Info<'a> {
 
     fn building_name(&self, ty: u8) -> String {
         // world-growth.md 2.3: LNG 920 + building type (0 = Station).
-        self.texts
-            .get(920 + u32::from(ty), &format!("Building {ty}"))
+        self.texts.get(
+            920 + u32::from(ty),
+            &self.af("Building %1", &[ty.to_string()]),
+        )
     }
 
     fn industry_type(&self, ty: u8) -> Option<IndustryType> {
@@ -1409,14 +1424,14 @@ impl<'a> Info<'a> {
 
     pub fn industries_list(&self) -> ListPage {
         let mut t = Table::new(&[
-            ("Industry", 2.6, false),
-            ("Place", 2.0, false),
-            ("Owner", 2.2, false),
-            ("Built", 0.8, true),
-            ("Rating", 0.9, true),
-            ("Stations", 0.9, true),
-            ("Received", 1.0, true),
-            ("Location", 1.3, true),
+            (&self.a("Industry"), 2.6, false),
+            (&self.a("Place"), 2.0, false),
+            (&self.a("Owner"), 2.2, false),
+            (&self.a("Built"), 0.8, true),
+            (&self.a("Rating"), 0.9, true),
+            (&self.a("Stations"), 0.9, true),
+            (&self.a("Received"), 1.0, true),
+            (&self.a("Location"), 1.3, true),
         ]);
         for o in self.save.objects.ordered() {
             let b = Rec(&o.data);
@@ -1444,7 +1459,7 @@ impl<'a> Info<'a> {
             );
         }
         ListPage {
-            title: "Industries".to_owned(),
+            title: self.a("Industries"),
             table: t,
         }
     }
@@ -1459,47 +1474,50 @@ impl<'a> Info<'a> {
         let ty = b.u8(7);
         let owner = b.u16(0x97);
         let facts = vec![
-            ("Type".to_owned(), self.building_name(ty)),
-            ("Place".to_owned(), self.place_name(u32::from(b.u16(2)))),
+            (self.a("Type"), self.building_name(ty)),
+            (self.a("Place"), self.place_name(u32::from(b.u16(2)))),
             (
-                "Location".to_owned(),
+                self.a("Location"),
                 format!("{}, {}", b.i16(0x26), b.i16(0x28)),
             ),
             (
-                "Owner".to_owned(),
+                self.a("Owner"),
                 if owner == 0 {
-                    "none".into()
+                    self.a("none")
                 } else {
                     self.company_name(u32::from(owner))
                 },
             ),
             (
-                "Price paid".to_owned(),
+                self.a("Price paid"),
                 if owner == 0 {
                     DASH.into()
                 } else {
                     money(f64::from(b.i32(0x99)))
                 },
             ),
-            ("Built".to_owned(), b.u16(0x3c).to_string()),
+            (self.a("Built"), b.u16(0x3c).to_string()),
             (
-                "Profitability".to_owned(),
+                self.a("Profitability"),
                 format!("{}  (100 = neutral)", b.u16(0x4b)),
             ),
             (
-                "Profit last year".to_owned(),
+                self.a("Profit last year"),
                 money(f64::from(b.i16(0x36)) * 1000.0),
             ),
-            ("Linked stations".to_owned(), b.i8(0x33).to_string()),
-            ("Lots received (yr)".to_owned(), b.u16(0x34).to_string()),
+            (self.a("Linked stations"), b.i8(0x33).to_string()),
+            (self.a("Lots received (yr)"), b.u16(0x34).to_string()),
         ];
         let mut out = Table::new(&[
-            ("Output", 2.4, false),
-            ("Per year", 1.2, true),
-            ("Produced", 1.1, true),
-            ("Delivered", 1.1, true),
+            (&self.a("Output"), 2.4, false),
+            (&self.a("Per year"), 1.2, true),
+            (&self.a("Produced"), 1.1, true),
+            (&self.a("Delivered"), 1.1, true),
         ]);
-        let mut inp = Table::new(&[("Input", 2.6, false), ("Stock", 1.2, true)]);
+        let mut inp = Table::new(&[
+            (&self.a("Input"), 2.6, false),
+            (&self.a("Stock"), 1.2, true),
+        ]);
         if let Some(it) = self.industry_type(ty) {
             let stock0 = std::array::from_fn::<f32, 8, _>(|i| b.f32(0x6b + 4 * i));
             // One row per output cargo (several slots can feed the same cargo): rate per year
@@ -1547,17 +1565,17 @@ impl<'a> Info<'a> {
         let mut right = Vec::new();
         if out.rows.is_empty() {
             right.push(Block::Note(
-                "This building produces no cargo this year.".into(),
+                self.a("This building produces no cargo this year."),
             ));
         } else {
             right.push(Block::Table {
-                title: "Production".to_owned(),
+                title: self.a("Production"),
                 table: out,
             });
         }
         if !inp.rows.is_empty() {
             right.push(Block::Table {
-                title: "Inputs".to_owned(),
+                title: self.a("Inputs"),
                 table: inp,
             });
         }

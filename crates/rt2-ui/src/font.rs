@@ -16,14 +16,60 @@ pub enum Face {
     Script,
 }
 
+/// The writing system the UI is shown in. It picks the family of each [`Face`] so that the text
+/// has glyphs: Cinzel, Anton and Dancing Script have no Cyrillic, and nothing here has CJK
+/// except the Noto subset (docs/ui.md "Idiomas e fontes").
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Script {
+    #[default]
+    Latin,
+    Cyrillic,
+    Cjk,
+}
+
+impl Script {
+    /// The script of a BCP 47 locale (`ru` Cyrillic, `zh-*`/`ja`/`ko` CJK, the rest Latin).
+    pub fn of_locale(locale: &str) -> Script {
+        let lang = locale.split(['-', '_']).next().unwrap_or("");
+        match lang {
+            "ru" | "uk" | "bg" | "sr" | "be" | "mk" => Script::Cyrillic,
+            "zh" | "ja" | "ko" => Script::Cjk,
+            _ => Script::Latin,
+        }
+    }
+}
+
 impl Face {
-    /// Family name as registered in the font database.
+    /// Em-size factor of the family used for `script`, so the substitute has the optical size of
+    /// the Latin face: Cormorant SC's small capitals are much smaller than Cinzel's at the same
+    /// em, and Noto Sans SC's ideographs read small next to Latin letters.
+    pub fn size_factor(self, script: Script) -> f32 {
+        match (script, self) {
+            (Script::Cyrillic, Face::Copperplate) => 1.3,
+            (Script::Cyrillic, Face::Display) => 0.95,
+            (Script::Cjk, _) => 1.12,
+            _ => 1.0,
+        }
+    }
+
+    /// Latin family name as registered in the font database.
     pub fn family(self) -> &'static str {
-        match self {
-            Face::Copperplate => "Cinzel",
-            Face::Gothic => "Libre Franklin",
-            Face::Display => "Anton",
-            Face::Script => "Dancing Script",
+        self.family_for(Script::Latin)
+    }
+
+    /// Family name for `script`. Every Latin text keeps its own look; Cyrillic and CJK use faces
+    /// of a similar style that cover the script (the glyph fallback of cosmic-text fills the
+    /// rest, for example Latin letters inside Chinese text).
+    pub fn family_for(self, script: Script) -> &'static str {
+        match (script, self) {
+            (Script::Cjk, _) => "Noto Sans SC",
+            (Script::Cyrillic, Face::Copperplate) => "Cormorant SC",
+            (Script::Cyrillic, Face::Display) => "Oswald",
+            (Script::Cyrillic, Face::Script) => "Marck Script",
+            (_, Face::Copperplate) => "Cinzel",
+            (_, Face::Gothic) => "Libre Franklin",
+            (_, Face::Display) => "Anton",
+            (_, Face::Script) => "Dancing Script",
         }
     }
 }
@@ -32,14 +78,20 @@ static CINZEL: &[u8] = include_bytes!("../../../assets/fonts/Cinzel.ttf");
 static FRANKLIN: &[u8] = include_bytes!("../../../assets/fonts/LibreFranklin.ttf");
 static ANTON: &[u8] = include_bytes!("../../../assets/fonts/Anton-Regular.ttf");
 static SCRIPT: &[u8] = include_bytes!("../../../assets/fonts/DancingScript.ttf");
+static CORMORANT: &[u8] = include_bytes!("../../../assets/fonts/CormorantSC-subset.ttf");
+static OSWALD: &[u8] = include_bytes!("../../../assets/fonts/Oswald.ttf");
+static MARCK: &[u8] = include_bytes!("../../../assets/fonts/MarckScript-Regular.ttf");
+static NOTO_SC: &[u8] = include_bytes!("../../../assets/fonts/NotoSansSC-subset.ttf");
 
 /// The vendored font files, to load into a font database (no system fonts are used, so the look
 /// does not depend on the machine).
 pub fn font_sources() -> Vec<fontdb::Source> {
-    [CINZEL, FRANKLIN, ANTON, SCRIPT]
-        .into_iter()
-        .map(|b| fontdb::Source::Binary(std::sync::Arc::new(b)))
-        .collect()
+    [
+        CINZEL, FRANKLIN, ANTON, SCRIPT, CORMORANT, OSWALD, MARCK, NOTO_SC,
+    ]
+    .into_iter()
+    .map(|b| fontdb::Source::Binary(std::sync::Arc::new(b)))
+    .collect()
 }
 
 /// Face + size + text transform of a piece of text.
@@ -134,10 +186,20 @@ mod tests {
             db.load_font_source(s);
         }
         for face in [Face::Copperplate, Face::Gothic, Face::Display, Face::Script] {
-            let found = db
-                .faces()
-                .any(|f| f.families.iter().any(|(n, _)| n == face.family()));
-            assert!(found, "{face:?}");
+            for script in [Script::Latin, Script::Cyrillic, Script::Cjk] {
+                let want = face.family_for(script);
+                let found = db
+                    .faces()
+                    .any(|f| f.families.iter().any(|(n, _)| n == want));
+                assert!(found, "{face:?} {script:?} {want}");
+            }
         }
+    }
+
+    #[test]
+    fn locales_map_to_scripts() {
+        assert_eq!(Script::of_locale("ru"), Script::Cyrillic);
+        assert_eq!(Script::of_locale("zh-CN"), Script::Cjk);
+        assert_eq!(Script::of_locale("pt-BR"), Script::Latin);
     }
 }
