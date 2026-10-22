@@ -150,7 +150,7 @@ Verificação: 20 000 chamadas (rand direto e intervalo) com re-semeadura; estad
 
 ## Em aberto
 - Resolvido (docs/formats/map-gam.md 5.2): `game_seed` fica no `.GAM` em 0xB24F; o estado `0x55d2c0` **não é gravado** (o load preserva o do processo), então o teste de nível 2 precisa re-semear o RNG explicitamente após carregar.
-- Papel de cada chamador de `rng_range` e se os de `crt_rand_range` em `0x4d0400`, `0x4d2360`, `0x4d29e0`, `0x412a90`, `0x4a0410`, `0x4a42f0` alteram estado de simulação.
+- Papel de cada chamador de `rng_range`, e se os `crt_rand_range` em `0x412a90`, `0x4a0410` e `0x4a42f0` alteram estado de simulação. **Resolvido para os trens** (`docs/spec/trains.md`): em `0x4d0400`, `0x4d2360` e `0x4d29e0`, o `crt_rand` só escolhe sons. As quebras usam o RNG A.
 - As sequências inline com multiplicador `0x41c64e6d` em `0x41f594` e `0x42a492` (dois pontos; hash de posição para variação de tile).
 - Registro apontado por `0x46a8a0(0)` e o campo f64 `+0x12a` usados na re-semeadura diária em rede.
 - Condição do ramo `hi < lo` de `rng_hash_range`: `0x49d920` (versão mínima dos jogadores em rede; 9012 em jogo local) só é consultada nesse ramo; não testado.
