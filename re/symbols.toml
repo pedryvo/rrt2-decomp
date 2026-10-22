@@ -4596,3 +4596,360 @@ name = "tile_building_flag_refresh"
 kind = "function"
 comment = "fastcall(tile): tile+2 bit 4 = ha estrutura tipo 3 na cadeia"
 spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x4af6d0"
+name = "cmd_send"
+kind = "function"
+comment = "fastcall(ECX=pacote): enfileira um comando; local: copia (malloc) para cmd_queue 0x574c8c e chama sim_advance(0) (id 0xb com 0x578b04 != 0 executa na hora); rede: cliente manda ao host (0x4a0410(7,..)), host poe em 0x574c94; ~35 chamadores via thunk 0x4025f4"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x4af890"
+name = "cmd_packet_init"
+kind = "function"
+comment = "fastcall(ECX=buf, EDX=id, [esp+4]=tamanho): zera tamanho bytes, +0 = id, +4 = tamanho; corpo do comando a partir de +0xc, +8 = minuto (so rede); [V]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x4af8c0"
+name = "cmd_net_flush"
+kind = "function"
+comment = "serializa a lista de saida 0x574c94 em buffer de 5000 bytes: por comando (id u8, len u16 = tamanho-9) + bytes de +0xc em diante; so em rede; [S]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x574c94"
+name = "cmd_out_queue"
+kind = "global"
+comment = "lista de comandos a enviar pela rede (cmd_queue 0x574c8c e a de execucao)"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x49d970"
+name = "net_player_left"
+kind = "function"
+comment = "comando 0x01 cmd_player_left(id de rede u32): remove o jogador da tabela de rede (0x577e2f, 0x147 bytes) e passa as pessoas humanas dele a IA (+0x122=0, +0x52f=0, +0x548=3, +0x267=0); LNG 2319; [S]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x4d3f40"
+name = "train_init_stops"
+kind = "function"
+comment = "thiscall(trem, trem_modelo): copia as paradas do trem-modelo (se vivo) ou cria duas paradas padrao (estacoes escolhidas por 0x439720 / pool_nth); comando 0x19; [S]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x4d5830"
+name = "train_set_stop_wait"
+kind = "function"
+comment = "thiscall(trem, parada, modo): parada.+3 = (+3 & 0x3f) | modo << 6 (0 nao espera, 1 meia carga, 2 cheia); comando 0x1b; [V via cmd_execute]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x4d58e0"
+name = "train_set_stop_sell"
+kind = "function"
+comment = "thiscall(trem, parada, modo): parada.+3 = (modo & 3) << 4 | (+3 & 0xcf), com 0x570229 vira |= 0x30; comando 0x2f; [V via cmd_execute]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x4d6080"
+name = "train_set_throttle"
+kind = "function"
+comment = "thiscall(trem, f32): +0xdb = v; v <= 65.0 (0x537814) => +0xa8 = 0, senao +0xa8 = classe +0xa7 (+4 em trilho proprio); comando 0x29; [V via cmd_execute]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x4d5710"
+name = "train_delete_stop"
+kind = "function"
+comment = "thiscall(trem, parada): remove a parada (0x4d55d0), sem paradas +0x3c = 0xff; comando 0x1e; [S]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x4d11f0"
+name = "train_insert_stop"
+kind = "function"
+comment = "thiscall(trem, pos, registro*, estacao u16, waypoint, x, y): insere o registro de 0xe bytes na posicao; comando 0x1d; [S]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x4d4750"
+name = "train_station_busy"
+kind = "function"
+comment = "fastcall(trem): 1 se (+0x99 != 0 e +0x9a em {2,3,4,6,9}) ou +0x94 != 0 (trem trabalhando numa estacao); usado por 0x1c; [S, nome incerto]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x48b2f0"
+name = "cmd_merger_proposed"
+kind = "function"
+comment = "executor do comando 0x22 (compradora +0xc, alvo +0xd, oferta u16 +0xe): merger_propose 0x48b4f0 e, se o jogador local tem acoes do alvo, dialogo (LNG 164) que envia o voto 0x23; [S]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x48b4b0"
+name = "cmd_merger_vote"
+kind = "function"
+comment = "executor do comando 0x23 (proposta u32 +0xc, pessoa +0x10, voto +0x11): grava o voto na tabela de votos da pessoa (0x4a75e0: +10+i=1, +0x2a+i=voto) e apura; [S]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x42eb40"
+name = "cmd_election_started"
+kind = "function"
+comment = "executor do comando 0x24 (empresa +0xc, desafiante +0xd): chairman_election_start 0x42ed10 e dialogo de voto (LNG 165) que envia 0x25; [S]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x42ecd0"
+name = "cmd_election_vote"
+kind = "function"
+comment = "executor do comando 0x25 (eleicao u32 +0xc, pessoa +0x10, voto +0x11): grava o voto (+8+i, +0x28+i) e apura 0x42ee00; [S]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x4bddb0"
+name = "cmd_set_company_info"
+kind = "function"
+comment = "executor do comando 0x27 (empresa +0xc, nome char[31] +0xd, logo/cor +0x2c): empresa+0x2b = logo, copia o nome para empresa+4; [S]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x43e8e0"
+name = "cmd_buy_territory_rights"
+kind = "function"
+comment = "executor do comando 0x2a (empresa +0xc, territorio +0xd, mascara +0xe, preco i32 +0xf): territory_set_rights por bit, empresa+0x4250 = 0, conta 2 += preco, caixa -= preco; [S]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x43e760"
+name = "territory_rights_request"
+kind = "function"
+comment = "thiscall(empresa, territorio, bit): preco = territory_rights_price; pessoa humana com caixa < preco: LNG 2287 e retorna 0; senao enfileira o comando 0x2a com mascara 0xf (territorio.+0x43 == 0) ou 1<<bit; [V]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x440fb0"
+name = "territory_rights_price"
+kind = "function"
+comment = "fastcall(ECX=empresa, EDX=territorio, [bit]) ret 4: base = 1000*i16 em territorio+0x3b+2*bit; f=(15000-goodwill(empresa,t))*0.0001; y = f<=1 ? f*f : 1+3(f*f-1); ftol(base*y)/1000*1000; [V]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x48eb30"
+name = "map_tool_click"
+kind = "function"
+comment = "clique no mapa conforme a ferramenta 0x574cb0: 0 seleciona, 4 trilho, 7/0xe construir (envia 0x17), 8 escavadeira (envia 0xa), demais so no editor; [S]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x48d900"
+name = "map_tool_hover"
+kind = "function"
+comment = "pre-visualizacao/arrasto da ferramenta ativa (previa de estacao, custo da escavadeira, trilho); tambem envia 0xa e 0x16; [S]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x48f520"
+name = "tool_select"
+kind = "function"
+comment = "fastcall(ferramenta, ?, p3, p4, p5, p6): troca a ferramenta DAT_00574cb0 e os parametros 0x5534c4/0x5534c8/0x574428/0x566abc, abre a paleta (0x492e40) e atualiza a barra; 100..103 = ultima ferramenta de cada grupo; [S]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x492e40"
+name = "tool_palette_open"
+kind = "function"
+comment = "fastcall(modo): carrega a janela bp*.win do modo (1 bpaddstn estacao, 2 bpaddbui predio, 3 bpaddtre, 4 bpterrit, 5 bpraisea, 6 bppaintt, 7 bpaddtra/bpaddtr2 trilho, 8 bpbulldz, 9 bpfillte, 0xb bpovervw); DAT_00566ad8; [S]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x4941c0"
+name = "tool_palette_refresh"
+kind = "function"
+comment = "preenche a paleta: modo 1 lista as 3 estacoes com preco (effect 8 * custo), modo 2 lista as 98 formas 24..121 ordenadas por nome mais os itens especiais; [S]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x494f40"
+name = "tool_palette_events"
+kind = "function"
+comment = "eventos das janelas de paleta bp*.win: ids 0x715..0x717 tamanho da estacao, 0x7d8..0x7de estilo/forma, 0x844/0x845, 0x89b.., 0x8b4.., 0x984.., 0x998/0x999, 0xa29 lista de predios; chama tool_select; [S]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x495700"
+name = "ui_set_editor_mode"
+kind = "function"
+comment = "fastcall(p): 0x5748f8 = p (editor de mapa), 0x5748fc = 0x573d7a | p (qualquer editor); monta a barra de ferramentas de mainwin.win (botoes 0xc9..0xd6, 0xdd) para jogo ou editor; [S]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x5748fc"
+name = "editor_any"
+kind = "global"
+comment = "0x573d7a | 0x5748f8: nao zero em qualquer editor (ignora caixa, anos e permissoes de UI); zero no jogo"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x574cb0"
+name = "tool_current"
+kind = "global"
+comment = "ferramenta ativa do mapa: 0 selecao, 1..3 altura, 4 trilho, 5/6 pintura, 7 predio (editor), 8 escavadeira, 9..0x13 outras do editor, 0xe estacao, 0x11 visao geral"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x566ad8"
+name = "tool_palette_mode"
+kind = "global"
+comment = "modo da janela de paleta aberta (0x492e40): 1 estacao, 2 predio, 3 arvores, 4 territorio, 5 altura, 6 pintura, 7 trilho, 8 escavadeira, 9 preenchimento, 0xb visao geral"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x5534c4"
+name = "tool_param_a"
+kind = "global"
+comment = "parametro p3 da ferramenta: forma do predio/estacao (tamanho*8+orientacao), raio da escavadeira (indice em 0x53656c), tipo de pincel"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x5534c8"
+name = "tool_param_b"
+kind = "global"
+comment = "parametro p4 da ferramenta: estilo de arquitetura da estacao (0..6; 0 = estilo do lugar), cor/terreno do pincel"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x5706a9"
+name = "scenario_permissions"
+kind = "table"
+comment = "u8[26]: restricoes de cenario (finance.md 13.9, LNG 1267+i), 0x5706a9+i; lidas so pelas janelas e pela IA, nunca por cmd_execute; 0x5706bd (fusao) nao e lido, a fusao le 0x5706b4"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x469f30"
+name = "electric_track_available"
+kind = "function"
+comment = "1 se ha motor eletrico (tipo +0x28 == 2) disponivel para a empresa local (engine_available), ou opcao de cenario +0x64 != 0, ou editor 0x573d7a; libera a eletrificacao na paleta de trilho; [V]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x4d9d20"
+name = "ui_train_buy_dialog"
+kind = "function"
+comment = "fastcall(trem a substituir ou 0, estacao): janela trainbuy.win com os motores 0..65 disponiveis (engine_available; ordenados pelo primeiro ano do veiculo); envia 0x19 (comprar) ou 0x20 (substituir); LNG 354/352/355; [S]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x4e3620"
+name = "ui_industry_dialog"
+kind = "function"
+comment = "dialogo da industria (id, ..., param_4, ..., param_6): Comprar/Vender so com modelo expert (0x573d78 == 2), permissao 0x5706b9, tipo comprável (0x535c39+tipo*0x27), param_4 == 0, param_6 != 0, empresa local; [S]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x4e2030"
+name = "ui_industry_dialog_events"
+kind = "function"
+comment = "eventos do dialogo da industria: botoes 0x81 comprar (building_buy_request) e 0x82 vender (building_sell_request), 0x87/0x88 editor; [S]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x441410"
+name = "ui_territory_rights_events"
+kind = "function"
+comment = "consultoria de territorio: botoes 0x11f9..0x11fc compram o direito bit 0..3 (trens, trilho, predios, estacoes) por territory_rights_request; [S]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x4496e0"
+name = "ui_company_detail_events"
+kind = "function"
+comment = "eventos de compndtl.win: renunciar 0xf, dividendo 0x12 (botao 0xa8f), falencia 0x13, assumir presidencia 0x2e, abre os dialogos de acoes/titulos/fusao/eleicao; [S]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x4c2050"
+name = "ui_station_detail_events"
+kind = "function"
+comment = "eventos de statndtl.win: botao 0x25a abre melhorias (0x18, permissao 0x5706b8), caixa de texto 0x259 renomeia (0x28); [S]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x4dea00"
+name = "ui_train_detail_events"
+kind = "function"
+comment = "eventos de traindtl.win: 0x1a ir a parada, 0x1b espera, 0x1c carga por parada, 0x1e apagar parada, 0x1f vender, 0x29 acelerador, 0x2c marcar, 0x2f modo de venda; [S]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x4e1a50"
+name = "ui_train_list_events"
+kind = "function"
+comment = "eventos de trainlst.win: botoes ids 9000..10999 vendem o trem (0x1f) se 0x4d5e70 permite; [S]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x4c56e0"
+name = "ui_stock_buy_click"
+kind = "function"
+comment = "stockdtl.win: comprar um lote: envia 0x0e com +0xe = 1; som stock61m/STOCS61m; [S]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x4c57d0"
+name = "ui_stock_sell_click"
+kind = "function"
+comment = "stockdtl.win: vender um lote: envia 0x0e com +0xe = 0xff; [S]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x447730"
+name = "ui_issue_stock_dialog"
+kind = "function"
+comment = "dialogo de emitir acoes: lote = max(1000, (acoes/20000)*1000), permissao 0x5706ad, preco >= 5, 1 ano desde a ultima (empresa+0x160); envia 0x11 com n > 0; [S]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x447bb0"
+name = "ui_buyback_dialog"
+kind = "function"
+comment = "dialogo de recomprar acoes (permissao 0x5706ae): envia 0x11 com n <= 0; [S]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x4480f0"
+name = "ui_repay_bond_dialog"
+kind = "function"
+comment = "dialogo de quitar titulo (permissao 0x5706b0): envia 0x15 (titulo i16 em +0xd); [S]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x448250"
+name = "ui_issue_bond_dialog"
+kind = "function"
+comment = "dialogo de emitir titulo (permissao 0x5706af): so 500000 a 30 anos; envia 0x14; [S]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x48b170"
+name = "ui_merger_request"
+kind = "function"
+comment = "botao de fusao: confere 0x5706b4 (e nao 0x5706bd), >= 2 empresas (LNG 387) e 1 ano desde a ultima tentativa (empresa+0x14c, LNG 388); envia 0x22; [S]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x42eb00"
+name = "ui_election_request"
+kind = "function"
+comment = "fastcall(empresa, desafiante): envia o comando 0x24; [S]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x4531f0"
+name = "ui_key_events"
+kind = "function"
+comment = "atalhos de teclado do jogo (tabela de saltos por codigo de tecla 0x13..0xbd); envia 0x0b (velocidade +-1 / pausa); [S]"
+spec = "docs/spec/commands.md"

@@ -108,8 +108,8 @@ Cada fase termina com um entregável verificável e commits convencionais.
 **Ações do jogador a cobrir** (todas com a mesma regra e custo do original, via `Command`):
 - Trilhos: construir (simples, dupla, eletrificada, pontes, terraplenagem), demolir e bulldozer.
 - Estações: construir (três tamanhos) e comprar prédios de apoio (caixa d'água, torre de areia, rotunda, restaurante, hotel e outros; `terrain-track.md` 2.4).
-- **Prédios e indústrias novos** ("Build a new building", LNG 1781): construir moinhos, fábricas e outras indústrias permitidas pelo ano, pela região e pelo cenário.
-- **Comprar indústrias existentes** (LNG 1283/2336), inclusive em lote, e vendê-las (pela metade).
+- **Prédios e indústrias novos:** no original isso é **só do editor** (`cmd_execute` 0x17, ferramenta 7, tipos 24–121; `docs/spec/commands.md`). Durante a partida, o jogador constrói apenas estações. Construir indústrias numa partida fica como possível opção moderna, desligada no modo fiel.
+- **Comprar indústrias existentes** (LNG 1283/2336; comando 0x2d), inclusive em lote, e vendê-las (pela metade). Exige o modelo industrial Expert, a permissão 0x5706b9, um dos 41 tipos compráveis, o direito de território e caixa suficiente.
 - **Direitos de território** para comprar prédios (LNG 2288/2461).
 - Trens: comprar (locomotiva e vagões), definir paradas e cargas, substituir a locomotiva, vender.
 - Finanças: títulos, ações (compra, venda, emissão, recompra), dividendos, compra pessoal de ações e fusões.

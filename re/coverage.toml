@@ -3,11 +3,11 @@
 # Ver docs/re-workflow.md.
 #
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
-# Classificadas (categoria != unknown): 1189 (40.4%)
-# Por categoria: lib=258, platform=115, render=11, audio=68, ui=253, sim=484, unknown=1756
-# Por estado:   unknown=2483, named=125, spec=181, verified=156
-# Entradas manuais: 435
-# sim spec coverage: 63.8% (309 de 484 funcoes sim em spec/verified)
+# Classificadas (categoria != unknown): 1227 (41.7%)
+# Por categoria: lib=258, platform=114, render=11, audio=56, ui=277, sim=511, unknown=1718
+# Por estado:   unknown=2439, named=140, spec=199, verified=167
+# Entradas manuais: 479
+# sim spec coverage: 64.4% (329 de 511 funcoes sim em spec/verified)
 
 [[function]]
 addr = "0x401005"
@@ -152,9 +152,9 @@ why = "thunk->0x4d0a70"
 [[function]]
 addr = "0x40109b"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4d4750"
 
 [[function]]
 addr = "0x4010a5"
@@ -1886,9 +1886,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x401767"
 size = 5
-category = "unknown"
+category = "ui"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x42eb00"
 
 [[function]]
 addr = "0x401771"
@@ -2062,7 +2062,7 @@ why = "no-evidence"
 [[function]]
 addr = "0x401852"
 size = 5
-category = "audio"
+category = "sim"
 status = "unknown"
 why = "thunk->0x4d11f0"
 
@@ -2595,9 +2595,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x401a87"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4d58e0"
 
 [[function]]
 addr = "0x401a8c"
@@ -2896,9 +2896,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x401bbd"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4d6080"
 
 [[function]]
 addr = "0x401bc7"
@@ -3288,9 +3288,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x401d39"
 size = 5
-category = "unknown"
+category = "ui"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x48b170"
 
 [[function]]
 addr = "0x401d3e"
@@ -3400,9 +3400,9 @@ why = "thunk->0x46ccf0"
 [[function]]
 addr = "0x401dc0"
 size = 5
-category = "unknown"
+category = "ui"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4480f0"
 
 [[function]]
 addr = "0x401dc5"
@@ -4336,9 +4336,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x402167"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4d5830"
 
 [[function]]
 addr = "0x402171"
@@ -4658,7 +4658,7 @@ why = "no-evidence"
 [[function]]
 addr = "0x4022a7"
 size = 5
-category = "audio"
+category = "ui"
 status = "unknown"
 why = "thunk->0x4c56e0"
 
@@ -4820,7 +4820,7 @@ why = "no-evidence"
 [[function]]
 addr = "0x402342"
 size = 5
-category = "audio"
+category = "ui"
 status = "unknown"
 why = "thunk->0x4c57d0"
 
@@ -4834,9 +4834,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x402351"
 size = 5
-category = "unknown"
+category = "ui"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4e3620"
 
 [[function]]
 addr = "0x402356"
@@ -4926,9 +4926,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x4023a6"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4d5710"
 
 [[function]]
 addr = "0x4023b0"
@@ -5843,7 +5843,7 @@ why = "no-evidence"
 [[function]]
 addr = "0x402798"
 size = 5
-category = "audio"
+category = "ui"
 status = "unknown"
 why = "thunk->0x4496e0"
 
@@ -7376,9 +7376,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x402d9c"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4d3f40"
 
 [[function]]
 addr = "0x402da1"
@@ -9289,23 +9289,26 @@ manual = true
 [[function]]
 addr = "0x42eb00"
 size = 52
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "named"
+why = "docs/spec/commands.md 2.1 (0x24)"
+manual = true
 
 [[function]]
 addr = "0x42eb40"
 size = 396
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/commands.md 2.1 (0x24)"
+manual = true
 
 [[function]]
 addr = "0x42ecd0"
 size = 55
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/commands.md 2.1 (0x25)"
+manual = true
 
 [[function]]
 addr = "0x42ed10"
@@ -10232,16 +10235,18 @@ manual = true
 [[function]]
 addr = "0x43e760"
 size = 369
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/commands.md 3.7; tests/commands.rs territory_rights_request_validation_and_packet"
+manual = true
 
 [[function]]
 addr = "0x43e8e0"
 size = 167
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/commands.md 2.1 (0x2a) e 3.7"
+manual = true
 
 [[function]]
 addr = "0x43e990"
@@ -10254,16 +10259,16 @@ why = "no-evidence"
 addr = "0x43ea30"
 size = 231
 category = "sim"
-status = "spec"
-why = "docs/spec/ai.md: portado em crates/rt2-sim/src/ai (sem snapshot proprio)"
+status = "verified"
+why = "docs/spec/commands.md 3.6; tests/commands.rs building_buy_request_validation_and_packet (400)"
 manual = true
 
 [[function]]
 addr = "0x43eb20"
 size = 62
 category = "sim"
-status = "spec"
-why = "growth/building_sell_request (5.3)"
+status = "verified"
+why = "docs/spec/commands.md 3.6; tests/commands.rs building_sell_request_packet"
 manual = true
 
 [[function]]
@@ -10307,9 +10312,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x440fb0"
 size = 164
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/commands.md 3.7; tests/commands.rs territory_rights_price_matches_formula (300)"
+manual = true
 
 [[function]]
 addr = "0x441060"
@@ -10321,9 +10327,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x441410"
 size = 69
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "docs/spec/commands.md 3.7"
+manual = true
 
 [[function]]
 addr = "0x441460"
@@ -10462,29 +10469,33 @@ why = "string:[C7][U1]"
 addr = "0x447730"
 size = 1138
 category = "ui"
-status = "unknown"
-why = "string:{[HJL][ML50]%s:}{[HJR][MR50]%s}\n"
+status = "named"
+why = "docs/spec/commands.md 2.1 (0x11)"
+manual = true
 
 [[function]]
 addr = "0x447bb0"
 size = 1338
 category = "ui"
-status = "unknown"
-why = "string:{[HJL][ML50]%s:}{[HJR][MR50]%s}\n"
+status = "named"
+why = "docs/spec/commands.md 2.1 (0x11)"
+manual = true
 
 [[function]]
 addr = "0x4480f0"
 size = 342
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "named"
+why = "docs/spec/commands.md 2.1 (0x15)"
+manual = true
 
 [[function]]
 addr = "0x448250"
 size = 934
 category = "ui"
-status = "unknown"
-why = "string:{[HJL][ML50]%s:}{[HJR][MR50]%s}\n"
+status = "named"
+why = "docs/spec/commands.md 2.1 (0x14)"
+manual = true
 
 [[function]]
 addr = "0x448600"
@@ -10503,9 +10514,10 @@ why = "string:{[HJL]%s:}{[HJR]%s}"
 [[function]]
 addr = "0x4496e0"
 size = 3561
-category = "audio"
-status = "unknown"
-why = "string:paget61m.raw"
+category = "ui"
+status = "named"
+why = "docs/spec/commands.md 2.1 (emissor de 0xf, 0x12, 0x13, 0x2e)"
+manual = true
 
 [[function]]
 addr = "0x44cc60"
@@ -10755,9 +10767,10 @@ why = "string:[C1]"
 [[function]]
 addr = "0x4531f0"
 size = 304
-category = "platform"
-status = "unknown"
-why = "api:KERNEL32!FindClose,KERNEL32!FindFirstFileA,KERNEL32!FindNextFileA"
+category = "ui"
+status = "named"
+why = "docs/spec/commands.md 2.1 (0x0b)"
+manual = true
 
 [[function]]
 addr = "0x453710"
@@ -11802,8 +11815,8 @@ manual = true
 addr = "0x4683a0"
 size = 141
 category = "sim"
-status = "spec"
-why = "disponibilidade de motor; docs/spec/trains.md 2.4"
+status = "verified"
+why = "docs/spec/trains.md 2.4; tests/commands.rs engine_available_matches_spec (2000)"
 manual = true
 
 [[function]]
@@ -11938,16 +11951,17 @@ why = "no-evidence"
 addr = "0x469ef0"
 size = 53
 category = "sim"
-status = "spec"
-why = "terrain-track.md"
+status = "verified"
+why = "docs/spec/commands.md 3.2; tests/commands.rs max_bridge_type_matches_spec (500)"
 manual = true
 
 [[function]]
 addr = "0x469f30"
 size = 77
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/commands.md 3.2; tests/commands.rs electric_track_is_offered_only_with_an_available_electric_engine (300)"
+manual = true
 
 [[function]]
 addr = "0x469f80"
@@ -13003,23 +13017,26 @@ why = "string:mapset.win"
 [[function]]
 addr = "0x48b170"
 size = 315
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "named"
+why = "docs/spec/commands.md 2.1 (0x22) e 4"
+manual = true
 
 [[function]]
 addr = "0x48b2f0"
 size = 445
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/commands.md 2.1 (0x22)"
+manual = true
 
 [[function]]
 addr = "0x48b4b0"
 size = 56
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/commands.md 2.1 (0x23)"
+manual = true
 
 [[function]]
 addr = "0x48b4f0"
@@ -13152,23 +13169,26 @@ why = "no-evidence"
 [[function]]
 addr = "0x48d900"
 size = 4566
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "named"
+why = "docs/spec/commands.md 3.1 (pre-visualizacao; so os pacotes 0xa e 0x16 lidos)"
+manual = true
 
 [[function]]
 addr = "0x48eb30"
 size = 2462
-category = "audio"
-status = "unknown"
-why = "string:chain61m.raw"
+category = "ui"
+status = "spec"
+why = "docs/spec/commands.md 3.1, 3.3 (clique das ferramentas 0, 4, 7, 8, 0xe)"
+manual = true
 
 [[function]]
 addr = "0x48f520"
 size = 3190
 category = "ui"
-status = "unknown"
-why = "string:bpaddtr2.win"
+status = "spec"
+why = "docs/spec/commands.md 3.1"
+manual = true
 
 [[function]]
 addr = "0x490280"
@@ -13202,8 +13222,9 @@ why = "string:bpaddtr2.win"
 addr = "0x492e40"
 size = 824
 category = "ui"
-status = "unknown"
-why = "string:bpaddstn.win"
+status = "spec"
+why = "docs/spec/commands.md 3.1"
+manual = true
 
 [[function]]
 addr = "0x4931b0"
@@ -13236,23 +13257,26 @@ why = "string:side06_5.imb"
 [[function]]
 addr = "0x4941c0"
 size = 3370
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "docs/spec/commands.md 3.3 (paletas de estacao e de predio)"
+manual = true
 
 [[function]]
 addr = "0x494f40"
 size = 1491
-category = "audio"
-status = "unknown"
-why = "string:radio61m.raw"
+category = "ui"
+status = "named"
+why = "docs/spec/commands.md 3.1"
+manual = true
 
 [[function]]
 addr = "0x495700"
 size = 1537
 category = "ui"
-status = "unknown"
-why = "string:mwfrme.imb"
+status = "spec"
+why = "docs/spec/commands.md 3.1"
+manual = true
 
 [[function]]
 addr = "0x495d10"
@@ -13632,9 +13656,10 @@ manual = true
 [[function]]
 addr = "0x49d970"
 size = 534
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/commands.md 2.2"
+manual = true
 
 [[function]]
 addr = "0x49db90"
@@ -14330,23 +14355,26 @@ why = "no-evidence"
 [[function]]
 addr = "0x4af6d0"
 size = 448
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/commands.md 1.1; recorder em tests/commands.rs"
+manual = true
 
 [[function]]
 addr = "0x4af890"
 size = 42
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/commands.md 1.1; tests/commands.rs packet_init_zeroes_and_stamps_the_header e packet_ids_and_sizes_match_spec"
+manual = true
 
 [[function]]
 addr = "0x4af8c0"
 size = 660
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "docs/spec/commands.md 1.1 (formato de rede)"
+manual = true
 
 [[function]]
 addr = "0x4afb60"
@@ -14395,8 +14423,8 @@ why = "no-evidence"
 addr = "0x4b0210"
 size = 3316
 category = "sim"
-status = "named"
-why = "time.md 3; so casos de velocidade e semente"
+status = "spec"
+why = "docs/spec/commands.md: 39 comandos (1, 0xa..0x2f); 0x12 0x1b 0x28 0x29 0x2b 0x2c 0x2f verificados em tests/commands.rs via cmd_execute"
 manual = true
 
 [[function]]
@@ -14723,15 +14751,16 @@ addr = "0x4bdcd0"
 size = 222
 category = "sim"
 status = "spec"
-why = "finance.md 17.3"
+why = "docs/spec/commands.md 2.1 (0x26)"
 manual = true
 
 [[function]]
 addr = "0x4bddb0"
 size = 133
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/commands.md 2.1 (0x27)"
+manual = true
 
 [[function]]
 addr = "0x4be430"
@@ -14983,9 +15012,10 @@ why = "string:buybu61m.raw"
 [[function]]
 addr = "0x4c2050"
 size = 1194
-category = "audio"
-status = "unknown"
-why = "string:buybu61m.raw"
+category = "ui"
+status = "named"
+why = "docs/spec/commands.md 2.1 (0x18, 0x28)"
+manual = true
 
 [[function]]
 addr = "0x4c2cb0"
@@ -15046,16 +15076,18 @@ why = "string:page261m.raw"
 [[function]]
 addr = "0x4c56e0"
 size = 235
-category = "audio"
-status = "unknown"
-why = "string:stock61m.raw"
+category = "ui"
+status = "named"
+why = "docs/spec/commands.md 2.1 (0x0e)"
+manual = true
 
 [[function]]
 addr = "0x4c57d0"
 size = 237
-category = "audio"
-status = "unknown"
-why = "string:stock61m.raw"
+category = "ui"
+status = "named"
+why = "docs/spec/commands.md 2.1 (0x0e)"
+manual = true
 
 [[function]]
 addr = "0x4c58c0"
@@ -15527,9 +15559,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4d11f0"
 size = 702
-category = "audio"
-status = "unknown"
-why = "string:adds161m.raw"
+category = "sim"
+status = "spec"
+why = "docs/spec/commands.md 2.1 (0x1d)"
+manual = true
 
 [[function]]
 addr = "0x4d14b0"
@@ -15673,9 +15706,10 @@ manual = true
 [[function]]
 addr = "0x4d3f40"
 size = 307
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/commands.md 2.1 (0x19)"
+manual = true
 
 [[function]]
 addr = "0x4d4080"
@@ -15753,9 +15787,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4d4750"
 size = 55
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/commands.md 2.1 (0x1c)"
+manual = true
 
 [[function]]
 addr = "0x4d4790"
@@ -15819,23 +15854,26 @@ why = "no-evidence"
 [[function]]
 addr = "0x4d5710"
 size = 286
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/commands.md 2.1 (0x1e)"
+manual = true
 
 [[function]]
 addr = "0x4d5830"
 size = 162
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "tests/commands.rs cmd_stop_modes_0x1b_and_0x2f"
+manual = true
 
 [[function]]
 addr = "0x4d58e0"
 size = 185
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "tests/commands.rs cmd_stop_modes_0x1b_and_0x2f"
+manual = true
 
 [[function]]
 addr = "0x4d59a0"
@@ -15898,9 +15936,10 @@ manual = true
 [[function]]
 addr = "0x4d6080"
 size = 166
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "tests/commands.rs cmd_train_throttle_0x29"
+manual = true
 
 [[function]]
 addr = "0x4d61c0"
@@ -15997,8 +16036,9 @@ why = "no-evidence"
 addr = "0x4d9d20"
 size = 1271
 category = "ui"
-status = "unknown"
-why = "string:trainbuy.win"
+status = "spec"
+why = "docs/spec/commands.md 3.5"
+manual = true
 
 [[function]]
 addr = "0x4da420"
@@ -16108,9 +16148,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4dea00"
 size = 4545
-category = "audio"
-status = "unknown"
-why = "string:buttu61m.raw"
+category = "ui"
+status = "named"
+why = "docs/spec/commands.md 2.1 (comandos de trem)"
+manual = true
 
 [[function]]
 addr = "0x4dfe20"
@@ -16150,9 +16191,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4e1a50"
 size = 645
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "named"
+why = "docs/spec/commands.md 2.1 (0x1f)"
+manual = true
 
 [[function]]
 addr = "0x4e1fa0"
@@ -16164,9 +16206,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4e2030"
 size = 272
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "docs/spec/commands.md 3.6"
+manual = true
 
 [[function]]
 addr = "0x4e2140"
@@ -16186,9 +16229,10 @@ manual = true
 [[function]]
 addr = "0x4e3620"
 size = 762
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "docs/spec/commands.md 3.6"
+manual = true
 
 [[function]]
 addr = "0x4e3e30"
