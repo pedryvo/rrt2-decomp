@@ -8,3 +8,4 @@
 - Toolchain Rust fixado localmente por `rust-toolchain.toml` e `mise.toml`. Não mexer na configuração global do mise.
 - O `README.md` (inglês, padrão) e o `README.pt-BR.md` são a vitrine pública do projeto e devem ficar sincronizados: ao concluir um marco (formato decodificado, spec escrita, crate novo), atualize a tabela de progresso, a contagem de funções nomeadas e o roteiro, no mesmo commit ou num `docs(readme): ...` logo em seguida.
 - O repositório é público (github.com/pedryvo/rrt2-decomp): nunca versionar assets ou trechos binários do jogo original. Fazer push depois dos commits.
+- Toda mudança visível ao usuário ou descoberta de engenharia reversa ganha uma linha em `CHANGELOG.md` (`- Feature|Improved|Change|Fix|Docs|RE: texto`), checada no CI por `scripts/check-changelog.sh`.

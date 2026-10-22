@@ -1,0 +1,25 @@
+name: Reverse-engineering finding
+description: Document a file format detail, formula or behavior of the original game
+labels: [reverse-engineering]
+body:
+  - type: input
+    id: subsystem
+    attributes:
+      label: Subsystem or file format
+      placeholder: e.g. cargo pricing, .GAM header
+    validations:
+      required: true
+  - type: textarea
+    id: finding
+    attributes:
+      label: Finding
+      description: Pseudocode, constants, structure layout.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Executable addresses (RT2_PLAT.EXE sha256 510b9e44…), test data, or observed in-game values.
+    validations:
+      required: true
