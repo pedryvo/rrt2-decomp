@@ -76,8 +76,8 @@ Cada fase termina com um entregável verificável e commits convencionais.
 6. Smacker e áudio via ffmpeg (conversão no cache).
 - **Pronto quando:** 100% das entradas dos PK2 extraídas, um visualizador de debug mostrando sprites, paletas e mapas, testes de round-trip nos parsers, e `docs/formats/*.md` escritos.
 
-### Fase 2 — Decompilação dirigida por subsistema
-Não vamos decompilar as 3.082 funções igualmente. A triagem segue strings e xrefs, e a prioridade fica assim:
+### Fase 2 — Decompilação por subsistema
+**Todas** as 3.082 funções são classificadas (biblioteca, render/UI, simulação), e **toda função de simulação precisa ser especificada**, sem exceção (ver seção 11). A ordem de ataque segue strings e xrefs, com esta prioridade:
 
 | Prioridade | Subsistema | Saída |
 |---|---|---|
@@ -207,3 +207,24 @@ Pesquisa feita em 2026-10-22, quando o OpenRCT2 estava na v0.5.6. O que vale rep
 | 15 | **Fluxo de localização** | Só `en-GB.txt` no repositório principal; traduções num repositório separado, mescladas toda noite | Todo texto de UI em tabelas de strings desde o início. Repositório separado quando houver tradutores | Estrutura agora, fluxo pós-1.0 |
 
 **Não verificado na pesquisa:** o modelo de sandbox dos plugins e se existe uma opção única de "corrigir bugs originais".
+
+## 11. Fidelidade: o executável é a referência
+
+O manual e o guia de estratégia (`docs/reference/manual-rules.md`) servem para dar pistas e nomes. **A regra vale como está no executável.** Quando o manual diverge do código, vale o código, e a divergência fica anotada na spec.
+
+**Cobertura total da simulação**
+- `re/coverage.toml` classifica cada uma das 3.082 funções: `lib` (CRT, Miles, Smacker, DirectX), `platform` (janela, input, arquivos), `render`, `ui` ou `sim`, com um estado: `unknown`, `named`, `spec` ou `verified`.
+- Meta da Fase 2: 100% das funções classificadas e 100% das funções `sim` em `spec`. A porcentagem aparece no README.
+- Constantes e tabelas (atributos de locomotivas, cargas, indústrias, custos) são extraídas dos dados (`.data` do EXE e arquivos nos PK2), nunca digitadas a partir do manual.
+
+**Três níveis de verificação**
+1. **Função por função, com emulação:** funções puras do EXE (fórmulas de preço, juros, física, produção) rodam isoladas num emulador x86 (Unicorn). Elas recebem milhares de entradas aleatórias, e a saída é comparada bit a bit com a implementação Rust. Ferramenta: `rt2-oracle`, em `crates/`.
+2. **Save como oráculo:** carregar um `.GAM` no original (Wine), avançar N dias por automação e salvar, depois fazer o mesmo no clone e comparar os dois estados campo a campo. Isso exige o importador completo de `.GAM`, que vira prioridade junto com a simulação.
+3. **Replays de longo prazo:** detectam divergências acumuladas. Toda divergência precisa de uma causa documentada; sem causa, é tratada como bug.
+
+**Determinismo igual ao do original**
+- O RNG é replicado exatamente: mesmo algoritmo, semente e ordem de chamadas.
+- **Ponto flutuante:** é preciso descobrir se a simulação usa float x87 e com qual precisão. O DirectX costuma colocar o FPU em precisão simples. Se usar, a aritmética é emulada com o mesmo arredondamento.
+- Bugs do original são replicados no modo fiel e corrigidos só atrás de flags (seção 10, item 10).
+
+**Meta realista:** fórmulas, regras e RNG idênticos, provados pelos níveis 1 e 2. Uma partida inteira idêntica bit a bit por décadas é a meta máxima, mas a IA e a ordem das atualizações podem tornar isso difícil. Por isso a regra é que nenhuma divergência fica sem explicação.

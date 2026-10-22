@@ -13,3 +13,5 @@ Fluxo:
 3. Escreva a especificação em docs/spec/<subsistema>.md: regras em prosa, pseudocódigo, constantes e tabelas, e o endereço de origem de cada regra. O objetivo é entender, não transliterar assembly.
 4. Registre cada função ou global entendida em re/symbols.toml (formato descrito no topo do arquivo).
 5. Marque explicitamente o que não tem certeza (seção "Em aberto").
+
+Fidelidade (docs/PLAN.md, seção 11): o executável é a fonte da verdade. docs/reference/manual-rules.md serve só como pista. Quando o código diverge do manual, vale o código, e a divergência é anotada na spec. Constantes e tabelas saem do .data ou dos PK2, nunca do manual. Não pule funções da simulação: cada função tocada entra em re/coverage.toml com categoria e estado.

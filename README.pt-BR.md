@@ -121,7 +121,7 @@ re/
 1. **Âncoras**: strings, imports e tabelas do executável indicam onde cada subsistema vive.
 2. **Decompilação dirigida**: em vez de traduzir as 3082 funções, cada subsistema é entendido a partir das âncoras. As rotinas de bibliotecas (CRT, Miles, Smacker, DirectX) são descartadas cedo.
 3. **Especificação antes do código**: as regras viram documentos em [`docs/spec/`](docs/spec/) com pseudocódigo, constantes e o endereço de origem de cada uma. O código Rust é escrito a partir das specs, não do assembly.
-4. **Validação**: hipóteses são conferidas contra os dados reais do jogo e, quando necessário, contra o executável original rodando no Wine.
+4. **O executável é a referência, não o manual**: toda função da simulação é especificada, com a cobertura acompanhada publicamente. As fórmulas são provadas iguais rodando as funções originais num emulador x86 contra o nosso código Rust, e o comportamento do jogo inteiro é conferido avançando o mesmo save no original (no Wine) e no clone e comparando os resultados.
 
 A análise usa [Ghidra](https://ghidra-sre.org/) por meio do servidor MCP **REA**, e o trabalho é dividido entre agentes de IA especializados ([`.claude/agents/`](.claude/agents/)), cada um com o modelo mais adequado à tarefa.
 

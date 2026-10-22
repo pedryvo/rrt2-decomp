@@ -121,7 +121,7 @@ re/
 1. **Anchors**: strings, imports and data tables in the executable show where each subsystem lives.
 2. **Targeted decompilation**: instead of translating all 3082 functions, we work outward from the anchors one subsystem at a time, and set aside library code (CRT, Miles, Smacker, DirectX) early.
 3. **Spec before code**: rules are written up in [`docs/spec/`](docs/spec/) with pseudocode, constants and the source address of each one. The Rust code is written from the specs, not from the assembly.
-4. **Validation**: hypotheses are checked against the real game data and, when needed, against the original executable running under Wine.
+4. **The executable is the reference, not the manual**: every simulation function is specified, with coverage tracked publicly. Formulas are proven equal by running the original functions in an x86 emulator against our Rust code, and whole-game behavior is checked by advancing the same save in the original (under Wine) and in the clone and diffing the results.
 
 The analysis uses [Ghidra](https://ghidra-sre.org/) through the **REA** MCP server. The work is split between specialized AI agents ([`.claude/agents/`](.claude/agents/)), each running the model best suited to its task.
 
