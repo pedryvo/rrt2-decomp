@@ -7,7 +7,7 @@
 
 Merged coverage entries get `manual = true`, then classify.py rewrites re/coverage.toml
 and its summary. Symbol name conflicts are reported, never overwritten. Merged pending
-files are moved to re/pending/merged/. Stdlib only: python3 -I re/scripts/merge_pending.py
+files are moved to re/pending/merged/. Stdlib only: python3 -I re/scripts/merge_pending.py [pending-file-name ...]
 """
 import csv
 import pathlib
@@ -60,7 +60,9 @@ def main():
     by_addr = {norm(e["addr"]): e for e in entries}
     symbols = {norm(s["addr"]): s for s in tomllib.loads(sym_path.read_text()).get("symbol", [])}
 
-    files = sorted(p for p in PENDING.glob("*") if p.is_file())
+    # Optional arguments restrict the merge to named pending files (others may be in progress).
+    names = set(sys.argv[1:])
+    files = sorted(p for p in PENDING.glob("*") if p.is_file() and (not names or p.name in names))
     if not files:
         print("nothing pending")
         return

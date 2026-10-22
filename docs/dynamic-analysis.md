@@ -52,3 +52,50 @@ Sem `xdotool`/`ydotool` (só `wtype`, que não clica), o carregamento do jogo é
 
 ## 4. Pendências para o nível 2 (save como oráculo)
 Automatizar cliques (instalar `ydotool` ou usar mensagens Win32 injetadas pelo gdb: chamar a rotina de carga de jogo a partir de um breakpoint), avançar N dias e salvar em `<sandbox>/saves`.
+
+## 5. `advance_save.py`: avançar um save N dias no original (oráculo de nível 2)
+
+Ferramenta headless, sem GUI e sem cliques: `re/scripts/wine/advance_save.py`, com o lado do gdb em `advance_gdb.py` e a validação em `advance_check.py`.
+
+```
+re/scripts/wine/run_original.sh $SB --no-run
+re/scripts/wine/advance_save.py $SB games/Tutorial.GAM <dias> <semente> <saida.GAM> [--step 320] [--timeout 240]
+re/scripts/wine/advance_check.py $SB <Tutorial.GAM> <pasta>      # 1/7/30 dias, determinismo, semente
+```
+A entrada é copiada para `$SB/games/_advin.GAM` (a instalação nunca é tocada). A saída é gravada em `$SB/saves/_advout.GAM` e copiada para `<saida.GAM>`. Só `.GAM` (o `.MAP` não foi tentado). Tempo: **~11-13 s por run**, quase tudo é a inicialização do Wine; o avanço de 30 dias leva menos de 1 s.
+
+### 5.1 Sequência de chamadas (processo do original, via gdb)
+O gdb para no porteiro `game_idle_tick` `0x404e30` com o jogo no **menu principal** (`0x566e14 == 0xb`, depois de 30 quadros). Cada chamada é feita por "register+jump": escreve-se o endereço de retorno `0x4a5940` (código morto) e os argumentos na pilha, ajusta-se `ECX`/`EDX`/`ESP`/`EIP`, `continue`, e lê-se `EAX` quando o breakpoint de retorno dispara. Todas são `fastcall` (ECX, EDX).
+
+| Passo | Chamada | Observação |
+|---|---|---|
+| 0 | `_malloc(0x400)` `0x51b6b7` (cdecl) | buffer na heap do jogo para os nomes |
+| 1 | `[0x574c04] = 1` | **bloqueia o porteiro**: as rotinas de UI de carga/gravação chamam o porteiro de forma aninhada e, sem isto, o jogo avança sozinho (+160 min medidos) |
+| 2 | `[0x57fee0]++`, `[0x57bc34]++`, `[0x57b41c]++`; `0x495700(ECX=0)` | mesmo prólogo do botão Load Game do menu (`0x4b75b0`, caso `0xc57`, rótulo `0x4b8c9a`) |
+| 3 | `0x479710(ECX="_advin", EDX=0)` | monta `games\_advin.GM2`/`.GAM` e chama o carregador `0x477a60`; o jogo passa a `mode=1`, `running=1`, cria a janela `0xfd` |
+| 4 | desfaz os contadores; `0x502200(1,0)`, `[0x574bc4]=1`, `0x4f6130(1)` | epílogo do mesmo caso do menu |
+| 5 | `[0x55d2c0] = semente`, `[0x5609f0] = semente` | RNG do jogo e `rand()` do CRT; a carga **não** restaura a sequência (e consome RNG, deixando-o em outro valor) |
+| 6 | `sim_advance 0x4a5cb0(ECX=dt)` em passos de `--step` min (padrão 320 = 100 ms à velocidade 3), total `1440*dias` | sem porteiro e sem UI; o script confere que `[0x5704f4]` avançou exatamente `1440*dias` |
+| 7 | `0x477540(ECX="saves\\_advout.GAM", EDX=0)` | gravador; EDX=0 grava em disco |
+
+Nenhum diálogo modal apareceu em 30 dias do Tutorial. Se um evento abrir um (não tratado), o `sim_advance` não retorna e o `--timeout` mata a sessão com a mensagem TIMEOUT.
+
+### 5.2 Formato gravado
+O gravador **sempre** grava a versão `0x2348` (cabeçalho `0x898a`, bloco de estado `0x3a74`), que `Save::parse` ainda não lê (só `0x233C`). Por isso `advance_check.py` lê a data direto: estado em `4 + 0x898a + 0x86 + 0x40 = 0x8A54` (+0xC minutos, +0x10 data, +0x14 hora). Um parser `0x2348` é pré-requisito para o diff campo a campo.
+
+### 5.3 Resultados (Tutorial, 1870-02-04 19:03, semente 1234)
+```
+1 dia   -> 1870-02-05 19:03   (esperado igual)   minutos 904828023
+7 dias  -> 1870-02-11 19:03   (esperado igual)   minutos 904836663
+30 dias -> 1870-03-06 19:03   (esperado igual)   minutos 904869783   (meses de 28 dias)
+30 dias, semente 1234 duas vezes -> arquivos byte a byte idênticos
+30 dias, semente 777 -> arquivo diferente (11 bytes); RNG final 0x51bc859 contra 0xa4a5e93c
+```
+Em 1 e 7 dias o RNG do jogo não é consumido (fica na semente); o primeiro consumo no Tutorial aparece no passo mensal.
+
+### 5.4 Limitações
+- **Aquecimento do sandbox:** nos primeiros runs de um sandbox o jogo cria/reescreve `rt2_tsc.CFG` e `ddraw.ini`, e o save sai com bytes diferentes (ponteiros do heap em registros de trens, um u32 em ~0x117FAD no Tutorial, preview e checksum). `advance_save.py` repete runs de 0 dias até dois seguidos serem idênticos (marcador `.advance_warm`), uma vez por sandbox (~35 s). Depois disso, determinismo byte a byte.
+- **Entre sandboxes (caminhos diferentes) os bytes também diferem** nos mesmos campos: ponteiros do heap gravados crus nos registros de trem (`+0x45..+0x55` das listas de passos) e o checksum. A comparação com o clone deve mascará-los.
+- O passo de movimento (`--step`) altera o resultado dos trens, pois `sim_advance` usa `dt` variável (ver `time.md` seção 9); o oráculo fixa 320 min, e o clone precisa usar o mesmo.
+- Não roda o resto de `game_frame_update` (`0x405240`, `0x405390`, `0x406080`: UI/ambiente) nem comandos de jogador; só um jogador local; a velocidade do arquivo (3) não importa.
+- Uma instância por vez (usa e mata o `winedbg`/`wineserver` do prefixo do sandbox).

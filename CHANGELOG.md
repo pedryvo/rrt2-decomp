@@ -51,3 +51,4 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Feature: bitmap font reader (`rt2_formats::font`) and the `rt2-font` tool that renders text to PNG
 - Feature: UI layout parser (`rt2_formats::ui`) and the `rt2-ui` tool that draws a window's geometry with its sprites
 - Docs: `docs/formats/font.md` and `docs/formats/ui.md`
+- RE: advance_save.py avança um save N dias no original (Wine+gdb, sem GUI) via carga do menu 0x479710, sim_advance 0x4a5cb0 e gravador 0x477540; determinístico byte a byte com a mesma semente (docs/dynamic-analysis.md seção 5)
