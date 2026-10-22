@@ -16,8 +16,10 @@
 //! | [`track`] | direction/edge-mask types, valid shapes, track tile cost, station catchment | `docs/spec/terrain-track.md` sections 1, 2.2, 3.3 |
 //! | [`finance`] | fundamental and trade share price, credit rating, prime and bond rate, cash interest, dividends and the board cap, split, bankruptcy, monthly step | `docs/spec/finance.md` sections 2-6, 8-9 |
 //! | [`command`] | `Command` enum and `World::apply` (replay/undo/multiplayer seam) | `docs/spec/time.md` 3 and 5.1 |
-//! | [`world`] | minimal state: clock, RNG, speed | `docs/spec/time.md` |
+//! | [`world`] | state: clock, RNG, speed, plus the save pools when built with `World::from_save` | `docs/spec/time.md` |
+//! | [`tick`], [`industry`], [`pool`], [`hooks`] | the world loop (`sim_advance`, day/week/month/year hooks), weekly industry production, slot pools, counters of implemented and missing steps | `docs/spec/world-tick.md`, `cargo.md` 7 |
 //! | [`exe`], [`data`] | run-time loader for the copyrighted data tables (cargo, industries, engines, vehicles, track and station tables, stock economy multiplier and company-age weights) | `docs/spec/cargo.md` 3, 7.1; `trains.md` 2; `terrain-track.md` 2.2, 3.3; `finance.md` 3.1 |
+//! | [`growth`] | yearly town/region growth, building type pick and site search, removal pick, industry rating | `docs/spec/world-growth.md` |
 //! | [`fp`] | `ftol`, f32 stores, `pow` (integer x87 emulation of the CRT `_CIpow`, no libm) | `docs/spec/time.md` 3; `trains.md` 8 |
 //!
 //! Intentional divergence: the simulation advances with a fixed nominal frame
@@ -31,7 +33,12 @@ pub mod effects;
 pub mod exe;
 pub mod finance;
 pub mod fp;
+pub mod growth;
+pub mod hooks;
+pub mod industry;
+pub mod pool;
 pub mod rng;
+pub mod tick;
 pub mod track;
 pub mod trains;
 pub mod world;

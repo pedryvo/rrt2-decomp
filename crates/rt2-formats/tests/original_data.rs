@@ -410,3 +410,30 @@ fn saves_written_by_the_original_parse_to_the_last_byte() {
         );
     }
 }
+
+/// `Save::to_bytes` is the inverse of `Save::parse`: files written by the original's saver
+/// (`RT2_SAVE_2348`) are rewritten byte for byte, checksum included (map-gam.md 1, saver
+/// `0x477540`, checksum `0x4ef4d0`). The shipped 0x233C files round-trip in their own layout.
+#[test]
+fn saves_round_trip_byte_identical() {
+    let mut files: Vec<PathBuf> = Vec::new();
+    if let Some(paths) = std::env::var_os("RT2_SAVE_2348") {
+        files.extend(std::env::split_paths(&paths));
+    }
+    if let Some(dir) = game_dir() {
+        for name in ["Tutorial.GAM", "Example save game.GAM"] {
+            files.push(dir.join("games").join(name));
+        }
+    }
+    if files.is_empty() {
+        eprintln!("neither RT2_SAVE_2348 nor RT2_DIR set; skipping");
+        return;
+    }
+    for path in files {
+        let raw = std::fs::read(&path).unwrap();
+        let save = rt2_formats::map::Save::parse(&raw).unwrap();
+        let back = save.to_bytes();
+        assert_eq!(back.len(), raw.len(), "{}", path.display());
+        assert!(back == raw, "{}: bytes differ", path.display());
+    }
+}

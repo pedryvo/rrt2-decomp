@@ -423,6 +423,9 @@ pub struct Rule {
     pub text3: String,
     /// Short title (e.g. `Gold`).
     pub title: String,
+    /// The five length-prefixed text blobs exactly as stored (condition, message, text2, text3,
+    /// title), including terminators, so the rule can be written back byte for byte.
+    pub raw_blobs: [Vec<u8>; 5],
 }
 
 /// Everything in a version-0x233C file beyond the terrain grid.
@@ -675,7 +678,8 @@ impl Save {
                 len: raw.len(),
                 what: "rule tokens",
             })?;
-            let condition = c_string(r.blob("a rule condition")?);
+            let condition_raw = r.blob("a rule condition")?.to_vec();
+            let condition = c_string(&condition_raw);
             let ints = |r: &mut Reader| -> Result<Vec<i32>, MapError> {
                 Ok(r.take(tokens * 4, "rule tokens")?
                     .as_chunks::<4>()
@@ -686,10 +690,16 @@ impl Save {
             };
             let tokens_a = ints(&mut r)?;
             let tokens_b = ints(&mut r)?;
-            let message = c_string(r.blob("a rule message")?);
-            let text2 = c_string(r.blob("a rule text")?);
-            let text3 = c_string(r.blob("a rule text")?);
-            let title = c_string(r.blob("a rule title")?);
+            let message_raw = r.blob("a rule message")?.to_vec();
+            let text2_raw = r.blob("a rule text")?.to_vec();
+            let text3_raw = r.blob("a rule text")?.to_vec();
+            let title_raw = r.blob("a rule title")?.to_vec();
+            let (message, text2, text3, title) = (
+                c_string(&message_raw),
+                c_string(&text2_raw),
+                c_string(&text3_raw),
+                c_string(&title_raw),
+            );
             rules.push(Rule {
                 fixed,
                 condition,
@@ -699,6 +709,7 @@ impl Save {
                 text2,
                 text3,
                 title,
+                raw_blobs: [condition_raw, message_raw, text2_raw, text3_raw, title_raw],
             });
         }
         if r.pos != raw.len() {
@@ -813,6 +824,146 @@ impl Save {
             .ordered()
             .map(|r| c_string(&r.data[12..44]))
             .collect()
+    }
+}
+
+fn put_i32(out: &mut Vec<u8>, v: i32) {
+    out.extend_from_slice(&v.to_le_bytes());
+}
+
+impl Pool {
+    /// Writes the pool as `pool_write` (`0x4f1a40`) does (docs/formats/map-gam.md 5.3).
+    fn write(&self, out: &mut Vec<u8>) {
+        put_i32(out, self.slots as i32);
+        put_i32(out, self.record_size as i32);
+        put_i32(out, i32::from(self.linked));
+        put_i32(out, self.field_00);
+        put_i32(out, self.field_04);
+        put_i32(out, self.field_0c);
+        put_i32(out, self.count as i32);
+        put_i32(out, self.pool_type);
+        out.extend_from_slice(&self.head.to_le_bytes());
+        out.extend_from_slice(&self.tail.to_le_bytes());
+        out.extend_from_slice(&self.bitmap);
+        for r in &self.records {
+            out.extend_from_slice(&r.data);
+        }
+        if self.linked {
+            for v in self.next.iter().chain(self.prev.iter()) {
+                out.extend_from_slice(&v.to_le_bytes());
+            }
+        }
+    }
+}
+
+impl Save {
+    /// Writes the decoded scalar fields (`game_time_minutes`, date, time, speed, `game_seed`)
+    /// into the raw `state` and `trailer` blocks, so the raw bytes and the fields agree after
+    /// the fields were edited.
+    pub fn sync_scalars(&mut self) {
+        let (mut state, mut trailer) = (
+            std::mem::take(&mut self.state),
+            std::mem::take(&mut self.trailer),
+        );
+        self.write_scalars(&mut state, &mut trailer);
+        self.state = state;
+        self.trailer = trailer;
+    }
+
+    fn write_scalars(&self, state: &mut [u8], trailer: &mut [u8]) {
+        state[STATE_MINUTES..STATE_MINUTES + 4]
+            .copy_from_slice(&self.game_time_minutes.to_le_bytes());
+        state[STATE_DATE..STATE_DATE + 2].copy_from_slice(&self.date.year.to_le_bytes());
+        state[STATE_DATE + 2] = self.date.month;
+        state[STATE_DATE + 3] = self.date.day;
+        state[STATE_TIME] = self.hour;
+        state[STATE_TIME + 1] = self.minute;
+        state[STATE_SPEED] = self.game_speed;
+        trailer[0x2E..0x32].copy_from_slice(&self.game_seed.to_le_bytes());
+    }
+
+    /// Serializes the save in its own layout, the inverse of [`Save::parse`] (the writer of the
+    /// original is `0x477540`, docs/formats/map-gam.md sections 1 and 5). The scalar fields kept
+    /// outside the raw blocks (`game_time_minutes`, date, time, speed, `game_seed`) are written
+    /// into the state/trailer bytes, and for a 0x2348 file the checksum at [`CHECKSUM_OFFSET`]
+    /// is recomputed with the algorithm of `0x4ef4d0` over the file with that field zeroed.
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let this = self;
+        let (mut header, mut state, mut trailer) = (
+            self.header.clone(),
+            self.state.clone(),
+            self.trailer.clone(),
+        );
+        self.write_scalars(&mut state, &mut trailer);
+        let mut out = Vec::with_capacity(
+            this.layout.tiles_offset() + TILE_SIZE * this.map.tiles.len() + (1 << 20),
+        );
+        if this.layout.version == MAGIC_2348 {
+            header[CHECKSUM_OFFSET..CHECKSUM_OFFSET + 4].fill(0);
+        }
+        out.extend_from_slice(&header);
+        out.extend_from_slice(&state);
+        out.extend_from_slice(&trailer);
+        for t in &this.map.tiles {
+            out.extend_from_slice(&[
+                t.var,
+                t.ground,
+                t.flags2,
+                t.trees,
+                t.struct_id,
+                t.reserved5,
+                t.flags6,
+                t.track_id,
+                t.reserved8,
+                t.region,
+            ]);
+        }
+        for e in &this.map.elevation {
+            out.extend_from_slice(&e.to_le_bytes());
+        }
+        for pool in [
+            &this.structures,
+            &this.stations,
+            &this.persons,
+            &this.companies,
+            &this.pool_70,
+            &this.objects,
+            &this.pool_78,
+            &this.pool_58,
+            &this.pool_7c,
+            &this.pool_80,
+            &this.track_pieces,
+            &this.trains,
+            &this.places,
+            &this.territories,
+            &this.pool_88,
+        ] {
+            pool.write(&mut out);
+        }
+        for e in &this.train_extras {
+            out.extend_from_slice(&e.cars_raw);
+            out.extend_from_slice(&e.route_raw);
+        }
+        put_i32(&mut out, this.rules.len() as i32);
+        for r in &this.rules {
+            out.extend_from_slice(&r.fixed);
+            let blob = |out: &mut Vec<u8>, b: &[u8]| {
+                put_i32(out, b.len() as i32);
+                out.extend_from_slice(b);
+            };
+            blob(&mut out, &r.raw_blobs[0]);
+            for v in r.tokens_a.iter().chain(r.tokens_b.iter()) {
+                put_i32(&mut out, *v);
+            }
+            for b in &r.raw_blobs[1..] {
+                blob(&mut out, b);
+            }
+        }
+        if this.layout.version == MAGIC_2348 {
+            let sum = checksum(&out);
+            out[CHECKSUM_OFFSET..CHECKSUM_OFFSET + 4].copy_from_slice(&sum.to_le_bytes());
+        }
+        out
     }
 }
 
@@ -986,5 +1137,42 @@ mod tests {
         raw[0] = 0x40; // 0x2340 is a real but unsupported intermediate version
         raw[1] = 0x23;
         assert!(matches!(Map::parse(&raw), Err(MapError::BadMagic(0x2340))));
+    }
+}
+
+#[cfg(test)]
+mod writer_tests {
+    use super::*;
+
+    #[test]
+    fn synthetic_saves_round_trip() {
+        // The synthetic 0x2348 file has checksum 0 stored; the writer patches the real one.
+        let mut raw = tests_support::synthetic_2348();
+        let sum = file_checksum(&raw).unwrap();
+        raw[CHECKSUM_OFFSET..CHECKSUM_OFFSET + 4].copy_from_slice(&sum.to_le_bytes());
+        let save = Save::parse(&raw).unwrap();
+        assert_eq!(save.to_bytes(), raw);
+    }
+
+    mod tests_support {
+        use super::*;
+
+        pub fn synthetic_2348() -> Vec<u8> {
+            let layout = Layout::V2348;
+            let (w, h) = (2usize, 2usize);
+            let mut raw = vec![0u8; layout.tiles_offset()];
+            raw[0..4].copy_from_slice(&layout.version.to_le_bytes());
+            raw[SIZE_OFFSET..SIZE_OFFSET + 2].copy_from_slice(&(w as u16).to_le_bytes());
+            raw[SIZE_OFFSET + 2..SIZE_OFFSET + 4].copy_from_slice(&(h as u16).to_le_bytes());
+            raw.resize(raw.len() + TILE_SIZE * w * h + 2 * (w + 1) * (h + 1), 7);
+            for _ in 0..15 {
+                for v in [1i32, 4, 0, 1, 0, 1, 0, 0] {
+                    raw.extend_from_slice(&v.to_le_bytes());
+                }
+                raw.extend_from_slice(&[0, 0, 0, 0, 1]);
+            }
+            raw.extend_from_slice(&0i32.to_le_bytes());
+            raw
+        }
     }
 }

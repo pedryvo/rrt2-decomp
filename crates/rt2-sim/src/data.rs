@@ -32,6 +32,9 @@ pub const ADDR_ECON_PRODUCTION: u32 = 0x0055_0494;
 const ADDR_ECON_REVENUE: u32 = 0x0055_04bc;
 const ADDR_SLIDER_HUMAN: u32 = 0x0055_0448;
 const ADDR_SLIDER_AI: u32 = 0x0055_041c;
+/// `bonus_table` (`0x53a4b0`): i32 per place size class (world-tick.md 3.6).
+const ADDR_TOWN_BONUS: u32 = 0x0053_a4b0;
+const TOWN_BONUS_ENTRIES: usize = 8;
 
 /// Everything the simulation reads from the executable.
 #[derive(Clone, Debug)]
@@ -55,6 +58,8 @@ pub struct GameData {
     pub track: TrackTables,
     /// Stock economy multiplier and company-age price weights (finance.md 3.1).
     pub finance: FinanceTables,
+    /// Town bonus offer per place size class (`0x53a4b0`, world-tick.md 3.6).
+    pub town_bonus: Vec<i32>,
 }
 
 fn arr<const N: usize>(exe: &Exe, va: u32) -> Result<[f32; N], ExeError> {
@@ -119,6 +124,9 @@ impl GameData {
             production_econ: arr(exe, ADDR_ECON_PRODUCTION)?,
             track: TrackTables::load(exe)?,
             finance: FinanceTables::load(exe)?,
+            town_bonus: (0..TOWN_BONUS_ENTRIES)
+                .map(|i| exe.u32_at(ADDR_TOWN_BONUS + 4 * i as u32).map(|v| v as i32))
+                .collect::<Result<Vec<_>, ExeError>>()?,
         })
     }
 }

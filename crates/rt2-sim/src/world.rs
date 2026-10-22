@@ -11,6 +11,8 @@ use crate::rng::GameRng;
 /// intent) and [`World::tick`] (time), so a command log plus a seed replays a game.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct World {
+    /// Entity pools and bookkeeping when built from a save ([`World::from_save`]).
+    pub(crate) sim: Option<Box<crate::tick::SimState>>,
     /// `game_time_minutes` (`0x5704f4`): always equal to `date.to_minutes()`.
     pub(crate) minutes: i32,
     /// Game RNG (generator A, state `0x55d2c0`).
@@ -28,6 +30,7 @@ impl World {
     /// (rng.md 2.4); the caller chooses them, so the core never reads a clock.
     pub fn new(start: Date, game_seed: u32, rng_seed: u32) -> World {
         World {
+            sim: None,
             minutes: start.to_minutes(),
             rng: GameRng::new(rng_seed),
             game_seed,

@@ -1756,6 +1756,7 @@ dependencies = [
 name = "rt2-sim"
 version = "0.1.0"
 dependencies = [
+ "rt2-formats",
  "thiserror 2.0.21",
 ]
 
@@ -1767,6 +1768,7 @@ dependencies = [
  "clap",
  "png",
  "rt2-formats",
+ "rt2-sim",
 ]
 
 [[package]]
