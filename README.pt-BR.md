@@ -43,7 +43,7 @@ O **rrt2-decomp** estuda o executável original de _Railroad Tycoon II Platinum_
 | Sprites (LAD) e paletas | ✅ | Sprites decodificam com as cores certas, 1990/1990 bancos · [spec](docs/formats/lad.md) |
 | Layouts de interface (`.win`) e fontes bitmap | ✅ | Os 46 layouts de janela são lidos; as 10 fontes do jogo decodificam com métricas · [ui](docs/formats/ui.md) · [fontes](docs/formats/font.md) |
 | Áudio (`.raw` `.wav`) | 🔍 | A maioria parece PCM mono de 16 bits |
-| Mapas e saves (`.MAP` `.GAM`) | 🟡 | Os 33 arquivos são lidos até o último byte: terreno, data, semente, lugares, empresas e regras; estações e trens parciais · [spec](docs/formats/map-gam.md) |
+| Mapas e saves (`.MAP` `.MP2` `.GAM`) | 🟡 | As duas versões do formato (0x233C e 0x2348): os 128 arquivos da instalação e os saves gravados pelo original são lidos até o último byte; terreno, data, semente, lugares, empresas e regras decodificados; estações e trens parciais · [spec](docs/formats/map-gam.md) |
 | Specs de simulação (trens, carga, economia…) | 🟡 | Tempo, calendário, laço principal, RNGs, economia de carga, movimento, quebras e custos dos trens, construção de trilhos e estações e área de captação, em boa parte verificados bit a bit contra o original · [tempo](docs/spec/time.md) · [rng](docs/spec/rng.md) · [carga](docs/spec/cargo.md) · [trens](docs/spec/trains.md) · [trilhos](docs/spec/terrain-track.md) |
 | Harness de teste diferencial (Unicorn) | ✅ | Roda funções do original num emulador para comparação bit a bit · [docs](docs/oracle.md) |
 | Motor gráfico (wgpu) | 🟡 | Visualizador de terreno: `cargo run --release -p rt2-viewer -- <mapa>` |

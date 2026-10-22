@@ -43,7 +43,7 @@ _The 1998 classic you know, from the same isometric viewpoint,<br>now native at 
 | Sprites (LAD) and palettes | ✅ | Sprites decode with correct colours, 1990/1990 banks · [spec](docs/formats/lad.md) |
 | UI layouts (`.win`) and bitmap fonts | ✅ | All 46 window layouts parse; the 10 game fonts decode with metrics · [ui](docs/formats/ui.md) · [fonts](docs/formats/font.md) |
 | Audio (`.raw` `.wav`) | 🔍 | Most look like 16-bit mono PCM |
-| Maps and saves (`.MAP` `.GAM`) | 🟡 | All 33 files parse to the last byte: terrain, date, seed, places, companies, rules; stations and trains partial · [spec](docs/formats/map-gam.md) |
+| Maps and saves (`.MAP` `.MP2` `.GAM`) | 🟡 | Both format versions (0x233C, 0x2348): all 128 shipped files and saves written by the original parse to the last byte; terrain, date, seed, places, companies, rules decoded; stations and trains partial · [spec](docs/formats/map-gam.md) |
 | Simulation specs (trains, cargo, economy…) | 🟡 | Time/calendar/main loop, RNGs, cargo economy, train movement/breakdowns/costs, track/station construction and catchment, mostly verified bit-exact against the original · [time](docs/spec/time.md) · [rng](docs/spec/rng.md) · [cargo](docs/spec/cargo.md) · [trains](docs/spec/trains.md) · [track](docs/spec/terrain-track.md) |
 | Differential test harness (Unicorn) | ✅ | Runs original functions in an emulator for bit-exact comparison · [docs](docs/oracle.md) |
 | Rendering engine (wgpu) | 🟡 | Isometric terrain viewer: `cargo run --release -p rt2-viewer -- <map>` |
