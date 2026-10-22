@@ -3213,3 +3213,241 @@ name = "industry_load_fixups"
 kind = "function"
 comment = "save-load fixups of industry_type_table set 0: housing rates by difficulty byte 0x567d70, Port row (type 28) copied from header 0x57023b with slot years recomputed from cargo first years; then rebuild_inputs(0x1c); [V]"
 spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x455f30"
+name = "rule_evaluate"
+kind = "function"
+comment = "thiscall(regra, &valor, msg, execute) : lacos jogador/empresa/territorio (+0x28/+0x24/+0x324), condicao (rule_reduce ou modo de data +0x10), mensagem, efeitos (350 bytes x 2 em +0x64), regra de desfazer; execute=0 so valida; [V]"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x454270"
+name = "rule_reduce"
+kind = "function"
+comment = "thiscall(regra, n, ids, valores, empresa, pessoa, territorio, msg, &saida): redutor por 8 passes de precedencia (classe, funcao, parenteses, constante, * /, + -, comparacao, AND/OR); erros LNG 0x7c..0x81, 0x898..0x89a, 0xb2b; [V diferencial]"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x454ae0"
+name = "rule_function_value"
+kind = "function"
+comment = "fastcall(&saida, msg, id, param, empresa, pessoa, territorio, classe, local): valor da funcao da linguagem (101 funcoes); classe 0x4a/0x4b agrega pelo pool (empresa > jogador > territorio), estrito; Random1To10000 = rng_range(1,10000) ou crt_rand_range se local; [V]"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x453e70"
+name = "rule_split_words"
+kind = "function"
+comment = "fastcall(texto, &n, &palavras): divide por espaco e antes/depois de ( ) + - * / e entre caracteres > < = e o resto; [V]"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x454060"
+name = "rule_compile"
+kind = "function"
+comment = "fastcall(texto, &n, &ids, &valores, msg): palavras (strcmpi com nome/alias da tabela 0x53b330) ou numero (0x5a); erro LNG 0x7a/0x7b; [V]"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x4ef3f0"
+name = "parse_int"
+kind = "function"
+comment = "fastcall(texto, &v): decimal ou 0x hex, qualquer '-' nega, i32 com wrap; devolve 0 se houver outro caractere; [V]"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x457a30"
+name = "rule_set_condition"
+kind = "function"
+comment = "thiscall(regra, texto, msg, ...): copia o texto, compila, liga +0x24/+0x2c, +0x28/+0x30, +0x324/+0x320 conforme as flags C/J/T dos tokens e avalia uma vez com execute=0 (editor); [S]"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x457ee0"
+name = "rule_copy"
+kind = "function"
+comment = "thiscall(regra, origem): copia profunda da regra (0x362 bytes + textos + vetores); [S]"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x455e70"
+name = "rule_show_message"
+kind = "function"
+comment = "thiscall(regra, msg, extra1, extra2, &escolha): +0x60 = 0 dialogo (0x469320), 1 jornal (0x4a42f0), 2 escolha com dois botoes (0x4510a0, devolve 1 se o segundo; em rede >= 2 jogadores sempre 0); [S]"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x458210"
+name = "rule_collect_status"
+kind = "function"
+comment = "fastcall(buffer): liga [0x5665e0] ao buffer e dispara as regras de gatilho 7 (linhas de status do briefing); para se [0x573d70] mudar; [S]"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x458050"
+name = "rule_warn_scopes"
+kind = "function"
+comment = "fastcall(regra): editor, avisa (LNG 0x89c/0x89d/0x89e) de efeitos que exigem testar contra cada empresa/jogador/territorio (flags +3/+4/+5 da tabela de efeitos); [S]"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x45c150"
+name = "effect_money"
+kind = "function"
+comment = "fastcall(b): byte do efeito de dinheiro para dolares: |b|<=10 x1000, <60 (|b|-9)x10000, <105 (|b|-54)x100000, senao (|b|-99)x1000000; sinal + se b>=1; [V]"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x4e9280"
+name = "game_over_screen"
+kind = "function"
+comment = "tela de fim de jogo: [0x573d71]=1, medalha da campanha em [0x566d04+indice] (max; derrota nao apaga), quadro com o texto [0x574b90], placar (0x4701f0) ou proximo cenario; [S]"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x46b9a0"
+name = "stations_connected"
+kind = "function"
+comment = "fastcall(alvo1, &pool?, alvo2, cidade?, empresa): 1 se alguma rede de estacoes (estacao+0x57 < 0x100, opcionalmente da empresa +0x39) tem estacao no territorio alvo1 (+0x4ad) e outra no territorio/cidade alvo2 (+0x4ad/+0x53); [S]"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x4c0240"
+name = "stations_visited"
+kind = "function"
+comment = "conta estacoes do jogador (+0x45 == 0) com byte +0x4bb != 0 (visitada); usado por NumberOfStationsVisited; [S]"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x43eca0"
+name = "company_goodwill"
+kind = "function"
+comment = "fastcall(empresa) -> 0..10000: boa vontade = soma sobre os territorios de (trilho/16 + cargas no ano + cargas vida/N) dos blocos de empresa+0x479 vezes effect_multiplier(0x28), teto 10000; CompanyGoodwill = isto / 100; [S]"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x53b330"
+name = "rule_token_table"
+kind = "table"
+comment = "118 entradas de 17 bytes: nome*, kind u32 (0 funcao/constante,1 comparador,2 (,3 ),4 binario,5 classe), prec u8 (passe 0..7), P/C/J/T u8, alias*; id 0x5a = constante"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x550550"
+name = "rule_effect_table"
+kind = "table"
+comment = "350 linhas de 16 bytes: id do controle u16, visivel, exige empresa/jogador/territorio (+3/+4/+5), +0xb instantaneo, +0xc min i8, +0xd max i8, +0xe LNG do nome u16"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x573d70"
+name = "game_over_state"
+kind = "global"
+comment = "u8: 0 em jogo, 1/2/3 vitoria bronze/prata/ouro, 4 derrota (efeitos 1..4 das regras); [0x573d71] = tela de fim ja mostrada"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x573d71"
+name = "game_over_shown"
+kind = "global"
+comment = "u8: game_over_screen ja foi aberta"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x5665dc"
+name = "rule_last_t2t_value"
+kind = "global"
+comment = "i32: ultimo valor das funcoes de matriz de cargas (0x5b, 0x5c, 0x69, 0x6a..0x6d), zerado no inicio de rule_evaluate; texto (COMPANY_T2T_LOADS)"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x5665e0"
+name = "rule_status_buffer"
+kind = "global"
+comment = "ptr: buffer de texto do briefing/status enquanto rule_collect_status roda (0 fora)"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x5665ec"
+name = "rule_pending_list"
+kind = "global"
+comment = "lista ligada de regras de desfazer criadas e ainda nao anexadas ao pool (anexadas no fim de rule_evaluate)"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x5665f0"
+name = "rule_briefing_view"
+kind = "global"
+comment = "u32: 1 quando o botao de briefing dispara o gatilho 6 (sem efeitos)"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x574b90"
+name = "game_over_text"
+kind = "global"
+comment = "ptr: texto da regra que terminou o jogo (quadro de vitoria/derrota)"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x574784"
+name = "engine_availability_dirty"
+kind = "global"
+comment = "u8: ligado por efeitos de disponibilidade de locomotiva (ids 0x7f..0xbc, 0x131..0x134)"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x566d04"
+name = "campaign_medals"
+kind = "global"
+comment = "u8[18]: melhor medalha por cenario da campanha (0 nenhuma, 1/2/3 bronze/prata/ouro, 4 derrota)"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x566d16"
+name = "campaign_scenario_index"
+kind = "global"
+comment = "i32: indice do cenario da campanha em jogo (-1 nenhum); ultimo = 0x11 nos conjuntos 0/1, 2 no 2, 5 no 3"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x566d3d"
+name = "campaign_set"
+kind = "global"
+comment = "u8: conjunto de campanha 0..3"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x566d00"
+name = "campaign_difficulty"
+kind = "global"
+comment = "u32: dificuldade da campanha 0..2 (CampaignDifficulty1To3 = +1)"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x566d2a"
+name = "campaign_choice"
+kind = "global"
+comment = "u8: escolha 0..2 do cenario da campanha (CampaignChoice1To3 = +1)"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x570234"
+name = "campaign_active"
+kind = "global"
+comment = "u8: jogando a campanha"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x552430"
+name = "campaign_scenario_table"
+kind = "table"
+comment = "24 bytes por cenario (6 dwords: nome-base do arquivo*, ids LNG, numero, id LNG), 18 por conjunto"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x573f1c"
+name = "game_is_multiplayer"
+kind = "global"
+comment = "u32: partida em rede (net_player_count > 1 ao iniciar); GameIsMultiPlayer"
+spec = "docs/spec/scenarios.md"

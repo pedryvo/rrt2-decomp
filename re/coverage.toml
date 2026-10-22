@@ -3,11 +3,11 @@
 # Ver docs/re-workflow.md.
 #
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
-# Classificadas (categoria != unknown): 1061 (36.0%)
-# Por categoria: lib=258, platform=116, render=11, audio=70, ui=247, sim=359, unknown=1884
-# Por estado:   unknown=2658, named=78, spec=162, verified=47
-# Entradas manuais: 328
-# sim spec coverage: 52.6% (189 de 359 funcoes sim em spec/verified)
+# Classificadas (categoria != unknown): 1077 (36.6%)
+# Por categoria: lib=258, platform=117, render=11, audio=70, ui=250, sim=371, unknown=1868
+# Por estado:   unknown=2642, named=81, spec=170, verified=52
+# Entradas manuais: 344
+# sim spec coverage: 53.9% (200 de 371 funcoes sim em spec/verified)
 
 [[function]]
 addr = "0x401005"
@@ -4946,9 +4946,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x4023ba"
 size = 5
-category = "unknown"
+category = "platform"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4e9280"
 
 [[function]]
 addr = "0x4023c4"
@@ -10224,9 +10224,10 @@ manual = true
 [[function]]
 addr = "0x43eca0"
 size = 323
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "scenarios/company_goodwill (3.5)"
+manual = true
 
 [[function]]
 addr = "0x43edf0"
@@ -10750,30 +10751,34 @@ why = "no-evidence"
 [[function]]
 addr = "0x453e70"
 size = 493
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "scenarios/rule_split_words (3.1), 3790 condicoes reais"
+manual = true
 
 [[function]]
 addr = "0x454060"
 size = 521
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "scenarios/rule_compile (3.1): reproduz os tokens gravados de 3790 regras"
+manual = true
 
 [[function]]
 addr = "0x454270"
 size = 1972
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "scenarios/rule_reduce (3.2), diferencial 10000 casos + 3649 condicoes reais"
+manual = true
 
 [[function]]
 addr = "0x454ae0"
 size = 4501
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "scenarios/rule_function_value (3.3): funcoes sobre globais, classe e RNG verificadas; as demais funcoes lidas do codigo"
+manual = true
 
 [[function]]
 addr = "0x455e40"
@@ -10785,23 +10790,26 @@ why = "no-evidence"
 [[function]]
 addr = "0x455e70"
 size = 182
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "scenarios/rule_show_message (2.4)"
+manual = true
 
 [[function]]
 addr = "0x455f30"
 size = 6432
 category = "sim"
-status = "unknown"
-why = "string:(COMPANY)"
+status = "spec"
+why = "scenarios/rule_evaluate (docs/spec/scenarios.md 2.3, 4)"
+manual = true
 
 [[function]]
 addr = "0x457a30"
 size = 208
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "scenarios/rule_set_condition (editor, 2.1)"
+manual = true
 
 [[function]]
 addr = "0x457b00"
@@ -10822,31 +10830,34 @@ manual = true
 [[function]]
 addr = "0x457ee0"
 size = 256
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "scenarios/rule_copy (editor)"
+manual = true
 
 [[function]]
 addr = "0x457fe0"
 size = 111
 category = "sim"
 status = "spec"
-why = "time.md 7.4"
+why = "scenarios/event_fire_trigger (2.2)"
 manual = true
 
 [[function]]
 addr = "0x458050"
 size = 436
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "named"
+why = "scenarios/rule_warn_scopes (editor, 4.1)"
+manual = true
 
 [[function]]
 addr = "0x458210"
 size = 160
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "scenarios/rule_collect_status (2.2)"
+manual = true
 
 [[function]]
 addr = "0x459d10"
@@ -10907,9 +10918,10 @@ why = "string:eventset.win"
 [[function]]
 addr = "0x45c150"
 size = 127
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "scenarios/effect_money (4.3), diferencial -127..127"
+manual = true
 
 [[function]]
 addr = "0x45cd50"
@@ -12132,9 +12144,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x46b9a0"
 size = 285
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "scenarios/stations_connected (3.5)"
+manual = true
 
 [[function]]
 addr = "0x46bac0"
@@ -14794,9 +14807,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4c0240"
 size = 100
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "scenarios/stations_visited (3.5)"
+manual = true
 
 [[function]]
 addr = "0x4c0a50"
@@ -16188,9 +16202,10 @@ why = "string:winlose.win"
 [[function]]
 addr = "0x4e9280"
 size = 945
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "scenarios/game_over_screen (5)"
+manual = true
 
 [[function]]
 addr = "0x4e9770"
@@ -16427,9 +16442,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4ef3f0"
 size = 217
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "scenarios/parse_int (3.1)"
+manual = true
 
 [[function]]
 addr = "0x4ef4d0"
