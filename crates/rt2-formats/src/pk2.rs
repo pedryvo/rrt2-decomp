@@ -8,7 +8,8 @@
 //! file data           offsets are relative to the end of the directory
 //! ```
 //!
-//! Entries are not stored compressed.
+//! Entries are not stored compressed. When several archives hold the same hash, the one whose
+//! file name sorts last (case-insensitively) wins: `RT2_11PL` > `RT2_09GO` > `RT2_06` > `RT2`.
 
 use std::ops::Range;
 
@@ -26,6 +27,21 @@ pub enum Pk2Error {
         end: usize,
         len: usize,
     },
+}
+
+/// Filename hash used as the directory key (loop at `0x4f5070`, case fold at `0x4f0d70`).
+/// Names are bare (no directory) and matched case-insensitively.
+pub fn name_hash(name: &str) -> u32 {
+    name.bytes().fold(7u32, |h, c| {
+        let c = if c.is_ascii_lowercase() || c > 0xef {
+            c - 0x20
+        } else {
+            c
+        };
+        (c as u32)
+            .wrapping_add(0x3039)
+            .wrapping_add(h.wrapping_mul(0x41c6_4e6e))
+    })
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -105,6 +121,10 @@ impl<'a> Pk2<'a> {
     pub fn find(&self, hash: u32) -> Option<&Pk2Entry> {
         self.entries.iter().find(|e| e.hash == hash)
     }
+
+    pub fn find_name(&self, name: &str) -> Option<&Pk2Entry> {
+        self.find(name_hash(name))
+    }
 }
 
 #[cfg(test)]
@@ -134,6 +154,13 @@ mod tests {
         assert_eq!(pk2.contents(pk2.find(0xdead_beef).unwrap()), b"hello");
         assert_eq!(pk2.contents(pk2.find(0x0123_4567).unwrap()), b"world!");
         assert!(pk2.find(1).is_none());
+    }
+
+    #[test]
+    fn name_hash_matches_original() {
+        // setup.imb is entry 0 of RT2_11PL.PK2.
+        assert_eq!(name_hash("setup.imb"), 0x0c9b_172f);
+        assert_eq!(name_hash("SETUP.IMB"), name_hash("setup.imb"));
     }
 
     #[test]

@@ -3,3 +3,4 @@
 /re/snapshots
 *.log
 /re/bin
+__pycache__/

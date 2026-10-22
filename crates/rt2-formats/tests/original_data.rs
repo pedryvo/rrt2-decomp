@@ -39,3 +39,14 @@ fn default_language_file_parses() {
     assert_eq!(lng.table_entry("CARGO_TYPES", 0), Some("passenger"));
     assert_eq!(lng.strings.len(), 2807);
 }
+
+#[test]
+fn known_names_resolve_in_rt2_pk2() {
+    let Some(dir) = game_dir() else {
+        eprintln!("RT2_DIR not set; skipping");
+        return;
+    };
+    let raw = std::fs::read(dir.join("data/RT2_11PL.PK2")).unwrap();
+    let pk2 = Pk2::parse(&raw).unwrap();
+    assert_eq!(pk2.entries()[0], *pk2.find_name("setup.imb").unwrap());
+}
