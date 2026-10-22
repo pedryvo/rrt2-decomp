@@ -22,3 +22,4 @@ Gerado na mesclagem de 2026-10-22. O nome mantido em `re/symbols.toml` é o can�
 Nota `0x574c74` (alias não substituído, em aberto): cargo.md (tabela de listas) e time.md (7.3) descrevem o pool como "indústrias e casas" e aplicam a produção periódica (`0x40aa20`) e a recontagem de pilhas a cada registro com `+7 != 0`, o que favorece `list_industries`; map-gam.md (linha 128) lê os registros como "objetos de mapa" (387 no Tutorial, 13 no B&O, 0 no Britain.MAP), com `+8` u16 = estação quando `+7 == 0`, o que sugere um pool misto; a função exata continua incerta.
 
 Aliases substituídos nas specs em 2026-10-22 (exceto 0x574c74).
+| `0x4259e0` | `tile_reroll_variant` | `terrain_clear_layer` | ground.toml (2026-10-22) | Confirmar o papel exato; world-tick.md também o cita como alvo |
