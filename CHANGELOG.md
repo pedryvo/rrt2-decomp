@@ -86,3 +86,5 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Improved: terrain relief now uses the original's 2 px per elevation unit at native zoom; view rotation 0 matches the original projection
 - Feature: sprite upscaling for high DPI: Scale2x bake into an atlas at load plus a sharp-bilinear sampler
 - RE: ground ids are ordered like ground.imb records (ground 0x00 only uses ids 0-2); ground.imb families listed in code; map object pool (0x574c74) byte 6 = building type, i16 x/y at +0x22/+0x24
+- Docs: spec da IA (docs/spec/ai.md): turno mensal, expansao (primeira linha, ligacao de cidades), gestao de trens e escolha de paradas/composicao, gerente, compra de industria, financas e bolsa, personas do .data e ordem do RNG
+- RE: 37 funcoes, tabelas e globais da IA nomeadas (ai_extend_network, ai_pick_stop, ai_manage_trains, ai_persona_table...); ai_pick_engine e ai_town_value verificados no oraculo (tests/ai.rs)

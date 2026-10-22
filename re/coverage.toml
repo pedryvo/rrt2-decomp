@@ -3,11 +3,11 @@
 # Ver docs/re-workflow.md.
 #
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
-# Classificadas (categoria != unknown): 1025 (34.8%)
-# Por categoria: lib=258, platform=116, render=11, audio=70, ui=247, sim=323, unknown=1920
-# Por estado:   unknown=2691, named=75, spec=134, verified=45
-# Entradas manuais: 298
-# sim spec coverage: 49.2% (159 de 323 funcoes sim em spec/verified)
+# Classificadas (categoria != unknown): 1059 (36.0%)
+# Por categoria: lib=258, platform=116, render=11, audio=70, ui=247, sim=357, unknown=1886
+# Por estado:   unknown=2659, named=77, spec=162, verified=47
+# Entradas manuais: 328
+# sim spec coverage: 52.9% (189 de 357 funcoes sim em spec/verified)
 
 [[function]]
 addr = "0x401005"
@@ -4664,9 +4664,9 @@ why = "thunk->0x4c56e0"
 [[function]]
 addr = "0x4022ac"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4d4e90"
 
 [[function]]
 addr = "0x4022b1"
@@ -4713,9 +4713,9 @@ why = "thunk->0x484730"
 [[function]]
 addr = "0x4022d9"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4c01b0"
 
 [[function]]
 addr = "0x4022e8"
@@ -6496,9 +6496,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x402a27"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x460370"
 
 [[function]]
 addr = "0x402a2c"
@@ -7642,9 +7642,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x402ea0"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4cdf00"
 
 [[function]]
 addr = "0x402ea5"
@@ -9418,30 +9418,34 @@ manual = true
 [[function]]
 addr = "0x430fd0"
 size = 685
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "docs/spec/ai.md"
+manual = true
 
 [[function]]
 addr = "0x431280"
 size = 175
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/ai.md"
+manual = true
 
 [[function]]
 addr = "0x431330"
 size = 191
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/ai.md"
+manual = true
 
 [[function]]
 addr = "0x4313f0"
 size = 613
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "ai.md 5.1; tests/ai.rs ai_town_value_company0_matches_original"
+manual = true
 
 [[function]]
 addr = "0x431660"
@@ -9518,94 +9522,105 @@ why = "string:cityset.win"
 [[function]]
 addr = "0x434850"
 size = 230
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/ai.md"
+manual = true
 
 [[function]]
 addr = "0x434940"
 size = 244
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/ai.md"
+manual = true
 
 [[function]]
 addr = "0x434a40"
 size = 1199
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/ai.md"
+manual = true
 
 [[function]]
 addr = "0x434ef0"
 size = 360
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/ai.md"
+manual = true
 
 [[function]]
 addr = "0x435060"
 size = 608
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/ai.md"
+manual = true
 
 [[function]]
 addr = "0x435320"
 size = 1124
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/ai.md"
+manual = true
 
 [[function]]
 addr = "0x435790"
 size = 1153
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/ai.md"
+manual = true
 
 [[function]]
 addr = "0x435c20"
 size = 1438
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/ai.md"
+manual = true
 
 [[function]]
 addr = "0x4361c0"
 size = 67
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/ai.md"
+manual = true
 
 [[function]]
 addr = "0x436210"
 size = 1459
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/ai.md"
+manual = true
 
 [[function]]
 addr = "0x436880"
 size = 208
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/ai.md"
+manual = true
 
 [[function]]
 addr = "0x436950"
 size = 469
 category = "sim"
 status = "spec"
-why = "growth/ai_industry_investment (5.4)"
+why = "docs/spec/ai.md"
 manual = true
 
 [[function]]
 addr = "0x436b30"
 size = 547
 category = "sim"
-status = "named"
-why = "world-tick.md 3.5 (conteudo nao especificado)"
+status = "spec"
+why = "docs/spec/ai.md"
 manual = true
 
 [[function]]
@@ -9613,7 +9628,7 @@ addr = "0x436d60"
 size = 304
 category = "sim"
 status = "spec"
-why = "world-tick.md 3.5"
+why = "docs/spec/ai.md"
 manual = true
 
 [[function]]
@@ -9640,9 +9655,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x437980"
 size = 113
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/ai.md"
+manual = true
 
 [[function]]
 addr = "0x437ab0"
@@ -9690,9 +9706,10 @@ manual = true
 [[function]]
 addr = "0x4383f0"
 size = 85
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "docs/spec/ai.md"
+manual = true
 
 [[function]]
 addr = "0x438450"
@@ -9713,8 +9730,8 @@ why = "no-evidence"
 addr = "0x438780"
 size = 371
 category = "sim"
-status = "unknown"
-why = "finance/stock market (docs/spec/finance.md)"
+status = "named"
+why = "docs/spec/ai.md"
 manual = true
 
 [[function]]
@@ -9728,9 +9745,10 @@ manual = true
 [[function]]
 addr = "0x438a10"
 size = 1368
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "docs/spec/ai.md"
+manual = true
 
 [[function]]
 addr = "0x438f70"
@@ -10016,9 +10034,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x43bbc0"
 size = 103
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/ai.md"
+manual = true
 
 [[function]]
 addr = "0x43bc30"
@@ -10136,9 +10155,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x43e040"
 size = 629
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/ai.md"
+manual = true
 
 [[function]]
 addr = "0x43e340"
@@ -10182,7 +10202,7 @@ addr = "0x43ea30"
 size = 231
 category = "sim"
 status = "spec"
-why = "growth/building_buy_request (5.3)"
+why = "docs/spec/ai.md"
 manual = true
 
 [[function]]
@@ -11071,16 +11091,17 @@ why = "no-evidence"
 addr = "0x45fbf0"
 size = 1523
 category = "sim"
-status = "unknown"
-why = "finance/stock market (docs/spec/finance.md)"
+status = "spec"
+why = "docs/spec/ai.md"
 manual = true
 
 [[function]]
 addr = "0x460370"
 size = 48
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/ai.md"
+manual = true
 
 [[function]]
 addr = "0x4603a0"
@@ -13884,9 +13905,10 @@ why = "string:%s %s"
 [[function]]
 addr = "0x4a6d00"
 size = 114
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/ai.md"
+manual = true
 
 [[function]]
 addr = "0x4a6d80"
@@ -14059,16 +14081,17 @@ why = "no-evidence"
 addr = "0x4a8800"
 size = 744
 category = "sim"
-status = "named"
-why = "world-tick.md 3.5 (conteudo nao especificado)"
+status = "spec"
+why = "docs/spec/ai.md"
 manual = true
 
 [[function]]
 addr = "0x4a8af0"
 size = 1192
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/ai.md"
+manual = true
 
 [[function]]
 addr = "0x4a9190"
@@ -14755,9 +14778,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4c01b0"
 size = 48
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/ai.md"
+manual = true
 
 [[function]]
 addr = "0x4c01e0"
@@ -15211,9 +15235,10 @@ manual = true
 [[function]]
 addr = "0x4cdf00"
 size = 116
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/ai.md"
+manual = true
 
 [[function]]
 addr = "0x4cdf80"
@@ -15627,9 +15652,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4d4e90"
 size = 1037
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "docs/spec/ai.md"
+manual = true
 
 [[function]]
 addr = "0x4d52a0"
@@ -15791,16 +15817,17 @@ why = "no-evidence"
 addr = "0x4d86f0"
 size = 235
 category = "sim"
-status = "named"
-why = "world-tick.md 3.4 / 4"
+status = "verified"
+why = "ai.md 4; tests/ai.rs ai_pick_engine_matches_original"
 manual = true
 
 [[function]]
 addr = "0x4d87e0"
 size = 1488
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/ai.md"
+manual = true
 
 [[function]]
 addr = "0x4d8db0"
@@ -15812,23 +15839,26 @@ why = "no-evidence"
 [[function]]
 addr = "0x4d8f40"
 size = 421
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/ai.md"
+manual = true
 
 [[function]]
 addr = "0x4d90f0"
 size = 282
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/ai.md"
+manual = true
 
 [[function]]
 addr = "0x4d9210"
 size = 1120
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/ai.md"
+manual = true
 
 [[function]]
 addr = "0x4d9a50"

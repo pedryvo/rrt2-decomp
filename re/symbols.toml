@@ -2947,3 +2947,262 @@ name = "networks_dirty"
 kind = "global"
 comment = "u8: armada por 0x4caaa0/0x4cc060 (mudanca de trilho/estacao); o passo mensal chama station_networks_rebuild e zera"
 spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x436880"
+name = "ai_review_manager"
+kind = "function"
+comment = "ano impar: escolhe o gerente de maior valor-salario; troca se (ganho*0.8 >= salario*0.4); [S]"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x436210"
+name = "ai_manager_value"
+kind = "function"
+comment = "fastcall(gerente): valor anual estimado dos 4 efeitos do gerente sobre o ano anterior; chama ai_pick_engine 2x por efeito 0x1a..0x1d; [S]"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x435c20"
+name = "ai_plan_first_line"
+kind = "function"
+comment = "fastcall(simulacao): escolhe par de cidades por v_i*v_j/d^2 (rng 70..130 por cidade, rng 1..10 por par) e constroi a primeira linha; [S]"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x435790"
+name = "ai_build_line"
+kind = "function"
+comment = "fastcall(cidade a, cidade b, simulacao, &custo): duas estacoes frente a frente + trilho (pathfind/lay_route); [S]"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x435320"
+name = "ai_extend_network"
+kind = "function"
+comment = "ate 10 passadas: cidade de maior nota (rng 80..120 por cidade, distancia a rede), orcamento por caixa/Expand Rail/Track Expansion; liga a melhor nota/custo; [S,D]"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x435060"
+name = "ai_connect_town"
+kind = "function"
+comment = "fastcall(cidade, simulacao, &custo): liga a cidade ao trilho proprio mais proximo (3 tentativas); [S]"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x434a40"
+name = "ai_build_town_station"
+kind = "function"
+comment = "fastcall: estacao nova junto a cidade + trilho ate o alvo; noticia LNG 239; [S]"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x434940"
+name = "ai_connect_station"
+kind = "function"
+comment = "fastcall(sx, sy, tx, ty, simulacao, &custo): trilho de uma estacao existente ate o alvo; [S]"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x434ef0"
+name = "ai_station_size"
+kind = "function"
+comment = "fastcall(cidade, &tam, &tam2): tamanho de estacao pela classe da cidade e industrias nos raios {2,4,8}; [S]"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x434850"
+name = "ai_station_upgrades"
+kind = "function"
+comment = "fastcall(estacao): melhorias de estacao da IA conforme tamanho e ano; [S]"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x430fd0"
+name = "ai_find_station_site"
+kind = "function"
+comment = "acha sitio/orientacao de estacao junto a uma cidade (rng_hash_range); [S parcial]"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x4313f0"
+name = "ai_town_value"
+kind = "function"
+comment = "thiscall(lugar, empresa) ret 4: valor da cidade para a IA ((+0x12-+0x3a)*60000, tamanho, estacoes proximas, bonus); [V empresa 0]"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x431280"
+name = "town_station_count_near"
+kind = "function"
+comment = "fastcall(lugar): estacoes na caixa do lugar a distancia < 9 do centro; [S]"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x431330"
+name = "town_nth_station_near"
+kind = "function"
+comment = "thiscall(lugar, n): id da n-esima estacao a < 9 do centro; [S]"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x4c01b0"
+name = "station_usable_by"
+kind = "function"
+comment = "thiscall(estacao, empresa): da empresa ou na rede principal dela (+0x17a); [S]"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x460370"
+name = "track_route_exists"
+kind = "function"
+comment = "fastcall(x1,y1,x2,y2): track_pathfind em modo de rota sobre trilho existente; [S]"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x4d9210"
+name = "ai_manage_trains"
+kind = "function"
+comment = "potencial x servico por carga, alvo de trens por trilho e ano; compra, replaneja (anual) e troca motores > 25 anos; [S,D]"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x4d90f0"
+name = "ai_buy_train"
+kind = "function"
+comment = "duas paradas por ai_pick_stop, motor ai_pick_engine(1), train_buy; [S]"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x4d8f40"
+name = "ai_replan_train"
+kind = "function"
+comment = "fastcall(trem): refaz as duas paradas e a composicao de um trem da IA; [S]"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x4d87e0"
+name = "ai_pick_stop"
+kind = "function"
+comment = "fastcall(&parada, anterior, modo): estacao de maior demanda nao servida (rng 75..125 por estacao) e composicao de 2..4 vagoes; [S]"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x4d4e90"
+name = "train_replace_engine"
+kind = "function"
+comment = "thiscall(trem, motor, flag): troca a locomotiva de um trem; [S parcial]"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x4cdf00"
+name = "train_buy"
+kind = "function"
+comment = "fastcall(motor, estacao, empresa): aloca em list_trains e chama train_create (exige >= 2 estacoes); [S]"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x4a8af0"
+name = "ai_person_trade_stocks"
+kind = "function"
+comment = "fastcall(pessoa): laco guloso de compra/venda de lotes de 1000 por valor justo, alavancagem e tendencias; [S]"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x4361c0"
+name = "ai_can_found_company"
+kind = "function"
+comment = "ai_plan_first_line(1) com empresa 0 (consome RNG); [S]"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x4383f0"
+name = "company_create"
+kind = "function"
+comment = "fastcall(pessoa, -1, nome, capital): aloca empresa e chama company_init; [S parcial]"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x438a10"
+name = "company_init"
+kind = "function"
+comment = "inicializa empresa nova: cor/logo rng(0,livres-1), gerente e 2 candidatos (person_generate); [S parcial]"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x43e040"
+name = "company_name_from_towns"
+kind = "function"
+comment = "thiscall(empresa, cidade a, cidade b): nome '%1 & %2' ou direcional/Line/Central; 1-2 rng(0,100); [S]"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x437980"
+name = "company_count_trains_of_type"
+kind = "function"
+comment = "thiscall(empresa, tipo): trens da empresa cujo motor e do tipo (0 vapor, 1 diesel, 2 eletrico); [S]"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x43bbc0"
+name = "company_network_station_nth"
+kind = "function"
+comment = "thiscall(empresa, n): id da n-esima estacao da rede principal (+0x17a); [S]"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x4a6d00"
+name = "person_holdings_value"
+kind = "function"
+comment = "thiscall(pessoa, modo): soma posicao*preco das 36 empresas (modo 0 cotacao, 1 ultimo preco); [S]"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x551e88"
+name = "ai_persona_table"
+kind = "table"
+comment = "41 x 0x23: tendencias dos tycoons (Starts Company, Margin, Short, Investing, Bonds, Expand Rail, Industry) + nome/bio LNG; indice pessoa+0x52f"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x54fdad"
+name = "manager_table"
+kind = "table"
+comment = "40 x 0x11: salario i32 + 4 pares (efeito u8, pct i8)"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x565140"
+name = "ai_cur_company_ptr"
+kind = "global"
+comment = "empresa corrente do turno da IA (ponteiro)"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x565144"
+name = "ai_cur_company_id"
+kind = "global"
+comment = "empresa corrente do turno da IA (id)"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x5704ad"
+name = "ai_track_expansion"
+kind = "global"
+comment = "opcao Track Expansion (0: ate 15 estacoes, 1: 20 e x1.12, 2: 24 e x1.25)"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x5704ae"
+name = "ai_dividend_policy"
+kind = "global"
+comment = "opcao Dividend Payout/Stock Buyback (1: dividendo x0.66 por turno e recompra x1.6, 2: sem dividendo nem recompra)"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x573e04"
+name = "land_tile_count"
+kind = "global"
+comment = "tiles que nao sao agua (territories_recount_land); entra na chance de fundar empresa"
+spec = "docs/spec/ai.md"
