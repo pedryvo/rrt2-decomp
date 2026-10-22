@@ -99,6 +99,26 @@ pub struct Ai<'t, 'a> {
     /// Commands queued by the turn (`cmd_queue` `0x4af6d0`), executed by the command step of
     /// the next frame.
     pub commands: Vec<AiCommand>,
+    /// The earthwork log of `0x426250` (`0x5650f8` vertex indices, `0x5650fc` old heights,
+    /// `0x565100` count; recording while `0x565104` is set), see [`crate::build::level`].
+    pub elev_log: Option<Vec<(i32, i32)>>,
+    /// `0x5794f0`: the station networks must be rebuilt at the next month end (set by
+    /// `track_lay_route` when there are 20 stations or more).
+    pub networks_dirty: bool,
+    /// The pending redraw rectangle of `0x417770` (flushed by
+    /// [`flush_redraw`](crate::ai::Ai::flush_redraw)).
+    pub dirty_rect: Option<(i32, i32, i32, i32)>,
+    /// Scenario triggers raised by the primitives (`event_fire_trigger(k)`, e.g. 4 at the end
+    /// of `station_networks_rebuild`), for the caller to fire in order.
+    pub events: Vec<u8>,
+    /// Track-overlay presence of a rectangle before a change (x0, y0, x1, y1, cells), see
+    /// [`crate::build::tiles`].
+    pub overlay_snapshot: Option<(i32, i32, i32, i32, Vec<bool>)>,
+    /// `0x5746ec`: the AI turn is running (station track is laid double, the build A* adds the
+    /// slope penalty).
+    pub ai_turn: bool,
+    /// The language file, for the names the primitives write (stations).
+    pub lng: Option<std::rc::Rc<rt2_formats::lng::Lng>>,
 }
 
 /// A command the AI queues instead of acting at once.
@@ -107,6 +127,10 @@ pub enum AiCommand {
     /// Command `0x2d` with flag 1 (`building_buy_request` `0x43ea30`): buy an industry,
     /// executed by `company_industry_trade` (`0x43eb60`), see [`apply_command`].
     BuyIndustry { company: i32, industry: i32 },
+    /// `event_fire_trigger(k)` raised inside the turn (e.g. 4 by `station_networks_rebuild`
+    /// after a construction); fired by the caller after the turn (the original fires it at
+    /// once, which only matters for scenario rules on that trigger).
+    FireTrigger(u8),
 }
 
 /// Executes a queued AI command (the command step of the original).
@@ -115,6 +139,7 @@ pub fn apply_command(ts: &mut Ts<'_>, cmd: AiCommand) {
         AiCommand::BuyIndustry { company, industry } => {
             industry::buy_industry(ts, company, industry);
         }
+        AiCommand::FireTrigger(_) => {}
     }
 }
 
@@ -184,6 +209,18 @@ impl Tables {
 }
 
 impl<'t, 'a> Ai<'t, 'a> {
+    /// End of a session on the world: the queued commands plus the scenario triggers raised
+    /// by the primitives, and the deferred network rebuild flag (`0x5794f0`) kept in the train
+    /// step globals.
+    pub fn finish(&mut self) -> Vec<AiCommand> {
+        if self.networks_dirty {
+            self.ts.g.networks_dirty = true;
+        }
+        let mut out = std::mem::take(&mut self.commands);
+        out.extend(self.events.drain(..).map(AiCommand::FireTrigger));
+        out
+    }
+
     pub fn new(ts: &'t mut Ts<'a>) -> Self {
         let tables = Tables::from_image(ts.img);
         let elec = ts.img.i32(0x0055_34c0);
@@ -200,6 +237,13 @@ impl<'t, 'a> Ai<'t, 'a> {
             elec_base: elec,
             tables,
             commands: Vec::new(),
+            elev_log: None,
+            networks_dirty: false,
+            dirty_rect: None,
+            events: Vec::new(),
+            overlay_snapshot: None,
+            ai_turn: false,
+            lng: None,
         }
     }
 
@@ -353,6 +397,7 @@ pub fn monthly_turn(ts: &mut Ts<'_>) -> Vec<AiCommand> {
     ts.log.ran("ai_monthly_turn");
     // build_preview_suspend / resume (0x46b150, 0x46b290): UI preview layer, no state.
     let mut ai = Ai::new(ts);
+    ai.ai_turn = true;
     // Pattern C over the persons: the count is re-read every iteration.
     let mut i = 0;
     loop {
@@ -379,7 +424,7 @@ pub fn monthly_turn(ts: &mut Ts<'_>) -> Vec<AiCommand> {
         }
         i += 1;
     }
-    std::mem::take(&mut ai.commands)
+    ai.finish()
 }
 
 /// `ai_company_turn` (`0x436b30`) on its own, for tests and for the founding path. Returns the
@@ -387,13 +432,14 @@ pub fn monthly_turn(ts: &mut Ts<'_>) -> Vec<AiCommand> {
 pub fn company_turn(ts: &mut Ts<'_>, company: i32) -> Vec<AiCommand> {
     let mut ai = Ai::new(ts);
     ai.company_turn(company);
-    std::mem::take(&mut ai.commands)
+    ai.finish()
 }
 
 impl Ai<'_, '_> {
     /// `ai_company_turn` (`0x436b30`, ai.md 1 and 2).
     pub fn company_turn(&mut self, id: i32) {
         self.company = id;
+        self.ai_turn = true;
         self.ts.log.ran("ai_company_turn");
         if self.co_i32(CO_ACTIVE) != 0 {
             self.company_turn_active();

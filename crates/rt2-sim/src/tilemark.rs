@@ -37,7 +37,56 @@ pub fn shape_type(img: &DataImage, shape: usize) -> u8 {
     img.u8(SHAPE_BASE + 9 + SHAPE_SIZE * shape as u32)
 }
 
+/// The footprint extents that `0x471b10` computes at start-up into the shape rows (they are 0
+/// in the executable image): `+12` width and `+13` height of the non-empty cells, `+14`/`+15`
+/// column/line of the centre cell (the first `& 3` cell probed around the middle of the solid
+/// cells' box).
+pub fn shape_extents(img: &DataImage, shape: usize) -> [i32; 4] {
+    let cell = |lin: i32, col: i32| shape_cell(img, shape, lin, col);
+    let (mut w, mut h) = (0, 0);
+    let (mut cmin, mut lmin, mut cmax, mut lmax) = (999, 999, 0, 0);
+    for col in 0..10 {
+        for lin in 0..10 {
+            let v = cell(lin, col);
+            if v != 0 {
+                w = w.max(col + 1);
+                h = h.max(lin + 1);
+            }
+            if v & 3 != 0 {
+                cmin = cmin.min(col);
+                lmin = lmin.min(lin);
+                cmax = cmax.max(col);
+                lmax = lmax.max(lin);
+            }
+        }
+    }
+    let bw = cmax - cmin + 1;
+    let bh = lmax - lmin + 1;
+    let (mut c, mut l) = (0, 0);
+    let mut cur = bw;
+    'outer: for _ in 0..2 {
+        for k in 0..4 {
+            let (cc, ll) = match k {
+                0 => (bw, bh),
+                1 => (cur, bh),
+                2 => (bw, bh - bw + cur),
+                _ => (cur, bh - bw + cur),
+            };
+            c = cc / 2 + cmin;
+            l = ll / 2 + lmin;
+            if cell(l, c) & 3 != 0 {
+                break 'outer;
+            }
+        }
+        cur -= 1;
+    }
+    [w, h, c, l]
+}
+
 fn shape_byte(img: &DataImage, shape: usize, off: u32) -> i32 {
+    if (12..=15).contains(&off) {
+        return shape_extents(img, shape)[(off - 12) as usize];
+    }
     i32::from(img.u8(SHAPE_BASE + off + SHAPE_SIZE * shape as u32))
 }
 

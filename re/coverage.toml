@@ -3,11 +3,11 @@
 # Ver docs/re-workflow.md.
 #
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
-# Classificadas (categoria != unknown): 1227 (41.7%)
-# Por categoria: lib=258, platform=114, render=11, audio=56, ui=277, sim=511, unknown=1718
-# Por estado:   unknown=2439, named=140, spec=199, verified=167
-# Entradas manuais: 479
-# sim spec coverage: 64.4% (329 de 511 funcoes sim em spec/verified)
+# Classificadas (categoria != unknown): 1271 (43.2%)
+# Por categoria: lib=258, platform=114, render=11, audio=56, ui=274, sim=558, unknown=1674
+# Por estado:   unknown=2410, named=129, spec=183, verified=223
+# Entradas manuais: 516
+# sim spec coverage: 66.1% (369 de 558 funcoes sim em spec/verified)
 
 [[function]]
 addr = "0x401005"
@@ -1007,9 +1007,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x4013f2"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4d0fa0"
 
 [[function]]
 addr = "0x4013f7"
@@ -1914,9 +1914,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x40178f"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4cbe00"
 
 [[function]]
 addr = "0x4017a3"
@@ -2805,9 +2805,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x401b63"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4d55d0"
 
 [[function]]
 addr = "0x401b68"
@@ -2952,9 +2952,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x401bef"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x42f910"
 
 [[function]]
 addr = "0x401bf4"
@@ -4933,9 +4933,9 @@ why = "thunk->0x4d5710"
 [[function]]
 addr = "0x4023b0"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4be430"
 
 [[function]]
 addr = "0x4023b5"
@@ -5164,9 +5164,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x402487"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4d14b0"
 
 [[function]]
 addr = "0x402496"
@@ -5311,9 +5311,9 @@ why = "thunk->0x433550"
 [[function]]
 addr = "0x402545"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4cb090"
 
 [[function]]
 addr = "0x40254a"
@@ -5780,16 +5780,16 @@ why = "no-evidence"
 [[function]]
 addr = "0x402739"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x427050"
 
 [[function]]
 addr = "0x402748"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x427ba0"
 
 [[function]]
 addr = "0x40274d"
@@ -6139,9 +6139,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x4028ba"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4d1130"
 
 [[function]]
 addr = "0x4028bf"
@@ -6961,9 +6961,9 @@ why = "thunk->0x43aea0"
 [[function]]
 addr = "0x402c0c"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4caaa0"
 
 [[function]]
 addr = "0x402c16"
@@ -7865,8 +7865,8 @@ manual = true
 addr = "0x4071b0"
 size = 263
 category = "sim"
-status = "spec"
-why = "terrain-track.md"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs e ai_snapshots dl0_rich_c5"
 manual = true
 
 [[function]]
@@ -7896,16 +7896,18 @@ manual = true
 [[function]]
 addr = "0x408450"
 size = 28
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs"
+manual = true
 
 [[function]]
 addr = "0x408470"
 size = 28
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs"
+manual = true
 
 [[function]]
 addr = "0x408550"
@@ -7935,7 +7937,7 @@ addr = "0x4087a0"
 size = 1738
 category = "sim"
 status = "verified"
-why = "docs/spec/world-growth.md 4.6 (crates/rt2-oracle/tests/placement.rs; a parte de estacoes e de terrain-track.md)"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs e ai_snapshots dl0_rich_c5"
 manual = true
 
 [[function]]
@@ -7972,7 +7974,7 @@ addr = "0x409010"
 size = 77
 category = "sim"
 status = "verified"
-why = "docs/spec/world-growth.md 4.5"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs e ai_snapshots dl0_rich_c5"
 manual = true
 
 [[function]]
@@ -8034,7 +8036,7 @@ addr = "0x409a30"
 size = 2859
 category = "sim"
 status = "verified"
-why = "docs/spec/world-growth.md 4.5 (Example 30 dias; campos com RNG de textura nao portados)"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs e ai_snapshots dl0_rich_c5"
 manual = true
 
 [[function]]
@@ -8467,9 +8469,10 @@ why = "string:cr%s%s.imb"
 [[function]]
 addr = "0x414220"
 size = 562
-category = "ui"
-status = "unknown"
-why = "string:cr%s%s.imb"
+category = "sim"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs"
+manual = true
 
 [[function]]
 addr = "0x414460"
@@ -8544,17 +8547,18 @@ manual = true
 
 [[function]]
 addr = "0x415f80"
-name = "tile_blocks_building"
 size = 54
-category = "unknown"
-status = "named"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs e ai_snapshots dl0_rich_c5"
+manual = true
 
 [[function]]
 addr = "0x415fc0"
+name = "tile_track_has_train"
 size = 36
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -8577,16 +8581,16 @@ manual = true
 addr = "0x416210"
 size = 157
 category = "sim"
-status = "spec"
-why = "terrain-track.md"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs e ai_snapshots dl0_rich_c5"
 manual = true
 
 [[function]]
 addr = "0x4162b0"
 size = 354
 category = "sim"
-status = "spec"
-why = "docs/spec/terrain-track.md 2.4 (valor de livro peca+0x15*8)"
+status = "verified"
+why = "docs/spec/terrain-track.md 10.6: build/bulldoze.rs, snapshot doze_track"
 manual = true
 
 [[function]]
@@ -8601,8 +8605,8 @@ manual = true
 addr = "0x4164f0"
 size = 557
 category = "sim"
-status = "spec"
-why = "terrain-track.md"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs e ai_snapshots dl0_rich_c5"
 manual = true
 
 [[function]]
@@ -8631,16 +8635,18 @@ why = "no-evidence"
 [[function]]
 addr = "0x416bf0"
 size = 336
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs"
+manual = true
 
 [[function]]
 addr = "0x416d40"
 size = 767
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs"
+manual = true
 
 [[function]]
 addr = "0x417040"
@@ -8680,27 +8686,27 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x417770"
-name = "terrain_dirty_rect"
 size = 261
-category = "unknown"
-status = "named"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs e ai_snapshots dl0_rich_c5"
+manual = true
 
 [[function]]
 addr = "0x417880"
-name = "terrain_flat_flags"
 size = 954
-category = "unknown"
-status = "named"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs e ai_snapshots dl0_rich_c5"
+manual = true
 
 [[function]]
 addr = "0x417c40"
-name = "terrain_view_flush"
 size = 169
-category = "unknown"
-status = "named"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs e ai_snapshots dl0_rich_c5"
+manual = true
 
 [[function]]
 addr = "0x417cf0"
@@ -8888,25 +8894,26 @@ why = "no-evidence"
 [[function]]
 addr = "0x425850"
 size = 138
-category = "ui"
-status = "named"
-why = "corta o retangulo sujo ao mapa"
+category = "sim"
+status = "spec"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs"
 manual = true
 
 [[function]]
 addr = "0x4258e0"
-name = "terrain_update_tile_flags"
 size = 123
-category = "unknown"
-status = "named"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs e ai_snapshots dl0_rich_c5"
+manual = true
 
 [[function]]
 addr = "0x425960"
 size = 116
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs"
+manual = true
 
 [[function]]
 addr = "0x4259e0"
@@ -8949,23 +8956,25 @@ why = "no-evidence"
 addr = "0x4260c0"
 size = 211
 category = "sim"
-status = "spec"
-why = "variante de 0x426000 por (x, y, canto); docs/spec/world-growth.md 4.5"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs"
 manual = true
 
 [[function]]
 addr = "0x426250"
 size = 44
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs"
+manual = true
 
 [[function]]
 addr = "0x426280"
 size = 50
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs"
+manual = true
 
 [[function]]
 addr = "0x4262c0"
@@ -8977,16 +8986,18 @@ why = "no-evidence"
 [[function]]
 addr = "0x4263b0"
 size = 11
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs"
+manual = true
 
 [[function]]
 addr = "0x4263c0"
 size = 75
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs"
+manual = true
 
 [[function]]
 addr = "0x426410"
@@ -9033,39 +9044,41 @@ why = "no-evidence"
 [[function]]
 addr = "0x427050"
 size = 1112
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs"
+manual = true
 
 [[function]]
 addr = "0x4274b0"
-name = "track_level_ortho"
 size = 1076
 category = "sim"
-status = "named"
-why = "symbol:track_level_ortho"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs e ai_snapshots dl0_rich_c5"
+manual = true
 
 [[function]]
 addr = "0x4278f0"
-name = "track_level_diag"
 size = 685
 category = "sim"
-status = "named"
-why = "symbol:track_level_diag"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs e ai_snapshots dl0_rich_c5"
+manual = true
 
 [[function]]
 addr = "0x427ba0"
 size = 1091
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs"
+manual = true
 
 [[function]]
 addr = "0x427ff0"
 size = 1005
 category = "sim"
-status = "named"
-why = "terrain-track.md"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs e ai_snapshots dl0_rich_c5"
 manual = true
 
 [[function]]
@@ -9087,9 +9100,10 @@ manual = true
 [[function]]
 addr = "0x4285c0"
 size = 107
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs"
+manual = true
 
 [[function]]
 addr = "0x428630"
@@ -9102,16 +9116,16 @@ why = "no-evidence"
 addr = "0x4286a0"
 size = 649
 category = "sim"
-status = "spec"
-why = "docs/spec/terrain-track.md 2.4"
+status = "verified"
+why = "docs/spec/terrain-track.md 10.6: build/bulldoze.rs, snapshot doze_track"
 manual = true
 
 [[function]]
 addr = "0x428930"
 size = 1545
 category = "sim"
-status = "spec"
-why = "docs/spec/terrain-track.md 2.4"
+status = "verified"
+why = "docs/spec/terrain-track.md 10.6: crates/rt2-sim/src/build/bulldoze.rs, snapshots doze_track/doze_trees (demolicao de predio pendente)"
 manual = true
 
 [[function]]
@@ -9168,9 +9182,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x429fc0"
 size = 1049
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/terrain-track.md 10.6: build/bulldoze.rs (so o caso da escavadeira, raio 0 e -100), snapshot doze_trees"
+manual = true
 
 [[function]]
 addr = "0x42a3e0"
@@ -9364,16 +9379,17 @@ why = "no-evidence"
 [[function]]
 addr = "0x42f910"
 size = 282
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs"
+manual = true
 
 [[function]]
 addr = "0x42fa30"
 size = 217
 category = "sim"
-status = "spec"
-why = "growth/nearest_town_id (4.4)"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs e ai_snapshots dl0_rich_c5"
 manual = true
 
 [[function]]
@@ -9436,16 +9452,16 @@ manual = true
 addr = "0x430c20"
 size = 342
 category = "sim"
-status = "spec"
-why = "growth/place_at (3.8)"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs e ai_snapshots dl0_rich_c5"
 manual = true
 
 [[function]]
 addr = "0x430d80"
 size = 22
 category = "sim"
-status = "spec"
-why = "growth/town_building_link (2.1)"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs e ai_snapshots dl0_rich_c5"
 manual = true
 
 [[function]]
@@ -9572,8 +9588,8 @@ why = "string:cityset.win"
 addr = "0x434850"
 size = 230
 category = "sim"
-status = "spec"
-why = "docs/spec/terrain-track.md 3.4 (compras da IA)"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs e ai_snapshots dl0_rich_c5"
 manual = true
 
 [[function]]
@@ -9866,9 +9882,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x439720"
 size = 103
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs"
+manual = true
 
 [[function]]
 addr = "0x439790"
@@ -9889,8 +9906,8 @@ manual = true
 addr = "0x439930"
 size = 62
 category = "sim"
-status = "spec"
-why = "docs/spec/terrain-track.md 2.4 (baixa de trem sem caixa)"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs e ai_snapshots dl0_rich_c5"
 manual = true
 
 [[function]]
@@ -10204,9 +10221,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x43df20"
 size = 117
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/terrain-track.md 10.5: build/rights.rs"
+manual = true
 
 [[function]]
 addr = "0x43e040"
@@ -10244,8 +10262,8 @@ manual = true
 addr = "0x43e8e0"
 size = 167
 category = "sim"
-status = "spec"
-why = "docs/spec/commands.md 2.1 (0x2a) e 3.7"
+status = "verified"
+why = "docs/spec/terrain-track.md 10.5: build/rights.rs, snapshots rights5, aust_rights"
 manual = true
 
 [[function]]
@@ -10276,7 +10294,7 @@ addr = "0x43eb60"
 size = 309
 category = "sim"
 status = "verified"
-why = "docs/spec/ai.md: portado em crates/rt2-sim/src/ai (sem snapshot proprio)"
+why = "docs/spec/terrain-track.md 10.5: compra (ai/industry.rs) e venda (build/rights.rs), snapshots buyind5, sellind5"
 manual = true
 
 [[function]]
@@ -11210,7 +11228,7 @@ addr = "0x460850"
 size = 7730
 category = "sim"
 status = "verified"
-why = "docs/spec/ai.md 14: crates/rt2-sim/src/ai, snapshot ai_company_turn (tests/ai_snapshots.rs)"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs e ai_snapshots dl0_rich_c5"
 manual = true
 
 [[function]]
@@ -11285,8 +11303,8 @@ manual = true
 addr = "0x463a20"
 size = 260
 category = "sim"
-status = "spec"
-why = "terrain-track.md"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs e ai_snapshots dl0_rich_c5"
 manual = true
 
 [[function]]
@@ -11728,9 +11746,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x466df0"
 size = 90
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs"
+manual = true
 
 [[function]]
 addr = "0x466e50"
@@ -11808,7 +11827,7 @@ addr = "0x468310"
 size = 108
 category = "sim"
 status = "verified"
-why = "docs/spec/terrain-track.md 3.4; crates/rt2-oracle/tests/stations.rs improvement_availability_matches_original (6000)"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs e ai_snapshots dl0_rich_c5"
 manual = true
 
 [[function]]
@@ -11990,8 +12009,8 @@ manual = true
 addr = "0x46a370"
 size = 1133
 category = "sim"
-status = "spec"
-why = "growth/station_networks_rebuild: pagamento do b\u00f4nus (6.2)"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs e ai_snapshots dl0_rich_c5"
 manual = true
 
 [[function]]
@@ -12130,8 +12149,8 @@ why = "no-evidence"
 addr = "0x46aef0"
 size = 607
 category = "sim"
-status = "spec"
-why = "docs/spec/terrain-track.md 3.4; ramo sem troca de tamanho verificado em tests/stations.rs (1500); troca de tamanho so lida"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs e ai_snapshots dl0_rich_c5"
 manual = true
 
 [[function]]
@@ -12457,11 +12476,11 @@ why = "symbol:industry_load_fixups"
 
 [[function]]
 addr = "0x471b10"
-name = "world_tables_init"
 size = 3537
-category = "ui"
-status = "named"
-why = "string:ground.imb"
+category = "sim"
+status = "spec"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs e ai_snapshots dl0_rich_c5"
+manual = true
 
 [[function]]
 addr = "0x4728f0"
@@ -14424,7 +14443,7 @@ addr = "0x4b0210"
 size = 3316
 category = "sim"
 status = "spec"
-why = "docs/spec/commands.md: 39 comandos (1, 0xa..0x2f); 0x12 0x1b 0x28 0x29 0x2b 0x2c 0x2f verificados em tests/commands.rs via cmd_execute"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs e ai_snapshots dl0_rich_c5"
 manual = true
 
 [[function]]
@@ -14765,16 +14784,17 @@ manual = true
 [[function]]
 addr = "0x4be430"
 size = 1034
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs"
+manual = true
 
 [[function]]
 addr = "0x4be840"
 size = 668
 category = "sim"
-status = "spec"
-why = "docs/spec/terrain-track.md 3.4"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs e ai_snapshots dl0_rich_c5"
 manual = true
 
 [[function]]
@@ -15204,11 +15224,11 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x4c8540"
-name = "territory_set_rights"
 size = 501
-category = "unknown"
-status = "named"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/terrain-track.md 10.5: build/rights.rs, snapshots rights5, aust_rights"
+manual = true
 
 [[function]]
 addr = "0x4c8760"
@@ -15308,30 +15328,33 @@ manual = true
 addr = "0x4ca920"
 size = 382
 category = "sim"
-status = "spec"
-why = "terrain-track.md"
+status = "verified"
+why = "docs/spec/terrain-track.md 10.6: build/bulldoze.rs, snapshot doze_track"
 manual = true
 
 [[function]]
 addr = "0x4caaa0"
 size = 1508
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/terrain-track.md 10.6: build/bulldoze.rs, snapshot doze_track"
+manual = true
 
 [[function]]
 addr = "0x4cb090"
 size = 3397
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs"
+manual = true
 
 [[function]]
 addr = "0x4cbe00"
 size = 352
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs"
+manual = true
 
 [[function]]
 addr = "0x4cbf60"
@@ -15345,8 +15368,8 @@ why = "symbol:track_lay_command"
 addr = "0x4cc060"
 size = 3661
 category = "sim"
-status = "spec"
-why = "terrain-track.md"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs e ai_snapshots dl0_rich_c5"
 manual = true
 
 [[function]]
@@ -15368,24 +15391,24 @@ manual = true
 addr = "0x4cdd50"
 size = 426
 category = "sim"
-status = "spec"
-why = "docs/spec/terrain-track.md 2.4 (train_delete sem reembolso)"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs e ai_snapshots dl0_rich_c5"
 manual = true
 
 [[function]]
 addr = "0x4cdf00"
 size = 116
 category = "sim"
-status = "spec"
-why = "docs/spec/ai.md"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs e ai_snapshots dl0_rich_c5"
 manual = true
 
 [[function]]
 addr = "0x4cdf80"
 size = 1250
 category = "sim"
-status = "spec"
-why = "criacao do trem e preco; docs/spec/trains.md 1.1, 6.1"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs e ai_snapshots dl0_rich_c5"
 manual = true
 
 [[function]]
@@ -15538,9 +15561,10 @@ manual = true
 [[function]]
 addr = "0x4d0fa0"
 size = 295
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs"
+manual = true
 
 [[function]]
 addr = "0x4d10d0"
@@ -15552,31 +15576,33 @@ why = "no-evidence"
 [[function]]
 addr = "0x4d1130"
 size = 180
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs"
+manual = true
 
 [[function]]
 addr = "0x4d11f0"
 size = 702
 category = "sim"
-status = "spec"
-why = "docs/spec/commands.md 2.1 (0x1d)"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs"
 manual = true
 
 [[function]]
 addr = "0x4d14b0"
 size = 370
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs"
+manual = true
 
 [[function]]
 addr = "0x4d1630"
 size = 302
 category = "sim"
 status = "verified"
-why = "docs/spec/trains.md 10; snapshots do original (crates/rt2-sim/tests/trainstep_snapshots.rs)"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs e ai_snapshots dl0_rich_c5"
 manual = true
 
 [[function]]
@@ -15652,16 +15678,18 @@ manual = true
 [[function]]
 addr = "0x4d3600"
 size = 64
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs"
+manual = true
 
 [[function]]
 addr = "0x4d3640"
 size = 87
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs"
+manual = true
 
 [[function]]
 addr = "0x4d36a0"
@@ -15707,8 +15735,8 @@ manual = true
 addr = "0x4d3f40"
 size = 307
 category = "sim"
-status = "spec"
-why = "docs/spec/commands.md 2.1 (0x19)"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs"
 manual = true
 
 [[function]]
@@ -15810,8 +15838,8 @@ why = "no-evidence"
 addr = "0x4d4e90"
 size = 1037
 category = "sim"
-status = "named"
-why = "docs/spec/ai.md"
+status = "spec"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs e ai_snapshots dl0_rich_c5"
 manual = true
 
 [[function]]
@@ -15847,16 +15875,17 @@ manual = true
 [[function]]
 addr = "0x4d55d0"
 size = 316
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs"
+manual = true
 
 [[function]]
 addr = "0x4d5710"
 size = 286
 category = "sim"
-status = "spec"
-why = "docs/spec/commands.md 2.1 (0x1e)"
+status = "verified"
+why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs"
 manual = true
 
 [[function]]

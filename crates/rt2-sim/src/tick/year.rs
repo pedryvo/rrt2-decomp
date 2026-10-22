@@ -108,11 +108,20 @@ impl SimState {
             );
             return;
         }
-        self.with_trainstep(w, |ts| {
+        let triggers = self.with_trainstep(w, |ts| {
+            let mut triggers = Vec::new();
             for cmd in crate::ai::monthly_turn(ts) {
-                crate::ai::apply_command(ts, cmd);
+                if let crate::ai::AiCommand::FireTrigger(k) = cmd {
+                    triggers.push(k);
+                } else {
+                    crate::ai::apply_command(ts, cmd);
+                }
             }
+            triggers
         });
+        for k in triggers {
+            self.event_trigger(w, k);
+        }
     }
 
     /// `sim_year_end` items 1 and 2: the mean of metric 11 and the engine reference speed

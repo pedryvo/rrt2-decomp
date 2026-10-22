@@ -4953,3 +4953,213 @@ name = "ui_key_events"
 kind = "function"
 comment = "atalhos de teclado do jogo (tabela de saltos por codigo de tecla 0x13..0xbd); envia 0x0b (velocidade +-1 / pausa); [S]"
 spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x4cbe00"
+name = "track_preview_clear"
+kind = "function"
+comment = "fastcall(redraw_ui, rebuild): apaga a camada de previsao (0x574bf8) e reconstroi os tiles da caixa; no-op sem previsao [S]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x426250"
+name = "earthwork_log_begin"
+kind = "function"
+comment = "aloca 0x5650f8/0x5650fc (vertices e alturas antigas) e liga 0x565104 [V via snapshot lay1]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x426280"
+name = "earthwork_log_end"
+kind = "function"
+comment = "libera o log de terraplenagem e zera 0x565100 [V via snapshot lay1]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x4263b0"
+name = "earthwork_log_stop"
+kind = "function"
+comment = "0x565104 = 0 (modo previsao) [S]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x4263c0"
+name = "earthwork_log_vertex"
+kind = "function"
+comment = "fastcall(i): registra o vertice i com a altura antiga, uma vez [V via snapshot lay1]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x4260c0"
+name = "vertex_set_clamped"
+kind = "function"
+comment = "fastcall(x,y,canto,h,redraw): altura do canto limitada a [-255,510], registrada no log [V via snapshot lay1]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x427050"
+name = "track_level_cross"
+kind = "function"
+comment = "fastcall(x1,y1,x2,y2,c1,c2,teste): nivela o canto c1 do tile 1 com c2 do tile 2; quirk: com so o 1o livre grava o vertice (x1,y2) [V via snapshot lay1]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x427ba0"
+name = "track_level_span"
+kind = "function"
+comment = "fastcall(x,y,d,x2,y2): nivela a aproximacao de ponte/vao ate a outra ponta [S; caminho do snapshot nao passou por ponte]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x4cb090"
+name = "track_tiles_rebuild"
+kind = "function"
+comment = "fastcall(x0,y0,x1,y1,previa): sobreposicoes de trilho das camadas 4/5 (6/7 previa), sprite de ponte +0x10, direcao do vao +5, eixo reto +0x23&8/+0xf, tile+3&0x40, 0x424c10 [V via snapshots lay1/bc1]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x425960"
+name = "tile_overlay_add"
+kind = "function"
+comment = "fastcall(x,y,&codigo): insere uma sobreposicao (lista em tile+10, ordenada por camada) e 0x4258e0 [S]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x425850"
+name = "rect_clip_to_map"
+kind = "function"
+comment = "clipa (x0,y0,x1,y1) ao mapa; 0 se vazio [S]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x416bf0"
+name = "tile_shade"
+kind = "function"
+comment = "fastcall(x,y): luz do tile (tile+0xe) = 31 - ftol((0.25 v2 + 0.75 v1) * 31.99), v = atan da inclinacao * 0.046875 + 0.6108 dobrado em pi/2, x 0.8187, [0.01,1] [V via snapshot bc1]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x416d40"
+name = "tile_shade_corners"
+kind = "function"
+comment = "fastcall(x,y): luz dos 4 vertices (media dos tiles vizinhos) e tile+6&0x20 = todos iguais a luz do tile [V via snapshot bc1]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x4d3640"
+name = "trains_refresh_all"
+kind = "function"
+comment = "train_route_refresh (0x4d14b0) para cada trem, 0x574b84 = 0 [V via snapshot lay1]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x4d3600"
+name = "trains_flag_route_check"
+kind = "function"
+comment = "trem+0x93 = 1 em todos os trens [V via snapshot lay1]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x4d14b0"
+name = "train_route_refresh"
+kind = "function"
+comment = "realinha o anel de rota (+0x5d/+0x61) a +0x95, apaga paradas waypoint sem trilho, bit +0xbb&8 (eletrico sem catenaria) [V via snapshot lay1]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x42f910"
+name = "station_name_from_town"
+kind = "function"
+comment = "thiscall(lugar,&nome,x,y): 'Cidade', 'Cidade Junction'... (LNG 1034..1039, bits +0x2d do lugar), 'Adjunct' quando esgotados [V via snapshot bc1]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x4be430"
+name = "station_site_class"
+kind = "function"
+comment = "fastcall(x,y): classe da paisagem do sitio da estacao (agua, deserto, montanha, rio...) ate 5 tiles, estacao+0x4d [V via snapshot bc1]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x4285c0"
+name = "tile_mark_bit3_radius"
+kind = "function"
+comment = "fastcall(x,y,r): tile+0 |= 8 no quadrado de raio r (fora da borda) [V via snapshot bc1]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x408450"
+name = "building_create_x"
+kind = "function"
+comment = "fastcall(forma,x_origem): x de building_create = origem - largura/2 [V via snapshot ai]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x408470"
+name = "building_create_y"
+kind = "function"
+comment = "fastcall(forma,y_origem): y de building_create = origem - altura/2 [V via snapshot ai]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x414220"
+name = "vehicle_init"
+kind = "function"
+comment = "thiscall(carro,id,trem,tipo,x,y,dir): carro novo no fim da composicao; coloca no trilho (0x413550) so com x != -1 [V via snapshot buytrain5]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x4d1130"
+name = "train_round_trip_length"
+kind = "function"
+comment = "+0x33 = soma de int_dist entre paradas consecutivas + 8 [V via snapshot buytrain5]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x4d55d0"
+name = "train_stop_remove"
+kind = "function"
+comment = "thiscall(trem,k): avanca a parada atual se for k e remove o registro [V via snapshot stopdel3]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x4d0fa0"
+name = "train_car_remove"
+kind = "function"
+comment = "thiscall(trem,carro): desliga o carro da lista, tira do tile (estrutura 2), lote de carga de volta/liberado, 0x466df0 [V via snapshot deltrain3]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x466df0"
+name = "vehicle_free"
+kind = "function"
+comment = "fastcall(carro): tira do tile, contador de sprites (0x4140d0) e pool_free [V via snapshot deltrain3]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x439720"
+name = "company_nth_station"
+kind = "function"
+comment = "thiscall(empresa,k): k-esima estacao viva da empresa (ordem da lista) [V via snapshot buytrain5]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x4caaa0"
+name = "track_remove_rect"
+kind = "function"
+comment = "fastcall(x0,y0,x1,y1,empresa,&motivo): remove o trilho do retangulo e as arestas do anel que entram nele; com &motivo valida (sem contadores) e restaura as pecas de um backup [V via snapshot doze_track]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x415fc0"
+name = "tile_track_has_train"
+kind = "function"
+comment = "fastcall(tile): a peca tem lista de reservas (+3 != 0) [S]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x43df20"
+name = "company_territory_access"
+kind = "function"
+comment = "fastcall(empresa): +0x422d = trilho em todos os territorios, +0x422e = trens em todos [V via snapshot rights5]"
+spec = "docs/spec/terrain-track.md"

@@ -617,3 +617,8 @@ Os stubs são código de máquina escrito sobre o corpo do callee na imagem emul
 - Quem decide a visibilidade do botão "Buy this building" na UI (modelo Expert?).
 - `finance.md`: trocar os rótulos das contas 4 (trens) e 5 (indústrias).
 - Campo `+0x06` (i32) da tabela `0x535c38` e `+0` (id de gráfico).
+
+## 11. Construção pelo jogador e pelo editor (complemento de 4.4 e 5.3)
+- `building_create` (`0x409010` -> `0x409a30`) para estações está portado e verificado em `crate::build::station` (terrain-track.md 10.3); as extensões da pegada (`forma +12..+15`) são de tempo de execução (`0x471b10`) e agora vêm de `tilemark::shape_extents` (vale também para o crescimento das cidades).
+- Construir prédio ou indústria (`0x17` com forma 24..121) é **só do editor** (ferramenta 7, docs/spec/commands.md 3.1); a primitiva existe (mesma função) com `todo_hook` para as texturas de campo, os elos `0x4072c0` e a produção inicial `0x40a610`.
+- Compra (`0x43eb60` flag 1) e venda (flag 0: só o dono, devolve `+0x99` e perde a metade na categoria 3) verificadas por snapshot (`buyind5`, `sellind5`); as condições da janela (modelo Expert, permissão `0x5706b9`, tipo comprável, direito de trilho, caixa) estão em `Ai::check`.

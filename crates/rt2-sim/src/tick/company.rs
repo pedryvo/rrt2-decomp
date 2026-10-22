@@ -230,3 +230,33 @@ impl SimState {
         self.log.ran("margin_check_all");
     }
 }
+
+// ---- player construction commands (cmd_execute 0x4b0210, crate::build::cmd) -------------------
+
+impl SimState {
+    /// Runs a construction command on the train-step view, then fires the scenario triggers
+    /// it raised (`station_networks_rebuild` raises 4).
+    pub(crate) fn apply_build(
+        &mut self,
+        w: &mut World,
+        cmd: crate::build::cmd::BuildCmd,
+    ) -> Result<i32, crate::build::cmd::CmdError> {
+        let (r, triggers) = self.with_trainstep(w, |ts| {
+            let mut ai = crate::ai::Ai::new(ts);
+            let r = ai.check(&cmd).and_then(|()| ai.execute(cmd));
+            let ev: Vec<u8> = ai
+                .finish()
+                .into_iter()
+                .filter_map(|c| match c {
+                    crate::ai::AiCommand::FireTrigger(k) => Some(k),
+                    _ => None,
+                })
+                .collect();
+            (r, ev)
+        });
+        for k in triggers {
+            self.event_trigger(w, k);
+        }
+        r
+    }
+}

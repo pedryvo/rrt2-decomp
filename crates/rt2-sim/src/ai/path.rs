@@ -72,6 +72,8 @@ pub struct Req {
     /// `0x566a5c`: count the path tiles (`0x566a44`) and those not owned by this company
     /// (`0x566a40`).
     pub count_owner: i32,
+    /// `param_19` is non-null: count the steps onto tiles without track ([`Found::new_tiles`]).
+    pub count_new: bool,
 }
 
 impl Req {
@@ -90,6 +92,7 @@ impl Req {
             electric: false,
             want_path: false,
             count_owner: 0,
+            count_new: false,
         }
     }
 }
@@ -103,6 +106,12 @@ pub struct Found {
     /// `*param_14`: sum of the second cost.
     pub cost2: i32,
     pub nodes: Vec<Node>,
+    /// `*param_16` (build mode): `track_tile_cost` of each node, source first (the order of the
+    /// path ring that `track_lay_route` reads).
+    pub node_costs: Vec<i32>,
+    /// `*param_19`: path steps that touch a tile without track (`tile+2 & 0x20`), charged to the
+    /// company's track-cell allowance `+0x4260`.
+    pub new_tiles: i32,
 }
 
 #[derive(Clone, Copy, Default)]
@@ -291,7 +300,7 @@ impl Ai<'_, '_> {
     }
 
     /// `0x462a70`: river neighbours of a river tile (bit 0 north, 2 east, 4 south, 6 west).
-    fn river_mask(&self, s: &Search, x: i32, y: i32) -> u32 {
+    pub(crate) fn river_mask(&self, s: &Search, x: i32, y: i32) -> u32 {
         if !self.is_river(x, y) {
             return 0;
         }
@@ -710,10 +719,10 @@ impl Ai<'_, '_> {
         if d != d_in {
             c += 0xf;
         }
-        // 0x5746ec: the AI turn is running (always here).
+        // 0x5746ec: the AI turn is running.
         let e = |xx: i32, yy: i32| i32::from(self.corner(xx, yy));
         let dh = e(x, y) - e(nx, ny);
-        if !(-8..=8).contains(&dh) {
+        if self.ai_turn && !(-8..=8).contains(&dh) {
             c = ((dh.wrapping_mul(dh).wrapping_mul(c as i32)) >> 6) as u32;
         }
         c
@@ -1068,6 +1077,24 @@ impl Ai<'_, '_> {
                 span: 0,
             });
             prev = d;
+            if r.count_new {
+                let du = usize::from(d);
+                let (nx, ny) = (x + DX[du], y + DY[du]);
+                if self.ts.t8(x, y, 2) & 0x20 == 0 || self.ts.t8(nx, ny, 2) & 0x20 == 0 {
+                    out.new_tiles += 1;
+                    // 0x57022a: limited track cells; the company runs out (`0x574b7c = 1`).
+                    if self.hdr8(0x0057_022a) != 0
+                        && r.company != 0
+                        && self
+                            .ts
+                            .i32(P::Company, r.company, 0x4260)
+                            .wrapping_sub(out.new_tiles)
+                            < 0
+                    {
+                        return Found::default();
+                    }
+                }
+            }
             if r.count_owner != 0 {
                 self.route_total += 1;
                 if self.piece_owner(x, y) != r.count_owner {
@@ -1088,11 +1115,13 @@ impl Ai<'_, '_> {
             back = s.nodes[&(x, y)].back[usize::from(b_k)];
             d = b_k;
         }
+        // After the loop `bVar4` holds the last step's direction (not the stored back
+        // pointer): the source's exit edge points at the next node.
         nodes.push(Node {
             x,
             y,
-            a: back,
-            b: back.wrapping_sub(4) & 7,
+            a: d,
+            b: d.wrapping_sub(4) & 7,
             mode: 0,
             span: 0,
         });
@@ -1165,6 +1194,7 @@ impl Ai<'_, '_> {
                 (i32::from(nd.b), i32::from(nd.a))
             };
             let (c, c2) = self.tile_cost(nd.x, nd.y, d_in, d_out, nd.mode, nd.span, s.company);
+            out.node_costs.push(c);
             cost = cost.wrapping_add(c);
             cost2 = cost2.wrapping_add(c2);
         }

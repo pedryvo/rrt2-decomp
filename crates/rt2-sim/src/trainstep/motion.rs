@@ -739,7 +739,7 @@ impl Ts<'_> {
     }
 
     /// `train_set_reserved_range` (`0x4d3950`, `this, front, back`).
-    fn set_reserved_range(&mut self, t: i32, front: i32, back: i32) {
+    pub(crate) fn set_reserved_range(&mut self, t: i32, front: i32, back: i32) {
         if self.u8(P::Train, t, 0x9c) == 0 {
             return;
         }

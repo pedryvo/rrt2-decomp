@@ -28,6 +28,12 @@ pub enum Command {
     /// `crt_srand(arg)`: seeds the MSVC CRT `rand` (generator C). The original seeds it once at
     /// start-up; the save oracle (`advance_save.py`) seeds it together with the game RNG.
     SeedCrtRng(u32),
+    /// A construction command of `cmd_execute` (`0x4b0210`), with the fields of the original
+    /// packet: build track (`0x16`), build a station or a building (`0x17`), buy station
+    /// improvements (`0x18`), buy a train (`0x19`), insert / delete a stop (`0x1d`, `0x1e`),
+    /// sell a train (`0x1f`), replace an engine (`0x20`), buy or sell an industry (`0x2d`).
+    /// See [`World::apply_build`] for the result.
+    Build(crate::build::cmd::BuildCmd),
 }
 
 impl World {
@@ -52,7 +58,26 @@ impl World {
             }
             Command::SeedRng(seed) => self.rng.seed(seed),
             Command::SeedCrtRng(seed) => self.crt.seed(seed),
+            Command::Build(c) => {
+                let _ = self.apply_build(c);
+            }
         }
+    }
+
+    /// Applies a construction command and reports what the original reports: the created id
+    /// (or the track cost), or why nothing was done (invalid placement, no path, insufficient
+    /// cash as checked by the original's windows, unknown object). Without save pools (a bare
+    /// [`World::new`]) every construction command fails with `NoSuchObject`.
+    pub fn apply_build(
+        &mut self,
+        cmd: crate::build::cmd::BuildCmd,
+    ) -> Result<i32, crate::build::cmd::CmdError> {
+        let Some(mut sim) = self.sim.take() else {
+            return Err(crate::build::cmd::CmdError::NoSuchObject);
+        };
+        let r = sim.apply_build(self, cmd);
+        self.sim = Some(sim);
+        r
     }
 }
 

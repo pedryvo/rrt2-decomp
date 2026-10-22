@@ -27,6 +27,7 @@
 //! ([`calendar::NOMINAL_FRAME_MS`]) instead of the original's frame-rate dependent step.
 
 pub mod ai;
+pub mod build;
 pub mod calendar;
 pub mod cargo;
 pub mod command;

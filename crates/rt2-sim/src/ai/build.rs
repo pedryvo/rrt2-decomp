@@ -182,7 +182,7 @@ impl Ai<'_, '_> {
         }
         let electric = self.co_electric();
         let bridge = if self.max_bridge_type() >= 3 { 3 } else { 1 };
-        self.track_lay_route(sx, sy, tx, ty, -1, -1, electric, bridge)
+        self.ai_lay_route(sx, sy, tx, ty, -1, -1, electric, bridge)
     }
 
     fn co_electric(&self) -> bool {
@@ -244,7 +244,7 @@ impl Ai<'_, '_> {
             let r = if !simulate {
                 let electric = self.co_electric();
                 let bridge = self.max_bridge_type();
-                self.track_lay_route(
+                self.ai_lay_route(
                     site.x,
                     site.y,
                     tx,
@@ -270,7 +270,7 @@ impl Ai<'_, '_> {
             self.unmark(marks);
             if r {
                 if !simulate {
-                    self.build_station(site);
+                    let _ = self.build_station(site);
                 }
                 return true;
             }
@@ -335,7 +335,7 @@ impl Ai<'_, '_> {
         let r = if !simulate {
             let electric = self.co_electric();
             let bridge = self.max_bridge_type();
-            self.track_lay_route(
+            self.ai_lay_route(
                 s0.x,
                 s0.y,
                 s1.x,
@@ -368,46 +368,60 @@ impl Ai<'_, '_> {
             return false;
         }
         if !simulate {
-            self.build_station(s0);
-            self.build_station(s1);
+            let _ = self.build_station(s0);
+            let _ = self.build_station(s1);
         }
         true
     }
 
-    /// `track_lay_route` (`0x4cc060`) with the AI's arguments: not ported (the track is not
-    /// laid); the turn goes on as if it succeeded.
+    /// `track_lay_route` (`0x4cc060`) with the AI's arguments (company `0x565144`, no
+    /// preview, double track): [`crate::build::route`].
     #[allow(clippy::too_many_arguments)]
-    pub fn track_lay_route(
+    pub fn ai_lay_route(
         &mut self,
-        _x1: i32,
-        _y1: i32,
-        _x2: i32,
-        _y2: i32,
-        _d1: i32,
-        _d2: i32,
+        x1: i32,
+        y1: i32,
+        x2: i32,
+        y2: i32,
+        d1: i32,
+        d2: i32,
         electric: bool,
         bridge: i32,
     ) -> bool {
-        // 0x4cc060 writes the track globals from its arguments.
-        self.track_electric = electric;
-        self.track_bridge = bridge;
-        todo_hook!(
-            self.ts.log,
-            "track_lay_route",
-            "track_lay_route 0x4cc060: lay the path, earthwork, ledger (RNG of the tile rebuild)",
-            "ai.md 5.4; terrain-track.md 2.3"
-        );
-        true
+        let company = self.company;
+        self.track_lay_route(crate::build::route::LayRoute {
+            company,
+            x1,
+            y1,
+            x2,
+            y2,
+            d1,
+            d2,
+            single: false,
+            electric,
+            bridge,
+        })
+        .is_some()
     }
 
     /// The real station of `0x434a40`/`0x435790`: `building_create` (`0x409010`) of type
-    /// `dir + size*8`, `ai_station_upgrades` (`0x434850`) and the news. Not ported.
-    fn build_station(&mut self, _site: Site) {
-        todo_hook!(
-            self.ts.log,
-            "ai_station_build",
-            "building_create 0x409010 of the station, ai_station_upgrades 0x434850, news LNG 239",
-            "ai.md 5.4; terrain-track.md 3.1"
-        );
+    /// `dir + size*8` at the position derived from the site (`0x4085e0`, `0x408450`,
+    /// `0x408470`), then `ai_station_upgrades` (`0x434850`). Returns the station.
+    fn build_station(&mut self, site: Site) -> i32 {
+        let t = site.building_type() as i32;
+        let (x, y) = self.station_create_xy(t, site.x, site.y);
+        let company = self.company;
+        let b = self.building_create(crate::build::station::NewBuilding {
+            x,
+            y,
+            shape: t,
+            ghost: false,
+            company,
+            place: 0,
+            hint: -1,
+        });
+        let st = i32::from(self.ts.u16(P::Industry, b, 8));
+        self.ai_station_upgrades(st);
+        st
     }
 }

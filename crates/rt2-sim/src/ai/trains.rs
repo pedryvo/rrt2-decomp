@@ -137,13 +137,8 @@ impl Ai<'_, '_> {
                         && year - i32::from(self.ts.u16(P::Train, t, 0xa9)) > 25
                         && self.cash() >= -100_000.0
                     {
-                        let _e = self.pick_engine(1);
-                        todo_hook!(
-                            self.ts.log,
-                            "train_replace_engine",
-                            "train_replace_engine 0x4d4e90 (new engine on an old train)",
-                            "ai.md 7"
-                        );
+                        let e = self.pick_engine(1);
+                        self.replace_engine(t, e, false);
                     }
                 }
             }
@@ -152,29 +147,51 @@ impl Ai<'_, '_> {
         }
     }
 
-    /// `ai_buy_train` (`0x4d90f0`). The purchase itself (`train_buy` `0x4cdf00` ->
-    /// `train_create` `0x4cdf80`) is not ported: after the two stop choices and the engine choice
-    /// (the RNG draws of the original) the turn stops buying.
+    /// `ai_buy_train` (`0x4d90f0`): two stops, the engine, `train_buy(engine, first station,
+    /// company)`, class 3 when the two stations are more than 80 apart (2 otherwise), stop `b`
+    /// flagged `0x40` and inserted before `a`.
     pub fn buy_train(&mut self) -> bool {
         let Some(a) = self.pick_stop(None, 0) else {
             return false;
         };
-        let Some(_b) = self.pick_stop(Some(a), 0) else {
+        let Some(b) = self.pick_stop(Some(a), 0) else {
             return false;
         };
-        let _e = self.pick_engine(1);
-        todo_hook!(
-            self.ts.log,
-            "ai_train_buy",
-            "train_buy 0x4cdf00 / train_create 0x4cdf80 and the stop list (0x4d5710, 0x4d11f0)",
-            "ai.md 7; trains.md 6.1"
-        );
-        false
+        let e = self.pick_engine(1);
+        let company = self.company;
+        let Some(t) = self.train_buy(e, company) else {
+            return false;
+        };
+        self.ts.set8(P::Train, t, 0x9d, 1);
+        self.set_new_stops(t, a, b);
+        true
     }
 
-    /// `ai_replan_train` (`0x4d8f40`): two new stops for an old train. The stop list rewrite
-    /// (`0x4d5710`, `0x4d11f0`) is not ported; returns whether the original would have rewritten
-    /// the stops (and looped).
+    /// The end of `0x4d90f0` / `0x4d8f40`: delete the stops, class by distance, insert `b`
+    /// (flag `0x40`) then `a` at position 0.
+    fn set_new_stops(&mut self, t: i32, a: Stop, b: Stop) {
+        while self.ts.u8(P::Train, t, 0x3b) != 0 {
+            self.stop_delete(t, 0);
+        }
+        let far = !a.is_waypoint() && !b.is_waypoint() && {
+            let p = |st: i32| {
+                (
+                    self.ts.i32(P::Station, st, 0xa),
+                    self.ts.i32(P::Station, st, 0xe),
+                )
+            };
+            let (pa, pb) = (p(a.station()), p(b.station()));
+            Ai::dist(pa.0, pa.1, pb.0, pb.1) > 0x50
+        };
+        self.ts.set8(P::Train, t, 0xa7, if far { 3 } else { 2 });
+        let mut bb = b.0;
+        bb[3] = (bb[3] & 0x3f) | 0x40;
+        self.stop_insert(t, 0, Some(a.0), 0, false, 0, 0);
+        self.stop_insert(t, 0, Some(bb), 0, false, 0, 0);
+    }
+
+    /// `ai_replan_train` (`0x4d8f40`): two new stops for an old train whose head can reach the
+    /// first one (`track_route_exists`); returns whether the stops were rewritten.
     pub fn replan_train(&mut self, t: i32) -> bool {
         if self.ts.u8(P::Train, t, 0x9c) == 0 {
             return false;
@@ -183,7 +200,7 @@ impl Ai<'_, '_> {
         let Some(a) = self.pick_stop(None, mode) else {
             return false;
         };
-        let Some(_b) = self.pick_stop(Some(a), mode) else {
+        let Some(b) = self.pick_stop(Some(a), mode) else {
             return false;
         };
         let (sx, sy) = if a.is_waypoint() {
@@ -204,13 +221,8 @@ impl Ai<'_, '_> {
         if !self.route_exists(cx, cy, sx, sy, 0) {
             return false;
         }
-        todo_hook!(
-            self.ts.log,
-            "ai_replan_stops",
-            "ai_replan_train 0x4d8f40: delete the stops (0x4d5710) and insert two (0x4d11f0), class 2/3",
-            "ai.md 7"
-        );
-        false
+        self.set_new_stops(t, a, b);
+        true
     }
 
     /// `track_route_exists` (`0x460370`): route-mode search with no company; with `count` set

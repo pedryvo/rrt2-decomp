@@ -169,6 +169,13 @@ fn can_place_matches_original() {
     }
     let map = TestMap { w, h, tiles: facts };
 
+    // The footprint extents of the shape rows are computed at start-up by `0x471b10` (they are
+    // 0 in the image): write them as the running game has them.
+    for shape in 0..0x7a_usize {
+        let e = rt2_sim::tilemark::shape_extents(&data.image, shape);
+        let at = 0x0054_57ef + 12 + 0x154 * shape as u32;
+        o.write_mem(at, &e.map(|v| v as u8)).unwrap();
+    }
     let mut tested = 0usize;
     let mut accepted = 0usize;
     for shape in 0..0x7a_usize {

@@ -216,12 +216,7 @@ impl Ts<'_> {
             c = i32::from(self.i16(P::Car, c, 2));
         }
         if refresh {
-            todo_hook!(
-                self.log,
-                "train_consist_refresh",
-                "0x4d14b0 (consist refresh)",
-                "trains.md 10.3"
-            );
+            self.train_route_refresh(t);
         }
         if self.flag_570229 != 0 {
             todo_hook!(

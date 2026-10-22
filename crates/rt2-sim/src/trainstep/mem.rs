@@ -55,6 +55,9 @@ pub struct Globals {
     /// breakdown or a crash: `0x4d0400` then reads whatever its stack slot held, which is the
     /// value of the previous call in practice (approximation, trains.md 10.4).
     pub stale_restricted: bool,
+    /// `0x5794f0`: a track change with 20 stations or more deferred `station_networks_rebuild`
+    /// to the next `sim_month_end` (step 1).
+    pub networks_dirty: bool,
 }
 
 pub struct Ts<'a> {

@@ -568,3 +568,11 @@ Locomotivas (espécie 0) e tênderes (espécie 1) ocupam os demais registros; o 
 | 173 | fmety | 42 (?) | 20 | 35 | 1800-9999 |
 
 > **Resolvido (2026-10-22):** a precisão x87 da thread principal, medida com o jogo rodando no Wine, é **53 bits** (control word `0x27F`) em todas as amostras: frame gate, `sim_advance` e receita. Ver `docs/dynamic-analysis.md`. Os testes do oracle devem fixar `0x27F`.
+
+## 11. Compra, paradas e venda (`crates/rt2-sim/src/build/train.rs`) [V: snapshots de comando]
+- `train_buy(motor, estação, empresa)` (`0x4cdf00`): falha (LNG 352) com menos de 2 estações no mundo; aloca o trem e chama `train_create` (`0x4cdf80`): campos iniciais (classe 2, areia/óleo/água 100, acelerador 85, `+0xe9 = 2.0`, `+0x6d = agora`, `+0xf3 = 1`...), `empresa+0x27++`, locomotiva e tender (`vehicle_init` `0x414220`, **fora do trilho**: o passo do trem a coloca na partida), pesos `+0xaf/+0xb3`, preço `+8 = ftol(m(0x1a) * m(0x1b+tipo) * preço)` com o território `+0xf3 = 1` e lançado inteiro (double) na conta 4.
+- `0x4d3f40(trem, de)`: copia as paradas de `de` ou usa as duas primeiras estações da empresa (`0x439720`; sem estações, as duas primeiras do mundo) com 2 cargas (passageiros, ou `0x26` com o conjunto industrial). Os bytes da parada além da lista de cargas são pilha não inicializada no original (máscara no teste).
+- `0x4d11f0` (inserir; sem registro copia as cargas da parada anterior; zera `+0xe5/+0xdf`, `+0xe9 = 2.0`; primeira parada: `train_set_stop(0, 1)`), `0x4d1130` (`+0x33` = soma de `int_dist` entre paradas + 8), `0x4d5710`/`0x4d55d0` (apagar; sem paradas para o trem).
+- `train_delete` (`0x4cdd50`): sem reembolso, conta 4 e categoria 6 `-= +8` sem caixa (`0x439930`), `empresa+0x27--`, carros (`0x4d0fa0`; lote de carga ainda `todo_hook`), reservas, rota e paradas.
+- `train_replace_engine` (`0x4d4e90`): baixa o preço antigo, cobra o novo na conta 4 (e na 0 com `pagar`); com o trem fora do trilho troca os carros da frente; no trilho falta recolocar (`0x413550`).
+- `+0x2b/+0x2f` (valor estimado da carga e carimbo, `0x4d2360`) só são calculados pela janela do jogador local.
