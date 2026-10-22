@@ -563,4 +563,42 @@ mod tests {
         d.tick(1000 + FADE_OUT_MS);
         assert_ne!(d.current(), Some(first));
     }
+
+    #[test]
+    fn menu_game_switching_never_repeats_the_last_three_in_a_category() {
+        let mut d = director();
+        let mut played = Vec::new();
+        let mut now = 0;
+        for round in 0..10 {
+            // Game screen, then back to the menu, then a track ends in the game.
+            d.request(1, now);
+            now += FADE_OUT_MS + 1;
+            d.tick(now);
+            played.push(d.current().unwrap());
+            d.request(0, now);
+            now += FADE_OUT_MS + 1;
+            d.tick(now);
+            assert_eq!(
+                d.tracks()[d.current().unwrap()].category,
+                0,
+                "round {round}"
+            );
+            d.request(1, now);
+            now += FADE_OUT_MS + 1;
+            d.tick(now);
+            // Returning resumes the same game track instead of drawing a new one.
+            assert_eq!(d.current(), played.last().copied());
+            d.skip(now);
+            now += FADE_OUT_MS + 1;
+            d.tick(now);
+            played.push(d.current().unwrap());
+        }
+        played.dedup();
+        for w in played.windows(4) {
+            let mut s = w.to_vec();
+            s.sort();
+            s.dedup();
+            assert_eq!(s.len(), 4, "{played:?}");
+        }
+    }
 }

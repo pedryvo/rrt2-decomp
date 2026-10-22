@@ -26,6 +26,8 @@ pub struct Keys {
     pub ui_scale_up: Vec<String>,
     pub ui_scale_down: Vec<String>,
     pub fullscreen: Vec<String>,
+    pub mute: Vec<String>,
+    pub next_track: Vec<String>,
 }
 
 fn v(keys: &[&str]) -> Vec<String> {
@@ -52,6 +54,9 @@ impl Default for Keys {
             ui_scale_up: v(&["ctrl+Equal", "ctrl+NumpadAdd"]),
             ui_scale_down: v(&["ctrl+Minus", "ctrl+NumpadSubtract"]),
             fullscreen: v(&["F11"]),
+            // Modern extras (the original has no audio hotkeys). Ctrl avoids menu letter hotkeys.
+            mute: v(&["ctrl+KeyM"]),
+            next_track: v(&["ctrl+KeyN"]),
         }
     }
 }
@@ -64,6 +69,8 @@ pub struct Config {
     /// UI scale in percent (100-300); absent = from the monitor DPI.
     pub ui_scale: Option<u32>,
     pub keys: Keys,
+    /// Volumes and mute (`docs/ui.md`, "Som").
+    pub audio: crate::sound::AudioSettings,
 }
 
 impl Config {

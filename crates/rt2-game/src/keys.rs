@@ -129,6 +129,8 @@ pub struct Bindings {
     pub ui_scale_up: Binding,
     pub ui_scale_down: Binding,
     pub fullscreen: Binding,
+    pub mute: Binding,
+    pub next_track: Binding,
     /// Names in the config that were not recognised.
     pub invalid: Vec<String>,
 }
@@ -153,6 +155,8 @@ impl Bindings {
             ui_scale_up: b(&k.ui_scale_up),
             ui_scale_down: b(&k.ui_scale_down),
             fullscreen: b(&k.fullscreen),
+            mute: b(&k.mute),
+            next_track: b(&k.next_track),
             invalid: Vec::new(),
         };
         Bindings {

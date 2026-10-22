@@ -13,6 +13,7 @@ rt2-formats.workspace = true
 rt2-sim.workspace = true
 rt2-render = { path = "../rt2-render" }
 rt2-ui = { path = "../rt2-ui" }
+rt2-audio.workspace = true
 winit = "0.30"
 wgpu = "30"
 pollster = "1"

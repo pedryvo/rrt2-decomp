@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use anyhow::{Context, Result, bail};
+use rt2_audio::Event;
 use rt2_formats::map::Save;
 use rt2_render::{Camera, GameAssets, Scene, SceneOptions};
 use rt2_sim::calendar::{DEFAULT_SPEED, Date, SpeedTable};
@@ -23,6 +24,7 @@ use crate::catalog::{self, Entry, Source};
 use crate::config::Config;
 use crate::keys::Bindings;
 use crate::paths;
+use crate::sound::{Cue, MusicRequester};
 use crate::text::{Texts, id as lng};
 
 const A_NEW: u32 = 1;
@@ -129,6 +131,11 @@ pub struct AppState {
     drag: bool,
     cursor: Option<(f32, f32)>,
     menu_handles: MenuHandles,
+    /// Audio triggers, drained by the window loop (one way: the state never reads audio).
+    cues: Vec<Cue>,
+    music: MusicRequester,
+    /// True while the UI events being handled come from a mouse button.
+    via_mouse: bool,
 }
 
 #[derive(Default, Clone, Copy)]
@@ -189,6 +196,9 @@ impl AppState {
             drag: false,
             cursor: None,
             menu_handles: MenuHandles::default(),
+            cues: Vec::new(),
+            music: MusicRequester::default(),
+            via_mouse: false,
         };
         s.rebuild_ui();
         s
@@ -200,6 +210,18 @@ impl AppState {
 
     pub fn take_scene(&mut self) -> Option<Arc<Scene>> {
         self.pending_scene.take()
+    }
+
+    /// Audio triggers since the last call: the music category of the current screen (menu and
+    /// its sub-screens 0, game 1; `sound.md` 2.2) first, then UI sounds in order.
+    pub fn take_cues(&mut self) -> Vec<Cue> {
+        let music = match self.screen {
+            Screen::Menu(_) => self.music.menu(),
+            Screen::Game(_) => self.music.game(),
+        };
+        let mut out: Vec<Cue> = music.into_iter().collect();
+        out.append(&mut self.cues);
+        out
     }
 
     pub fn take_effects(&mut self) -> Vec<Effect> {
@@ -273,10 +295,16 @@ impl AppState {
         });
         if pressed {
             self.drag = self.in_game() && !self.ui.over_ui();
+            if left && self.ui.over_ui() {
+                // sound.md 1.3 id 2: button pressed (ButtonDown, 0x50cc60).
+                self.cues.push(Cue::Event(Event::ButtonDown));
+            }
         } else {
             self.drag = false;
         }
+        self.via_mouse = true;
         self.handle_events(ev);
+        self.via_mouse = false;
     }
 
     pub fn wheel(&mut self, notches: f32) {
@@ -311,6 +339,14 @@ impl AppState {
         }
         if b.ui_scale_down.matches(code, ctrl) {
             self.set_ui_scale(self.scale.step(-1), true);
+            return;
+        }
+        if !repeat && b.mute.matches(code, ctrl) {
+            self.cues.push(Cue::ToggleMute);
+            return;
+        }
+        if !repeat && b.next_track.matches(code, ctrl) {
+            self.cues.push(Cue::NextTrack);
             return;
         }
         if !repeat && b.fullscreen.matches(code, ctrl) {
@@ -480,8 +516,20 @@ impl AppState {
     fn handle_events(&mut self, events: Vec<UiEvent>) {
         for e in events {
             match e {
-                UiEvent::Activated(a) => self.activated(a),
-                UiEvent::Selected(_, _) => {}
+                UiEvent::Activated(a) => {
+                    // sound.md 1.3 id 1: button released (ButtonUp, 0x50cbd0).
+                    self.cues.push(Cue::Event(Event::ButtonUp));
+                    self.activated(a);
+                }
+                UiEvent::Selected(_, _) => {
+                    // ids 3 / 4: list click (0x506220) vs soft scroll by wheel or keys (0x5062f0).
+                    let ev = if self.via_mouse {
+                        Event::ListClick
+                    } else {
+                        Event::ListHover
+                    };
+                    self.cues.push(Cue::Event(ev));
+                }
             }
         }
     }

@@ -14,6 +14,7 @@ use winit::window::{Fullscreen, Window, WindowId};
 use rt2_ui::Skin;
 
 use crate::gfx::Gfx;
+use crate::sound::SoundSystem;
 use crate::state::{AppState, Effect, Init};
 
 struct Surface {
@@ -31,6 +32,7 @@ pub struct App {
     started: Instant,
     last: Instant,
     error: Option<String>,
+    sound: SoundSystem,
 }
 
 impl Surface {
@@ -112,6 +114,8 @@ impl Surface {
 
 /// Runs the game window until it is closed.
 pub fn run(init: Init, skin: Skin, open: Option<std::path::PathBuf>) -> Result<()> {
+    // Audio is optional: without a device this logs once and the game runs silent.
+    let sound = SoundSystem::open(&init.install, init.config.audio.clone());
     let event_loop = EventLoop::new()?;
     event_loop.set_control_flow(ControlFlow::Poll);
     let mut app = App {
@@ -122,6 +126,7 @@ pub fn run(init: Init, skin: Skin, open: Option<std::path::PathBuf>) -> Result<(
         started: Instant::now(),
         last: Instant::now(),
         error: None,
+        sound,
     };
     event_loop.run_app(&mut app)?;
     match app.error {
@@ -229,11 +234,15 @@ impl ApplicationHandler for App {
                 let dt = (now - self.last).as_secs_f32() * 1000.0;
                 self.last = now;
                 state.update(dt);
+                self.sound.update();
                 // The ocean animates at about 8 frames per second.
                 let frame = (self.started.elapsed().as_millis() / 125) as u32;
                 surface.draw(state, frame);
             }
             _ => {}
+        }
+        for cue in state.take_cues() {
+            self.sound.apply(cue);
         }
         for e in state.take_effects() {
             match e {

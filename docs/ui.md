@@ -90,6 +90,16 @@ Textos: ids do `default2.lng` quando conhecidos (`New Game` 1686, `Load Game` 16
 | mover | `WASD`, setas; arrastar com o mouse; roda = zoom | |
 | escala da UI | `ctrl+Equal` / `ctrl+Minus` | |
 | tela cheia | `F11` | |
+| mudo | `ctrl+KeyM` | extra moderno (`[keys] mute`) |
+| próxima faixa | `ctrl+KeyN` | extra moderno (`[keys] next_track`) |
+
+### Som
+
+`rrt2` abre o áudio (`rt2-audio`) na partida; sem dispositivo de som ou sem os arquivos, registra uma linha em stderr e roda em silêncio. O fluxo é de mão única: `AppState` acumula `sound::Cue` (`take_cues()`), o laço da janela os entrega ao `SoundSystem`; o áudio nunca lê nem altera a simulação.
+
+- Música (`sound.md` 2.2): categoria 0 no menu principal e nas subtelas (Novo/Carregar jogo), categoria 1 no jogo; só há pedido quando a categoria muda. Fades de 1300 ms (saída) e 500 ms (entrada), nunca repete as 3 últimas, voltar a uma categoria retoma a faixa dela (tudo em `MusicDirector`).
+- Sons de UI (`sound.md` 1.3): botão apertado = id 2 `ButtonDown` (ao pressionar o botão esquerdo sobre um widget), solto/ativado = id 1 `ButtonUp`, seleção de lista por clique = id 3 `ListClick`, por roda/teclado = id 4 `ListHover` (volume 90).
+- `[audio]` no `config.toml`: `master`, `music`, `sfx` (0 a 100, padrão 100) e `mute` (padrão `false`). O atalho de mudo alterna só durante a sessão.
 
 ## Screenshots
 

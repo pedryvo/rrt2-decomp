@@ -105,3 +105,4 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - RE: tabela id de terreno -> classe/registro de ground.imb decodificada (0x471b10) e as passadas de overlay do carregador (0x42a7d0 transicoes e praias, 0x4294d0 rios, 0x428fe0 estradas) portadas e validadas bit a bit contra o original no emulador
 - Fix: o viewer usa os ids de terreno reais (fim das manchas azuladas na grama), com transicoes de solo, praias animadas, rios, estradas, estilo de estacao do registro e sombras de arvores
 - Docs: map-gam.md 3.2 (id de terreno, classes, overlays), sprite-catalog.md 4.1 (tabela id -> registro), terrain-track.md (tabela de classes resolvida)
+- Feature: rrt2 plays menu/game music with the original fades and UI click sounds; [audio] master/music/sfx/mute in config.toml, ctrl+M mutes, ctrl+N skips the track; the game runs silently without a sound device

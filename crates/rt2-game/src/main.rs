@@ -14,6 +14,7 @@ mod config;
 mod gfx;
 mod keys;
 mod paths;
+mod sound;
 mod state;
 mod text;
 
