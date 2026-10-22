@@ -4,10 +4,10 @@
 #
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
 # Classificadas (categoria != unknown): 1077 (36.6%)
-# Por categoria: lib=258, platform=117, render=11, audio=70, ui=250, sim=371, unknown=1868
-# Por estado:   unknown=2642, named=81, spec=168, verified=54
+# Por categoria: lib=258, platform=117, render=11, audio=68, ui=250, sim=373, unknown=1868
+# Por estado:   unknown=2614, named=109, spec=168, verified=54
 # Entradas manuais: 344
-# sim spec coverage: 53.9% (200 de 371 funcoes sim em spec/verified)
+# sim spec coverage: 53.6% (200 de 373 funcoes sim em spec/verified)
 
 [[function]]
 addr = "0x401005"
@@ -6770,7 +6770,7 @@ why = "no-evidence"
 [[function]]
 addr = "0x402b3f"
 size = 5
-category = "audio"
+category = "sim"
 status = "unknown"
 why = "thunk->0x4d0870"
 
@@ -7818,9 +7818,10 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x406470"
+name = "ambient_sound_tick"
 size = 530
 category = "audio"
-status = "unknown"
+status = "named"
 why = "string:tr_in61m.raw"
 
 [[function]]
@@ -8141,9 +8142,10 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x40b8b0"
+name = "building_loop_set_volume"
 size = 80
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -11231,9 +11233,10 @@ manual = true
 
 [[function]]
 addr = "0x464bb0"
+name = "video_detect_sets"
 size = 374
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -12708,9 +12711,10 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x47d100"
+name = "play_chimes"
 size = 102
 category = "audio"
-status = "unknown"
+status = "named"
 why = "string:chin161m.raw"
 
 [[function]]
@@ -13311,9 +13315,10 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x49b610"
+name = "view_distance_volume"
 size = 98
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -13332,9 +13337,10 @@ why = "string:birds61m.raw"
 
 [[function]]
 addr = "0x49bf70"
+name = "ambience_set_volume"
 size = 54
 category = "audio"
-status = "unknown"
+status = "named"
 why = "string:birds61m.raw"
 
 [[function]]
@@ -15372,10 +15378,11 @@ manual = true
 
 [[function]]
 addr = "0x4d0870"
+name = "train_update_sound_loop"
 size = 454
-category = "audio"
-status = "unknown"
-why = "string:ENFIR61m.raw"
+category = "sim"
+status = "named"
+why = "symbol:train_update_sound_loop"
 
 [[function]]
 addr = "0x4d0a40"
@@ -16308,9 +16315,10 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x4ecb00"
+name = "sound_acquire_voice"
 size = 1510
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -16329,9 +16337,10 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x4ed320"
+name = "sound_apply_volume"
 size = 262
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -16350,9 +16359,10 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x4ee180"
+name = "directsound_init"
 size = 818
 category = "lib"
-status = "unknown"
+status = "named"
 why = "crt-api:GetProcAddress,LoadLibraryA"
 
 [[function]]
@@ -16364,9 +16374,10 @@ why = "crt-api:FreeLibrary"
 
 [[function]]
 addr = "0x4ee650"
+name = "sound_collect_finished"
 size = 418
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -16378,23 +16389,26 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x4ee930"
+name = "sound_set_frequency"
 size = 221
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
 addr = "0x4eea90"
+name = "sound_set_volume"
 size = 56
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
 addr = "0x4eead0"
+name = "sound_stop_by_name"
 size = 298
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -16406,9 +16420,10 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x4eeeb0"
+name = "sound_play"
 size = 500
 category = "audio"
-status = "unknown"
+status = "named"
 why = "string:whtab61m.raw"
 
 [[function]]
@@ -17238,51 +17253,58 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x4f5490"
+name = "music_scan_mp3"
 size = 607
 category = "platform"
-status = "unknown"
+status = "named"
 why = "api:KERNEL32!FindClose,KERNEL32!FindFirstFileA,KERNEL32!FindNextFileA"
 
 [[function]]
 addr = "0x4f56f0"
+name = "music_init"
 size = 212
 category = "audio"
-status = "unknown"
+status = "named"
 why = "miles:MSS32!_AIL_quick_handles@12,MSS32!_AIL_quick_startup@20"
 
 [[function]]
 addr = "0x4f57d0"
+name = "music_shutdown"
 size = 142
 category = "audio"
-status = "unknown"
+status = "named"
 why = "miles:MSS32!_AIL_close_stream@4,MSS32!_AIL_pause_stream@8"
 
 [[function]]
 addr = "0x4f5860"
+name = "music_set_volume"
 size = 526
 category = "audio"
-status = "unknown"
+status = "named"
 why = "miles:MSS32!_AIL_close_stream@4,MSS32!_AIL_pause_stream@8"
 
 [[function]]
 addr = "0x4f5a80"
+name = "music_open_track"
 size = 304
 category = "audio"
-status = "unknown"
+status = "named"
 why = "miles:MSS32!_AIL_close_stream@4,MSS32!_AIL_open_stream@12"
 
 [[function]]
 addr = "0x4f5bd0"
+name = "music_stop_stream"
 size = 121
 category = "audio"
-status = "unknown"
+status = "named"
 why = "miles:MSS32!_AIL_close_stream@4,MSS32!_AIL_pause_stream@8"
 
 [[function]]
 addr = "0x4f5ca0"
+name = "music_pick_random"
 size = 298
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -17294,37 +17316,42 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x4f5de0"
+name = "music_on_track_end"
 size = 334
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
 addr = "0x4f5f30"
+name = "music_fade_tick"
 size = 428
 category = "audio"
-status = "unknown"
+status = "named"
 why = "miles:MSS32!_AIL_close_stream@4,MSS32!_AIL_pause_stream@8"
 
 [[function]]
 addr = "0x4f6130"
+name = "music_request_category"
 size = 243
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
 addr = "0x4f6230"
+name = "music_suspend"
 size = 174
 category = "audio"
-status = "unknown"
+status = "named"
 why = "miles:MSS32!_AIL_close_stream@4,MSS32!_AIL_pause_stream@8"
 
 [[function]]
 addr = "0x4f62e0"
+name = "music_resume"
 size = 262
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -18262,9 +18289,10 @@ why = "smacker:SMACKW32!_SmackClose@4,SMACKW32!_SmackDoFrame@4"
 
 [[function]]
 addr = "0x5043c0"
+name = "video_open"
 size = 677
 category = "lib"
-status = "unknown"
+status = "named"
 why = "smacker:SMACKW32!_SmackClose@4,SMACKW32!_SmackOpen@12"
 
 [[function]]

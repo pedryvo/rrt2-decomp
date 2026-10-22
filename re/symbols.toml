@@ -3451,3 +3451,255 @@ name = "game_is_multiplayer"
 kind = "global"
 comment = "u32: partida em rede (net_player_count > 1 ao iniciar); GameIsMultiPlayer"
 spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x4eeeb0"
+name = "sound_play"
+kind = "function"
+comment = "fastcall(descritor, em_loop, volume%, frequencia|-1, atraso_ms): toca um efeito; descritor = linha de 0x12 bytes de sound_table (nome[13], canais, bits, taxa u16, pitch); devolve o id da voz; [S]"
+spec = "docs/formats/sound.md"
+
+[[symbol]]
+addr = "0x4ecb00"
+name = "sound_acquire_voice"
+kind = "function"
+comment = "fastcall(descritor, atraso): acha ou cria o buffer DirectSound do efeito (dados cru do PK2 pelo hash do nome, 0x4f51e0/0x4f40e0) e uma voz livre; [S]"
+spec = "docs/formats/sound.md"
+
+[[symbol]]
+addr = "0x4ed320"
+name = "sound_apply_volume"
+kind = "function"
+comment = "fastcall(voz, volume%|-1): converte o percentual para centibels DirectSound (-10000..0) e chama SetVolume; [S]"
+spec = "docs/formats/sound.md"
+
+[[symbol]]
+addr = "0x4eea90"
+name = "sound_set_volume"
+kind = "function"
+comment = "fastcall(id_voz, volume%): acha a voz pelo id e chama sound_apply_volume; [S]"
+spec = "docs/formats/sound.md"
+
+[[symbol]]
+addr = "0x4ee930"
+name = "sound_set_frequency"
+kind = "function"
+comment = "(id_voz, hz): muda a frequencia da voz (chug segue a velocidade do trem, 0x2b11 quebrado); inferido pelo uso em 0x4d0870; [S]"
+spec = "docs/formats/sound.md"
+
+[[symbol]]
+addr = "0x4eead0"
+name = "sound_stop_by_name"
+kind = "function"
+comment = "fastcall(descritor): para e libera todas as vozes do efeito; [S]"
+spec = "docs/formats/sound.md"
+
+[[symbol]]
+addr = "0x4ee180"
+name = "directsound_init"
+kind = "function"
+comment = "LoadLibrary DSOUND.DLL, DirectSoundCreate, SetCooperativeLevel, buffer primario 16 bit; chama music_init no fim; [S]"
+spec = "docs/formats/sound.md"
+
+[[symbol]]
+addr = "0x4ee650"
+name = "sound_collect_finished"
+kind = "function"
+comment = "a cada 500 ms libera vozes de um disparo que acabaram (GetStatus); [S]"
+spec = "docs/formats/sound.md"
+
+[[symbol]]
+addr = "0x4f5490"
+name = "music_scan_mp3"
+kind = "function"
+comment = "varre data2/*.mp3 (nome <= 40 chars): categoria 1 por padrao; menor nome = categoria 0, primeiro 'C' = 2, primeiro 'W' = 3, estes tres em loop; [S]"
+spec = "docs/formats/sound.md"
+
+[[symbol]]
+addr = "0x4f56f0"
+name = "music_init"
+kind = "function"
+comment = "ranks aleatorios 0..1000 por faixa, AIL_startup, AIL_quick_startup(44100 Hz, 16 bit, estereo), music_scan_mp3; [S]"
+spec = "docs/formats/sound.md"
+
+[[symbol]]
+addr = "0x4f57d0"
+name = "music_shutdown"
+kind = "function"
+comment = "fecha o stream e desliga a musica; [S]"
+spec = "docs/formats/sound.md"
+
+[[symbol]]
+addr = "0x4f5860"
+name = "music_set_volume"
+kind = "function"
+comment = "fastcall(volume_opcao, volume%, fade%): grava as opcoes, aplica AIL_set_stream_volume e (re)inicia a faixa da categoria pedida; [S]"
+spec = "docs/formats/sound.md"
+
+[[symbol]]
+addr = "0x4f5a80"
+name = "music_open_track"
+kind = "function"
+comment = "fastcall(faixa, reiniciar): abre data2/<nome> com AIL_open_stream e registra o callback de fim (0x4f5a70); [S]"
+spec = "docs/formats/sound.md"
+
+[[symbol]]
+addr = "0x4f5bd0"
+name = "music_stop_stream"
+kind = "function"
+comment = "para e fecha o stream atual (tela de combate/cenario); [S]"
+spec = "docs/formats/sound.md"
+
+[[symbol]]
+addr = "0x4f5ca0"
+name = "music_pick_random"
+kind = "function"
+comment = "fastcall(categoria): sorteio que exclui as min(n-1,3) faixas mais recentes (rank), grava rank = music_rank_counter e soma 1000; [S]"
+spec = "docs/formats/sound.md"
+
+[[symbol]]
+addr = "0x4f5de0"
+name = "music_on_track_end"
+kind = "function"
+comment = "callback de fim de faixa: repete se loop, senao music_pick_random(categoria atual); [S]"
+spec = "docs/formats/sound.md"
+
+[[symbol]]
+addr = "0x4f5f30"
+name = "music_fade_tick"
+kind = "function"
+comment = "a cada >=15 ms: fade-out 1300 ms (volume = restante*100/0x514) e fade-in 500 ms da faixa pendente; [S]"
+spec = "docs/formats/sound.md"
+
+[[symbol]]
+addr = "0x4f6130"
+name = "music_request_category"
+kind = "function"
+comment = "fastcall(categoria; -2 = manter): 0 = menu, 1 = jogo; escolhe a faixa de maior rank da categoria ou sorteia; agenda o fade; [S]"
+spec = "docs/formats/sound.md"
+
+[[symbol]]
+addr = "0x4f6230"
+name = "music_suspend"
+kind = "function"
+comment = "inicio de carga de tela: contador +1 e para a musica; [S]"
+spec = "docs/formats/sound.md"
+
+[[symbol]]
+addr = "0x4f62e0"
+name = "music_resume"
+kind = "function"
+comment = "fim de carga: contador -1 e, em 0, retoma a categoria pedida; [S]"
+spec = "docs/formats/sound.md"
+
+[[symbol]]
+addr = "0x4d0870"
+name = "train_update_sound_loop"
+kind = "function"
+comment = "thiscall(trem, volume, frequencia): voz em loop do trem (chug 19/20/22/23 pela paridade do id; quebrado 107/112; acidente 109); [S]"
+spec = "docs/formats/sound.md"
+
+[[symbol]]
+addr = "0x406470"
+name = "ambient_sound_tick"
+kind = "function"
+comment = "a cada ~65 s com sorteio rand(0,300) s: sons de ambiente por tela (gavião, gansos, flyby, poleiro, pombos, tr_in); [S]"
+spec = "docs/formats/sound.md"
+
+[[symbol]]
+addr = "0x47d100"
+name = "play_chimes"
+kind = "function"
+comment = "fastcall(n): n vezes chin1..3 (rand 0..2) com atraso de 150 ms cada; [S]"
+spec = "docs/formats/sound.md"
+
+[[symbol]]
+addr = "0x49bf70"
+name = "ambience_set_volume"
+kind = "function"
+comment = "fastcall(indice 0..5, volume): ambiencia de terreno em loop (birds, waves, swamp, river, blizz, jungle); [S]"
+spec = "docs/formats/sound.md"
+
+[[symbol]]
+addr = "0x40b8b0"
+name = "building_loop_set_volume"
+kind = "function"
+comment = "thiscall(predio, volume): loop do tipo de predio (building_type_table +0); [S]"
+spec = "docs/formats/sound.md"
+
+[[symbol]]
+addr = "0x49b610"
+name = "view_distance_volume"
+kind = "function"
+comment = "fastcall(x, y): volume 0..100 pela distancia ao centro da vista (so toca se > 5); formula nao decodificada; [S]"
+spec = "docs/formats/sound.md"
+
+[[symbol]]
+addr = "0x5043c0"
+name = "video_open"
+kind = "function"
+comment = "thiscall(player, indice): abre anim/<nome>.SMK (pasta do jogo, depois CD) com SmackOpen; nomes em video_table; [S]"
+spec = "docs/formats/sound.md"
+
+[[symbol]]
+addr = "0x464bb0"
+name = "video_detect_sets"
+kind = "function"
+comment = "testa a existencia de anim/cv07, cve07, ca01 e cae14 para saber quais conjuntos de video estao instalados; [S]"
+spec = "docs/formats/sound.md"
+
+[[symbol]]
+addr = "0x55e7b0"
+name = "sound_table"
+kind = "table"
+comment = "125 linhas de 0x12 bytes: nome[13] NUL, canais u8, bits u8, taxa u16, pitch u8; indice = id de som; docs/formats/sound.md"
+spec = "docs/formats/sound.md"
+
+[[symbol]]
+addr = "0x55d578"
+name = "music_track_table"
+kind = "table"
+comment = "60 registros de 0x44 bytes: +0 habilitada, +1 loop, +0x11 categoria, +0x13 rank i32, +0x17 volume i32 (0x41); docs/formats/sound.md"
+spec = "docs/formats/sound.md"
+
+[[symbol]]
+addr = "0x55e578"
+name = "music_rank_counter"
+kind = "global"
+comment = "contador de rank, inicia em 2000, +1000 por faixa tocada"
+spec = "docs/formats/sound.md"
+
+[[symbol]]
+addr = "0x55e56c"
+name = "music_current_track"
+kind = "global"
+comment = "faixa tocando (-1 = nenhuma)"
+spec = "docs/formats/sound.md"
+
+[[symbol]]
+addr = "0x55e570"
+name = "music_current_category"
+kind = "global"
+comment = "categoria da musica em vigor (-1 = nenhuma)"
+spec = "docs/formats/sound.md"
+
+[[symbol]]
+addr = "0x55e574"
+name = "music_requested_category"
+kind = "global"
+comment = "ultimo argumento de music_request_category"
+spec = "docs/formats/sound.md"
+
+[[symbol]]
+addr = "0x55e568"
+name = "music_pending_track"
+kind = "global"
+comment = "faixa esperando o fim do fade-out (-2 = nenhuma)"
+spec = "docs/formats/sound.md"
+
+[[symbol]]
+addr = "0x55fed8"
+name = "video_table"
+kind = "table"
+comment = "105 registros de 9 bytes: ponteiro para o nome (sem .SMK) + 5 bytes de flags; indice 1..104; docs/formats/sound.md"
+spec = "docs/formats/sound.md"

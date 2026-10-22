@@ -1,0 +1,13 @@
+[package]
+name = "rt2-audio"
+description = "Music and sound effects for the Railroad Tycoon II clone (audio never feeds back into the sim)"
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+rt2-formats.workspace = true
+kira = { version = "0.12", default-features = false, features = ["cpal", "mp3"] }
+thiserror.workspace = true
+
+[lints]
+workspace = true

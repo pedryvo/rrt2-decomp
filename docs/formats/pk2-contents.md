@@ -70,6 +70,8 @@ Tabela `RT2/2073_95966de7`: `u32 713` + 713 x `(u32 0, u32 hash, u32 tipo)`; con
 
 ## Áudio (confiança média)
 
+> Atualização: formato resolvido em `docs/formats/sound.md`. São 123 efeitos PCM cru, mono, 16 bit a 11025 Hz (`clock82m.raw` é 8 bit a 22050 Hz), descritos pela tabela de 0x12 bytes em `0x55e7b0`; os "39 de ruído" são sons de banda larga e a hipótese de 22050 Hz/16 kHz abaixo está errada.
+
 Heurística: 87 de 126 blobs têm autocorrelação lag-1 > 0,5 como s16le mono (ex.: `0011` 0,98; `0288` 0,99; `0290` 0,99; `0631` 0,97), mas os 39 restantes têm autocorrelação baixa/negativa e energia alta em HF (ruído tipo vapor/vento, ou outro codec): não resolvido. Nenhum cabeçalho (`RIFF` aparece só por acaso em `2148`/`2228`). Sem metadado de taxa: palpite 22050 Hz mono 16 bit (conversão `ffmpeg -f s16le -ar 22050 -ac 1` dá durações de 0,6-2 s e nível médio -10..-22 dB, plausível). RT2_06 `0001` = 320000 B = 10,0 s a 16 kHz exatos (alternativa: 16 kHz). Amplitudes: desvio 200-17000.
 
 ## IMB (confiança média)

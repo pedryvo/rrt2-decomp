@@ -98,3 +98,7 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Feature: `rrt2` game binary (crates/rt2-game): main menu with the original backdrop, scenario and save lists, map view with a top-bar HUD (date, cash, speed, pause), fixed-timestep simulation through `Command`, saves in ~/.local/share/rrt2/saves, `rrt2 set-path`, configurable keys in config.toml, `--screenshot` offscreen path
 - Feature: `rt2-ui` retained UI layer on wgpu with glyphon text, 100-300% UI scale from the monitor DPI, 9-slice skin from the original UI sprites (flat fallback), vendored OFL fonts (Cinzel, Libre Franklin, Anton, Dancing Script) mapped to the game's 10 bitmap fonts
 - Docs: docs/ui.md (UI architecture, font mapping, scaling, screens vs .win layouts)
+- Feature: crate rt2-audio (kira): efeitos a partir dos PCM dos PK2, musica de data2 com as regras do original (categorias, fade, sem repetir as 3 ultimas), volume/skip/ordem sequencial como opcoes, som posicional opcional; rt2-play (--list, efeito, music, --video)
+- Feature: videos Smacker de anim convertidos por ffmpeg para ~/.cache/rrt2/video na primeira vez
+- Docs: formato dos sons (docs/formats/sound.md): descritores de 0x12 bytes, 123 efeitos PCM cru (11025 Hz mono 16 bit; clock82m 22050 Hz 8 bit), tabela de eventos, regras de musica e tabela de videos
+- RE: 28 funcoes, tabelas e globais de audio nomeadas (sound_play, music_request_category, music_pick_random, sound_table, video_table...); a taxa de amostragem e o formato dos blobs de audio dos PK2 vem da tabela de descritores em 0x55e7b0

@@ -7,6 +7,7 @@ version.workspace = true
 [dependencies]
 rt2-formats.workspace = true
 rt2-sim.workspace = true
+rt2-audio.workspace = true
 anyhow.workspace = true
 clap.workspace = true
 png.workspace = true
