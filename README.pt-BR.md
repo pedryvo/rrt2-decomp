@@ -48,7 +48,7 @@ O **rrt2-decomp** estuda o executável original de _Railroad Tycoon II Platinum_
 | Harness de teste diferencial (Unicorn) | ✅ | Roda funções do original num emulador para comparação bit a bit · [docs](docs/oracle.md) |
 | Motor gráfico (wgpu) | 🟡 | Mapas originais com as texturas de terreno, trilhos, árvores, cidades, indústrias e estações do próprio jogo; sprites com upscaling para alta resolução; nativo em 1080p/4K. Faltam trens, rios e as texturas exatas de terreno · `cargo run --release -p rt2-viewer -- <mapa>` |
 | Simulação jogável | 🟡 | Laço do mundo do `rt2-sim`: um save original avançado 1, 7 e 30 dias fica **idêntico ao original** campo a campo (Tutorial); veja o [placar de fidelidade](docs/fidelity-status.md) |
-| Interface do jogo | ⏳ | |
+| Interface do jogo | 🟡 | App `rrt2`: menu principal com a arte original, listas de cenários e saves, HUD com data e controle de velocidade, texto vetorial nítido com fontes OFL equivalentes às originais, escala de UI de 100–300% · [docs](docs/ui.md) |
 | Editor de cenários | ⏳ | |
 
 <sub>✅ pronto · 🟡 parcial · 🔍 em análise · ⏳ planejado</sub>
@@ -86,6 +86,15 @@ Testes (os que leem o jogo original rodam quando `RT2_DIR` aponta para a instala
 ```bash
 RT2_DIR=~/Games/railroad-tycoon-2 cargo nextest run
 ```
+
+## 🎮 Rodando o jogo (prévia)
+
+```bash
+cargo run --release -p rt2-game -- set-path ~/Games/railroad-tycoon-2   # uma vez
+cargo run --release -p rt2-game
+```
+
+Hoje dá para navegar pelos cenários, carregar saves, ver a simulação rodando e mudar a velocidade. Construir trilhos e trens vem a seguir. Configurações e atalhos ficam em `~/.config/rrt2/config.toml`; os saves vão para `~/.local/share/rrt2/saves`.
 
 ## 🧰 Ferramentas
 

@@ -48,7 +48,7 @@ _The 1998 classic you know, from the same isometric viewpoint,<br>now native at 
 | Differential test harness (Unicorn) | ✅ | Runs original functions in an emulator for bit-exact comparison · [docs](docs/oracle.md) |
 | Rendering engine (wgpu) | 🟡 | Original maps with the game's own terrain textures, track, trees, towns, industries and stations; sprites upscaled for high DPI; native at 1080p/4K. Trains, rivers and exact ground textures pending · `cargo run --release -p rt2-viewer -- <map>` |
 | Playable simulation | 🟡 | `rt2-sim` world loop: an original save advanced 1, 7 and 30 days is **identical to the original** field by field (Tutorial); see the [fidelity scoreboard](docs/fidelity-status.md) |
-| Game UI | ⏳ | |
+| Game UI | 🟡 | `rrt2` app: main menu with original art, scenario/save lists, in-game HUD with date and speed control, crisp vector text with OFL fonts matched to the originals, UI scale 100–300% · [docs](docs/ui.md) |
 | Scenario editor | ⏳ | |
 
 <sub>✅ done · 🟡 partial · 🔍 under analysis · ⏳ planned</sub>
@@ -86,6 +86,15 @@ Tests that read the original game data run when `RT2_DIR` points at your install
 ```bash
 RT2_DIR=~/Games/railroad-tycoon-2 cargo nextest run
 ```
+
+## 🎮 Running the game (early preview)
+
+```bash
+cargo run --release -p rt2-game -- set-path ~/Games/railroad-tycoon-2   # once
+cargo run --release -p rt2-game
+```
+
+Today you can browse scenarios, load saves, watch the simulation run and change speed. Building track and trains comes next. Settings and key bindings live in `~/.config/rrt2/config.toml`; saves go to `~/.local/share/rrt2/saves`.
 
 ## 🧰 Tools
 
