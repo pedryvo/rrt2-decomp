@@ -146,7 +146,7 @@ Verificação: 20 000 chamadas (rand direto e intervalo) com re-semeadura; estad
 
 ## 5. Divergências e fidelidade
 - Manual: sem informação de RNG. Nada a anotar.
-- Fidelidade: o clone deve usar A com o mesmo algoritmo, a mesma semente de partida (ou a de um `.GAM`, onde o estado `0x55d2c0` precisa ser lido do arquivo: ver "Em aberto") e a mesma ordem de chamadas. B é puro. C não pode ser reproduzido; onde afeta o estado de simulação (suspeita em `0x4d0400`, `0x4d2360`, `0x4d29e0`) isso será uma divergência documentada.
+- Fidelidade: o clone deve usar A com o mesmo algoritmo, a mesma semente de partida e a mesma ordem de chamadas. O estado `0x55d2c0` **não** é gravado no `.GAM` (`docs/formats/map-gam.md`), então, ao carregar um save, os dois lados precisam receber a mesma semente explicitamente. B é puro. C não pode ser reproduzido, mas nos trens ele só escolhe sons (`docs/spec/trains.md`); os chamadores restantes estão em "Em aberto".
 
 ## Em aberto
 - Resolvido (docs/formats/map-gam.md 5.2): `game_seed` fica no `.GAM` em 0xB24F; o estado `0x55d2c0` **não é gravado** (o load preserva o do processo), então o teste de nível 2 precisa re-semear o RNG explicitamente após carregar.
