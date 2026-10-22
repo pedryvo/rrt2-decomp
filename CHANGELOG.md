@@ -88,3 +88,5 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - RE: ground ids are ordered like ground.imb records (ground 0x00 only uses ids 0-2); ground.imb families listed in code; map object pool (0x574c74) byte 6 = building type, i16 x/y at +0x22/+0x24
 - Docs: spec da IA (docs/spec/ai.md): turno mensal, expansao (primeira linha, ligacao de cidades), gestao de trens e escolha de paradas/composicao, gerente, compra de industria, financas e bolsa, personas do .data e ordem do RNG
 - RE: 37 funcoes, tabelas e globais da IA nomeadas (ai_extend_network, ai_pick_stop, ai_manage_trains, ai_persona_table...); ai_pick_engine e ai_town_value verificados no oraculo (tests/ai.rs)
+- RE: industry_load_fixups (0x4719e0) encontrada por watchpoint no Wine: na carga copia a linha do Port (tipo 28) do cabecalho do save (0x57023b), recalcula os anos dos slots e ajusta as taxas das casas pela dificuldade (docs/spec/cargo.md 7.1.1)
+- Improved: rt2-sim aplica industry_load_fixups; Tutorial 7 e 30 dias passam a bater com o original em todos os campos (0 diferencas)

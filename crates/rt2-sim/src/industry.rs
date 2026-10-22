@@ -11,7 +11,7 @@ use std::collections::BTreeMap;
 
 use rt2_formats::map::Pool;
 
-use crate::cargo::{IndustryType, NO_CARGO, production_multiplier, production_period};
+use crate::cargo::{CargoType, IndustryType, NO_CARGO, production_multiplier, production_period};
 use crate::effects::{EffectLevels, effect_multiplier};
 use crate::fp::{f32r, ftol};
 use crate::hooks::HookLog;
@@ -237,6 +237,59 @@ pub fn production_tick(rec: &mut [u8], lots: &mut Pool, env: &Env, log: &mut Hoo
             spawn_lot(rec, lots, slot.output, env, log);
         }
     }
+}
+
+/// Header offset (file offset = `0x57023b - 0x567b38`) of the saved Port record and of the two
+/// difficulty bytes read by `industry_load_fixups` (cargo.md 7.1.1).
+const HDR_PORT_ROW: usize = 0x8703;
+const HDR_DIFFICULTY_B: usize = 0x238; // 0x567d70
+const PORT_TYPE: usize = 28;
+const HOUSING_TYPE: usize = 18;
+
+/// `industry_load_fixups` (`0x4719e0`, called by the save loader) on the set-0 type table: the
+/// housing rates by the difficulty byte `0x567d70`, and the Port record (type 28) replaced by the
+/// 0x90 bytes saved at `0x57023b` with every slot's years recomputed from the first year of its
+/// cargos. `types` is the pristine `.data` table; call [`IndustryType::rebuild_inputs`] after.
+pub fn apply_load_fixups(types: &mut [IndustryType], header: &[u8], cargo: &[CargoType]) {
+    if header.len() < HDR_PORT_ROW + 0x90 || types.len() <= PORT_TYPE {
+        return;
+    }
+    let hard = header[HDR_DIFFICULTY_B];
+    let f = |v: u32| f32::from_bits(v);
+    let h = &mut types[HOUSING_TYPE];
+    if hard == 0 {
+        h.slots[0].rate = f(0x3f19_999a);
+        h.slots[2].rate = f(0x3f00_0000);
+        h.slots[3].rate = f(0x3ecc_cccd);
+    } else {
+        h.slots[0].rate = f(0x3f00_0000);
+        h.slots[2].rate = f(0x3ecc_cccd);
+        h.slots[3].rate = if hard == 1 {
+            f(0x3e99_999a)
+        } else {
+            f(0x3e4c_cccd)
+        };
+    }
+    let mut row = IndustryType::from_raw(&header[HDR_PORT_ROW..HDR_PORT_ROW + 0x90]);
+    let first = |c: u8| {
+        cargo
+            .get(usize::from(c))
+            .map_or(0, |c| i32::from(c.first_year))
+    };
+    for sl in &mut row.slots {
+        let mut y = 0x708;
+        if sl.output != NO_CARGO && first(sl.output) > 0x707 {
+            y = first(sl.output);
+        }
+        let i1 = sl.inputs[0].cargo;
+        if sl.mode == 0 && i1 != NO_CARGO && first(i1) >= y {
+            y = first(i1);
+        }
+        sl.year_from = y as i16;
+        sl.year_to = 9999;
+        sl.inputs[1].cargo = NO_CARGO;
+    }
+    types[PORT_TYPE] = row;
 }
 
 #[cfg(test)]

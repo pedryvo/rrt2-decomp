@@ -3206,3 +3206,10 @@ name = "land_tile_count"
 kind = "global"
 comment = "tiles que nao sao agua (territories_recount_land); entra na chance de fundar empresa"
 spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x4719e0"
+name = "industry_load_fixups"
+kind = "function"
+comment = "save-load fixups of industry_type_table set 0: housing rates by difficulty byte 0x567d70, Port row (type 28) copied from header 0x57023b with slot years recomputed from cargo first years; then rebuild_inputs(0x1c); [V]"
+spec = "docs/spec/cargo.md"

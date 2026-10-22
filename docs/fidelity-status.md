@@ -7,15 +7,15 @@ Compara o clone com o original rodando no Wine (`re/scripts/wine/advance_save.py
 | Cenário | Dias | Resultado | Campos diferentes |
 |---|---|---|---|
 | Tutorial (sem trens, sem estações) | 1 | **igual** | 0 |
-| Tutorial | 7 | quase igual | 3 (`objects[88,104,236].raw[0x8c..0x90]`) |
-| Tutorial | 30 | quase igual | 3 (os mesmos) |
+| Tutorial | 7 | **igual** | 0 |
+| Tutorial | 30 | **igual** | 0 |
 | Example save game | 1 | diferente | 1198 (o original muda 1200 contra a base; o clone só reproduz os 2 campos de relógio) |
 
 Verificações extras: contagens de passos do Tutorial 7 dias batem com `world-tick.md` seção 6 (39 `sim_advance`, 387 recontagens e 387 produções, 0 RNG); em 30 dias o estado final do RNG é `0x051bc859`, igual ao original, e o passo econômico, o sorteio de bônus de cidade e os juros das pessoas reproduzem o original. Round-trip do salvamento: `Save::to_bytes` regrava byte a byte os saves 0x2348 do original (checksum `0x4ef4d0` incluso) e os dois `.GAM` 0x233C.
 
 ## Diferenças restantes
 
-1. **Tutorial 7/30 dias, 3 campos**: os três "Port" (tipo 28: indústrias 88, 104 e 236) têm um lote de passageiros (carga 0). No original a recontagem das pilhas (`0x40a610`) o conta no slot 2 (`+0x8f = 1`); no clone, com a tabela de tipos do `.data` do exe, a carga 0 não casa com nenhum slot do Port. Medido com o jogo rodando: a linha 28 do conjunto 0 de `industry_type_table` (`0x541ae0`) **em memória difere do `.data` do exe** (slots com saídas 22, 2, passageiro modo 1, 20; não existe no exe nem em arquivo do jogo sem compressão). Algo a reescreve na carga; a origem é desconhecida. Lacuna de spec (`cargo.md` 7.1), não de código do laço.
+1. ~~Tutorial 7/30 dias, 3 campos~~ **resolvido**: a linha 28 (Port) e as taxas das casas da `industry_type_table` são reescritas na carga por `industry_load_fixups` (`0x4719e0`), que copia o Port do cabeçalho do save (`cargo.md` 7.1.1). Implementado em `rt2_sim::industry::apply_load_fixups`; Tutorial 7 e 30 dias dão 0 campos diferentes.
 2. **Example, 1 dia (1198 campos)**, por seção: `trains` 92, `track_pieces` 27, `pool_80` 6 (movimento do trem, `train_step`); `pool_78` 728 (animações `anim_object_step` e objetos criados pelos trens); `pool_70` 185, `structures` 153, `tiles` 7 (provavelmente efeitos de `train_step` em tiles; atribuição não verificada). Todos explicados por ganchos ausentes abaixo.
 
 ## Ganchos que faltam (por impacto)

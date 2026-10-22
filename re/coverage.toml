@@ -3,11 +3,11 @@
 # Ver docs/re-workflow.md.
 #
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
-# Classificadas (categoria != unknown): 1059 (36.0%)
-# Por categoria: lib=258, platform=116, render=11, audio=70, ui=247, sim=357, unknown=1886
-# Por estado:   unknown=2659, named=77, spec=162, verified=47
+# Classificadas (categoria != unknown): 1061 (36.0%)
+# Por categoria: lib=258, platform=116, render=11, audio=70, ui=247, sim=359, unknown=1884
+# Por estado:   unknown=2658, named=78, spec=162, verified=47
 # Entradas manuais: 328
-# sim spec coverage: 52.9% (189 de 357 funcoes sim em spec/verified)
+# sim spec coverage: 52.6% (189 de 359 funcoes sim em spec/verified)
 
 [[function]]
 addr = "0x401005"
@@ -4559,9 +4559,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x402261"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4719e0"
 
 [[function]]
 addr = "0x402266"
@@ -12354,10 +12354,11 @@ manual = true
 
 [[function]]
 addr = "0x4719e0"
+name = "industry_load_fixups"
 size = 297
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "symbol:industry_load_fixups"
 
 [[function]]
 addr = "0x471b10"

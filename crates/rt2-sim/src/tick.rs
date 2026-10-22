@@ -148,6 +148,7 @@ impl SimState {
     fn rebuild_types(&mut self, year: i32) {
         // Industry set 0 (`0x5704ac`, see the module notes).
         let mut types = self.data.industries[0].clone();
+        crate::industry::apply_load_fixups(&mut types, &self.save.header, &self.data.cargo);
         for t in &mut types {
             t.rebuild_inputs(year);
         }
