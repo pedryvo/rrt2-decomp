@@ -1,0 +1,11 @@
+[package]
+name = "rt2-formats"
+description = "Parsers for Railroad Tycoon II data files"
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+
+[lints]
+workspace = true
