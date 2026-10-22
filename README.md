@@ -47,7 +47,7 @@ _The 1998 classic you know, from the same isometric viewpoint,<br>now native at 
 | Simulation specs (trains, cargo, economy…) | 🟡 | Time/calendar/main loop, RNGs, cargo economy, train movement/breakdowns/costs, track/station construction and catchment, finance (share price, interest, dividends), town and industry growth, competitor AI and the world tick order, mostly verified bit-exact against the original · [time](docs/spec/time.md) · [rng](docs/spec/rng.md) · [cargo](docs/spec/cargo.md) · [trains](docs/spec/trains.md) · [track](docs/spec/terrain-track.md) · [finance](docs/spec/finance.md) · [growth](docs/spec/world-growth.md) · [AI](docs/spec/ai.md) · [world tick](docs/spec/world-tick.md) |
 | Differential test harness (Unicorn) | ✅ | Runs original functions in an emulator for bit-exact comparison · [docs](docs/oracle.md) |
 | Rendering engine (wgpu) | 🟡 | Original maps with the game's own terrain textures, track, trees, towns, industries and stations; sprites upscaled for high DPI; native at 1080p/4K. Trains, rivers and exact ground textures pending · `cargo run --release -p rt2-viewer -- <map>` |
-| Playable simulation | 🟡 | `rt2-sim` world loop: an original save advanced 1 day is **identical to the original** field by field (Tutorial); see the [fidelity scoreboard](docs/fidelity-status.md) |
+| Playable simulation | 🟡 | `rt2-sim` world loop: an original save advanced 1, 7 and 30 days is **identical to the original** field by field (Tutorial); see the [fidelity scoreboard](docs/fidelity-status.md) |
 | Game UI | ⏳ | |
 | Scenario editor | ⏳ | |
 

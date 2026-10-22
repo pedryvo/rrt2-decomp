@@ -47,7 +47,7 @@ O **rrt2-decomp** estuda o executável original de _Railroad Tycoon II Platinum_
 | Specs de simulação (trens, carga, economia…) | 🟡 | Tempo, calendário, laço principal, RNGs, economia de carga, movimento, quebras e custos dos trens, construção de trilhos e estações, área de captação e finanças (preço das ações, juros, dividendos), crescimento de cidades e indústrias, IA dos concorrentes e a ordem do tick, em boa parte verificados bit a bit contra o original · [tempo](docs/spec/time.md) · [rng](docs/spec/rng.md) · [carga](docs/spec/cargo.md) · [trens](docs/spec/trains.md) · [trilhos](docs/spec/terrain-track.md) · [finanças](docs/spec/finance.md) · [crescimento](docs/spec/world-growth.md) · [IA](docs/spec/ai.md) · [ordem do tick](docs/spec/world-tick.md) |
 | Harness de teste diferencial (Unicorn) | ✅ | Roda funções do original num emulador para comparação bit a bit · [docs](docs/oracle.md) |
 | Motor gráfico (wgpu) | 🟡 | Mapas originais com as texturas de terreno, trilhos, árvores, cidades, indústrias e estações do próprio jogo; sprites com upscaling para alta resolução; nativo em 1080p/4K. Faltam trens, rios e as texturas exatas de terreno · `cargo run --release -p rt2-viewer -- <mapa>` |
-| Simulação jogável | 🟡 | Laço do mundo do `rt2-sim`: um save original avançado 1 dia fica **idêntico ao original** campo a campo (Tutorial); veja o [placar de fidelidade](docs/fidelity-status.md) |
+| Simulação jogável | 🟡 | Laço do mundo do `rt2-sim`: um save original avançado 1, 7 e 30 dias fica **idêntico ao original** campo a campo (Tutorial); veja o [placar de fidelidade](docs/fidelity-status.md) |
 | Interface do jogo | ⏳ | |
 | Editor de cenários | ⏳ | |
 
