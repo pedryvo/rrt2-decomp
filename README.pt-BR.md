@@ -55,7 +55,7 @@ O **rrt2-decomp** estuda o executável original de _Railroad Tycoon II Platinum_
 
 **Fidelidade:** o clone e o original avançam o mesmo save e os resultados são comparados campo a campo. Placar atual: [`docs/fidelity-status.md`](docs/fidelity-status.md).
 
-**Engenharia reversa:** 2945 funções no executável (1837 sem os thunks do linker) · 634 símbolos em [`re/symbols.toml`](re/symbols.toml) · 1176 classificadas (39%), 1769 ainda sem classificação · 320 funções especificadas (293 delas de simulação), 126 verificadas bit a bit contra o original ([`re/coverage.toml`](re/coverage.toml)). O percentual de cobertura da simulação será publicado quando a classificação estiver completa.
+**Engenharia reversa:** 2945 funções no executável (1837 sem os thunks do linker) · 636 símbolos em [`re/symbols.toml`](re/symbols.toml) · 1178 classificadas (40%), 1767 ainda sem classificação · 320 funções especificadas (293 delas de simulação), 126 verificadas bit a bit contra o original ([`re/coverage.toml`](re/coverage.toml)). O percentual de cobertura da simulação será publicado quando a classificação estiver completa.
 
 ## 🧭 Roteiro
 

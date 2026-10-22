@@ -34,6 +34,38 @@ LINES = {
         f"{verified} verificadas bit a bit contra o original ({cov}). O percentual de cobertura da "
         "simulação será publicado quando a classificação estiver completa.",
     ),
+    "README.es.md": (
+        "**Ingeniería inversa:**",
+        f"**Ingeniería inversa:** {total} funciones en el ejecutable (1837 sin contar los thunks del "
+        f"enlazador) · {symbols} símbolos en {sym} · {classified} clasificadas ({pct}%), "
+        f"{total - classified} aún sin clasificar · {len(specified)} funciones especificadas ({sim} de "
+        f"ellas de simulación), {verified} verificadas bit a bit contra el original ({cov}). Se "
+        "publicará un porcentaje de cobertura de la simulación cuando termine la clasificación.",
+    ),
+    "README.de.md": (
+        "**Reverse Engineering:**",
+        f"**Reverse Engineering:** {total} Funktionen in der ausführbaren Datei (1837 ohne "
+        f"Linker-Thunks) · {symbols} Symbole in {sym} · {classified} klassifiziert ({pct} %), "
+        f"{total - classified} noch nicht klassifiziert · {len(specified)} Funktionen spezifiziert "
+        f"(davon {sim} Simulation), {verified} bitgenau gegen das Original verifiziert ({cov}). Ein "
+        "Prozentwert für die Simulationsabdeckung wird veröffentlicht, sobald die Klassifizierung "
+        "abgeschlossen ist.",
+    ),
+    "README.zh-CN.md": (
+        "**逆向工程：**",
+        f"**逆向工程：** 可执行文件中共有 {total} 个函数（不含链接器跳转桩为 1837 个） · {sym} 中有 "
+        f"{symbols} 个符号 · 已分类 {classified} 个（{pct}%），仍有 {total - classified} 个未分类 · "
+        f"已编写规格的函数 {len(specified)} 个（其中 {sim} 个属于模拟），{verified} 个已与原版逐位精确"
+        f"验证（{cov}）。待分类全部完成后，将公布模拟覆盖率百分比。",
+    ),
+    "README.ru.md": (
+        "**Обратная разработка:**",
+        f"**Обратная разработка:** функций в исполняемом файле: {total} (без компоновочных заглушек: "
+        f"1837) · символов в {sym}: {symbols} · классифицировано: {classified} ({pct}%), ещё не "
+        f"классифицировано: {total - classified} · описано функций: {len(specified)} (из них симуляции: "
+        f"{sim}), проверено побитово по оригиналу: {verified} ({cov}). Процент покрытия симуляции "
+        "будет опубликован после завершения классификации.",
+    ),
 }
 
 for name, (prefix, line) in LINES.items():
