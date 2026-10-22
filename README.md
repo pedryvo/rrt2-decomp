@@ -1,0 +1,134 @@
+<div align="center">
+
+<img src="docs/assets/logo.svg" alt="RRT2 — locomotiva a vapor ao pôr do sol" width="220">
+
+# rrt2-decomp
+
+**Engenharia reversa e reimplementação moderna de _Railroad Tycoon II_ em Rust**
+
+[![Rust](https://img.shields.io/badge/rust-2024_edition-b7410e?logo=rust&logoColor=white)](https://www.rust-lang.org/)
+[![Status](https://img.shields.io/badge/status-pr%C3%A9--alpha-orange)](#-progresso)
+[![Fase](https://img.shields.io/badge/fase-1_%E2%80%94_formatos_de_arquivo-blue)](docs/PLAN.md)
+[![Plataformas](https://img.shields.io/badge/plataformas-Linux_%7C_Windows-lightgrey)](#-compilando)
+
+_O mesmo jogo de 1998 que você conhece, a mesma perspectiva isométrica,<br>agora nativo em 1080p, 4K e ultrawide._
+
+</div>
+
+---
+
+## 🚂 Sobre
+
+O **rrt2-decomp** estuda o executável original de _Railroad Tycoon II Platinum_ (PopTop Software, 1998–2001) para entender cada regra do jogo e reescrevê-lo do zero em Rust, mantendo a jogabilidade e a visão 2D isométrica ("falso 3D") do original e modernizando o resto:
+
+- 🖥️ **Qualquer resolução**: 1080p, 1440p, 4K e ultrawide, com interface escalável e HiDPI. Os trens e prédios do original são modelos 3D, então são renderizados na GPU com nitidez real, sem esticar sprites.
+- 🔍 **Zoom contínuo**, scroll suave e rotação da câmera.
+- 🧮 **Simulação fiel e determinística**: economia, carga, cidades, indústrias, bolsa de valores e IA, validadas contra o jogo original.
+- 🛠️ **Qualidade de vida**: trilho por arrastar com prévia de custo, desfazer, overlays de demanda e lucro, gerenciador de frota, autosave e atalhos remapeáveis.
+- 🌎 **Mods e localização**: dados de jogo em arquivos legíveis e tradução PT-BR.
+
+> [!IMPORTANT]
+> Este projeto **não contém nenhum asset do jogo original**. Para jogar, você precisa de uma cópia legítima de _Railroad Tycoon II_ (por exemplo, a versão Platinum da [GOG](https://www.gog.com/game/railroad_tycoon_2_platinum)). O clone lê os arquivos da sua instalação, no mesmo modelo de [OpenRCT2](https://github.com/OpenRCT2/OpenRCT2) e [OpenTTD](https://github.com/OpenTTD/OpenTTD).
+
+## 📊 Progresso
+
+| Área | Status | Detalhes |
+|---|:---:|---|
+| Plano e arquitetura | ✅ | [`docs/PLAN.md`](docs/PLAN.md) |
+| Contêiner **PK2** | ✅ | Layout, hash de nomes e precedência entre pacotes · [spec](docs/formats/pk2.md) |
+| Textos **LNG** | ✅ | 2807 strings e tabelas nomeadas · [spec](docs/formats/lng.md) |
+| Nomes dos arquivos nos PK2 | 🟡 | 328 nomes recuperados do EXE, de 2898 hashes |
+| Imagens (`.imb` `.pcx` `.pal`) | 🔍 | Em análise |
+| Layouts de interface (`.win`) | 🔍 | Em análise |
+| Áudio (`.raw` `.wav`) | 🔍 | Em análise |
+| Modelos 3D (`.m3d`) | ⏳ | |
+| Mapas e saves (`.MAP` `.GAM`) | ⏳ | |
+| Specs de simulação (trens, carga, economia…) | ⏳ | [`docs/spec/`](docs/spec/) |
+| Motor gráfico (wgpu) | ⏳ | |
+| Simulação jogável | ⏳ | |
+| Interface do jogo | ⏳ | |
+| Editor de cenários | ⏳ | |
+
+<sub>✅ pronto · 🟡 parcial · 🔍 em análise · ⏳ planejado</sub>
+
+**Engenharia reversa:** 3082 funções no executável · 15 nomeadas em [`re/symbols.toml`](re/symbols.toml)
+
+## 🧭 Roteiro
+
+```
+Fase 0  Fundação ......................... ✅
+Fase 1  Formatos de arquivo e extração ... 🚧  ← estamos aqui
+Fase 2  Decompilação por subsistema ...... ⏳
+Fase 3  Motor gráfico .................... ⏳  (em paralelo à fase 2)
+Fase 4  Fatia vertical jogável ........... ⏳
+Fase 5  Jogo completo .................... ⏳
+Fase 6  Modernização e polimento ......... ⏳
+```
+
+Detalhes de cada fase, riscos e critérios de pronto em [`docs/PLAN.md`](docs/PLAN.md).
+
+## 🔧 Compilando
+
+Requisitos: Rust estável (fixado por [`rust-toolchain.toml`](rust-toolchain.toml)) e, no Linux, `clang` + `mold` (configurados em [`.cargo/config.toml`](.cargo/config.toml)).
+
+```bash
+git clone https://github.com/pedryvo/rrt2-decomp.git
+cd rrt2-decomp
+cargo build --release
+```
+
+Testes (os que leem o jogo original rodam quando `RT2_DIR` aponta para a instalação):
+
+```bash
+RT2_DIR=~/Games/railroad-tycoon-2 cargo nextest run
+```
+
+## 🧰 Ferramentas
+
+Por enquanto o projeto é um conjunto de ferramentas de inspeção. O jogo vem depois.
+
+```bash
+# listar o conteúdo de um PK2, nomeando o que for conhecido
+cargo run --bin rt2-extract -- ~/Games/railroad-tycoon-2/data/RT2.PK2 -n re/names/exe_filenames.txt
+
+# extrair tudo para uma pasta
+cargo run --bin rt2-extract -- ~/Games/railroad-tycoon-2/data/RT2.PK2 -n re/names/exe_filenames.txt -o assets-extracted/rt2
+
+# calcular o hash de um nome de arquivo
+python3 re/scripts/pk2_hash.py setup.imb
+```
+
+## 🗂️ Estrutura
+
+```
+crates/
+  rt2-formats/   parsers puros dos formatos do jogo (PK2, LNG, …)
+  rt2-tools/     CLIs de inspeção e extração
+docs/
+  PLAN.md        plano de desenvolvimento
+  formats/       especificação de cada formato de arquivo
+  spec/          especificação de cada subsistema do jogo
+  reference/     regras extraídas do manual e do guia de estratégia
+re/
+  symbols.toml   funções e globais identificadas no executável (fonte da verdade)
+  names/         nomes de arquivo recuperados
+  scripts/       scripts auxiliares de engenharia reversa
+```
+
+## 🔬 Metodologia
+
+1. **Âncoras**: strings, imports e tabelas do executável indicam onde cada subsistema vive.
+2. **Decompilação dirigida**: em vez de traduzir as 3082 funções, cada subsistema é entendido a partir das âncoras. As rotinas de bibliotecas (CRT, Miles, Smacker, DirectX) são descartadas cedo.
+3. **Especificação antes do código**: as regras viram documentos em [`docs/spec/`](docs/spec/) com pseudocódigo, constantes e o endereço de origem de cada uma. O código Rust é escrito a partir das specs, não do assembly.
+4. **Validação**: hipóteses são conferidas contra os dados reais do jogo e, quando necessário, contra o executável original rodando no Wine.
+
+A análise usa [Ghidra](https://ghidra-sre.org/) por meio do servidor MCP **REA**, e o trabalho é dividido entre agentes de IA especializados ([`.claude/agents/`](.claude/agents/)), cada um com o modelo mais adequado à tarefa.
+
+## 🙏 Inspiração
+
+- [OpenRCT2](https://github.com/OpenRCT2/OpenRCT2), [OpenTTD](https://github.com/OpenTTD/OpenTTD) e [OpenMW](https://github.com/OpenMW/openmw): reimplementações que exigem os dados originais
+- [n64decomp/sm64](https://github.com/n64decomp/sm64) e [zeldaret/oot](https://github.com/zeldaret/oot): referências em documentação de engenharia reversa
+
+## ⚖️ Aviso legal
+
+_Railroad Tycoon_ é marca registrada de seus respectivos donos. Este é um projeto de fãs, sem fins lucrativos e sem afiliação com a PopTop Software, a Take-Two Interactive ou qualquer detentor de direitos. Nenhum código ou asset original é distribuído aqui: o repositório contém apenas código novo, documentação produzida por engenharia reversa para fins de interoperabilidade e nomes de arquivo necessários para ler os dados de uma cópia legítima.

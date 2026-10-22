@@ -1,0 +1,134 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1d2b4f"/>
+      <stop offset="0.55" stop-color="#c2553a"/>
+      <stop offset="0.8" stop-color="#f2a65a"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#fff1b8"/>
+      <stop offset="0.6" stop-color="#ffd166"/>
+      <stop offset="1" stop-color="#ffd166" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="boiler" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3b4a5c"/>
+      <stop offset="0.45" stop-color="#22303f"/>
+      <stop offset="1" stop-color="#111a24"/>
+    </linearGradient>
+    <clipPath id="badge">
+      <circle cx="256" cy="256" r="236"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#badge)">
+    <rect width="512" height="512" fill="url(#sky)"/>
+    <circle cx="372" cy="292" r="120" fill="url(#sun)"/>
+    <circle cx="372" cy="292" r="58" fill="#ffd27a"/>
+
+    <!-- distant hills -->
+    <path d="M0 330 Q70 270 150 318 T300 300 T420 290 T512 310 V512 H0Z" fill="#7a3b2e"/>
+    <path d="M0 352 Q90 318 190 346 T380 336 T512 344 V512 H0Z" fill="#4e2a24"/>
+
+    <!-- smoke -->
+    <g fill="#f4ede4">
+      <circle cx="150" cy="176" r="17" opacity="0.95"/>
+      <circle cx="176" cy="148" r="23" opacity="0.85"/>
+      <circle cx="214" cy="122" r="29" opacity="0.7"/>
+      <circle cx="264" cy="102" r="34" opacity="0.55"/>
+      <circle cx="322" cy="88" r="38" opacity="0.4"/>
+      <circle cx="388" cy="80" r="40" opacity="0.25"/>
+    </g>
+
+    <!-- ground and track -->
+    <rect y="376" width="512" height="136" fill="#2a1a15"/>
+    <g fill="#6b4632">
+      <rect x="20" y="382" width="16" height="10" rx="2"/>
+      <rect x="56" y="382" width="16" height="10" rx="2"/>
+      <rect x="92" y="382" width="16" height="10" rx="2"/>
+      <rect x="128" y="382" width="16" height="10" rx="2"/>
+      <rect x="164" y="382" width="16" height="10" rx="2"/>
+      <rect x="200" y="382" width="16" height="10" rx="2"/>
+      <rect x="236" y="382" width="16" height="10" rx="2"/>
+      <rect x="272" y="382" width="16" height="10" rx="2"/>
+      <rect x="308" y="382" width="16" height="10" rx="2"/>
+      <rect x="344" y="382" width="16" height="10" rx="2"/>
+      <rect x="380" y="382" width="16" height="10" rx="2"/>
+      <rect x="416" y="382" width="16" height="10" rx="2"/>
+      <rect x="452" y="382" width="16" height="10" rx="2"/>
+      <rect x="488" y="382" width="16" height="10" rx="2"/>
+    </g>
+    <rect y="375" width="512" height="7" fill="#b9c2cc"/>
+    <rect y="375" width="512" height="2" fill="#e6ebf0"/>
+    <text x="256" y="450" text-anchor="middle" font-family="Verdana, DejaVu Sans, sans-serif" font-weight="bold" font-size="42" letter-spacing="6" fill="#c9a227">RRT2</text>
+    <text x="256" y="472" text-anchor="middle" font-family="Verdana, DejaVu Sans, sans-serif" font-size="13" letter-spacing="3" fill="#e8d9b5">DECOMP · RUST</text>
+
+    <!-- locomotive -->
+    <g>
+      <!-- smokestack -->
+      <path d="M132 252 L136 214 L124 192 L170 192 L158 214 L162 252Z" fill="#141c26"/>
+      <rect x="120" y="186" width="54" height="9" rx="3" fill="#c9a227"/>
+
+      <!-- boiler -->
+      <rect x="110" y="248" width="230" height="74" rx="30" fill="url(#boiler)"/>
+      <rect x="110" y="248" width="44" height="74" rx="22" fill="#151d27"/>
+      <rect x="170" y="252" width="5" height="66" fill="#c9a227"/>
+      <rect x="250" y="252" width="5" height="66" fill="#c9a227"/>
+      <rect x="318" y="252" width="5" height="66" fill="#c9a227"/>
+
+      <!-- domes -->
+      <path d="M206 250 Q206 222 228 222 Q250 222 250 250Z" fill="#c9a227"/>
+      <path d="M272 250 Q272 232 288 232 Q304 232 304 250Z" fill="#22303f"/>
+
+      <!-- headlight -->
+      <rect x="112" y="226" width="26" height="22" rx="4" fill="#141c26"/>
+      <circle cx="114" cy="237" r="8" fill="#ffe08a"/>
+      <circle cx="114" cy="237" r="4" fill="#fff8dc"/>
+
+      <!-- cab -->
+      <rect x="326" y="200" width="104" height="13" rx="4" fill="#141c26"/>
+      <rect x="334" y="210" width="88" height="114" fill="#8e2a24"/>
+      <rect x="334" y="210" width="88" height="8" fill="#6d1f1a"/>
+      <rect x="352" y="228" width="52" height="40" rx="5" fill="#ffd27a"/>
+      <rect x="352" y="228" width="52" height="40" rx="5" fill="none" stroke="#c9a227" stroke-width="4"/>
+      <rect x="376" y="228" width="4" height="40" fill="#c9a227"/>
+
+      <!-- running board -->
+      <rect x="92" y="318" width="342" height="14" rx="3" fill="#a8322a"/>
+      <rect x="92" y="318" width="342" height="4" fill="#d1493f"/>
+
+      <!-- pilot -->
+      <path d="M104 332 L104 374 L56 374Z" fill="#a8322a"/>
+      <path d="M104 340 L66 374 M104 352 L80 374 M104 364 L94 374" stroke="#6d1f1a" stroke-width="3"/>
+
+      <!-- wheels -->
+      <g>
+        <circle cx="134" cy="358" r="17" fill="#141c26" stroke="#c9a227" stroke-width="3"/>
+        <circle cx="134" cy="358" r="4" fill="#c9a227"/>
+
+        <circle cx="200" cy="343" r="32" fill="#141c26" stroke="#c9a227" stroke-width="4"/>
+        <circle cx="270" cy="343" r="32" fill="#141c26" stroke="#c9a227" stroke-width="4"/>
+        <circle cx="340" cy="343" r="32" fill="#141c26" stroke="#c9a227" stroke-width="4"/>
+        <g stroke="#5c6b7a" stroke-width="3">
+          <path d="M200 315 V371 M172 343 H228 M180 323 L220 363 M220 323 L180 363"/>
+          <path d="M270 315 V371 M242 343 H298 M250 323 L290 363 M290 323 L250 363"/>
+          <path d="M340 315 V371 M312 343 H368 M320 323 L360 363 M360 323 L320 363"/>
+        </g>
+        <circle cx="200" cy="343" r="7" fill="#c9a227"/>
+        <circle cx="270" cy="343" r="7" fill="#c9a227"/>
+        <circle cx="340" cy="343" r="7" fill="#c9a227"/>
+
+        <circle cx="404" cy="356" r="19" fill="#141c26" stroke="#c9a227" stroke-width="3"/>
+        <circle cx="404" cy="356" r="4" fill="#c9a227"/>
+      </g>
+
+      <!-- side rod -->
+      <rect x="196" y="350" width="148" height="7" rx="3.5" fill="#d9dee4"/>
+      <circle cx="200" cy="353" r="4" fill="#8a96a3"/>
+      <circle cx="270" cy="353" r="4" fill="#8a96a3"/>
+      <circle cx="340" cy="353" r="4" fill="#8a96a3"/>
+    </g>
+  </g>
+
+  <circle cx="256" cy="256" r="236" fill="none" stroke="#c9a227" stroke-width="8"/>
+  <circle cx="256" cy="256" r="248" fill="none" stroke="#2a1a15" stroke-width="14"/>
+</svg>

@@ -6,3 +6,5 @@
 - Assets extraídos do jogo vão para `assets-extracted/`, que fica no .gitignore e não é versionado.
 - Commits seguem Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`, `build:`), com escopo quando fizer sentido, por exemplo `feat(pk2): ...`. Commits pequenos e atômicos ao longo do trabalho.
 - Toolchain Rust fixado localmente por `rust-toolchain.toml` e `mise.toml`. Não mexer na configuração global do mise.
+- O `README.md` é a vitrine pública do projeto: ao concluir um marco (formato decodificado, spec escrita, crate novo), atualize a tabela de progresso, a contagem de funções nomeadas e o roteiro, no mesmo commit ou num `docs(readme): ...` logo em seguida.
+- O repositório é público (github.com/pedryvo/rrt2-decomp): nunca versionar assets ou trechos binários do jogo original. Fazer push depois dos commits.
