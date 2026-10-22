@@ -53,7 +53,7 @@ _The 1998 classic you know, from the same isometric viewpoint,<br>now native at 
 
 <sub>✅ done · 🟡 partial · 🔍 under analysis · ⏳ planned</sub>
 
-**Reverse engineering:** 2945 functions in the executable (1837 excluding linker thunks) · 342 symbols in [`re/symbols.toml`](re/symbols.toml) · 960 classified (32%), 1985 still unclassified · 122 functions specified (102 of them simulation), 29 verified bit-exact against the original ([`re/coverage.toml`](re/coverage.toml)). A simulation coverage percentage will be published once classification is complete.
+**Reverse engineering:** 2945 functions in the executable (1837 excluding linker thunks) · 384 symbols in [`re/symbols.toml`](re/symbols.toml) · 1003 classified (34%), 1942 still unclassified · 152 functions specified (132 of them simulation), 34 verified bit-exact against the original ([`re/coverage.toml`](re/coverage.toml)). A simulation coverage percentage will be published once classification is complete.
 
 ## 🧭 Roadmap
 
