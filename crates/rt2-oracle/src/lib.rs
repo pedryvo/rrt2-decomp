@@ -46,6 +46,8 @@ const HEAP_SIZE: u64 = 0x100_0000;
 pub const SENTINEL: u32 = 0x7200_0000;
 /// Default instruction budget per call.
 pub const DEFAULT_LIMIT: u64 = 10_000_000;
+/// x87 control word of the game's main thread: 53-bit precision, round to nearest.
+pub const GAME_FPCW: u64 = 0x27f;
 
 fn align_up(v: u64) -> u64 {
     v.div_ceil(PAGE) * PAGE
@@ -181,6 +183,11 @@ impl Oracle {
             }
             uc.mem_protect(addr, size, p).map_err(self::uc)?;
         }
+
+        // The game's main thread runs x87 at 53-bit precision (measured under Wine, see
+        // docs/dynamic-analysis.md); Unicorn starts with extended precision.
+        uc.reg_write(RegisterX86::FPCW, GAME_FPCW)
+            .map_err(self::uc)?;
 
         let mut o = Self {
             uc,
