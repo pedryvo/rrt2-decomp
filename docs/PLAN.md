@@ -104,6 +104,16 @@ Cada fase termina com um entregável verificável e commits convencionais.
 - **Pronto quando:** um `.MAP` original abre e é navegável a 60+ fps em 4K.
 
 ### Fase 4 — Simulação jogável (vertical slice)
+
+**Ações do jogador a cobrir** (todas com a mesma regra e custo do original, via `Command`):
+- Trilhos: construir (simples, dupla, eletrificada, pontes, terraplenagem), demolir e bulldozer.
+- Estações: construir (três tamanhos) e comprar prédios de apoio (caixa d'água, torre de areia, rotunda, restaurante, hotel e outros; `terrain-track.md` 2.4).
+- **Prédios e indústrias novos** ("Build a new building", LNG 1781): construir moinhos, fábricas e outras indústrias permitidas pelo ano, pela região e pelo cenário.
+- **Comprar indústrias existentes** (LNG 1283/2336), inclusive em lote, e vendê-las (pela metade).
+- **Direitos de território** para comprar prédios (LNG 2288/2461).
+- Trens: comprar (locomotiva e vagões), definir paradas e cargas, substituir a locomotiva, vender.
+- Finanças: títulos, ações (compra, venda, emissão, recompra), dividendos, compra pessoal de ações e fusões.
+
 - Construir trilho e estação, comprar trem, montar rota, entregar carga e receber dinheiro.
 - O tempo passa, a economia reage e há um relatório financeiro básico.
 - **Pronto quando:** é possível jogar 10 anos num mapa original com números próximos aos do original nos testes de referência.
