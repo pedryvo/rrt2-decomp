@@ -44,7 +44,7 @@ _The 1998 classic you know, from the same isometric viewpoint,<br>now native at 
 | UI layouts (`.win`) and bitmap fonts | ✅ | All 46 window layouts parse; the 10 game fonts decode with metrics · [ui](docs/formats/ui.md) · [fonts](docs/formats/font.md) |
 | Audio (`.raw` `.wav`) | 🔍 | Most look like 16-bit mono PCM |
 | Maps and saves (`.MAP` `.GAM`) | 🟡 | All 33 files parse to the last byte: terrain, date, seed, places, companies, rules; stations and trains partial · [spec](docs/formats/map-gam.md) |
-| Simulation specs (trains, cargo, economy…) | 🟡 | Time/calendar/main loop, RNGs, cargo economy and train movement/breakdowns/costs, mostly verified bit-exact against the original · [time](docs/spec/time.md) · [rng](docs/spec/rng.md) · [cargo](docs/spec/cargo.md) · [trains](docs/spec/trains.md) |
+| Simulation specs (trains, cargo, economy…) | 🟡 | Time/calendar/main loop, RNGs, cargo economy, train movement/breakdowns/costs, track/station construction and catchment, mostly verified bit-exact against the original · [time](docs/spec/time.md) · [rng](docs/spec/rng.md) · [cargo](docs/spec/cargo.md) · [trains](docs/spec/trains.md) · [track](docs/spec/terrain-track.md) |
 | Differential test harness (Unicorn) | ✅ | Runs original functions in an emulator for bit-exact comparison · [docs](docs/oracle.md) |
 | Rendering engine (wgpu) | 🟡 | Isometric terrain viewer: `cargo run --release -p rt2-viewer -- <map>` |
 | Playable simulation | 🟡 | `rt2-sim` core: RNGs, calendar, cargo revenue and train physics, checked bit-exact against the original; world loop not yet wired |
@@ -53,7 +53,7 @@ _The 1998 classic you know, from the same isometric viewpoint,<br>now native at 
 
 <sub>✅ done · 🟡 partial · 🔍 under analysis · ⏳ planned</sub>
 
-**Reverse engineering:** 2945 functions in the executable (1837 excluding linker thunks) · 230 symbols in [`re/symbols.toml`](re/symbols.toml) · 855 classified (29%), 2090 still unclassified · 101 functions specified (81 of them simulation), 22 verified bit-exact against the original ([`re/coverage.toml`](re/coverage.toml)). A simulation coverage percentage will be published once classification is complete.
+**Reverse engineering:** 2945 functions in the executable (1837 excluding linker thunks) · 276 symbols in [`re/symbols.toml`](re/symbols.toml) · 899 classified (30%), 2046 still unclassified · 117 functions specified (97 of them simulation), 24 verified bit-exact against the original ([`re/coverage.toml`](re/coverage.toml)). A simulation coverage percentage will be published once classification is complete.
 
 ## 🧭 Roadmap
 
