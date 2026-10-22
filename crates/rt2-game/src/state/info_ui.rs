@@ -12,7 +12,7 @@
 
 use winit::keyboard::KeyCode;
 
-use rt2_ui::{Align, Anchor, Color, Fill, FontStyle, Kind, Layout, NodeId, Stack, Ui, game_font};
+use rt2_ui::{Align, Anchor, Color, Fill, FontStyle, Kind, Layout, NodeId, Ui, game_font};
 
 use super::{AppState, Screen};
 use crate::info::{Block, Info, ListPage, Page, Pick, TOTAL, Table};
@@ -122,7 +122,7 @@ enum Content {
     Page(Page),
 }
 
-fn font(size: f32) -> FontStyle {
+pub(super) fn font(size: f32) -> FontStyle {
     game_font(2).with_size(size)
 }
 
@@ -181,7 +181,7 @@ fn max_cols(blocks: &[Block]) -> usize {
 /// Draws a header row and the rows of a table at `(x, y)`; returns the y below it. `visible`
 /// caps the rows drawn (a last "+N more" row replaces the overflow); `first` skips rows.
 #[allow(clippy::too_many_arguments)]
-fn draw_table(
+pub(super) fn draw_table(
     ui: &mut Ui,
     parent: NodeId,
     table: &Table,
@@ -262,7 +262,7 @@ fn draw_table(
 /// Draws a column of blocks starting at `(x, y)` inside `bottom`; returns nothing (clipped by the
 /// row budget of each block).
 #[allow(clippy::too_many_arguments)]
-fn draw_blocks(
+pub(super) fn draw_blocks(
     ui: &mut Ui,
     parent: NodeId,
     blocks: &[Block],
@@ -650,38 +650,6 @@ impl AppState {
                 i.day = g.world.minutes() / 1440;
             }
             self.rebuild_ui();
-        }
-    }
-
-    /// Toolbar under the HUD bar with one button per top-level screen.
-    pub(super) fn build_toolbar(&self, ui: &mut Ui) {
-        let t = &self.texts;
-        let names = [
-            t.get(lng::FINANCES, "Finances"),
-            self.texts.a("Market"),
-            t.get(lng::TRAINS, "Trains"),
-            self.texts.a("Stations"),
-            t.get(lng::CITIES, "Cities"),
-            self.texts.a("Industries"),
-        ];
-        let keys = ["F", "M", "T", "G", "C", "I"];
-        let bar = ui.add_root(
-            Kind::Panel { fill: Fill::None },
-            Layout::at(Anchor::TopLeft, 0.0, 30.0).offset(0.0, HUD_H + 4.0),
-        );
-        ui.set_stack(bar, Stack::row(6.0, 8.0));
-        for (i, (n, k)) in names.iter().zip(keys).enumerate() {
-            ui.add(
-                bar,
-                Kind::Button {
-                    text: format!("{n} ({k})"),
-                    font: font(13.0),
-                    action: A_TOOL + i as u32,
-                    enabled: true,
-                    hotkey: None,
-                },
-                Layout::at(Anchor::TopLeft, 150.0, 28.0),
-            );
         }
     }
 

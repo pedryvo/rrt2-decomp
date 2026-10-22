@@ -20,6 +20,7 @@ pub struct Texts {
 
 /// Known ids (`docs/formats/lng.md`; checked against the shipped `default2.lng`).
 pub mod id {
+    #[allow(dead_code)]
     pub const CASH: u32 = 31;
     pub const SPEED: u32 = 202;
     pub const PAUSED: u32 = 991;

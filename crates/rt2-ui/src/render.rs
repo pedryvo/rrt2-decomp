@@ -509,6 +509,7 @@ impl UiRenderer {
                 Kind::Panel { fill } => match fill {
                     Fill::None => {}
                     Fill::Solid(c) => self.solid(&mut layer.quads, r, *c),
+                    Fill::Frame(c) => self.outline(&mut layer.quads, r, *c, k),
                     Fill::Panel => self.panel(&mut layer.quads, r, k),
                 },
                 Kind::Image { sprite, fit } => {
@@ -538,52 +539,82 @@ impl UiRenderer {
                     font,
                     enabled,
                     ..
+                } => self.button_like(layer, id, r, st, text, *font, *enabled, false, k),
+                Kind::Toggle {
+                    text,
+                    font,
+                    enabled,
+                    on,
+                    ..
+                } => self.button_like(layer, id, r, st, text, *font, *enabled, *on, k),
+                Kind::Icon {
+                    up,
+                    down,
+                    fallback,
+                    font,
+                    on,
+                    ..
                 } => {
-                    let tint = if !enabled {
-                        0.5
-                    } else if st.pressed {
-                        0.8
-                    } else if st.hover || st.focus {
-                        1.2
-                    } else {
-                        1.0
-                    };
-                    let on_art = if let Some(b) = self.skin.button {
-                        let n = if st.pressed { b.down } else { b.up };
-                        self.nine(&mut layer.quads, r, &n, k, [tint, tint, tint, 1.0]);
-                        true
-                    } else {
-                        let base = if st.pressed {
-                            Color::rgb(0x2a, 0x2c, 0x22)
-                        } else {
-                            theme.button_fill
-                        };
-                        self.bordered(&mut layer.quads, r, base, theme.button_border, tint, k);
-                        false
-                    };
-                    if st.focus {
-                        self.outline(&mut layer.quads, r.inset(2.0 * k, 2.0 * k), theme.accent, k);
+                    let art = if st.pressed || *on { down } else { up }
+                        .filter(|s| self.skin.sprite(*s).is_some());
+                    match art {
+                        Some(sprite) => {
+                            let tint = if st.hover || st.focus { 1.18 } else { 1.0 };
+                            self.image_tinted(&mut layer.quads, r, sprite, tint);
+                            if st.focus {
+                                self.outline(
+                                    &mut layer.quads,
+                                    r.inset(1.0 * k, 1.0 * k),
+                                    theme.accent,
+                                    k,
+                                );
+                            }
+                        }
+                        None => self.button_like(layer, id, r, st, fallback, *font, true, *on, k),
                     }
-                    let color = if !enabled {
-                        theme.text_disabled
-                    } else if on_art {
-                        theme.text_on_button
-                    } else {
-                        theme.text
-                    };
-                    layer.texts.push(self.text_job(
-                        id,
-                        u32::MAX,
-                        text,
-                        *font,
-                        r.inset(6.0 * k, 0.0),
-                        r,
-                        color,
-                        Align::Center,
-                        false,
-                        !on_art && font.shadow,
-                        k,
-                    ));
+                }
+                Kind::Cells {
+                    cols, rows, colors, ..
+                } => self.cells(&mut layer.quads, r, *cols, *rows, colors),
+                Kind::Text {
+                    lines,
+                    scroll,
+                    row_h,
+                    font,
+                    color,
+                } => {
+                    let rh = row_h * k;
+                    let vis = ((r.h / rh).floor() as usize).max(1);
+                    let sb = if lines.len() > vis { 6.0 * k } else { 0.0 };
+                    for (n, row) in (*scroll..lines.len()).take(vis).enumerate() {
+                        let tr = Rect::new(r.x, r.y + n as f32 * rh, r.w - sb, rh);
+                        layer.texts.push(self.text_job(
+                            id,
+                            row as u32,
+                            &lines[row],
+                            *font,
+                            tr,
+                            tr.intersect(&r),
+                            *color,
+                            Align::Left,
+                            false,
+                            font.shadow,
+                            k,
+                        ));
+                    }
+                    if sb > 0.0 {
+                        let track = Rect::new(r.right() - sb, r.y, sb, r.h);
+                        self.solid(&mut layer.quads, track, Color(255, 255, 255, 0x18));
+                        let frac = vis as f32 / lines.len() as f32;
+                        let th = (track.h * frac).max(12.0 * k);
+                        let max_scroll = (lines.len() - vis).max(1) as f32;
+                        let ty = track.y + (track.h - th) * (*scroll as f32 / max_scroll);
+                        self.solid(
+                            &mut layer.quads,
+                            Rect::new(track.x, ty, sb, th),
+                            theme.panel_border,
+                        );
+                    }
                 }
                 Kind::List {
                     items,
@@ -650,6 +681,100 @@ impl UiRenderer {
             }
         }
         layers
+    }
+
+    /// A plate button (skin art or flat), pressed look while `on`, caption centred.
+    #[allow(clippy::too_many_arguments)]
+    fn button_like(
+        &self,
+        layer: &mut Layer,
+        id: NodeId,
+        r: Rect,
+        st: crate::ui::NodeState,
+        text: &str,
+        font: FontStyle,
+        enabled: bool,
+        on: bool,
+        k: f32,
+    ) {
+        let theme = self.skin.theme;
+        let down = st.pressed || on;
+        let tint = if !enabled {
+            0.5
+        } else if st.pressed {
+            0.8
+        } else if st.hover || st.focus {
+            1.2
+        } else {
+            1.0
+        };
+        let on_art = if let Some(b) = self.skin.button {
+            let n = if down { b.down } else { b.up };
+            self.nine(&mut layer.quads, r, &n, k, [tint, tint, tint, 1.0]);
+            true
+        } else {
+            let base = if down {
+                Color::rgb(0x2a, 0x2c, 0x22)
+            } else {
+                theme.button_fill
+            };
+            self.bordered(&mut layer.quads, r, base, theme.button_border, tint, k);
+            false
+        };
+        if st.focus || on {
+            self.outline(&mut layer.quads, r.inset(2.0 * k, 2.0 * k), theme.accent, k);
+        }
+        let color = if !enabled {
+            theme.text_disabled
+        } else if on_art {
+            theme.text_on_button
+        } else {
+            theme.text
+        };
+        layer.texts.push(self.text_job(
+            id,
+            u32::MAX,
+            text,
+            font,
+            r.inset(6.0 * k, 0.0),
+            r,
+            color,
+            Align::Center,
+            false,
+            !on_art && font.shadow,
+            k,
+        ));
+    }
+
+    /// A grid of coloured cells, each run of equal colours in a row drawn as one quad.
+    fn cells(&self, out: &mut Vec<Vertex>, r: Rect, cols: usize, rows: usize, colors: &[Color]) {
+        if cols == 0 || rows == 0 || colors.len() < cols * rows {
+            return;
+        }
+        let xs = |i: usize| (r.x + r.w * i as f32 / cols as f32).round();
+        let ys = |j: usize| (r.y + r.h * j as f32 / rows as f32).round();
+        for j in 0..rows {
+            let mut i = 0;
+            while i < cols {
+                let c = colors[j * cols + i];
+                let mut e = i + 1;
+                while e < cols && colors[j * cols + e] == c {
+                    e += 1;
+                }
+                self.solid(
+                    out,
+                    Rect::new(xs(i), ys(j), xs(e) - xs(i), ys(j + 1) - ys(j)),
+                    c,
+                );
+                i = e;
+            }
+        }
+    }
+
+    fn image_tinted(&self, out: &mut Vec<Vertex>, r: Rect, id: crate::skin::SpriteId, tint: f32) {
+        if let Some(s) = self.skin.sprite(id) {
+            self.quad(out, r, self.sprite_uv(s), [tint, tint, tint, 1.0]);
+        }
     }
 
     #[allow(clippy::too_many_arguments)]

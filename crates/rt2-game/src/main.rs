@@ -12,12 +12,16 @@ mod app_strings;
 mod artwork;
 mod catalog;
 mod config;
+mod founding;
 mod gfx;
 mod info;
 mod keys;
 mod locales;
 mod paths;
 mod pick;
+mod radar;
+mod scenario_info;
+mod setup;
 mod sound;
 mod state;
 mod text;
@@ -58,6 +62,11 @@ struct Args {
     /// Screen to render with --screenshot
     #[arg(long, value_enum, default_value_t = Screen::Menu)]
     screen: Screen,
+    /// With `--screen menu`: the page (main, single, new-scenario, map, options, campaign, load,
+    /// scores, credits). With `--screen dialog`: the dialog (goals, founding, year-end,
+    /// year-end-1..3, news, dialog, win-gold, win-silver, win-bronze, lose, file, tool-0..7).
+    #[arg(long)]
+    page: Option<String>,
     /// With `--screen info`: finance, stock, trains, train, stations, station, cities, city,
     /// industries, industry or territory
     #[arg(long, default_value = "finance")]
@@ -92,7 +101,10 @@ enum Screen {
     Menu,
     NewGame,
     LoadGame,
+    /// The main window over a game.
     Game,
+    /// A dialog (`--page`) over the main window.
+    Dialog,
     /// An information screen over the loaded game: finance, stock, trains, train, stations,
     /// station, cities, city, industries, industry or territory (see `--info`).
     Info,
@@ -144,6 +156,8 @@ fn main() -> Result<()> {
         install: install.clone(),
         assets,
         backdrop: art.backdrop,
+        icons: art.icons.clone(),
+        dialogs: art.dialogs,
         config,
         scale: pinned.map_or(UiScale::default(), UiScale::from_percent),
         scale_pinned: pinned.is_some(),
@@ -177,10 +191,16 @@ fn screenshot(init: Init, skin: rt2_ui::Skin, args: &Args, out: &std::path::Path
     let mut gfx = gfx::Gfx::new(device, queue, gfx::SCREENSHOT_FORMAT, args.size, skin);
     let mut state = AppState::new(init);
     match args.screen {
-        Screen::Menu => {}
+        Screen::Menu => {
+            if let Some(page) = &args.page
+                && !state.show_menu_page(page)
+            {
+                bail!("unknown --page {page:?}");
+            }
+        }
         Screen::NewGame => state.show_new_game(),
         Screen::LoadGame => state.show_load_game(),
-        Screen::Game | Screen::Info => {
+        Screen::Game | Screen::Info | Screen::Dialog => {
             let file = args
                 .file
                 .clone()
@@ -193,6 +213,12 @@ fn screenshot(init: Init, skin: rt2_ui::Skin, args: &Args, out: &std::path::Path
             state.update(0.0);
             if matches!(args.screen, Screen::Info) && !state.show_info_screen(&args.info) {
                 bail!("unknown --info screen {:?}", args.info);
+            }
+            if matches!(args.screen, Screen::Dialog) {
+                let name = args.page.as_deref().unwrap_or("goals");
+                if !state.show_dialog(name) {
+                    bail!("unknown --page dialog {name:?}");
+                }
             }
             if let Some((x, y)) = args.click {
                 state.cursor_moved(x, y);

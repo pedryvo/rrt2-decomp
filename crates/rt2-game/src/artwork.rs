@@ -17,9 +17,81 @@ const PANEL: (&str, usize) = ("setupp.imb", 2);
 const BUTTON_INSETS: [f32; 4] = [8.0, 8.0, 8.0, 8.0];
 const PANEL_INSETS: [f32; 4] = [18.0, 18.0, 18.0, 18.0];
 
+/// `mainbut.imb`: the main window's icon buttons, in pairs of records (up, down), 50x34 or
+/// 44x34 pixels: 0 rotate right, 2 rotate left, 4 zoom out, 6 zoom in, 8 list toggle, 20 lay
+/// track, 22 bulldoze, 24 build station, 32 purchase train, 34 stock market, 36 control panel,
+/// 38 file options, 42 map overview (`mainwin.win` buttons 201..221, `docs/formats/ui.md`).
+const ICON_BANK: &str = "mainbut.imb";
+const ICON_RECORDS: [usize; 13] = [0, 2, 4, 6, 8, 20, 22, 24, 32, 34, 36, 38, 42];
+
+/// Icon records of [`ICON_BANK`] loaded into the skin: first record of a pair -> (up, down).
+#[derive(Clone, Debug, Default)]
+pub struct Icons {
+    map: std::collections::BTreeMap<usize, (SpriteId, SpriteId)>,
+}
+
+impl Icons {
+    /// The (up, down) sprites of the icon whose first record is `record`.
+    pub fn get(&self, record: usize) -> Option<(SpriteId, SpriteId)> {
+        self.map.get(&record).copied()
+    }
+}
+
+/// Dialog frames of the original windows (`eagled.win`, `paper.win`, `yearend.win`,
+/// `winlose.win`; `docs/formats/ui.md`), decoded with the UI image decoder. Each is a plain
+/// sprite the dialogs stretch to their size (never 9-sliced: the art has fixed borders).
+#[derive(Clone, Copy, Debug, Default)]
+pub struct DialogArt {
+    /// `eagled.imb` 0, 1, 2: the eagle top (512x137), a repeatable 46 px strip and the bottom
+    /// (513x256) of the generic dialog. Taller texts insert strips between top and bottom.
+    pub eagle: Option<[SpriteId; 3]>,
+    /// `eagled.imb` 3..=8: the left (137x60), right (137x60) and middle (110x54) dialog button
+    /// plates, each as (up, down).
+    pub eagle_button: Option<[SpriteId; 6]>,
+    /// `paper.imb` 0: the newspaper page (771x505).
+    pub paper: Option<SpriteId>,
+    /// `yearend.imb` 0 (cover) and 1..=4 (the pages for the four tabs, 509x59x).
+    pub pages: [Option<SpriteId>; 4],
+    /// `winlose.imb` 0: the wooden plaque (583x685); 1 and 2: the gold and silver medals.
+    pub plaque: Option<SpriteId>,
+    pub medal_gold: Option<SpriteId>,
+    pub medal_silver: Option<SpriteId>,
+}
+
 pub struct Artwork {
     pub skin: Skin,
     pub backdrop: Option<SpriteId>,
+    pub icons: Icons,
+    pub dialogs: DialogArt,
+}
+
+/// Image 0 of record `rec` of a UI bank (`*.imb` of the `.win` windows), which uses the text
+/// drawer's token set rather than the map sprites' codec: indexed cells become opaque pixels,
+/// empty cells transparent.
+fn ui_record(assets: &GameAssets, bank: &str, rec: usize) -> Option<RgbaImage> {
+    let lad = assets.lad(bank)?;
+    let r = lad.records.get(rec)?;
+    let img = r.groups.first()?.images.first()?;
+    let layer = rt2_formats::font::decode_text_image(img)?;
+    let pal = if img.flags & rt2_formats::lad::FLAG_PALETTE != 0 {
+        *assets.palette(r.palette_id())?.palettes.first()?
+    } else {
+        std::array::from_fn(|i| (i as u16 >> 3) * 0x421)
+    };
+    let mut rgba = vec![0u8; layer.width * layer.height * 4];
+    for (i, c) in layer.cells.iter().enumerate() {
+        if let rt2_formats::font::Cell::Index(v) = c {
+            let [r, g, b] = rt2_formats::palette::rgb555(pal[usize::from(*v)]);
+            rgba[i * 4..i * 4 + 4].copy_from_slice(&[r, g, b, 255]);
+        }
+    }
+    Some(RgbaImage {
+        width: layer.width,
+        height: layer.height,
+        x: layer.x,
+        y: layer.y,
+        rgba,
+    })
 }
 
 fn to_skin_image(img: &RgbaImage, bake: u32) -> SkinImage {
@@ -96,6 +168,51 @@ pub fn load(assets: &GameAssets) -> Artwork {
         solidify(&mut i);
         b.add(to_skin_image(&scale2x(&i), 2))
     });
+    let mut icons = Icons::default();
+    for rec in ICON_RECORDS {
+        if let (Some(up), Some(down)) = (
+            record(assets, ICON_BANK, rec),
+            record(assets, ICON_BANK, rec + 1),
+        ) {
+            icons.map.insert(
+                rec,
+                (
+                    b.add(to_skin_image(&scale2x(&up), 2)),
+                    b.add(to_skin_image(&scale2x(&down), 2)),
+                ),
+            );
+        }
+    }
+    let mut add = |bank: &str, rec: usize| -> Option<SpriteId> {
+        ui_record(assets, bank, rec).map(|i| b.add(to_skin_image(&i, 1)))
+    };
+    let all = |v: [Option<SpriteId>; 3]| Some([v[0]?, v[1]?, v[2]?]);
+    let all6 = |v: [Option<SpriteId>; 6]| Some([v[0]?, v[1]?, v[2]?, v[3]?, v[4]?, v[5]?]);
+    let dialogs = DialogArt {
+        eagle: all([
+            add("eagled.imb", 0),
+            add("eagled.imb", 1),
+            add("eagled.imb", 2),
+        ]),
+        eagle_button: all6([
+            add("eagled.imb", 3),
+            add("eagled.imb", 4),
+            add("eagled.imb", 5),
+            add("eagled.imb", 6),
+            add("eagled.imb", 7),
+            add("eagled.imb", 8),
+        ]),
+        paper: add("paper.imb", 0),
+        pages: [
+            add("yearend.imb", 1),
+            add("yearend.imb", 2),
+            add("yearend.imb", 3),
+            add("yearend.imb", 4),
+        ],
+        plaque: add("winlose.imb", 0),
+        medal_gold: add("winlose.imb", 1),
+        medal_silver: add("winlose.imb", 2),
+    };
     let mut skin = b.build(Theme::dark());
     skin.button = buttons.map(|(up, down)| rt2_ui::ButtonSkin {
         up: NineSlice {
@@ -111,5 +228,10 @@ pub fn load(assets: &GameAssets) -> Artwork {
         sprite: p,
         insets: PANEL_INSETS,
     });
-    Artwork { skin, backdrop }
+    Artwork {
+        skin,
+        backdrop,
+        icons,
+        dialogs,
+    }
 }

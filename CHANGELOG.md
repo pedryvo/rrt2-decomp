@@ -166,3 +166,8 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Fix: footprint extents of the building shapes (+12..+15) are computed at start-up by 0x471b10 (zero in the executable); tilemark now derives them
 - Feature: bulldozer (bulldoze_area 0x428930: validation with restore, track removal, tree clearing, costs and reputation), territory rights purchase (0x2a) and industry sale (0x2d), verified against the original
 - RE: tile light level 0x416bf0 checked against the emulated executable (20000 cases, tests/build.rs)
+- Feature: main window with the eight action icons, clickable terrain radar, center list box with four tabs, activity box and rotate/zoom buttons
+- Feature: single-player menu flow (Single Player submenu, New Scenario with map list, description, thumbnail, difficulty and options, New Campaign with the 18 scenarios and bonuses)
+- Feature: briefing and goals popup from the scenario rules, Start New Company dialog with the finance.md 17 sliders, File Options, year-end report, newspaper and win/lose dialogs using the original art
+- Improved: UI toolkit gains toggle buttons, icon buttons, cell grids with pointer events and scrolling text
+- Docs: screens.md status updated for A1-A5, B1-B4, C1-C2, G1, I1-I4, J1

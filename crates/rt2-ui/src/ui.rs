@@ -5,6 +5,8 @@
 //! for a physical viewport and the UI scale; [`Ui::input`] turns mouse and keyboard input into
 //! [`UiEvent`]s (action ids chosen by the application). Nothing here touches the GPU.
 
+use std::sync::Arc;
+
 use crate::font::FontStyle;
 use crate::geom::Rect;
 use crate::scale::UiScale;
@@ -170,6 +172,8 @@ pub enum Fill {
     /// The skin's window panel (flat in the fallback theme).
     Panel,
     Solid(Color),
+    /// A one-pixel outline only (does not take the mouse): a camera frame over a minimap.
+    Frame(Color),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -223,6 +227,42 @@ pub enum Kind {
         font: FontStyle,
         action: Action,
     },
+    /// A button that can be switched on (tabs, radio buttons, check boxes, option horses); drawn
+    /// pressed with an outline while `on`.
+    Toggle {
+        text: String,
+        font: FontStyle,
+        action: Action,
+        on: bool,
+        enabled: bool,
+    },
+    /// A button drawn with two sprites (up, down) such as the original's tool icons; `fallback`
+    /// is the caption drawn on a flat button when the skin has no art.
+    Icon {
+        up: Option<SpriteId>,
+        down: Option<SpriteId>,
+        fallback: String,
+        font: FontStyle,
+        action: Action,
+        on: bool,
+    },
+    /// A grid of coloured cells (a minimap). A press or drag over it sends
+    /// [`UiEvent::Pointer`] with the position as a fraction of the grid.
+    Cells {
+        cols: usize,
+        rows: usize,
+        colors: Arc<Vec<Color>>,
+        action: Action,
+    },
+    /// Read-only text lines (already wrapped by the application) with a scroll offset; the wheel
+    /// scrolls it.
+    Text {
+        lines: Vec<String>,
+        scroll: usize,
+        row_h: f32,
+        font: FontStyle,
+        color: Color,
+    },
 }
 
 #[derive(Clone, Debug)]
@@ -255,12 +295,14 @@ pub enum Input {
     KeyDown(Key),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum UiEvent {
     /// A button was pressed, a hotkey fired, or a selected list row was activated.
     Activated(Action),
     /// The selection of a list changed to the row.
     Selected(Action, usize),
+    /// A press or drag over a [`Kind::Cells`] grid: position as a fraction (0..=1, x then y).
+    Pointer(Action, f32, f32),
 }
 
 /// Interaction state of a node, for drawing.
@@ -361,13 +403,40 @@ impl Ui {
     /// New text of a label or button.
     pub fn set_text(&mut self, id: NodeId, new: impl Into<String>) {
         match &mut self.nodes[id.0].kind {
-            Kind::Label { text, .. } | Kind::Button { text, .. } => *text = new.into(),
+            Kind::Label { text, .. } | Kind::Button { text, .. } | Kind::Toggle { text, .. } => {
+                *text = new.into();
+            }
             _ => {}
         }
     }
 
+    /// Switches a [`Kind::Toggle`] or [`Kind::Icon`] on or off.
+    pub fn set_on(&mut self, id: NodeId, value: bool) {
+        match &mut self.nodes[id.0].kind {
+            Kind::Toggle { on, .. } | Kind::Icon { on, .. } => *on = value,
+            _ => {}
+        }
+    }
+
+    /// New lines of a [`Kind::Text`] (scroll back to the top).
+    pub fn set_lines(&mut self, id: NodeId, new: Vec<String>) {
+        if let Kind::Text { lines, scroll, .. } = &mut self.nodes[id.0].kind {
+            *lines = new;
+            *scroll = 0;
+        }
+    }
+
+    /// New colours of a [`Kind::Cells`] grid.
+    pub fn set_cells(&mut self, id: NodeId, new: Arc<Vec<Color>>) {
+        if let Kind::Cells { colors, .. } = &mut self.nodes[id.0].kind {
+            *colors = new;
+        }
+    }
+
     pub fn set_enabled(&mut self, id: NodeId, on: bool) {
-        if let Kind::Button { enabled, .. } = &mut self.nodes[id.0].kind {
+        if let Kind::Button { enabled, .. } | Kind::Toggle { enabled, .. } =
+            &mut self.nodes[id.0].kind
+        {
             *enabled = on;
         }
     }
@@ -521,8 +590,13 @@ impl Ui {
 
     fn blocks(&self, id: NodeId) -> bool {
         match &self.nodes[id.0].kind {
-            Kind::Panel { fill } => *fill != Fill::None,
-            Kind::Button { .. } | Kind::List { .. } => true,
+            Kind::Panel { fill } => !matches!(fill, Fill::None | Fill::Frame(_)),
+            Kind::Button { .. }
+            | Kind::Toggle { .. }
+            | Kind::Icon { .. }
+            | Kind::Cells { .. }
+            | Kind::Text { .. }
+            | Kind::List { .. } => true,
             Kind::Image { .. } | Kind::Label { .. } => false,
         }
     }
@@ -549,6 +623,39 @@ impl Ui {
         self.cursor
     }
 
+    /// The node under the cursor that takes the mouse, if any.
+    pub fn hovered(&self) -> Option<NodeId> {
+        self.hover
+    }
+
+    /// The action of a button-like node ([`Kind::Button`], [`Kind::Toggle`], [`Kind::Icon`])
+    /// that can be pressed.
+    fn press_action(&self, id: NodeId) -> Option<Action> {
+        match &self.nodes[id.0].kind {
+            Kind::Button {
+                action,
+                enabled: true,
+                ..
+            }
+            | Kind::Toggle {
+                action,
+                enabled: true,
+                ..
+            }
+            | Kind::Icon { action, .. } => Some(*action),
+            _ => None,
+        }
+    }
+
+    /// Fraction of a grid under a logical point, clamped to the grid.
+    fn cells_point(&self, id: NodeId, x: f32, y: f32) -> (f32, f32) {
+        let r = self.rects[id.0];
+        (
+            ((x - r.x) / r.w.max(1.0)).clamp(0.0, 1.0),
+            ((y - r.y) / r.h.max(1.0)).clamp(0.0, 1.0),
+        )
+    }
+
     /// True if the cursor is over a widget that takes the mouse (the map must not react).
     pub fn over_ui(&self) -> bool {
         self.hover.is_some()
@@ -557,8 +664,8 @@ impl Ui {
     fn focusable(&self, id: NodeId) -> bool {
         self.shown[id.0]
             && match &self.nodes[id.0].kind {
-                Kind::Button { enabled, .. } => *enabled,
-                Kind::List { .. } => true,
+                Kind::Button { enabled, .. } | Kind::Toggle { enabled, .. } => *enabled,
+                Kind::Icon { .. } | Kind::List { .. } => true,
                 _ => false,
             }
     }
@@ -605,6 +712,12 @@ impl Ui {
                 let k = self.scale.factor();
                 self.cursor = (x / k, y / k);
                 self.hover = self.hit(self.cursor.0, self.cursor.1);
+                if let Some(p) = self.pressed
+                    && let Kind::Cells { action, .. } = self.nodes[p.0].kind
+                {
+                    let (fx, fy) = self.cells_point(p, self.cursor.0, self.cursor.1);
+                    ev.push(UiEvent::Pointer(action, fx, fy));
+                }
             }
             Input::CursorLeft => {
                 self.hover = None;
@@ -619,6 +732,10 @@ impl Ui {
                     if let Kind::List { .. } = self.nodes[h.0].kind {
                         self.click_list(h, &mut ev);
                     }
+                    if let Kind::Cells { action, .. } = self.nodes[h.0].kind {
+                        let (fx, fy) = self.cells_point(h, self.cursor.0, self.cursor.1);
+                        ev.push(UiEvent::Pointer(action, fx, fy));
+                    }
                 }
             }
             Input::MouseDown(MouseButton::Other) | Input::MouseUp(MouseButton::Other) => {}
@@ -626,10 +743,7 @@ impl Ui {
                 let pressed = self.pressed.take();
                 if let (Some(p), Some(h)) = (pressed, self.hover)
                     && p == h
-                    && let Kind::Button {
-                        action, enabled, ..
-                    } = self.nodes[h.0].kind
-                    && enabled
+                    && let Some(action) = self.press_action(h)
                 {
                     ev.push(UiEvent::Activated(action));
                 }
@@ -646,16 +760,25 @@ impl Ui {
 
     fn visible_rows(&self, id: NodeId) -> usize {
         match &self.nodes[id.0].kind {
-            Kind::List { row_h, .. } => ((self.rects[id.0].h / row_h).floor() as usize).max(1),
+            Kind::List { row_h, .. } | Kind::Text { row_h, .. } => {
+                ((self.rects[id.0].h / row_h).floor() as usize).max(1)
+            }
             _ => 0,
         }
     }
 
     fn scroll_list(&mut self, id: NodeId, delta_rows: i32) {
         let vis = self.visible_rows(id);
-        if let Kind::List { items, scroll, .. } = &mut self.nodes[id.0].kind {
-            let max = items.len().saturating_sub(vis);
-            *scroll = (*scroll as i32 + delta_rows).clamp(0, max as i32) as usize;
+        match &mut self.nodes[id.0].kind {
+            Kind::List { items, scroll, .. } => {
+                let max = items.len().saturating_sub(vis);
+                *scroll = (*scroll as i32 + delta_rows).clamp(0, max as i32) as usize;
+            }
+            Kind::Text { lines, scroll, .. } => {
+                let max = lines.len().saturating_sub(vis);
+                *scroll = (*scroll as i32 + delta_rows).clamp(0, max as i32) as usize;
+            }
+            _ => {}
         }
     }
 
@@ -715,7 +838,11 @@ impl Ui {
             Key::Enter | Key::Space => {
                 if let Some(f) = self.focused() {
                     match &self.nodes[f.0].kind {
-                        Kind::Button { action, .. } => ev.push(UiEvent::Activated(*action)),
+                        Kind::Button { .. } | Kind::Toggle { .. } | Kind::Icon { .. } => {
+                            if let Some(a) = self.press_action(f) {
+                                ev.push(UiEvent::Activated(a));
+                            }
+                        }
                         Kind::List {
                             selected: Some(_),
                             action,
@@ -996,5 +1123,90 @@ mod tests {
             ui.input(Input::KeyDown(Key::Enter)),
             vec![UiEvent::Activated(9)]
         );
+    }
+
+    #[test]
+    fn toggles_icons_and_cells_take_the_mouse() {
+        let mut ui = Ui::new(UiScale::from_percent(100));
+        let r = ui.add_root(Kind::Panel { fill: Fill::None }, Layout::fill());
+        let t = ui.add(
+            r,
+            Kind::Toggle {
+                text: "Tab".into(),
+                font: game_font(2),
+                action: 7,
+                on: false,
+                enabled: true,
+            },
+            Layout::at(Anchor::TopLeft, 100.0, 40.0),
+        );
+        let cells = ui.add(
+            r,
+            Kind::Cells {
+                cols: 2,
+                rows: 2,
+                colors: Arc::new(vec![Color::BLACK; 4]),
+                action: 9,
+            },
+            Layout::at(Anchor::TopLeft, 100.0, 100.0).offset(0.0, 100.0),
+        );
+        let frame = ui.add(
+            r,
+            Kind::Panel {
+                fill: Fill::Frame(Color::WHITE),
+            },
+            Layout::at(Anchor::TopLeft, 50.0, 50.0).offset(300.0, 0.0),
+        );
+        ui.layout((800, 600));
+        ui.set_on(t, true);
+        assert!(matches!(ui.node(t).kind, Kind::Toggle { on: true, .. }));
+        ui.input(Input::CursorMoved { x: 10.0, y: 10.0 });
+        ui.input(Input::MouseDown(MouseButton::Left));
+        assert_eq!(
+            ui.input(Input::MouseUp(MouseButton::Left)),
+            vec![UiEvent::Activated(7)]
+        );
+        // Press on the grid, then drag past its edge: the fraction is clamped.
+        ui.input(Input::CursorMoved { x: 25.0, y: 175.0 });
+        let down = ui.input(Input::MouseDown(MouseButton::Left));
+        assert_eq!(down, vec![UiEvent::Pointer(9, 0.25, 0.75)]);
+        let drag = ui.input(Input::CursorMoved { x: 400.0, y: 20.0 });
+        assert_eq!(drag, vec![UiEvent::Pointer(9, 1.0, 0.0)]);
+        ui.input(Input::MouseUp(MouseButton::Left));
+        // A frame does not block the mouse; the cells do.
+        ui.input(Input::CursorMoved { x: 310.0, y: 10.0 });
+        assert!(!ui.over_ui());
+        let _ = (cells, frame);
+        ui.input(Input::CursorMoved { x: 50.0, y: 150.0 });
+        assert!(ui.over_ui());
+    }
+
+    #[test]
+    fn text_lines_scroll_with_the_wheel() {
+        let mut ui = Ui::new(UiScale::from_percent(100));
+        let r = ui.add_root(Kind::Panel { fill: Fill::None }, Layout::fill());
+        let t = ui.add(
+            r,
+            Kind::Text {
+                lines: (0..30).map(|i| format!("line {i}")).collect(),
+                scroll: 0,
+                row_h: 20.0,
+                font: game_font(2),
+                color: Color::WHITE,
+            },
+            Layout::at(Anchor::TopLeft, 200.0, 100.0),
+        );
+        ui.layout((800, 600));
+        ui.input(Input::CursorMoved { x: 10.0, y: 10.0 });
+        ui.input(Input::Wheel(-1.0));
+        match ui.node(t).kind {
+            Kind::Text { scroll, .. } => assert_eq!(scroll, 3),
+            _ => unreachable!(),
+        }
+        ui.input(Input::Wheel(-100.0));
+        match ui.node(t).kind {
+            Kind::Text { scroll, .. } => assert_eq!(scroll, 25),
+            _ => unreachable!(),
+        }
     }
 }

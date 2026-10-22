@@ -196,6 +196,11 @@ const CO_ACCT: usize = 0x4766;
 const CO_ARCH_METRICS: usize = 0x49b6;
 /// Person record: human flag (finance.md 1, trains.md "Em aberto" 0x43c030).
 const PE_HUMAN: usize = 0x122;
+/// Person record: cash (f64), company chaired (`+0x263`) and reputation (`+0x52b`), finance.md 3.3
+/// and 17.2.
+const PE_CASH: usize = 0x12a;
+const PE_CHAIR_OF: usize = 0x263;
+const PE_REPUTATION: usize = 0x52b;
 
 /// The finance rules' view of a raw company record (finance.md 1; same fields as the simulation).
 fn company_from_record(r: &Rec) -> finance::Company {
@@ -436,6 +441,53 @@ impl<'a> Info<'a> {
             .map(|r| r.text(CO_NAME, CO_NAME + 0x1f))
             .filter(|s| !s.is_empty())
             .unwrap_or_else(|| DASH.to_owned())
+    }
+
+    /// The players (`playrlst.win`): name, company chaired and cash, one row per person; the row
+    /// id is the pool slot of the company the person chairs (0 = none).
+    pub fn players_list(&self) -> ListPage {
+        let mut t = Table::new(&[
+            (&self.t(216, "Name"), 3.0, false),
+            (&self.t(178, "Company"), 3.0, false),
+            (&self.t(31, "Cash"), 1.8, true),
+        ]);
+        for r in self.save.persons.ordered() {
+            let p = Rec(&r.data);
+            let chair = p.i32(PE_CHAIR_OF);
+            let company = if self.detailed() && chair > 0 {
+                chair as u32
+            } else {
+                0
+            };
+            let mark = if p.u8(PE_HUMAN) != 0 && self.detailed() {
+                " *"
+            } else {
+                ""
+            };
+            t.push(
+                company,
+                vec![
+                    format!("{}{mark}", self.person_name(r.slot as u32)),
+                    if company > 0 {
+                        self.company_name(company)
+                    } else {
+                        DASH.to_owned()
+                    },
+                    {
+                        let cash = p.f64(PE_CASH);
+                        if cash.is_finite() {
+                            money(cash)
+                        } else {
+                            DASH.to_owned()
+                        }
+                    },
+                ],
+            );
+        }
+        ListPage {
+            title: self.t(1726, "Players"),
+            table: t,
+        }
     }
 
     /// Stock market overview (`stockdtl.win`, LNG 56 "Market Overview"): one row per company.
@@ -1646,6 +1698,38 @@ impl<'a> Info<'a> {
 /// (cargo.md 7.5).
 fn is_house(ty: u8) -> bool {
     ty == 0x12 || ty == 0x27
+}
+
+/// What the Start New Company dialog needs to know about the player (`finance.md` 17.1, 17.2).
+#[derive(Clone, Debug, PartialEq)]
+pub struct Founder {
+    pub name: String,
+    /// Personal cash (`+0x12a`).
+    pub cash: f64,
+    pub reputation: i32,
+    pub human: bool,
+    /// Pool slot of the company the person already chairs (0 = none).
+    pub chairs: u32,
+}
+
+/// The founder of a freshly loaded scenario: the first person with the human flag, else the
+/// first person.
+// TODO(finance.md 17.2): the share positions that lower the buying power are not read (0).
+pub fn founder(save: &Save) -> Option<Founder> {
+    let r = save
+        .persons
+        .ordered()
+        .find(|r| Rec(&r.data).u8(PE_HUMAN) != 0)
+        .or_else(|| save.persons.ordered().next())?;
+    let p = Rec(&r.data);
+    let cash = p.f64(PE_CASH);
+    Some(Founder {
+        name: p.text(8, 0x27),
+        cash: if cash.is_finite() { cash } else { 0.0 },
+        reputation: p.i32(PE_REPUTATION),
+        human: p.u8(PE_HUMAN) != 0,
+        chairs: p.i32(PE_CHAIR_OF).max(0) as u32,
+    })
 }
 
 #[cfg(test)]

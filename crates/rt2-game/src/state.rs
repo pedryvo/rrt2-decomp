@@ -21,19 +21,23 @@ use rt2_ui::{
 };
 use winit::keyboard::KeyCode;
 
-use crate::catalog::{self, Entry, Source};
+use crate::catalog::{self, Entry};
 use crate::config::Config;
 use crate::info::Info;
 use crate::keys::Bindings;
 use crate::paths;
 use crate::sound::{Cue, MusicRequester};
-use crate::text::{Texts, id as lng};
+use crate::text::Texts;
 
+mod dialogs;
 mod info_ui;
+mod mainwin;
+mod menus;
+use dialogs::Dialog;
 use info_ui::InfoState;
+use mainwin::{CenterState, MainIds, NewsItem};
+use menus::{MenuData, Page};
 
-const A_NEW: u32 = 1;
-const A_LOAD: u32 = 2;
 const A_QUIT: u32 = 3;
 const A_LIST: u32 = 10;
 const A_OK: u32 = 11;
@@ -57,7 +61,6 @@ const PAN_SPEED: f32 = 900.0;
 const ZOOM_STEP: f32 = 1.15;
 /// Seed of the game RNG after a load (it is not in the file, docs/formats/map-gam.md 5.2).
 pub const RNG_SEED: u32 = 1;
-const HUD_HEIGHT: f32 = 46.0;
 const TOAST_SECS: f32 = 4.0;
 
 /// Things the window loop must do for the state.
@@ -69,26 +72,14 @@ pub enum Effect {
     SaveLanguage(String),
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Page {
-    Main,
-    NewGame,
-    LoadGame,
-}
-
 struct MenuState {
     page: Page,
     entries: Vec<Entry>,
+    data: MenuData,
 }
 
-#[derive(Default, Clone, Copy)]
-struct HudIds {
-    date: Option<NodeId>,
-    cash: Option<NodeId>,
-    speed: Option<NodeId>,
-    pause: Option<NodeId>,
-    toast: Option<NodeId>,
-}
+/// Camera (target x, y, zoom, rotation) and viewport the radar outline was drawn for.
+type RadarView = ((f32, f32, f32, u8), (u32, u32));
 
 struct GameState {
     world: World,
@@ -100,7 +91,23 @@ struct GameState {
     cash: Option<f64>,
     cash_timer: f32,
     toast: Option<(String, f32)>,
-    hud: HudIds,
+    hud: MainIds,
+    /// The scenario's description, briefing and goals (`scenario_info.rs`).
+    scenario: Option<Box<crate::scenario_info::ScenarioInfo>>,
+    /// The options the game was started with (`setup.rs`).
+    setup: crate::setup::Setup,
+    /// Modal dialogs, the last one on top (`dialogs.rs`).
+    dialogs: Vec<Dialog>,
+    center: CenterState,
+    /// The activity box, newest first.
+    news: Vec<NewsItem>,
+    radar: Option<crate::radar::Radar>,
+    /// Camera and viewport the radar outline was last drawn for.
+    radar_view: Option<RadarView>,
+    /// The game year the year-end report was last offered for.
+    last_year: u16,
+    /// Simulated day the center list was last refreshed for.
+    center_day: i32,
     /// A map without game state (a new scenario): no save is possible.
     map_only: bool,
     /// The open information screen (finance, trains, ...), if any.
@@ -136,6 +143,7 @@ fn scene_fingerprint(save: &rt2_formats::map::Save) -> u64 {
     h
 }
 
+#[allow(clippy::large_enum_variant)]
 enum Screen {
     Menu(MenuState),
     Game(Box<GameState>),
@@ -146,6 +154,8 @@ pub struct Init {
     pub install: PathBuf,
     pub assets: Arc<GameAssets>,
     pub backdrop: Option<SpriteId>,
+    pub icons: crate::artwork::Icons,
+    pub dialogs: crate::artwork::DialogArt,
     pub config: Config,
     pub scale: UiScale,
     /// True when the scale was chosen by the player (config/CLI) and must not follow the DPI.
@@ -157,6 +167,8 @@ pub struct AppState {
     install: PathBuf,
     assets: Arc<GameAssets>,
     backdrop: Option<SpriteId>,
+    icons: crate::artwork::Icons,
+    dialog_art: crate::artwork::DialogArt,
     texts: Texts,
     binds: Bindings,
     data: Option<GameData>,
@@ -189,9 +201,12 @@ pub struct AppState {
     press: Option<(f32, f32)>,
 }
 
-#[derive(Default, Clone, Copy)]
+#[derive(Default, Clone)]
 struct MenuHandles {
     list: Option<NodeId>,
+    status: Option<NodeId>,
+    /// Hints of the buttons, shown on the status line while the mouse is over them.
+    tips: Vec<(NodeId, String)>,
 }
 
 fn format_money(v: f64) -> String {
@@ -226,6 +241,8 @@ impl AppState {
             install: init.install,
             assets: init.assets,
             backdrop: init.backdrop,
+            icons: init.icons,
+            dialog_art: init.dialogs,
             texts,
             binds,
             data: None,
@@ -241,6 +258,7 @@ impl AppState {
             screen: Screen::Menu(MenuState {
                 page: Page::Main,
                 entries: Vec::new(),
+                data: MenuData::default(),
             }),
             pending_scene: None,
             effects: Vec::new(),
@@ -374,6 +392,7 @@ impl AppState {
         self.cursor = Some((x, y));
         let ev = self.ui.input(Input::CursorMoved { x, y });
         self.handle_events(ev);
+        self.update_status();
     }
 
     pub fn cursor_left(&mut self) {
@@ -413,6 +432,17 @@ impl AppState {
 
     pub fn wheel(&mut self, notches: f32) {
         self.ui.input(Input::Wheel(notches));
+        if self.has_dialog() {
+            return;
+        }
+        if self.info_screen().is_none()
+            && let Screen::Game(g) = &self.screen
+            && g.hud.center.is_some()
+            && self.ui.hovered() == g.hud.center
+        {
+            self.center_scroll(-(notches * 3.0).round() as i32);
+            return;
+        }
         if self.info_screen().is_some() {
             self.info_scroll(-(notches * 3.0).round() as i32);
             return;
@@ -505,19 +535,37 @@ impl AppState {
         }
     }
 
+    /// Escape / Cancel: one level up (a side dialog or a notice first).
     fn menu_back(&mut self) {
-        if let Screen::Menu(m) = &mut self.screen {
-            if m.page == Page::Main {
-                self.effects.push(Effect::Quit);
-            } else {
-                m.page = Page::Main;
+        let Screen::Menu(m) = &mut self.screen else {
+            return;
+        };
+        if m.data.notice.take().is_some() {
+            self.rebuild_ui();
+            return;
+        }
+        match m.page {
+            Page::Main => self.effects.push(Effect::Quit),
+            Page::NewScenario if m.data.side != menus::Side::None => {
+                m.data.side = menus::Side::None;
                 self.rebuild_ui();
+            }
+            Page::Single | Page::Scores | Page::Credits => self.open_page(Page::Main),
+            Page::NewScenario | Page::NewCampaign | Page::LoadGame | Page::LoadCampaign => {
+                self.open_page(Page::Single);
             }
         }
     }
 
     fn game_key(&mut self, code: KeyCode, ctrl: bool) {
         let b = self.binds.clone();
+        let fit = match &self.screen {
+            Screen::Game(g) => Some(self.fit_camera(g.map_size.0, g.map_size.1)),
+            Screen::Menu(_) => None,
+        };
+        if !ctrl && self.mainwin_key(code) {
+            return;
+        }
         if !ctrl && self.info_key(code) {
             return;
         }
@@ -545,14 +593,17 @@ impl AppState {
         } else if b.save.matches(code, ctrl) {
             self.save_game();
         } else if b.menu.matches(code, ctrl) {
-            self.go_to_menu();
+            // File Options (`fileopt.win`): Load, Save, New Game, Main Menu, Quit.
+            self.push_dialog(Dialog::FileOptions);
         } else if let Screen::Game(g) = &mut self.screen {
             if b.rotate_left.matches(code, ctrl) {
                 g.camera.rotate(-1);
             } else if b.rotate_right.matches(code, ctrl) {
                 g.camera.rotate(1);
-            } else if b.reframe.matches(code, ctrl) {
-                g.camera = Camera::fit(g.map_size.0, g.map_size.1, self.viewport);
+            } else if b.reframe.matches(code, ctrl)
+                && let Some(f) = fit
+            {
+                g.camera = f;
             }
         }
         if let (Some(c), Screen::Game(g)) = (cmd, &mut self.screen) {
@@ -613,15 +664,19 @@ impl AppState {
             axis(&b.pan_down, &b.pan_up),
         );
         let ctrl = self.ctrl;
-        let texts = &self.texts;
         let Screen::Game(g) = &mut self.screen else {
             return;
         };
-        if (dx != 0.0 || dy != 0.0) && !ctrl && g.info.is_none() {
+        if (dx != 0.0 || dy != 0.0) && !ctrl && g.info.is_none() && g.dialogs.is_empty() {
             let k = PAN_SPEED * dt_ms / 1000.0;
             g.camera.pan(dx * k, dy * k);
         }
-        g.accum_ms += dt_ms.min(250.0);
+        // Dialogs and the information screens hold the simulation (the original's "keep the
+        // game running in dialogs" option defaults to off for modal windows).
+        let on_hold = !g.dialogs.is_empty();
+        if !on_hold {
+            g.accum_ms += dt_ms.min(250.0);
+        }
         let mut steps = 0;
         while g.accum_ms >= STEP_MS {
             g.accum_ms -= STEP_MS;
@@ -653,36 +708,14 @@ impl AppState {
                 g.toast = None;
             }
         }
-        // HUD texts.
-        let date = format_date(g.world.date(), texts);
-        let speed = if g.world.speed() == 0 {
-            texts.get(lng::PAUSED, "Paused")
-        } else {
-            format!("{} {}", texts.get(lng::SPEED, "Speed:"), g.world.speed())
-        };
-        let cash = match g.cash {
-            Some(c) => format!("{} {}", texts.get(lng::CASH, "Cash"), format_money(c)),
-            None => String::new(),
-        };
-        let toast = g.toast.as_ref().map(|t| t.0.clone());
-        let hud = g.hud;
-        if let Some(n) = hud.date {
-            self.ui.set_text(n, date);
+        // A new year: offer the year-end report (`finance.md` 8: the ledgers were archived).
+        let year = g.world.date().year;
+        if year > g.last_year {
+            g.last_year = year;
+            self.offer_year_end(i32::from(year) - 1);
         }
-        if let Some(n) = hud.speed {
-            self.ui.set_text(n, speed);
-        }
-        if let Some(n) = hud.cash {
-            self.ui.set_text(n, cash);
-        }
-        if let Some(n) = hud.pause {
-            let paused = matches!(&self.screen, Screen::Game(g) if g.world.speed() == 0);
-            self.ui.set_text(n, if paused { ">" } else { "II" });
-        }
-        if let Some(n) = hud.toast {
-            self.ui.set_visible(n, toast.is_some());
-            self.ui.set_text(n, toast.unwrap_or_default());
-        }
+        self.mainwin_refresh();
+        self.center_refresh();
         self.info_refresh();
     }
 
@@ -695,6 +728,20 @@ impl AppState {
                     // sound.md 1.3 id 1: button released (ButtonUp, 0x50cbd0).
                     self.cues.push(Cue::Event(Event::ButtonUp));
                     self.activated(a);
+                }
+                UiEvent::Pointer(a, fx, fy) => {
+                    if a == mainwin::A_RADAR {
+                        self.radar_pointer(fx, fy);
+                    } else {
+                        self.dialog_pointer(a, fx);
+                    }
+                }
+                UiEvent::Selected(a, row) if a != info_ui::A_ROW && self.row_event(a, row) => {
+                    self.cues.push(Cue::Event(if self.via_mouse {
+                        Event::ListClick
+                    } else {
+                        Event::ListHover
+                    }));
                 }
                 UiEvent::Selected(info_ui::A_ROW, row) => {
                     // A click on a list row opens its page (a key press only moves the cursor).
@@ -716,13 +763,24 @@ impl AppState {
         }
     }
 
+    /// A list selection that belongs to the menus or the main window; true if consumed.
+    fn row_event(&mut self, action: u32, row: usize) -> bool {
+        let e = UiEvent::Selected(action, row);
+        self.menu_event(&e) || self.mainwin_event(&e)
+    }
+
     fn activated(&mut self, action: u32) {
-        if self.in_game() && self.info_activated(action) {
+        if self.in_game() {
+            if self.dialog_activated(action) || self.mainwin_activated(action) {
+                return;
+            }
+            if self.info_activated(action) {
+                return;
+            }
+        } else if self.menu_activated(action) {
             return;
         }
         match action {
-            A_NEW => self.open_page(Page::NewGame),
-            A_LOAD => self.open_page(Page::LoadGame),
             A_QUIT => self.effects.push(Effect::Quit),
             A_BACK => self.menu_back(),
             A_LIST | A_OK => self.menu_start(),
@@ -731,7 +789,7 @@ impl AppState {
             A_SLOWER => self.apply_command(Command::SetSpeed(SpeedChange::Delta(-1))),
             A_SAVE => self.save_game(),
             A_MENU => self.go_to_menu(),
-            a if a >= A_LANG && !self.in_game() => {
+            a if (A_LANG..A_LANG + 32).contains(&a) && !self.in_game() => {
                 if let Some((locale, _)) = self.texts.languages().get((a - A_LANG) as usize) {
                     let locale = locale.clone();
                     self.set_language(&locale);
@@ -749,17 +807,6 @@ impl AppState {
         }
     }
 
-    fn open_page(&mut self, page: Page) {
-        let own = paths::saves_dir();
-        let entries = match page {
-            Page::NewGame => catalog::list_maps(&self.install),
-            Page::LoadGame => catalog::list_saves(&self.install, own.as_deref()),
-            Page::Main => Vec::new(),
-        };
-        self.screen = Screen::Menu(MenuState { page, entries });
-        self.rebuild_ui();
-    }
-
     fn menu_start(&mut self) {
         let Screen::Menu(m) = &self.screen else {
             return;
@@ -772,28 +819,53 @@ impl AppState {
         };
         if let Err(e) = self.start(&entry.path) {
             eprintln!("cannot start {}: {e:#}", entry.path.display());
-            self.screen = Screen::Menu(MenuState {
-                page: Page::Main,
-                entries: Vec::new(),
-            });
-            self.rebuild_ui();
+            self.go_to_menu();
+        } else {
+            // A saved game keeps its own state; its briefing is offered like a loaded game's
+            // (`scenarios.md` 2.2: trigger 6 runs on load too).
+            self.queue_opening_dialogs(&entry.path, crate::setup::Setup::default());
         }
     }
 
-    /// Shows the "New Game" (scenario list) page; used by screenshots.
+    /// Shows the New Scenario page (Game Setup with the map dialog beside it); used by screenshots.
     pub fn show_new_game(&mut self) {
-        self.open_page(Page::NewGame);
+        self.open_page(Page::NewScenario);
     }
 
-    /// Shows the "Load Game" page; used by screenshots.
+    /// Shows the Load Game page; used by screenshots.
     pub fn show_load_game(&mut self) {
         self.open_page(Page::LoadGame);
+    }
+
+    /// Shows a menu page by name (screenshots): `single`, `new-scenario`, `map`, `options`,
+    /// `campaign`, `load`, `scores`, `credits`; false for an unknown name.
+    pub fn show_menu_page(&mut self, name: &str) -> bool {
+        match name {
+            "main" => self.open_page(Page::Main),
+            "single" => self.open_page(Page::Single),
+            "new-scenario" => self.open_page(Page::NewScenario),
+            "map" | "options" => {
+                self.open_page(Page::NewScenario);
+                self.menu_activated(if name == "map" {
+                    menus::A_SETUP_MAP
+                } else {
+                    menus::A_SETUP_OPTIONS
+                });
+            }
+            "campaign" => self.open_page(Page::NewCampaign),
+            "load" => self.open_page(Page::LoadGame),
+            "scores" => self.open_page(Page::Scores),
+            "credits" => self.open_page(Page::Credits),
+            _ => return false,
+        }
+        true
     }
 
     fn go_to_menu(&mut self) {
         self.screen = Screen::Menu(MenuState {
             page: Page::Main,
             entries: Vec::new(),
+            data: MenuData::default(),
         });
         self.rebuild_ui();
     }
@@ -857,9 +929,35 @@ impl AppState {
             .file_stem()
             .map(|s| s.to_string_lossy().into_owned())
             .unwrap_or_else(|| "game".into());
-        let camera = Camera::fit(map.width, map.height, self.viewport);
+        let camera = self.fit_camera(map.width, map.height);
+        let scenario = save.as_ref().map(|sv| {
+            Box::new(crate::scenario_info::ScenarioInfo::from_save(
+                sv,
+                &raw,
+                &catalog::map_title(&map, path),
+            ))
+        });
+        let welcome = NewsItem {
+            date: format_date(world.date(), &self.texts),
+            text: self.texts.af(
+                "Game started: %1.",
+                &[scenario
+                    .as_ref()
+                    .map_or_else(|| name.clone(), |s| s.title.clone())],
+            ),
+        };
+        let last_year = world.date().year;
         self.screen = Screen::Game(Box::new(GameState {
             cash: save.as_ref().and_then(player_cash),
+            radar: Some(crate::radar::Radar::new(&map)),
+            radar_view: None,
+            scenario,
+            setup: crate::setup::Setup::default(),
+            dialogs: Vec::new(),
+            center: CenterState::default(),
+            news: vec![welcome],
+            last_year,
+            center_day: -1,
             world,
             name,
             map_size: (map.width, map.height),
@@ -868,7 +966,7 @@ impl AppState {
             accum_ms: 0.0,
             cash_timer: 500.0,
             toast: None,
-            hud: HudIds::default(),
+            hud: MainIds::default(),
             map_only,
             info: None,
             scene_fp,
@@ -887,6 +985,8 @@ impl AppState {
                 g.world.advance(dt);
                 done += i64::from(dt);
             }
+            // Years crossed here (screenshots, tests) do not offer a report.
+            g.last_year = g.world.date().year;
             if let Some(save) = g.world.save_ref() {
                 self.pending_live = Some((LiveFrame::from_save(save), true));
                 if scene_fingerprint(save) != g.scene_fp {
@@ -947,33 +1047,20 @@ impl AppState {
         ui.layout(self.viewport);
         self.menu_handles = MenuHandles::default();
         match &self.screen {
-            Screen::Menu(m) => {
-                let (page, n_entries) = (m.page, m.entries.len());
-                let items: Vec<String> = match &self.screen {
-                    Screen::Menu(m) => m
-                        .entries
-                        .iter()
-                        .map(|e| match e.source {
-                            Source::Own => {
-                                self.texts.af("%1  (saved)", std::slice::from_ref(&e.title))
-                            }
-                            _ => e.title.clone(),
-                        })
-                        .collect(),
-                    _ => unreachable!(),
-                };
-                self.build_menu(&mut ui, page, items, n_entries);
-            }
+            Screen::Menu(_) => self.build_menu(&mut ui),
             Screen::Game(_) => {
-                self.build_hud(&mut ui);
-                self.build_toolbar(&mut ui);
+                self.build_mainwin(&mut ui);
                 self.build_info(&mut ui);
+                self.build_dialogs(&mut ui);
             }
         }
         ui.layout(self.viewport);
         self.ui = ui;
         if let Some((x, y)) = self.cursor {
             self.ui.input(Input::CursorMoved { x, y });
+        }
+        if self.in_game() {
+            self.mainwin_refresh();
         }
     }
 
@@ -994,124 +1081,6 @@ impl AppState {
                         fill: Fill::Solid(Color::rgb(0x16, 0x1a, 0x14)),
                     },
                     Layout::fill(),
-                );
-            }
-        }
-    }
-
-    fn build_menu(&mut self, ui: &mut Ui, page: Page, items: Vec<String>, _n: usize) {
-        let (cw, ch) = ui.logical_size();
-        let t = &self.texts;
-        self.backdrop(ui);
-        let layer = ui.add_root(Kind::Panel { fill: Fill::None }, Layout::fill());
-        // The backdrop is "cover" fitted at the top edge: its logo ends at 265 of 768 design rows.
-        let cover = (cw / 1024.0).max(ch / 768.0);
-        let top = 265.0 * cover + 24.0;
-        let btn_font = game_font(3);
-        match page {
-            Page::Main => {
-                let (bw, bh, gap, pad) = (320.0, 54.0, 14.0, 26.0);
-                let h = pad * 2.0 + 3.0 * bh + 2.0 * gap;
-                let panel = ui.add(
-                    layer,
-                    Kind::Panel { fill: Fill::Panel },
-                    Layout::at(Anchor::Top, bw + 2.0 * pad, h).offset(
-                        0.0,
-                        top.min((ch - h - self.language_height(cw) - 12.0).max(0.0)),
-                    ),
-                );
-                ui.set_stack(panel, Stack::column(gap, pad).centered());
-                for (text, action, hot) in [
-                    (t.get(lng::NEW_GAME, "New Game"), A_NEW, 'n'),
-                    (t.get(lng::LOAD_GAME, "Load Game"), A_LOAD, 'l'),
-                    (t.get(lng::QUIT, "Quit"), A_QUIT, 'q'),
-                ] {
-                    ui.add(
-                        panel,
-                        button(&text, btn_font, action, Some(hot)),
-                        Layout::at(Anchor::Top, bw, bh),
-                    );
-                }
-                self.language_row(ui, layer, cw);
-                let version = t.af(
-                    "rrt2 %1   |   UI scale %2%  (Ctrl +/- to change)   |   %3",
-                    &[
-                        env!("CARGO_PKG_VERSION").to_owned(),
-                        self.scale.percent().to_string(),
-                        self.install.display().to_string(),
-                    ],
-                );
-                ui.add(
-                    layer,
-                    label(
-                        &version,
-                        game_font(1).with_size(12.0).with_shadow(),
-                        Align::Left,
-                        Color::rgb(0xd0, 0xc8, 0xb0),
-                    ),
-                    Layout::at(Anchor::BottomLeft, 0.0, 20.0).offset(12.0, 8.0),
-                );
-            }
-            Page::NewGame | Page::LoadGame => {
-                let title = match page {
-                    Page::NewGame => t.get(lng::NEW_GAME, "New Game"),
-                    _ => t.get(lng::LOAD_GAME, "Load Game"),
-                };
-                let pad = 24.0;
-                let w = (640.0f32).min(cw - 24.0);
-                let list_h = (ch - top - 2.0 * pad - 60.0 - 70.0 - 24.0).clamp(120.0, 420.0);
-                let h = pad * 2.0 + 44.0 + list_h + 16.0 + 48.0 + 12.0;
-                let y = top.min((ch - h - 16.0).max(8.0));
-                let panel = ui.add(
-                    layer,
-                    Kind::Panel { fill: Fill::Panel },
-                    Layout::at(Anchor::Top, w, h).offset(0.0, y),
-                );
-                ui.add(
-                    panel,
-                    label(
-                        &title,
-                        game_font(3).with_shadow(),
-                        Align::Center,
-                        Color::rgb(0xf2, 0xe9, 0xd0),
-                    ),
-                    Layout::at(Anchor::Top, 0.0, 40.0).offset(pad, pad),
-                );
-                let list = ui.add(
-                    panel,
-                    Kind::List {
-                        items: Vec::new(),
-                        selected: None,
-                        scroll: 0,
-                        row_h: 28.0,
-                        font: game_font(6),
-                        action: A_LIST,
-                    },
-                    Layout::at(Anchor::Top, 0.0, list_h).offset(pad, pad + 52.0),
-                );
-                ui.set_items(list, items);
-                self.menu_handles.list = Some(list);
-                ui.set_focus(Some(list));
-                let row = ui.add(
-                    panel,
-                    Kind::Panel { fill: Fill::None },
-                    Layout::at(Anchor::Bottom, 0.0, 48.0).offset(pad, pad - 6.0),
-                );
-                ui.set_stack(row, Stack::row(16.0, 0.0).centered());
-                let ok = if page == Page::NewGame {
-                    t.get(lng::OK, "OK")
-                } else {
-                    t.get(lng::LOAD_GAME, "Load Game")
-                };
-                ui.add(
-                    row,
-                    button(&ok, btn_font, A_OK, None),
-                    Layout::at(Anchor::Left, 180.0, 44.0),
-                );
-                ui.add(
-                    row,
-                    button(&t.get(lng::CANCEL, "Cancel"), btn_font, A_BACK, Some('c')),
-                    Layout::at(Anchor::Left, 180.0, 44.0),
                 );
             }
         }
@@ -1146,15 +1115,6 @@ impl AppState {
         let mut font = game_font(2);
         font.size = size;
         (label_w, bw, font, stacked)
-    }
-
-    /// Vertical room taken by the language selector above the bottom margin.
-    fn language_height(&self, canvas_w: f32) -> f32 {
-        if self.language_plan(canvas_w).3 {
-            3.0 * (34.0 + LANG_GAP) + 40.0
-        } else {
-            34.0 + 40.0
-        }
     }
 
     /// One button per available language, labelled with its own name; the current one is
@@ -1211,101 +1171,6 @@ impl AppState {
                 Layout::at(Anchor::Left, bw, 34.0),
             );
         }
-    }
-
-    fn build_hud(&mut self, ui: &mut Ui) {
-        let bar = ui.add_root(
-            Kind::Panel { fill: Fill::Panel },
-            Layout::at(Anchor::Top, 0.0, HUD_HEIGHT),
-        );
-        let f = game_font(6);
-        let text = Color::rgb(0xf2, 0xe9, 0xd0);
-        // Left: menu and save.
-        let left = ui.add(
-            bar,
-            Kind::Panel { fill: Fill::None },
-            Layout::at(Anchor::Left, 260.0, HUD_HEIGHT).offset(8.0, 0.0),
-        );
-        ui.set_stack(left, Stack::row(8.0, 0.0));
-        ui.add(
-            left,
-            button(&self.texts.a("Menu"), f, A_MENU, None),
-            Layout::at(Anchor::Left, 110.0, 32.0).offset(0.0, 7.0),
-        );
-        ui.add(
-            left,
-            button(&self.texts.a("Save"), f, A_SAVE, None),
-            Layout::at(Anchor::Left, 140.0, 32.0).offset(0.0, 7.0),
-        );
-        // Centre: date.
-        let date = ui.add(
-            bar,
-            label("", f.with_shadow(), Align::Center, text),
-            Layout::at(Anchor::Center, 340.0, HUD_HEIGHT),
-        );
-        // Right: cash, speed label and buttons.
-        let right = ui.add(
-            bar,
-            Kind::Panel { fill: Fill::None },
-            Layout::at(Anchor::Right, 560.0, HUD_HEIGHT).offset(8.0, 0.0),
-        );
-        ui.set_stack(right, Stack::row(8.0, 0.0));
-        let cash = ui.add(
-            right,
-            label("", f.with_shadow(), Align::Right, text),
-            Layout::at(Anchor::Left, 230.0, HUD_HEIGHT),
-        );
-        let speed = ui.add(
-            right,
-            label("", f.with_shadow(), Align::Center, text),
-            Layout::at(Anchor::Left, 120.0, HUD_HEIGHT),
-        );
-        ui.add(
-            right,
-            button("-", game_font(3), A_SLOWER, None),
-            Layout::at(Anchor::Left, 36.0, 32.0).offset(0.0, 7.0),
-        );
-        let pause = ui.add(
-            right,
-            button("II", game_font(6), A_PAUSE, None),
-            Layout::at(Anchor::Left, 48.0, 32.0).offset(0.0, 7.0),
-        );
-        ui.add(
-            right,
-            button("+", game_font(3), A_FASTER, None),
-            Layout::at(Anchor::Left, 36.0, 32.0).offset(0.0, 7.0),
-        );
-        let toast_root = ui.add_root(Kind::Panel { fill: Fill::None }, Layout::fill());
-        let toast = ui.add(
-            toast_root,
-            label(
-                "",
-                game_font(6).with_shadow(),
-                Align::Left,
-                Color::rgb(0xff, 0xe0, 0x80),
-            ),
-            Layout::at(Anchor::BottomLeft, 0.0, 28.0).offset(14.0, 12.0),
-        );
-        ui.set_visible(toast, false);
-        if let Screen::Game(g) = &mut self.screen {
-            g.hud = HudIds {
-                date: Some(date),
-                cash: Some(cash),
-                speed: Some(speed),
-                pause: Some(pause),
-                toast: Some(toast),
-            };
-        }
-    }
-}
-
-fn button(text: &str, font: rt2_ui::FontStyle, action: u32, hotkey: Option<char>) -> Kind {
-    Kind::Button {
-        text: text.to_owned(),
-        font,
-        action,
-        enabled: true,
-        hotkey,
     }
 }
 

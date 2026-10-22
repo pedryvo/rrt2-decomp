@@ -36,11 +36,11 @@ Limitação honesta: MobyGames e PCGamingWiki bloquearam o acesso automático e 
 
 | # | Tela | Propósito e conteúdo | Como se chega | .win | Referências | Status |
 |---|---|---|---|---|---|---|
-| A1 | Menu principal | Seis botões: Single Player, Multi Player, Editor, High Scores, Credits, Quit; fundo com logotipo | início do programa; "Main Menu" do File Options | `setup.win` (3135..3140) | M:C201, M:C301, M:C901 | 🟡 (um painel só com Novo/Carregar/Sair; sem Single/Multi/Editor/Scores/Credits) |
-| A2 | Submenu Single Player | New Campaign, Load Campaign, New Scenario, Load Scenario (colunas que se abrem à direita) | Single Player | `setup.win` | M:C301 | ⏳ |
-| A3 | Novo cenário: seleção de mapa | Lista de mapas, descrição, miniatura, seta de data inicial (quando o mapa permite), OK/Cancel | New Scenario > botão Map | `setup.win` (401, 409, 412, 3237..3240) | M:C304 | 🟡 (lista de mapas + OK; sem descrição, miniatura e data) |
-| A4 | Novo cenário: Game Setup | Botão Map, nível de dificuldade (5 cavalos: Easy, Medium, Hard, Expert, Custom), lista de jogadores (você + computador), contador de jogadores de computador, "Difficulty Rating: N %", OK/Cancel | New Scenario | `setup.win` | M:C303, M:C304 | ⏳ |
-| A5 | Opções avançadas do cenário | Sandbox mode; modelo financeiro (Basic/Advanced/Expert); modelo industrial (Basic/Advanced/Expert); controles deslizantes de Revenue Modifier (humano e computador) | botão Options do Game Setup | `setup.win` | M:C305 | ⏳ |
+| A1 | Menu principal | Seis botões: Single Player, Multi Player, Editor, High Scores, Credits, Quit; fundo com logotipo | início do programa; "Main Menu" do File Options | `setup.win` (3135..3140) | M:C201, M:C301, M:C901 | ✅ (Multi Player e Editor desativados; `state/menus.rs`) |
+| A2 | Submenu Single Player | New Campaign, Load Campaign, New Scenario, Load Scenario (colunas que se abrem à direita) | Single Player | `setup.win` | M:C301 | ✅ (`state/menus.rs`) |
+| A3 | Novo cenário: seleção de mapa | Lista de mapas, descrição, miniatura, seta de data inicial (quando o mapa permite), OK/Cancel | New Scenario > botão Map | `setup.win` (401, 409, 412, 3237..3240) | M:C304 | 🟡 (lista, descrição, miniatura do terreno, data; sem setas de data: flag não decodificada) |
+| A4 | Novo cenário: Game Setup | Botão Map, nível de dificuldade (5 cavalos: Easy, Medium, Hard, Expert, Custom), lista de jogadores (você + computador), contador de jogadores de computador, "Difficulty Rating: N %", OK/Cancel | New Scenario | `setup.win` | M:C303, M:C304 | 🟡 (cavalos, jogadores, contador e rating; opções guardadas mas não aplicadas à simulação; fórmula do rating heurística) |
+| A5 | Opções avançadas do cenário | Sandbox mode; modelo financeiro (Basic/Advanced/Expert); modelo industrial (Basic/Advanced/Expert); controles deslizantes de Revenue Modifier (humano e computador) | botão Options do Game Setup | `setup.win` | M:C305 | 🟡 (todas as opções; não aplicadas à simulação; faixa do Revenue Modifier suposta) |
 | A6 | Carregar jogo / cenário salvo | Requisitor de arquivo: lista, OK/Cancel (Load Game, Load Scenario, Load Campaign) | menu ou File Options > Load | `filerq.win` (401, 405, 406, 407) | M:C202a | ✅ (Carregar jogo; sem variante de campanha) |
 | A7 | Salvar jogo | Mesmo requisitor com campo de nome | File Options > Save | `filerq.win` (405 = campo de nome) | M:C419 (ícone) | 🟡 (F5 grava direto em `~/.local/share/rrt2/saves`, sem tela de nome) |
 | A8 | Créditos | Texto rolante em tela cheia | Credits | `credits.win` (4501, 4502) | R3 | ⏳ |
@@ -52,17 +52,17 @@ Limitação honesta: MobyGames e PCGamingWiki bloquearam o acesso automático e 
 
 | # | Tela | Propósito e conteúdo | Como se chega | .win | Referências | Status |
 |---|---|---|---|---|---|---|
-| B1 | Nova campanha: dificuldade | Escolha Easy/Normal/Hard (fixa durante a campanha) | New Campaign | `setup.win` | M:C301 | ⏳ |
-| B2 | Quadro da campanha (estação de trem rural) | Lista dos 18 cenários da campanha, retrato do chairman, bônus escolhíveis (ex. dinheiro, desconto de trilho, locomotiva antecipada), "Play this Scenario", mapa-miniatura, Exit | New/Load Campaign, entre cenários | `campaign.win` (4700.., barras 80h) | M:C3Ccamp | ⏳ |
-| B3 | Janela de objetivo ao iniciar | Pop-up com a meta do cenário (ex. patrimônio de $10 milhões até 1900) e OK | início de cenário | `eagled.win` (suposição: caixa de mensagem genérica) | M:C202a (texto do tutorial) | ⏳ |
-| B4 | Fim de cenário: vitória/derrota e medalhas | Placa de madeira com imagem, texto do resultado e botão | meta atingida/prazo/falência | `winlose.win` (4601..4604) | R4 | ⏳ |
+| B1 | Nova campanha: dificuldade | Escolha Easy/Normal/Hard (fixa durante a campanha) | New Campaign | `setup.win` | M:C301 | 🟡 (Easy/Normal/Hard e escolha da campanha; dificuldade não aplicada) |
+| B2 | Quadro da campanha (estação de trem rural) | Lista dos 18 cenários da campanha, retrato do chairman, bônus escolhíveis (ex. dinheiro, desconto de trilho, locomotiva antecipada), "Play this Scenario", mapa-miniatura, Exit | New/Load Campaign, entre cenários | `campaign.win` (4700.., barras 80h) | M:C3Ccamp | 🟡 (18 cenários, mapa, descrição, 3 bônus da campanha clássica, Play; progressão/medalhas não gravadas, bônus da 2ª campanha não decodificados) |
+| B3 | Janela de objetivo ao iniciar | Pop-up com a meta do cenário (ex. patrimônio de $10 milhões até 1900) e OK | início de cenário | `eagled.win` (suposição: caixa de mensagem genérica) | M:C202a (texto do tutorial) | ✅ (briefing + condições de medalha das regras; `state/dialogs.rs`) |
+| B4 | Fim de cenário: vitória/derrota e medalhas | Placa de madeira com imagem, texto do resultado e botão | meta atingida/prazo/falência | `winlose.win` (4601..4604) | R4 | 🟡 (placa pronta; falta o gancho `World::game_over()` no rt2-sim) |
 
 ### C. Interface principal (mapa)
 
 | # | Tela | Propósito e conteúdo | Como se chega | .win | Referências | Status |
 |---|---|---|---|---|---|---|
-| C1 | Janela principal | Mapa (A); radar (B) que recentra ao clicar; caixa central de listas (C) com 4 abas (Stations, Trains, Players, Companies); Activity Box (D) com vídeos e mensagens; 4 botões girar/zoom; bússola; 8 ícones de ação à esquerda; controle de velocidade | ao iniciar o jogo | `mainwin.win` (ids 166..194, 216..219, 255..269, 322..352) | M:C205a, M:C401.call | 🟡 (barra superior com data/caixa/velocidade; sem os 8 ícones, radar, caixa central, Activity Box) |
-| C2 | Caixa central: abas de resumo | Stations (oferta e receita From/To), Trains (classe Express/Normal/Slow/Halted, composição, velocímetro, barra de progresso), Players, Companies; duplo clique abre o detalhe | caixa central | `mainwin.win` + `bp*` | M:C401.call | ⏳ |
+| C1 | Janela principal | Mapa (A); radar (B) que recentra ao clicar; caixa central de listas (C) com 4 abas (Stations, Trains, Players, Companies); Activity Box (D) com vídeos e mensagens; 4 botões girar/zoom; bússola; 8 ícones de ação à esquerda; controle de velocidade | ao iniciar o jogo | `mainwin.win` (ids 166..194, 216..219, 255..269, 322..352) | M:C205a, M:C401.call | 🟡 (8 ícones, radar clicável, caixa central, Activity Box, girar/zoom; ferramentas de construção abrem painel provisório; sem bússola, vídeos nem caixa expandida) |
+| C2 | Caixa central: abas de resumo | Stations (oferta e receita From/To), Trains (classe Express/Normal/Slow/Halted, composição, velocímetro, barra de progresso), Players, Companies; duplo clique abre o detalhe | caixa central | `mainwin.win` + `bp*` | M:C401.call | 🟡 (4 abas com tabelas; sem classe/consist/velocímetro do trem; filtra todas as empresas) |
 | C3 | Informação de prédio (clique esquerdo) | Dono, lucratividade, preço de compra, produção/demanda; botão Buy no modelo industrial avançado, OK | clique em indústria | `eagled.win` (suposição) | M:C402 | 🟡 (painel de indústria somente leitura, sem Buy) |
 | C4 | Informação de prédio (clique direito) / terreno | Terreno, território, direitos de acesso, coordenadas X,Y | clique direito | sem `.win` identificado | M (cap. 4) | 🟡 (território por clique esquerdo, ver D) |
 | C5 | Cursor e rótulo sob o mouse | Tipo de indústria sob as abas da caixa central | passar o mouse | n/a | M (cap. 4) | ⏳ |
@@ -101,7 +101,7 @@ Limitação honesta: MobyGames e PCGamingWiki bloquearam o acesso automático e 
 
 | # | Tela | Propósito e conteúdo | Como se chega | .win | Referências | Status |
 |---|---|---|---|---|---|---|
-| G1 | Iniciar empresa | Diálogo "Start New Company": investimento do jogador e externo (barras), nome, logotipo, OK/Cancel | primeira ação (aba Companies "<<<Start a New Company>>>") | `eagled.win` (suposição: moldura com águia) | M:C207a, M:C420 | ⏳ |
+| G1 | Iniciar empresa | Diálogo "Start New Company": investimento do jogador e externo (barras), nome, logotipo, OK/Cancel | primeira ação (aba Companies "<<<Start a New Company>>>") | `eagled.win` (suposição: moldura com águia) | M:C207a, M:C420 | 🟡 (sliders `finance.md` 17.2; nome e logotipo fixos; criação de empresa (cmd 0x26) ainda não existe no rt2-sim) |
 | G2 | Livro da empresa: Overview | Chairman e gerente (salários), bônus do gerente, receita, lucro, caixa, dívida, milhas de trilho, velocidade média, goodwill; ações Resign as Chairman, View/Hire Managers, Change Name/Logo | aba Companies, Company Detail | `compndtl.win` (1601, 1602, 1619, 1620, 1671..1676) | M:C214, M:C724 | 🟡 (cabeçalho de finanças; sem chairman/gerente) |
 | G3 | Livro: Income (demonstração de resultados) | Receitas e despesas, vida inteira e últimos 3 anos | aba Income | `compndtl.win` | M (cap. 7) | ✅ (tela Finanças, tecla F) |
 | G4 | Livro: Balance (balanço) | Ativos, dívida, patrimônio | aba Balance | `compndtl.win` | M (cap. 7) | ✅ |
@@ -129,10 +129,10 @@ Limitação honesta: MobyGames e PCGamingWiki bloquearam o acesso automático e 
 
 | # | Tela | Propósito e conteúdo | Como se chega | .win | Referências | Status |
 |---|---|---|---|---|---|---|
-| I1 | Relatório anual (Year End) | Caderno com 4 abas: resumo do ano e status (TSC) | virada de ano | `yearend.win` (34702, 34712, 34740) | M (cap. 4: "News Frequency"), M:C214 (estilo) | ⏳ |
-| I2 | Jornal (Newspaper) | Manchete com texto: mudança econômica, eventos; botão Exit | evento do tipo Newspaper | `paper.win` (4201..4208) | M (cap. 10, Message Text) | ⏳ |
-| I3 | Evento em diálogo / com escolha | Texto e botões; no tipo Choice, duas escolhas com efeitos | evento | `eagled.win`, `helpd.win` (suposição) | M (cap. 10) | ⏳ |
-| I4 | Mensagens na Activity Box | Mensagens e vídeos do jogo na caixa D | durante o jogo | `mainwin.win` | M:C205a | ⏳ |
+| I1 | Relatório anual (Year End) | Caderno com 4 abas: resumo do ano e status (TSC) | virada de ano | `yearend.win` (34702, 34712, 34740) | M (cap. 4: "News Frequency"), M:C214 (estilo) | 🟡 (4 abas com dados do arquivo anual; abre na virada de ano) |
+| I2 | Jornal (Newspaper) | Manchete com texto: mudança econômica, eventos; botão Exit | evento do tipo Newspaper | `paper.win` (4201..4208) | M (cap. 10, Message Text) | 🟡 (moldura e texto prontos; sem fonte de mensagens: `show_message` do rt2-sim é stub) |
+| I3 | Evento em diálogo / com escolha | Texto e botões; no tipo Choice, duas escolhas com efeitos | evento | `eagled.win`, `helpd.win` (suposição) | M (cap. 10) | 🟡 (diálogo eagle pronto; sem escolha com efeitos nem fonte de mensagens) |
+| I4 | Mensagens na Activity Box | Mensagens e vídeos do jogo na caixa D | durante o jogo | `mainwin.win` | M:C205a | 🟡 (mensagens de texto; sem vídeos) |
 | I5 | Aviso de ajuda | Janela pequena com texto e 3 botões | ajuda/dicas | `helpd.win` | n/a | ⏳ |
 | I6 | Dicas de jogo / tutorial | Dicas ao iniciar partida; mini-tutorial que se reinicia no Control Panel | início de jogo | sem `.win` identificado | M (cap. 4, Game Play) | ⏳ |
 | I7 | Chamada de margem (margin call) | Aviso para vender ações | bolsa Expert | sem `.win` identificado | M (cap. 8) | ⏳ |
@@ -141,7 +141,7 @@ Limitação honesta: MobyGames e PCGamingWiki bloquearam o acesso automático e 
 
 | # | Tela | Propósito e conteúdo | Como se chega | .win | Referências | Status |
 |---|---|---|---|---|---|---|
-| J1 | Opções de arquivo (File Options) | Load, Save, Main Menu, Quit, Cancel | ícone 8 (disquete) | `fileopt.win` (501..507) | M:C419 | 🟡 (F5 salva, Esc abre menu, sem janela) |
+| J1 | Opções de arquivo (File Options) | Load, Save, Main Menu, Quit, Cancel | ícone 8 (disquete) | `fileopt.win` (501..507) | M:C419 | ✅ (Load, Save, New, Main Menu, Quit, Cancel; `state/dialogs.rs`) |
 | J2 | Confirmação de saída | "Tem certeza?" Sim/Não | Quit | `eagled.win` (suposição) | M (cap. 4) | ⏳ |
 | J3 | Control Panel: General | Velocidade do jogo, volume de som e música, profundidade de cor, uso de memória, tela cheia, linhas de grade, cursor colorido, vídeo de abertura | ícone 7 (controles) | `settings.win` (34900.., sliders) | M:C417new, M:C416 | 🟡 (velocidade/pausa no HUD; volumes em `config.toml`; sem tela) |
 | J4 | Control Panel: Graphics | Detalhe geral (5 níveis) e sliders por item (sombreamento, textura do solo, trilho, trens, prédios, árvores, sombras, animação, borda) | idem | `settings.win` | M:C418new | ⏳ |
@@ -181,7 +181,7 @@ Fora de escopo do clone de jogo único: K1 a K4, mas ficam registradas.
 
 Contagem das linhas da tabela acima:
 
-Total: 81 telas do original, 5 ✅, 16 🟡, 60 ⏳ (mais 2 extras do clone).
+Total: 81 telas do original, 9 ✅, 25 🟡, 47 ⏳ (mais 2 extras do clone).
 
 Telas do clone que não existem no original (extras): seletor de idioma, Cidades (lista), atalhos de escala/mudo/tela cheia. A tela "Indústrias" (lista) e "Território" são equivalentes parciais de C3/C4.
 

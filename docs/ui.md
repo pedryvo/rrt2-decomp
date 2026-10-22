@@ -68,6 +68,16 @@ Cormorant SC é o versalete serifado de aparência mais próxima de Cinzel entre
 
 A cadeia de fallback é a do cosmic-text: a família do estilo primeiro, depois qualquer fonte vendorizada que tenha o glifo (por exemplo, letras latinas dentro do texto chinês, ou "中文" no seletor de idioma enquanto o jogo está em inglês).
 
+## Janela principal e fluxo de um jogador (2026-10-22)
+
+Código: `rt2-game/src/state/mainwin.rs` (janela principal), `state/menus.rs` (menus), `state/dialogs.rs` (diálogos modais), com dados em `scenario_info.rs` (descrição, briefing e metas lidos das regras do `.MAP`/`.MP2`, `scenarios.md` 2.2 e 5), `setup.rs` (opções de New Scenario), `founding.rs` (sliders e capital inicial, `finance.md` 17), `radar.rs` (minimapa do terreno). Novos widgets em `rt2-ui`: `Kind::Toggle`, `Kind::Icon` (botão de dois sprites), `Kind::Cells` (grade de cores com `UiEvent::Pointer`), `Kind::Text` (linhas rolantes), `Fill::Frame`.
+
+- **Janela principal** (`mainwin.win`): 8 ícones à esquerda (arte de `mainbut.imb`), painel inferior com radar (clique/arraste move a câmera; o contorno do que a câmera mostra é desenhado nas células), caixa central com 4 abas (Stations, Trains, Players, Companies; duplo clique abre o detalhe) com data e caixa, Activity Box com mensagens e botão Briefing, girar/zoom acima dela, linha de status com a dica do widget (LNG 1772..1803) ou o que há sob o cursor. Velocidade/pausa ficam no canto superior direito (extra). Tamanhos derivam da altura lógica do canvas. Ferramentas de construção abrem um painel provisório marcado.
+- **Menus**: coluna de 6 botões, submenu Single Player, New Scenario (Game Setup, Map com lista/descrição/miniatura, Options), New Campaign (classic `#NN`, Second Century `#eNNcamp`; nomes e bônus da clássica em LNG 2765+4i), Load. Opções e bônus são guardados mas ainda não aplicados (sem gancho na simulação).
+- **Diálogos** (arte original `eagled`, `paper`, `yearend`, `winlose` decodificada com o decodificador de imagens de UI): briefing e metas, Start New Company, File Options, relatório anual (abre na virada de ano), jornal, mensagem, vitória/derrota.
+- **Lacuna do rt2-sim**: `show_message` é stub e `Scenario::game_over` não é legível de fora (`view.rs` não alcança o campo privado de `SimState`). Pontos de entrada prontos: `AppState::show_event` e `show_game_over`; faltam `World::take_messages()` e `World::game_over()`.
+- Screenshots: `rrt2 --screenshot out.png --screen menu --page main|single|new-scenario|map|options|campaign|load|scores|credits`, `--screen game`, `--screen dialog --page goals|founding|year-end[-1..3]|news|dialog|win-gold|win-silver|win-bronze|lose|file|tool-0..7 [arquivo]`.
+
 ## Skin
 
 Arte original lida da instalação em tempo de execução (nada é versionado), decodificada por `rt2-render::LoadedBank`, ampliada com Scale2x (como os sprites do mapa) e empacotada num atlas único:
@@ -158,3 +168,5 @@ Lacunas (marcadas TODO na tela): lucro do trem e estado da programação; popula
 - A altura da fumaça foi tratada como pixels de sprite; a spec não dá a unidade.
 - Trens com vagões "empilhados" (Example, curva da estação, verificado em 2026-10-22): não é bug de desenho. A direção de mapa diagonal (d3, d7) é vertical na tela (`sprite-catalog.md` 8), os vagões espaçam 24 unidades ao longo dela, e os trens 1 e 10 ocupam as duas vias (lado 1/2, ±0,27 tile) de uma via dupla; a posição lida do save (`tile + sub/64`, sub pode passar de 63 em curva) bate com `trains.md` 10.1/10.2.
 - **Tela de detalhe da estação** (screenshot do usuário, 2026-10-22): vista pré-renderizada da estação com os prédios de apoio comprados (restaurante, rotunda, caixa d'água...) compostos por camadas sobre o prédio principal (tamanho e estilo), painel de oferta e demanda e botão Buy para os prédios de apoio. Hoje a nossa tela de estação é só uma lista: reproduzir a composição a partir dos bancos de sprite de estação (`sprite-catalog.md`, 480 bancos `sta*`) e da tabela de melhorias `0x5500c8`.
+- Start New Company: com investimento do jogador de $150.000, "You buy" mostra 3000 ações por $157.500 (preço $52,50). Conferir contra `finance.md` 17 e `company_init` se o original arredonda as ações para cima ou se a fórmula está errada.
+- Lista central da janela principal: cabeçalhos de coluna truncados ("IMPROVEMEN", "CARGO WAITI") em 1080p.
