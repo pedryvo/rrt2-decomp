@@ -131,3 +131,12 @@ Medido com `rt2-savediff` sobre saves gerados por `advance_save.py` (semente 123
 - **Mesmo mundo, sandbox diferente** (Example 7 dias, `rt2sandbox` e `rt2sandbox3`): 0 diferenças depois das máscaras (6951 campos mascarados, 9 trens x 8 + 6 + regras + checksum + pessoa).
 
 Implicações para o tick do mundo: a cada dia só `state.game_time_minutes`/`date` são certos; o resto (estruturas, `pool_78`/`pool_70`/`pool_7c`, `objects`, trens, estações) muda por regras ainda não especificadas; os campos mensais/anuais do estado e do cabeçalho só mudam ao cruzar o mês/ano.
+
+### 5.7 `scripts/fidelity.py`: placar de fidelidade automatizado
+
+`python3 -I scripts/fidelity.py [--refresh] [--only NOME] [--no-build] [--no-write]` roda todos os cenários de `scripts/fidelity-scenarios.toml` (save relativo à instalação, lista de dias, semente) e reescreve a tabela de `docs/fidelity-status.md` entre `<!-- fidelity:begin -->` e `<!-- fidelity:end -->` (o resto do documento é à mão).
+
+- Por caso: `base` = original com 0 dias (conversão para 0x2348), `orig_N` = original com N dias (`advance_save.py`, passos de 320 min), `clone` = `rt2-advance base N semente`, e `rt2-savediff --json orig_N clone` dá iguais / N campos / três maiores grupos.
+- Saídas do original ficam em cache (`~/.cache/rrt2/fidelity/<sha256 do RT2_PLAT.EXE.orig>/`, chave: cenário + sha do save + semente + dias; sandbox do Wine em `~/.cache/rrt2/fidelity/wine/`), então o Wine (~12 s por run, ~1 min no primeiro por causa do aquecimento do sandbox) só roda uma vez; `--refresh` refaz. Antes de cada run espera (até `--wait`, 900 s) não haver `winedbg` ativo, porque `advance_save.py` mata todos os `winedbg` da máquina.
+- O estado anterior (casos IGUAIS) fica num comentário `<!-- fidelity:state ... -->` dentro dos marcadores; o script sai com 1 se um caso que estava igual deixar de ser (e mantém a linha de base igual até ele voltar).
+- Só `.GAM` e `.MP2` (o `.MP2` é lido copiado como `.GAM`); os `maps/#NN*.MAP` precisam de semântica de New Game que o clone não tem e ficam de fora.

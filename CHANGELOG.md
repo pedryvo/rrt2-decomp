@@ -106,3 +106,4 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Fix: o viewer usa os ids de terreno reais (fim das manchas azuladas na grama), com transicoes de solo, praias animadas, rios, estradas, estilo de estacao do registro e sombras de arvores
 - Docs: map-gam.md 3.2 (id de terreno, classes, overlays), sprite-catalog.md 4.1 (tabela id -> registro), terrain-track.md (tabela de classes resolvida)
 - Feature: rrt2 plays menu/game music with the original fades and UI click sounds; [audio] master/music/sfx/mute in config.toml, ctrl+M mutes, ctrl+N skips the track; the game runs silently without a sound device
+- Improved: scripts/fidelity.py automates the level-2 fidelity scoreboard (cached original runs, rt2-savediff comparison, docs/fidelity-status.md rewrite, regression exit code)
