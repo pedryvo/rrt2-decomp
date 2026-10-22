@@ -3,11 +3,11 @@
 # Ver docs/re-workflow.md.
 #
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
-# Classificadas (categoria != unknown): 705 (23.9%)
-# Por categoria: lib=258, platform=100, render=9, audio=74, ui=233, sim=31, unknown=2240
-# Por estado:   unknown=2895, named=22, spec=17, verified=11
-# Entradas manuais: 34
-# sim spec coverage: 71.0% (22 de 31 funcoes sim em spec/verified)
+# Classificadas (categoria != unknown): 759 (25.8%)
+# Por categoria: lib=258, platform=100, render=9, audio=74, ui=233, sim=85, unknown=2186
+# Por estado:   unknown=2859, named=22, spec=47, verified=17
+# Entradas manuais: 70
+# sim spec coverage: 68.2% (58 de 85 funcoes sim em spec/verified)
 
 [[function]]
 addr = "0x401005"
@@ -768,9 +768,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x4012ee"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x471880"
 
 [[function]]
 addr = "0x4012f3"
@@ -1132,9 +1132,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x401465"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x40a610"
 
 [[function]]
 addr = "0x40146a"
@@ -1153,9 +1153,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x401474"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4bebf0"
 
 [[function]]
 addr = "0x40147e"
@@ -1230,9 +1230,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x4014b0"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x40aa20"
 
 [[function]]
 addr = "0x4014ba"
@@ -1650,9 +1650,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x401686"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4bf260"
 
 [[function]]
 addr = "0x40168b"
@@ -2077,9 +2077,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x401866"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4d2360"
 
 [[function]]
 addr = "0x401870"
@@ -2350,9 +2350,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x401979"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x40a8c0"
 
 [[function]]
 addr = "0x40197e"
@@ -2469,9 +2469,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x401a05"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x468470"
 
 [[function]]
 addr = "0x401a14"
@@ -2728,9 +2728,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x401b18"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x40b1b0"
 
 [[function]]
 addr = "0x401b1d"
@@ -2784,9 +2784,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x401b54"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x40a770"
 
 [[function]]
 addr = "0x401b59"
@@ -2931,9 +2931,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x401be5"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x40b250"
 
 [[function]]
 addr = "0x401bea"
@@ -3225,9 +3225,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x401d0c"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4d4200"
 
 [[function]]
 addr = "0x401d11"
@@ -3911,9 +3911,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x401fd7"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4d2c10"
 
 [[function]]
 addr = "0x401fdc"
@@ -4562,9 +4562,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x40226b"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x466850"
 
 [[function]]
 addr = "0x402270"
@@ -5626,9 +5626,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x40268a"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4beba0"
 
 [[function]]
 addr = "0x40268f"
@@ -6333,9 +6333,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x402987"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x466870"
 
 [[function]]
 addr = "0x40298c"
@@ -6893,9 +6893,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x402bdf"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4bf760"
 
 [[function]]
 addr = "0x402be4"
@@ -7565,9 +7565,9 @@ why = "thunk->0x49b700"
 [[function]]
 addr = "0x402e5f"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x466880"
 
 [[function]]
 addr = "0x402e64"
@@ -8008,9 +8008,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x40a610"
 size = 257
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "cargo.md 7.3"
+manual = true
 
 [[function]]
 addr = "0x40a720"
@@ -8022,23 +8023,26 @@ why = "no-evidence"
 [[function]]
 addr = "0x40a770"
 size = 323
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "cargo.md 7.3"
+manual = true
 
 [[function]]
 addr = "0x40a8c0"
 size = 343
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "oracle: cargo.md 7.3"
+manual = true
 
 [[function]]
 addr = "0x40aa20"
 size = 815
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "cargo.md 7.3"
+manual = true
 
 [[function]]
 addr = "0x40ad50"
@@ -8057,16 +8061,18 @@ why = "no-evidence"
 [[function]]
 addr = "0x40b1b0"
 size = 76
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "cargo.md 7.3"
+manual = true
 
 [[function]]
 addr = "0x40b250"
 size = 503
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "cargo.md 7.4"
+manual = true
 
 [[function]]
 addr = "0x40b450"
@@ -8428,16 +8434,18 @@ why = "no-evidence"
 [[function]]
 addr = "0x4144e0"
 size = 38
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "cargo.md 6"
+manual = true
 
 [[function]]
 addr = "0x414510"
 size = 108
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "cargo.md 6"
+manual = true
 
 [[function]]
 addr = "0x414580"
@@ -9737,9 +9745,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x439970"
 size = 84
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "cargo.md 6"
+manual = true
 
 [[function]]
 addr = "0x4399d0"
@@ -9926,9 +9935,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x43bde0"
 size = 408
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "cargo.md 6; statistics only"
+manual = true
 
 [[function]]
 addr = "0x43bf80"
@@ -9947,9 +9957,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x43c030"
 size = 31
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "oracle: cargo.md 4.4 (via cargo_delivery_revenue)"
+manual = true
 
 [[function]]
 addr = "0x43c050"
@@ -11147,9 +11158,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4667e0"
 size = 13
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "cargo.md 2; list accessor"
+manual = true
 
 [[function]]
 addr = "0x4667f0"
@@ -11168,37 +11180,42 @@ why = "no-evidence"
 [[function]]
 addr = "0x466810"
 size = 13
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "cargo.md 2; list accessor"
+manual = true
 
 [[function]]
 addr = "0x466820"
 size = 13
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "cargo.md 2; list accessor"
+manual = true
 
 [[function]]
 addr = "0x466830"
 size = 13
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "cargo.md 2; list accessor"
+manual = true
 
 [[function]]
 addr = "0x466840"
 size = 13
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "cargo.md 2; list accessor"
+manual = true
 
 [[function]]
 addr = "0x466850"
 size = 13
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "cargo.md 2; list accessor"
+manual = true
 
 [[function]]
 addr = "0x466860"
@@ -11210,30 +11227,34 @@ why = "no-evidence"
 [[function]]
 addr = "0x466870"
 size = 13
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "cargo.md 2; list accessor"
+manual = true
 
 [[function]]
 addr = "0x466880"
 size = 13
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "cargo.md 2; list accessor"
+manual = true
 
 [[function]]
 addr = "0x466890"
 size = 13
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "cargo.md 2; list accessor"
+manual = true
 
 [[function]]
 addr = "0x4668a0"
 size = 13
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "cargo.md 2; list accessor"
+manual = true
 
 [[function]]
 addr = "0x4668f0"
@@ -11357,9 +11378,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x466a60"
 size = 159
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "cargo.md 7.6"
+manual = true
 
 [[function]]
 addr = "0x466b00"
@@ -11553,9 +11575,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x468470"
 size = 67
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "cargo.md 7.3"
+manual = true
 
 [[function]]
 addr = "0x4684c0"
@@ -11707,9 +11730,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x46a010"
 size = 853
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "cargo.md 9"
+manual = true
 
 [[function]]
 addr = "0x46a370"
@@ -11911,9 +11935,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x46b480"
 size = 327
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "oracle: cargo.md 5"
+manual = true
 
 [[function]]
 addr = "0x46b5d0"
@@ -12152,9 +12177,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x471880"
 size = 347
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "oracle: cargo.md 7.2"
+manual = true
 
 [[function]]
 addr = "0x4719e0"
@@ -14458,16 +14484,18 @@ why = "no-evidence"
 [[function]]
 addr = "0x4beba0"
 size = 65
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "cargo.md 7.6"
+manual = true
 
 [[function]]
 addr = "0x4bebf0"
 size = 1190
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "cargo.md 8"
+manual = true
 
 [[function]]
 addr = "0x4bf0a0"
@@ -14521,16 +14549,18 @@ why = "no-evidence"
 [[function]]
 addr = "0x4bf260"
 size = 485
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "cargo.md 7.6"
+manual = true
 
 [[function]]
 addr = "0x4bf450"
 size = 136
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "cargo.md 7.6"
+manual = true
 
 [[function]]
 addr = "0x4bf4e0"
@@ -14542,9 +14572,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4bf760"
 size = 2604
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "oracle: cargo.md 4 (commit=1 path); station bonus part spec"
+manual = true
 
 [[function]]
 addr = "0x4c0190"
@@ -15214,9 +15245,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4d2360"
 size = 351
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "cargo.md 6.4"
+manual = true
 
 [[function]]
 addr = "0x4d2590"
@@ -15249,9 +15281,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4d2c10"
 size = 2533
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "cargo.md 6"
+manual = true
 
 [[function]]
 addr = "0x4d3600"
@@ -15340,9 +15373,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4d4200"
 size = 272
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "cargo.md 6"
+manual = true
 
 [[function]]
 addr = "0x4d4390"
@@ -16397,9 +16431,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4f0ca0"
 size = 35
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "oracle: cargo.md 4.1 (via cargo_delivery_revenue)"
+manual = true
 
 [[function]]
 addr = "0x4f0cd0"
@@ -16574,9 +16609,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4f18b0"
 size = 25
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "cargo.md 2; list accessor"
+manual = true
 
 [[function]]
 addr = "0x4f18d0"

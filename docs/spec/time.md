@@ -147,16 +147,16 @@ Pontos:
 Só rede: `net_time_sync` (`0x49e0b0`, só no dia 1 ou se `0x57b400+0x2c != 0`), re-semeadura do RNG, `trains_advance` (`0x4a58f0`, 1440 min). Em jogo local não há trabalho próprio por dia.
 
 ### 7.3 Por semana (dias 7, 14, 21, 28) `sim_week_end` (`0x4a5270`)
-Para cada registro da lista `0x574c74` (0x9f bytes) com o byte `+7 != 0`: `0x40a610(e,0)` e `0x40aa20(e,0)`; para cada registro da lista `0x574c60` (0x4c7 bytes, empresas pelo uso de campos `f32` e dos relatórios): `0x4bebf0`. O mesmo passo roda de novo dentro de `sim_year_end`.
+Para cada registro da lista `0x574c74` (0x9f bytes, indústrias e casas) com o byte `+7 != 0`: `0x40a610(e,0)` (recontagem das pilhas) e `0x40aa20(e,0)` (produção periódica, `cargo.md` 7.3); para cada registro da lista `0x574c60` (0x4c7 bytes, estações): `0x4bebf0`. O mesmo passo roda de novo dentro de `sim_year_end`.
 
 ### 7.4 Por mês `sim_month_end` (`0x4a5320`), dia 28 às 23:59, com `mes` e `ano` ainda os do mês que termina
 Em ordem:
 1. Se `0x5794f0 != 0`: zera e chama `0x46a370`.
 2. Se `net_min_peer_version() > 9004` (em jogo local sempre, devolve 9012): dispara gatilhos de evento tipo **4**; depois sempre tipo **3** (`event_fire_trigger`, `0x457fe0`: percorre a lista de eventos `0x574c9c` e dispara os de gatilho igual; os valores 0..3 coincidem com "início de ano / fim de ano / início de mês / fim de mês" por onde são chamados: 3 aqui no início do passo mensal, 2 no fim, 1 e 0 dentro do passo anual).
-3. Meses 2 e 8: `0x46a010` (usa `rng_range(-5,5)` e `rng_range(0,10)` e grava em `0x570725` e `0x57071b`; periodicidade de 6 meses, candidata a estado econômico, ver "Em aberto").
+3. Meses 2 e 8: `0x46a010` = `economy_state_step`, passo semestral do **estado econômico** (`0x570717`, 0 a 4; passeio aleatório com momento, `cargo.md` seção 9).
 4. Se `mes <= 10` e `rng_range(0, 10000) < ((50 - |ano - 1860|) * (54300 / L)) / 70` com `L = 0x55e7a4` (largura do mapa em tiles): chama `0x431660` (escolhe um item aleatório da lista `0x574c5c`, registro de 180 bytes, e emite mensagem). A probabilidade é nula para anos a mais de 50 de 1860 (`0x744`).
 5. Se `0x570227 == 0`: remove entradas velhas da lista `0x574c7c` (bitmap de ocupação; registros com `u16 +3 == 0` e idade `T - u32(+7) > 0x34bbf` = 216 000 min = 150 dias, com limiar menor pela metade ou um quarto conforme campos do tipo; ver "Em aberto").
-6. `0x436d60`; depois para cada item das listas `0x574c6c` (registro `0x4e86`, `0x4399d0`), `0x574c68` (`0x576` bytes, `0x4a7590`), `0x574c64` (trens, `0x4d4390`) e `0x574c60` (empresas): 44 floats a partir de `+0x271` são multiplicados por **0,94** e depois `0x4bebf0(e)`. `0x46bb10`.
+6. `0x436d60`; depois para cada item das listas `0x574c6c` (empresas, registro `0x4e86`, `0x4399d0`), `0x574c68` (pessoas, `0x576` bytes, `0x4a7590`), `0x574c64` (trens, `0x4d4390`) e `0x574c60` (**estações**, `0x4c7` bytes): os 44 contadores de entrega f32 a partir de `+0x271` são multiplicados por **0,94** e depois `0x4bebf0(e)` recalcula oferta, demanda e níveis de preço (`cargo.md` seção 8). `0x46bb10`.
 7. Relatório periódico (`report_due_flag` `0x5665d4 = 1`), conforme a opção de frequência `F = opcoes[+0x23c]` (`0x4b187c` a grava):
    - `F == 1`: meses 3, 6, 9 e 12 de todo ano;
    - `F == 2`: dezembro de anos ímpares; `F == 3`: dezembro de anos pares; `F == 4`: dezembro de anos múltiplos de 5;
@@ -170,7 +170,7 @@ Roda 23:59 de 28/dez após todo o passo mensal: loops sobre o conjunto de jogado
 - Manual: velocidade de jogo recomendada "3" a "4", teclas +/- e PAUSE. Código: 11 níveis (0..10) com multiplicadores 0, 0.3, 0.6, 1, 1.7, 2.1, 3, 5, 8, 12, 18; padrão 3.
 - Manual: período 1804 a 2020. O código de calendário não tem limite de ano (u16 absoluto); os limites não aparecem em `0x4a49xx..0x4a5xxx`.
 - Manual: dividendos trimestrais (março, junho, setembro, dezembro). Não localizado onde o código paga dividendos; achamos apenas que os pulsos de relatório com `F == 1` coincidem com esses meses (7.4, item 7).
-- Manual (SG): estado econômico muda a cada 6 a 18 meses. Código: existe um passo de 6 meses (meses 2 e 8, `0x46a010`); a duração variável não foi confirmada.
+- Manual (SG): estado econômico muda a cada 6 a 18 meses. Código: passo de 6 meses (meses 2 e 8, `0x46a010`) com mudança de no máximo um nível, probabilidade `|momento|/11`; a duração resulta desse sorteio (`cargo.md` seção 9).
 - Manual: "1 ano de jogo percorre o que 1 dia real" é uma metáfora: no multiplicador 1.0 um ano de jogo dura 151,2 s reais.
 
 ## 9. Fidelidade e implicações para o clone
@@ -181,7 +181,7 @@ Roda 23:59 de 28/dez após todo o passo mensal: loops sobre o conjunto de jogado
 - Estado da FPU no original (precisão do x87): o oráculo roda a 24 bits por padrão do Unicorn (CW 0), o teste fixa 53 bits (`0x27f`); falta confirmar com `fldcw`/DirectDraw no processo real (Wine + gdb).
 - Origem dos limites de ano (início e fim do jogo) e valor de `game_time_minutes` ao carregar um `.GAM` (resolvido: o arquivo guarda minutos, data e hora no bloco de estado em 0x8865/0x8869/0x886D, ver docs/formats/map-gam.md 5.1) (`0x46b650` é chamado de `0x453970`, `0x472980`, `0x473590`, `0x474280`, `0x479a30`).
 - Identidade das listas de entidades (`0x574c5c`, `0x574c60`, `0x574c64`, `0x574c68`, `0x574c6c`, `0x574c74`, `0x574c78`, `0x574c7c`, `0x574c84`, `0x574ca8`): tamanhos dos registros vêm dos construtores em `0x472bb0..0x472f37`; os papéis (empresa, trem, estação, cidade, indústria) serão fixados nas specs de terreno, trens e carga.
-- `0x46a010` (meses 2 e 8) e `0x431660` (sorteio mensal): papel exato; `0x436d60`, `0x4399d0`, `0x4a7590`, `0x4d4390`, `0x4bebf0`, `0x46bb10`, `0x4283e0`: conteúdo dos passos por entidade.
+- `0x431660` (sorteio mensal): papel exato; `0x436d60`, `0x4399d0`, `0x4a7590`, `0x4d4390`, `0x46bb10`, `0x4283e0`: conteúdo dos passos por entidade (`0x46a010` e `0x4bebf0` estão em `cargo.md`).
 - Condição da limpeza de `0x574c7c` no passo mensal (7.4, item 5).
 - Valores de `0x566e14` (modo de jogo: 1 = partida em andamento; 3, 0xb e 0xc têm tratamento próprio) e de `0x574bc8+0x50`/`0x57fee4` (pausa por UI).
 - Ids de string do painel de velocidade (`0x553788`) e o mapeamento tecla -> comando.

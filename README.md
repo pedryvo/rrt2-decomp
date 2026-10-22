@@ -44,7 +44,7 @@ _The 1998 classic you know, from the same isometric viewpoint,<br>now native at 
 | UI layouts (`.imb` `.win`) | 🔍 | Identified, not decoded |
 | Audio (`.raw` `.wav`) | 🔍 | Most look like 16-bit mono PCM |
 | Maps and saves (`.MAP` `.GAM`) | 🟡 | Terrain grid, elevation, water and territories decoded for all 31 maps · [spec](docs/formats/map-gam.md) |
-| Simulation specs (trains, cargo, economy…) | 🟡 | Time/calendar/main loop and the RNGs are specified and verified against the original · [time](docs/spec/time.md) · [rng](docs/spec/rng.md) |
+| Simulation specs (trains, cargo, economy…) | 🟡 | Time/calendar/main loop, the RNGs and the cargo economy (cargo table, delivery revenue, production, demand, economic state) are specified and mostly verified against the original · [time](docs/spec/time.md) · [rng](docs/spec/rng.md) · [cargo](docs/spec/cargo.md) |
 | Differential test harness (Unicorn) | ✅ | Runs original functions in an emulator for bit-exact comparison · [docs](docs/oracle.md) |
 | Rendering engine (wgpu) | 🟡 | Isometric terrain viewer: `cargo run --release -p rt2-viewer -- <map>` |
 | Playable simulation | ⏳ | |
@@ -53,7 +53,7 @@ _The 1998 classic you know, from the same isometric viewpoint,<br>now native at 
 
 <sub>✅ done · 🟡 partial · 🔍 under analysis · ⏳ planned</sub>
 
-**Reverse engineering:** 2945 functions in the executable (1837 excluding linker thunks) · 73 symbols in [`re/symbols.toml`](re/symbols.toml) · 705 classified (24%), 2240 still unclassified · 28 functions specified (22 of them simulation), 11 verified bit-exact against the original ([`re/coverage.toml`](re/coverage.toml)). A simulation coverage percentage will be published once classification is complete.
+**Reverse engineering:** 2945 functions in the executable (1837 excluding linker thunks) · 148 symbols in [`re/symbols.toml`](re/symbols.toml) · 759 classified (26%), 2186 still unclassified · 64 functions specified (58 of them simulation), 17 verified bit-exact against the original ([`re/coverage.toml`](re/coverage.toml)). A simulation coverage percentage will be published once classification is complete.
 
 ## 🧭 Roadmap
 

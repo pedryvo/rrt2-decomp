@@ -512,3 +512,528 @@ name = "clock_ms_base"
 kind = "global"
 comment = "GetTickCount da primeira chamada de clock_ms"
 spec = "docs/spec/time.md"
+
+[[symbol]]
+addr = "0x46b480"
+name = "effect_multiplier"
+kind = "function"
+comment = "fastcall ECX=effect id, EDX=company id, stack [person, territory], ret 8; ST0 = (1+g/100)*(1+c/100)*(1+p/100)*(1+t/100) from i16 level tables (floor -99), min 0.01; [V]"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x4bf760"
+name = "cargo_delivery_revenue"
+kind = "function"
+comment = "thiscall ECX=destination station (lot, &revenue, &flag, &industry_id, commit); revenue of one delivered lot; [V] for the commit=1 path"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x471880"
+name = "industry_rebuild_inputs"
+kind = "function"
+comment = "fastcall ECX=industry type; rebuilds inputs[8] (+0x80) and demand weights[8] (+0x88) of the type record for the current year, both era sets; [V]"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x40a8c0"
+name = "industry_production_rate"
+kind = "function"
+comment = "thiscall ECX=industry (slot); lots per year of one output slot (rate, supply bonus, basic-model free production); ST0; [V]"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x40aa20"
+name = "industry_production_tick"
+kind = "function"
+comment = "thiscall ECX=industry (refresh); weekly: for each output slot spawns the lots that are due (period = 483840/(rate*effects*economy)); [S]"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x40a770"
+name = "industry_spawn_lot"
+kind = "function"
+comment = "thiscall ECX=industry (cargo); creates a cargo lot on the industry pile unless 50 are already waiting; [S]"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x40a610"
+name = "industry_recount_piles"
+kind = "function"
+comment = "thiscall ECX=industry (refresh); recounts unclaimed lots per output slot; [S]"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x40b250"
+name = "industry_receive_cargo"
+kind = "function"
+comment = "thiscall ECX=industry (cargo); stock+1, then converts inputs to output lots for every mode-0 slot with enough stock; [S]"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x40b1b0"
+name = "industry_output_slot_of_cargo"
+kind = "function"
+comment = "thiscall ECX=industry (cargo) -> output slot index 0..3 or -1; [S]"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x468470"
+name = "industry_type_output_slot"
+kind = "function"
+comment = "fastcall (cargo, industry type) -> output slot index or -1; [S]"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x4bebf0"
+name = "station_recompute_supply_demand"
+kind = "function"
+comment = "fastcall ECX=station; rebuilds waiting counts (+0x61), supply flags (+0x169), demand flags (+0x195), demand weights (+0x1c1) and price levels (+0x321); [S]"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x4bf260"
+name = "station_load_lot"
+kind = "function"
+comment = "thiscall ECX=station (cargo, car id); picks the oldest matching lot from nearby industry piles and the station list, stamps origin station, car and load time; [S]"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x4beba0"
+name = "station_store_lot"
+kind = "function"
+comment = "thiscall ECX=station (lot id); puts a dropped lot on the station list (+0x4be); [S]"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x4bf450"
+name = "lot_return_or_free"
+kind = "function"
+comment = "fastcall (lot id); lot delivered to its own origin: back to the industry pile if younger than half the shelf life, else freed; [S]"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x466a60"
+name = "lot_free"
+kind = "function"
+comment = "fastcall (lot id); unlinks a lot from industry pile, station list and car, then releases the record; [S]"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x414510"
+name = "car_deliver_lot"
+kind = "function"
+comment = "thiscall ECX=car (station id, &revenue, &flag, &industry, commit); revenue of the lot on the car, 0 outputs if empty; [S]"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x4144e0"
+name = "car_unload_to_station"
+kind = "function"
+comment = "thiscall ECX=car (station id); transfers the car lot to the station list; [S]"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x4d2c10"
+name = "train_arrival_settlement"
+kind = "function"
+comment = "fastcall ECX=train; unloads/loads at a stop: revenue per car, $2000 station fees, track-owner shares, ledger postings; [S]"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x4d2360"
+name = "train_estimate_revenue"
+kind = "function"
+comment = "thiscall ECX=train (force); cached estimate of the revenue at the next stop (commit=1), refreshed after 20 days; [S]"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x4d4200"
+name = "train_ledger_add"
+kind = "function"
+comment = "thiscall ECX=train (kind, amount); per-train income counters and company ledger (0x65 passengers, 0x66/0x67 freight); [S]"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x439970"
+name = "company_ledger_credit"
+kind = "function"
+comment = "thiscall ECX=company (category, f64 amount); adds to the category totals and the cash total; [S]"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x43bde0"
+name = "company_delivery_stats"
+kind = "function"
+comment = "thiscall ECX=company; statistics of one arrival (cars, revenue, per cargo counts); [S]"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x43c030"
+name = "company_is_human"
+kind = "function"
+comment = "fastcall ECX=company -> 1 when the company has a person (+0x23) whose +0x122 flag is set; [V]"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x46a010"
+name = "economy_state_step"
+kind = "function"
+comment = "called in months 2 and 8 by sim_month_end: random walk of the economic state 0..4; [S]"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x4f0ca0"
+name = "distance_2d"
+kind = "function"
+comment = "stdcall (x1, y1, x2, y2 as f32), ret 0x10; ST0 = sqrt(dx^2+dy^2); [V]"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x4f18b0"
+name = "list_record"
+kind = "function"
+comment = "thiscall ECX=list (id) -> list+0x28 + id*list[+8]; id 0 -> null"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x4667e0"
+name = "lot_ptr"
+kind = "function"
+comment = "lot record by id (list 0x574c7c)"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x466840"
+name = "car_ptr"
+kind = "function"
+comment = "car record by id (list 0x574c70)"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x466850"
+name = "train_ptr"
+kind = "function"
+comment = "train record by id (list 0x574c64)"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x466870"
+name = "station_ptr"
+kind = "function"
+comment = "station record by id (list 0x574c60)"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x466880"
+name = "industry_ptr"
+kind = "function"
+comment = "industry/building record by id (list 0x574c74)"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x466890"
+name = "person_ptr"
+kind = "function"
+comment = "person record by id (list 0x574c68)"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x4668a0"
+name = "company_ptr"
+kind = "function"
+comment = "company record by id (list 0x574c6c)"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x466810"
+name = "link_ptr"
+kind = "function"
+comment = "station/building catchment link record by id (list 0x574c58)"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x466820"
+name = "town_ptr"
+kind = "function"
+comment = "town record by id (list 0x574c5c)"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x466830"
+name = "territory_ptr"
+kind = "function"
+comment = "territory record by id (list 0x574ca8)"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x5404b1"
+name = "cargo_table"
+kind = "table"
+comment = "46 records of 0x21 bytes: price i32 (x1.4 at start-up), days i32, wait scale i32 (+8 = days*1440 at start-up), ship f32 (+0xc), first year u16 (+0x10), towns cutoff i16 (+0x14), cities cutoff i16 (+0x16), demand per house f32 (+0x18), storage bit i32 (+0x1c)"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x541ae0"
+name = "industry_type_table"
+kind = "table"
+comment = "[2 era sets][53 types][0x90]: 4 output slots of 0x20 bytes (years, mode, output, rate, inputs) then inputs[8] (+0x80) and weights[8] (+0x88)"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x5704ac"
+name = "industry_set"
+kind = "global"
+comment = "byte 0 selects the era set of industry_type_table (0 standard, 1 expansion cargos)"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x570717"
+name = "economy_state"
+kind = "global"
+comment = "0 depression, 1 recession, 2 normal, 3 prosperity, 4 boom"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x57071b"
+name = "economy_momentum"
+kind = "global"
+comment = "signed momentum -5..5 of the economic state random walk"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x570725"
+name = "economy_drift"
+kind = "global"
+comment = "accumulator of (state-2) used by the momentum update"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x57071f"
+name = "economy_last_step"
+kind = "global"
+comment = "year u16 + month u8 of the last economy_state_step"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x5706d1"
+name = "prime_rate"
+kind = "global"
+comment = "f32 = 0.09 - state*0.01, set when the economic state changes"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x573d78"
+name = "industrial_model"
+kind = "global"
+comment = "byte 0: industrial model 0 basic, 1 advanced, 2 expert (= option byte 0x574872 & 7)"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x573d76"
+name = "demand_levels_on"
+kind = "global"
+comment = "1 when industrial_model >= 2 (price levels apply to demanded cargo)"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x573d77"
+name = "basic_model"
+kind = "global"
+comment = "1 when industrial_model == 0 (industries produce without inputs)"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x574874"
+name = "revenue_sliders"
+kind = "global"
+comment = "u8 human revenue slider 0..10, u8 computer revenue slider 0..10 (default 5, 5)"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x5707c6"
+name = "effect_global"
+kind = "table"
+comment = "i16 per effect id: global event level in percent (multiplier 1+level/100)"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x5705d5"
+name = "cargo_enabled"
+kind = "table"
+comment = "byte per cargo: cargo exists in this scenario"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x570227"
+name = "sandbox_mode"
+kind = "global"
+comment = "sandbox game: no price levels, industries produce through a separate path"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x57070f"
+name = "deliveries_total"
+kind = "global"
+comment = "count of delivered lots (commit path of cargo_delivery_revenue)"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x574c10"
+name = "cheat_overtime"
+kind = "global"
+comment = "cheat 'Overtime': production period halved"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x574c14"
+name = "cheat_viagra"
+kind = "global"
+comment = "cheat 'Viagra': town growth doubled"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x550494"
+name = "tbl_econ_production"
+kind = "table"
+comment = "f32[5] 0.84 0.92 1.0 1.08 1.16, production multiplier per economic state"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x5504a8"
+name = "tbl_econ_track_cost"
+kind = "table"
+comment = "f32[5] 0.8 .. 1.2 per economic state (track building cost, see 0x463520)"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x5504bc"
+name = "tbl_econ_revenue"
+kind = "table"
+comment = "f32[5] 0.8 0.9 1.0 1.1 1.2, cargo revenue multiplier per economic state"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x5504d0"
+name = "tbl_econ_valuation"
+kind = "table"
+comment = "f32[5] 0.8 .. 1.2 per economic state (company valuation, see 0x43aea0)"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x5504e4"
+name = "tbl_econ_town_a"
+kind = "table"
+comment = "f32[5] 0.9 .. 1.1 per economic state (town growth, see 0x430540)"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x5504f8"
+name = "tbl_econ_town_b"
+kind = "table"
+comment = "f32[5] 0.96 .. 1.04 per economic state (town growth, see 0x430540)"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x55050c"
+name = "tbl_undemanded_price"
+kind = "table"
+comment = "f32[2][3] price factor for cargo the station does not demand: computer 0.8 0.55 0.4, human 0.8 0.5 0.2 (by industrial model)"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x550524"
+name = "tbl_demand_level_price"
+kind = "table"
+comment = "f32[10] 0.5 .. 1.4: price factor per station demand level 0..9 (expert model)"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x55041c"
+name = "tbl_slider_computer"
+kind = "table"
+comment = "f32[11] 1.55 1.6 1.65 1.7 1.75 1.8 2.0 2.2 2.4 2.6 2.8: computer revenue slider"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x550448"
+name = "tbl_slider_human"
+kind = "table"
+comment = "f32[11] 0.75 0.8 .. 1.25: human revenue slider"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x5538dc"
+name = "economy_news_ids"
+kind = "table"
+comment = "u16 pairs (headline, text) LNG ids of the economic state change news, 5 for each direction"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x574c7c"
+name = "list_lots"
+kind = "global"
+comment = "list of cargo lots (units of cargo)"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x574c70"
+name = "list_cars"
+kind = "global"
+comment = "list of cars"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x574c64"
+name = "list_trains"
+kind = "global"
+comment = "list of trains (0x14d bytes)"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x574c60"
+name = "list_stations"
+kind = "global"
+comment = "list of stations (0x4c7 bytes)"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x574c6c"
+name = "list_companies"
+kind = "global"
+comment = "list of companies (0x4e86 bytes)"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x574c68"
+name = "list_persons"
+kind = "global"
+comment = "list of persons/managers (0x576 bytes)"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x574c74"
+name = "list_industries"
+kind = "global"
+comment = "list of industries and houses (0x9f bytes)"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x574c58"
+name = "list_links"
+kind = "global"
+comment = "list of station-to-building catchment links"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x574c5c"
+name = "list_towns"
+kind = "global"
+comment = "list of towns (180 bytes)"
+spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x574ca8"
+name = "list_territories"
+kind = "global"
+comment = "list of territories (effect levels at +0x58)"
+spec = "docs/spec/cargo.md"
