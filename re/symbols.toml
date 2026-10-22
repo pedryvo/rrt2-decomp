@@ -1,0 +1,11 @@
+# Símbolos recuperados de RT2_PLAT.EXE (sha256 510b9e449612e5c6619d0b86cb65c453cefd26370065f1fd77865760d017e474).
+# Fonte da verdade da engenharia reversa: as sessões Ghidra via REA são efêmeras, então reaplique
+# este arquivo (mcp__rea__set_addresses_names / set_comment) no início de cada sessão.
+#
+# Formato: uma tabela por endereço.
+# [[symbol]]
+# addr = "0x401000"          # endereço virtual (base 0x400000)
+# name = "pk2_open"          # snake_case; prefixo do subsistema (pk2_, track_, train_, cargo_, ui_, crt_, mss_, smk_, dd_)
+# kind = "function"          # function | global | table | string
+# comment = "..."            # opcional: o que faz, em uma linha
+# spec = "docs/formats/pk2.md"  # opcional: onde está documentado
