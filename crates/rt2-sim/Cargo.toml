@@ -1,0 +1,11 @@
+[package]
+name = "rt2-sim"
+description = "Deterministic simulation core of the Railroad Tycoon II clone"
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+
+[lints]
+workspace = true

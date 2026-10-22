@@ -4,6 +4,13 @@
 //! function and compares it with a Rust reference. Skipped when the executable is absent.
 
 use rt2_oracle::Oracle;
+use rt2_sim::data::GameData;
+use rt2_sim::effects::global_modifier;
+use rt2_sim::exe::Exe;
+use rt2_sim::trains::{
+    AccelInput, BreakdownInput, Engine, SpeedMods, TargetInput, VehicleGrade, accel_step,
+    breakdown_chance, engine_max_speed, target_speed, track_segment_grade, train_grade,
+};
 use unicorn_engine::RegisterX86;
 
 fn oracle() -> Option<Oracle> {
@@ -71,19 +78,6 @@ fn fpu_reset(o: &mut Oracle) {
     uc.reg_write(RegisterX86::FPTAG, 0xffff).unwrap();
 }
 
-/// CRT `_ftol`: truncation toward zero, low 32 bits of the 64-bit result.
-fn ftol(x: f64) -> i32 {
-    if x.is_nan() {
-        0
-    } else {
-        (x.trunc() as i64) as i32
-    }
-}
-
-fn f32r(x: f64) -> f64 {
-    x as f32 as f64
-}
-
 fn rd_i32(o: &Oracle, a: u32) -> i32 {
     o.read_u32(a).unwrap() as i32
 }
@@ -101,31 +95,26 @@ fn rd_f32(o: &Oracle, a: u32) -> f32 {
     f32::from_bits(o.read_u32(a).unwrap())
 }
 
+fn sim_data() -> GameData {
+    let path = std::env::var("RT2_EXE").unwrap_or_else(|_| {
+        concat!(env!("CARGO_MANIFEST_DIR"), "/../../re/bin/RT2_PLAT.EXE").to_string()
+    });
+    GameData::load(&Exe::from_bytes(std::fs::read(path).expect("read exe")).expect("parse exe"))
+        .expect("load tables")
+}
+
 // ---- game data (read from the emulated .data, never typed in) ----------------------------------
 
-#[derive(Clone, Copy)]
-struct Engine {
-    reliability: i32,
-    top_mph: i32,
-    power: i32,
-    accel: i32,
-    free_tons: i32,
-    kind: u8,
-    base_tons: i32, // +0x2e, filled at map start by 0x471b10
+/// rt2-sim's view of engine `e`: the record parsed by `Engine::from_raw` plus the `+0x2e` weight
+/// that the oracle memory holds after `link_engines`.
+fn engine(o: &Oracle, e: u32) -> Engine {
+    let r = o.read_mem(ENGINES + e * 0x3a, ENGINE_RECORD).unwrap();
+    let mut eng = Engine::from_raw(&r);
+    eng.base_tons = rd_i32(o, ENGINES + e * 0x3a + 0x2e);
+    eng
 }
 
-fn engine(o: &Oracle, e: u32) -> Engine {
-    let r = ENGINES + e * 0x3a;
-    Engine {
-        reliability: rd_i32(o, r + 0x08),
-        top_mph: rd_i32(o, r + 0x14),
-        power: rd_i32(o, r + 0x18),
-        accel: rd_i32(o, r + 0x1c),
-        free_tons: rd_i32(o, r + 0x20),
-        kind: rd_u8(o, r + 0x28),
-        base_tons: rd_i32(o, r + 0x2e),
-    }
-}
+const ENGINE_RECORD: usize = 0x3a;
 
 /// Vehicle type record: (kind 0 engine / 1 tender / 2 car, engine index, empty t, loaded t).
 fn vehicle_type(o: &Oracle, t: u32) -> (u8, i8, i32, i32) {
@@ -153,6 +142,8 @@ fn link_engines(o: &mut Oracle) -> Vec<(u32, Option<u32>)> {
             _ => {}
         }
     }
+    // rt2-sim's loader must derive the same weights from the executable file
+    let sim = sim_data();
     for (e, &(ev, tv)) in out.iter().enumerate() {
         let mut w = vehicle_type(o, ev).3;
         if let Some(tv) = tv {
@@ -160,6 +151,7 @@ fn link_engines(o: &mut Oracle) -> Vec<(u32, Option<u32>)> {
         }
         o.write_u32(ENGINES + e as u32 * 0x3a + 0x2e, w as u32)
             .unwrap();
+        assert_eq!(sim.engines[e].base_tons, w, "engine {e} +0x2e");
     }
     out
 }
@@ -172,9 +164,16 @@ fn car_types(o: &Oracle) -> Vec<u32> {
 
 /// `0x46b480` with company = 0 and player = 0: only the global percent applies.
 fn modifier(o: &Oracle, id: u32) -> f64 {
-    let pct = (rd_u16(o, MODIFIERS + 2 * id) as i16).max(-99);
-    let m = f32r(f64::from(pct) * 0.01 + 1.0);
-    if m < 0.01 { f64::from(0.01f32) } else { m }
+    global_modifier(rd_u16(o, MODIFIERS + 2 * id) as i16)
+}
+
+fn speed_mods(o: &Oracle, kind: u8) -> SpeedMods {
+    SpeedMods {
+        power_all: modifier(o, 0x2a),
+        power_kind: modifier(o, u32::from(kind) + 0x2b),
+        speed_all: modifier(o, 0x23),
+        speed_kind: modifier(o, u32::from(kind) + 0x24),
+    }
 }
 
 fn randomize_modifiers(o: &mut Oracle, xs: &mut Xs) {
@@ -190,64 +189,15 @@ fn randomize_modifiers(o: &mut Oracle, xs: &mut Xs) {
 
 // ---- references --------------------------------------------------------------------------------
 
-/// `0x4284e0`: grade of a track segment from the vertex heights (0.005 per height unit).
+/// `0x4284e0` through rt2-sim (the implementation under test).
 fn grade_ref(h: &dyn Fn(i32) -> i32, corners: [i32; 4], din: i32, dout: i32) -> f64 {
-    let end = |d: i32| -> i32 {
-        let k = d >> 1;
-        if d & 1 != 0 {
-            h(corners[((k + 1) & 3) as usize])
-        } else {
-            (h(corners[((k + 1) & 3) as usize]) + h(corners[k as usize])) >> 1
-        }
-    };
-    let g = f64::from(end(dout) - end(din)) * 0.005;
-    match (din & 1 != 0, dout & 1 != 0) {
-        (false, false) => g,
-        (true, true) => g * 0.7092,
-        _ => g * 0.85,
-    }
+    track_segment_grade(h, corners, din, dout)
 }
 
-/// `0x4cfea0`: maximum speed (mph, 16.16) of engine `e` hauling `tons` on `grade`.
+/// `0x4cfea0` through rt2-sim: maximum speed (mph, 16.16) of engine `e` hauling `tons` on `grade`.
 fn speed_ref(o: &Oracle, e: u32, tons: i32, grade: f32, curve: bool, age: i32) -> i32 {
     let eng = engine(o, e);
-    let age = age.min(50);
-    let af = f32r(f64::from(age) * 0.005);
-    let mut g = f64::from(grade);
-    if g > 0.0 {
-        g = f32r((g * 4.0 + 1.0) * g);
-    }
-    let w = if curve {
-        ftol(f64::from(tons) * 1.4)
-    } else {
-        tons
-    };
-    let mult = if g > 0.0 {
-        (g * 20.0 + 1.0).powf(2.3)
-    } else {
-        let g = if g < -0.03 { f64::from(-0.03f32) } else { g };
-        g * 10.0 + 1.0
-    };
-    let mut eff = ftol(mult * f64::from(w)).wrapping_sub(eng.base_tons.wrapping_add(eng.free_tons));
-    if eff < 0 {
-        eff = 0;
-    }
-    let eff = ftol((af + 1.0) * f64::from(eff));
-    let m1 = modifier(o, u32::from(eng.kind) + 0x2b);
-    let m2 = modifier(o, 0x2a);
-    let mut p = f32r(m2 * m1 * f64::from(eng.power as f32) * 0.92);
-    if p < 1.0 {
-        p = 1.0;
-    }
-    let mut s = ftol(0.98f64.powf(f64::from(eff) / p) * f64::from(eng.top_mph << 16));
-    s = ftol(f64::from(s) * (1.0 - af));
-    if curve {
-        s = ftol(f64::from(s) * 0.6);
-    }
-    let m3 = modifier(o, u32::from(eng.kind) + 0x24);
-    let m4 = modifier(o, 0x23);
-    s = ftol(m4 * m3 * f64::from(s));
-    s.max(0x10000)
+    engine_max_speed(&eng, tons, grade, curve, age, &speed_mods(o, eng.kind))
 }
 
 #[derive(Clone)]
@@ -295,133 +245,85 @@ impl World {
         let h = |off: i32| i32::from(self.heights[(base + off) as usize]);
         grade_ref(&h, self.corners, i32::from(v.din), i32::from(v.dout))
     }
-    /// Weighted grade of the first two vehicles (0x4d00c0 / 0x4cf030 / 0x4cfd40).
+    /// Weighted grade of the first two vehicles (0x4d00c0 / 0x4cf030 / 0x4cfd40), via rt2-sim.
     fn train_grade(&self, o: &Oracle, t: &Train) -> f64 {
-        if !t.on_track {
-            return 0.0;
-        }
-        let (mut sum, mut acc) = (0i32, 0f64);
-        for v in t.vehs.iter().take(2) {
-            if v.on_track {
-                let w = self.veh_tons(o, v);
-                sum += w;
-                acc = f32r(self.veh_grade(v) * f64::from(w) + acc);
-            }
-        }
-        if sum == 0 {
-            0.0
-        } else {
-            f32r(acc / f64::from(sum))
-        }
+        let vs: Vec<VehicleGrade> = t
+            .vehs
+            .iter()
+            .map(|v| VehicleGrade {
+                on_track: v.on_track,
+                tons: self.veh_tons(o, v),
+                grade: self.veh_grade(v),
+            })
+            .collect();
+        train_grade(t.on_track, &vs)
     }
 }
 
-/// `0x4d00c0`: target speed (16.16 mph) and the "restricted" flag (curve).
+/// `0x4d00c0` through rt2-sim: target speed (16.16 mph) and the "restricted" flag (curve).
 fn target_ref(o: &Oracle, w: &World, t: &Train) -> (i32, bool) {
     let curve = t
         .vehs
         .iter()
         .filter(|v| v.on_track)
         .any(|v| (i32::from(v.din) - i32::from(v.dout)) & 3 != 0);
-    let mut g = w.train_grade(o, t);
-    if f64::from(t.sand) <= 1.0 {
-        g = f32r(g + g);
-    }
-    let age = i32::from(w.year) - i32::from(t.bought);
-    let mut s = speed_ref(o, t.engine, t.tons, g as f32, curve, age);
-    s = ftol(f64::from(t.throttle) * f64::from(1.0f32 / 85.0) * f64::from(s));
-    if engine(o, t.engine).kind == 0 && f64::from(t.water) <= 1.0 {
-        s = ftol(f64::from(s) * 0.5);
-    }
-    if w.double_speed {
-        s = s.wrapping_mul(2);
-    }
-    (s, curve)
+    let eng = engine(o, t.engine);
+    target_speed(
+        &eng,
+        &TargetInput {
+            tons: t.tons,
+            grade: w.train_grade(o, t),
+            curve,
+            age: i32::from(w.year) - i32::from(t.bought),
+            sand: t.sand,
+            water: t.water,
+            throttle: t.throttle,
+            stopped_by_state: false,
+            double_speed: w.double_speed,
+            mods: speed_mods(o, eng.kind),
+        },
+    )
 }
 
-/// `0x4d0400`, moving branch: new speed after advancing to `now`.
+/// `0x4d0400`, moving branch, through rt2-sim: new speed after advancing to `now`.
 fn accel_ref(o: &Oracle, w: &World, t: &Train, now: i32) -> i32 {
     let eng = engine(o, t.engine);
-    let (target, flag) = target_ref(o, w, t);
-    let mut tau = eng.accel.wrapping_mul(1440);
-    if t.speed > target {
-        tau >>= if flag { 4 } else { 1 };
-    }
-    tau -= tau >> 2;
-    let m1 = modifier(o, u32::from(eng.kind) + 0x2f);
-    let m2 = modifier(o, 0x2e);
-    let mut m = m2 * m1;
-    if m < 0.1 {
-        m = f64::from(0.1f32);
-    }
-    let tau2 = ftol(f64::from(tau) / m);
-    let mut elapsed = if t.last != 0 { now - t.last } else { 0 };
-    elapsed = elapsed.min(tau2).max(0);
-    let div = if target < 0 { tau2 / 2 } else { tau2 };
-    let delta = ftol(f64::from(elapsed) / f64::from(div) * f64::from(target.wrapping_sub(t.speed)));
-    t.speed.wrapping_add(delta)
+    let (target, restricted) = target_ref(o, w, t);
+    accel_step(
+        &eng,
+        &AccelInput {
+            speed: t.speed,
+            target,
+            restricted,
+            broken: false,
+            last_update: t.last,
+            now,
+            accel_all: modifier(o, 0x2e),
+            accel_kind: modifier(o, u32::from(eng.kind) + 0x2f),
+        },
+    )
 }
 
-/// `0x4cf030`: breakdown probability for `tiles` tiles travelled.
+/// `0x4cf030` through rt2-sim: breakdown probability for `tiles` tiles travelled.
 fn breakdown_ref(o: &Oracle, w: &World, t: &Train, tiles: i32, check_age: bool) -> f64 {
-    let age = i32::from(w.year) - i32::from(t.bought);
-    if check_age && age < 1 {
-        return 0.0;
-    }
     let eng = engine(o, t.engine);
-    let rate = f64::from(rd_f32(o, RELIABILITY + 4 * eng.reliability as u32));
-    let base = f32r(f64::from(tiles) * rate);
-    let thr = f64::from(t.throttle);
-    let x = if thr > 85.0 {
-        // net_min_peer_version() = 9012 >= 0x232d in a local game
-        ((thr - 85.0) * 3.0 * (1.0 / 15.0) + 1.0) * base
-    } else {
-        base * thr * f64::from(1.0f32 / 85.0)
-    };
-    let x = f32r(x);
-    let mut m = modifier(o, 0x27);
-    if m < 0.01 {
-        m = f64::from(0.01f32);
-    }
-    let x = f32r(x / m);
-    let g = w.train_grade(o, t);
-    let mult = if g > 0.0 {
-        (g * 20.0 + 1.0).powf(2.3)
-    } else {
-        let g = if g < -0.03 { f64::from(-0.03f32) } else { g };
-        g * 10.0 + 1.0
-    };
-    let mut e =
-        ftol(mult * f64::from(t.tons)).wrapping_sub(eng.base_tons.wrapping_add(eng.free_tons));
-    if e < 0 {
-        e = 0;
-    }
-    let mut y = (f64::from(e) + 150.0) * x * 0.005;
-    if t.flags_bb & 2 != 0 {
-        y *= 0.75;
-    }
-    y = y * f64::from(age + 30) * (1.0 / 30.0);
-    if age <= 0 {
-        y *= 0.3;
-    } else if age <= 1 {
-        y *= 0.6;
-    }
-    let oil = f64::from(t.oil);
-    if oil < 1.0 {
-        y *= 3.0;
-    } else {
-        y *= (100.0 - oil + 100.0) * 0.01;
-    }
-    let mut y = f32r(y * 0.7);
-    if w.year >= 1970 {
-        y = f32r(y * 0.7);
-    } else if w.year >= 1920 {
-        y = f32r(y * 0.85);
-    }
-    if w.nowreck {
-        return y * 0.0001;
-    }
-    y
+    breakdown_chance(
+        &eng,
+        &BreakdownInput {
+            tiles,
+            check_age,
+            year: w.year,
+            bought: t.bought,
+            reliability_rate: rd_f32(o, RELIABILITY + 4 * eng.reliability_class as u32),
+            throttle: t.throttle,
+            reliability_mod: modifier(o, 0x27),
+            grade: w.train_grade(o, t),
+            tons: t.tons,
+            caboose: t.flags_bb & 2 != 0,
+            oil: t.oil,
+            nowreck: w.nowreck,
+        },
+    )
 }
 
 // ---- emulated world ----------------------------------------------------------------------------

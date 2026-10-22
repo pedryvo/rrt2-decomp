@@ -8,6 +8,7 @@ version = "0.1.0"
 
 [workspace.dependencies]
 rt2-formats = { path = "crates/rt2-formats" }
+rt2-sim = { path = "crates/rt2-sim" }
 anyhow = "1"
 thiserror = "2"
 clap = { version = "4", features = ["derive", "env"] }

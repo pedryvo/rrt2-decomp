@@ -16,6 +16,7 @@ unicorn-engine = { version = "2.1.5", default-features = false, features = ["arc
 
 [dev-dependencies]
 rt2-formats.workspace = true
+rt2-sim.workspace = true
 
 [lints]
 workspace = true

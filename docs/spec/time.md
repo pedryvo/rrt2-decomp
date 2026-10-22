@@ -177,6 +177,8 @@ Roda 23:59 de 28/dez após todo o passo mensal: loops sobre o conjunto de jogado
 - A simulação local depende do `ms` real do quadro (seção 4): o clone fiel precisa fixar a regra `dt = ftol(tabela * ms * 3.2)` com `ms` de passo fixo (por exemplo 100 ms, que o porteiro usa como limiar) e declarar o resultado como "determinístico, mas não idêntico ao de uma execução do original com outro ritmo de quadros".
 - Pausa é velocidade 0 (tabela 0); com `dt = 0` nada de `sim_advance` roda, mas as filas de comandos e a UI continuam.
 
+> **Clone (`rt2-sim`):** o clone avança a simulação com um quadro nominal fixo (`calendar::NOMINAL_FRAME_MS = 100` ms, o limiar do porteiro), aplicando `dt = ftol(tabela[velocidade] * 100 * 3.2)` por quadro (320 minutos de jogo na velocidade 3). É uma **divergência intencional**: o original usa o `ms` real de cada quadro (até 1000 ms), logo o clone é determinístico mas não reproduz bit a bit uma execução específica do original. Só o relógio avança; os passos de fim de dia, semana, mês e ano de `sim_advance` aguardam as listas de entidades (ver "Em aberto").
+
 ## Em aberto
 - Estado da FPU no original (precisão do x87): o oráculo roda a 24 bits por padrão do Unicorn (CW 0), o teste fixa 53 bits (`0x27f`); falta confirmar com `fldcw`/DirectDraw no processo real (Wine + gdb).
 - Origem dos limites de ano (início e fim do jogo) e valor de `game_time_minutes` ao carregar um `.GAM` (resolvido: o arquivo guarda minutos, data e hora no bloco de estado em 0x8865/0x8869/0x886D, ver docs/formats/map-gam.md 5.1) (`0x46b650` é chamado de `0x453970`, `0x472980`, `0x473590`, `0x474280`, `0x479a30`).

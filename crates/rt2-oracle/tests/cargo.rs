@@ -4,7 +4,22 @@
 //! `revenue_depends_on_x87_precision` for the sensitivity to that assumption.
 
 use rt2_oracle::Oracle;
+use rt2_sim::cargo::{
+    CargoType, Consumer, Delivery, IndustryType, RevenueTables, delivery_revenue,
+};
+use rt2_sim::data::GameData;
+use rt2_sim::effects::{EffectLevels, effect_multiplier};
+use rt2_sim::exe::Exe;
 use unicorn_engine::RegisterX86;
+
+/// Game data loaded by rt2-sim from the executable file (the implementation under test).
+fn sim_data() -> GameData {
+    let path = std::env::var("RT2_EXE").unwrap_or_else(|_| {
+        concat!(env!("CARGO_MANIFEST_DIR"), "/../../re/bin/RT2_PLAT.EXE").to_string()
+    });
+    GameData::load(&Exe::from_bytes(std::fs::read(path).expect("read exe")).expect("parse exe"))
+        .expect("load tables")
+}
 
 fn oracle() -> Option<Oracle> {
     let path = std::env::var("RT2_EXE").unwrap_or_else(|_| {
@@ -102,10 +117,6 @@ const FX_N: usize = 0x130;
 
 type Fx = [i16; FX_N];
 
-fn fx_mult(level: i16) -> f64 {
-    f64::from(level.max(-99)) * 0.01 + 1.0
-}
-
 /// Effect tables visible to `0x46b480`: global, the company (with its own person id), persons and
 /// territories by id.
 struct FxWorld<'a> {
@@ -115,14 +126,19 @@ struct FxWorld<'a> {
     terrs: &'a dyn Fn(u32) -> Option<Fx>,
 }
 
-/// Reference for `0x46b480`. `person` is the explicit person argument (0 = use the company's).
+/// Resolves the records like the original does and calls `rt2_sim::effects::effect_multiplier`
+/// (the implementation under test). `person` is the explicit person argument (0 = use the
+/// company's).
 fn effect_ref(e: usize, company: u32, person: u32, terr: u32, w: &FxWorld) -> f32 {
-    let mut cur = fx_mult(w.global[e]) as f32;
+    let mut levels = EffectLevels {
+        global: w.global[e],
+        ..Default::default()
+    };
     let mut pid = person;
     if company != 0
         && let Some((cfx, cperson)) = w.company
     {
-        cur = (fx_mult(cfx[e]) * f64::from(cur)) as f32;
+        levels.company = Some(cfx[e]);
         if person == 0 {
             pid = cperson;
         }
@@ -130,14 +146,14 @@ fn effect_ref(e: usize, company: u32, person: u32, terr: u32, w: &FxWorld) -> f3
     if pid != 0
         && let Some(pfx) = (w.persons)(pid)
     {
-        cur = (fx_mult(pfx[e]) * f64::from(cur)) as f32;
+        levels.person = Some(pfx[e]);
     }
     if terr != 0
         && let Some(tfx) = (w.terrs)(terr)
     {
-        cur = (fx_mult(tfx[e]) * f64::from(cur)) as f32;
+        levels.territory = Some(tfx[e]);
     }
-    if f64::from(cur) < 0.01 { 0.01f32 } else { cur }
+    effect_multiplier(levels)
 }
 
 fn rand_fx(xs: &mut Xs, density: u32) -> Fx {
@@ -235,58 +251,6 @@ const IND_REBUILD: u32 = 0x0047_1880; // fastcall(ECX = type)
 const GAME_DATE: u32 = 0x0057_04f8;
 const GAME_TIME: u32 = 0x0057_04f4;
 
-/// Reference for the in-place rebuild of `inputs[8]` (+0x80) and `weights[8]` (+0x88) of one type
-/// in one era set. `rec` is the 0x90-byte record; returns the new record.
-fn rebuild_ref(mut rec: Vec<u8>, year: i32) -> Vec<u8> {
-    let mut inputs = [0x7fu8; 8];
-    let mut n = 0usize;
-    let slot_in_range = |rec: &[u8], s: usize| {
-        let o = s * 0x20;
-        let from = i16::from_le_bytes([rec[o], rec[o + 1]]);
-        let to = i16::from_le_bytes([rec[o + 2], rec[o + 3]]);
-        i32::from(from) <= year && year <= i32::from(to)
-    };
-    for s in 0..4 {
-        if !slot_in_range(&rec, s) {
-            continue;
-        }
-        let o = s * 0x20;
-        for (cargo_off, idx_off) in [(0xa, 0x10), (0x15, 0x1b)] {
-            let c = rec[o + cargo_off];
-            if c == 0x7f {
-                continue;
-            }
-            let j = match inputs[..n].iter().position(|&x| x == c) {
-                Some(j) => j,
-                None => {
-                    inputs[n] = c;
-                    n += 1;
-                    n - 1
-                }
-            };
-            rec[o + idx_off] = j as u8;
-        }
-    }
-    let mut weights = [0u8; 8];
-    for s in 0..4 {
-        if !slot_in_range(&rec, s) {
-            continue;
-        }
-        let o = s * 0x20;
-        for (cargo_off, idx_off, f_off) in [(0xa, 0x10, 0x11), (0x15, 0x1b, 0x1c)] {
-            if rec[o + cargo_off] == 0x7f {
-                continue;
-            }
-            let j = rec[o + idx_off] as usize;
-            let f = f32::from_le_bytes(rec[o + f_off..o + f_off + 4].try_into().unwrap());
-            weights[j] = ftol(f64::from(weights[j]) + f64::from(f)) as u8;
-        }
-    }
-    rec[0x80..0x88].copy_from_slice(&inputs);
-    rec[0x88..0x90].copy_from_slice(&weights);
-    rec
-}
-
 #[test]
 fn industry_input_rebuild_matches_original() {
     let Some(mut o) = oracle() else { return };
@@ -303,10 +267,13 @@ fn industry_input_rebuild_matches_original() {
             o.call_fastcall(IND_REBUILD, ty, 0, &[]).unwrap();
             for set in 0..2u32 {
                 let off = (set * IND_SET_STRIDE + ty * 0x90) as usize;
-                let want = rebuild_ref(pristine[off..off + 0x90].to_vec(), year as i32);
-                let got = o
-                    .read_mem(IND_TABLE + set * IND_SET_STRIDE + ty * 0x90, 0x90)
-                    .unwrap();
+                // implementation under test: rt2_sim::cargo::IndustryType::rebuild_inputs
+                let mut want = IndustryType::from_raw(&pristine[off..off + 0x90]);
+                want.rebuild_inputs(year as i32);
+                let got = IndustryType::from_raw(
+                    &o.read_mem(IND_TABLE + set * IND_SET_STRIDE + ty * 0x90, 0x90)
+                        .unwrap(),
+                );
                 assert_eq!(got, want, "year {year} set {set} type {ty}");
             }
         }
@@ -328,33 +295,6 @@ const ECON_STATE: u32 = 0x0057_0717;
 const MODEL_WORD: u32 = 0x0057_3d78; // byte 0 = industrial model 0..2
 const DEMAND_LEVELS_ON: u32 = 0x0057_3d76; // 1 when the model is 2 (expert)
 const SLIDERS: u32 = 0x0057_4874; // u8 human, u8 computer revenue sliders
-
-#[derive(Clone, Copy)]
-struct Cargo {
-    price: i32,
-    days: i32,
-    ship: f32,
-    towns: i16,
-    cities: i16,
-    storage: i32,
-}
-
-fn read_cargo(o: &Oracle) -> Vec<Cargo> {
-    (0..CARGO_N)
-        .map(|i| {
-            let r = o.read_mem(CARGO_TABLE + 0x21 * i as u32, 0x21).unwrap();
-            let i32at = |k: usize| i32::from_le_bytes(r[k..k + 4].try_into().unwrap());
-            Cargo {
-                price: i32at(0),
-                days: i32at(4),
-                ship: f32::from_le_bytes(r[0xc..0x10].try_into().unwrap()),
-                towns: i16::from_le_bytes([r[0x14], r[0x15]]),
-                cities: i16::from_le_bytes([r[0x16], r[0x17]]),
-                storage: i32at(0x1c),
-            }
-        })
-        .collect()
-}
 
 /// What `0x471b10` does to the cargo table at start-up: `price = ftol(price * 1.4)`,
 /// `+8 = days * 1440`.
@@ -423,14 +363,10 @@ struct Sc {
     t_fx: Fx,
 }
 
-/// Reference result: (revenue, flag, industry id).
+/// Adapter to the implementation under test, `rt2_sim::cargo::delivery_revenue`.
+/// Returns (revenue, flag, industry id).
 fn revenue_ref(sc: &Sc, env: &Env) -> (i32, u32, u32) {
-    let (cg, t_demand, t_undem, t_econ) = (&env.cg, &env.t_demand, &env.t_undem, &env.t_econ);
-    let (t_human, t_ai) = (&env.t_human, &env.t_ai);
-    let ind_inputs = |ty: u8| env.ind_inputs[ty as usize];
     let c = sc.cargo;
-    let cgo = cg[c];
-    let year = i32::from(sc.year);
     let fxw = FxWorld {
         global: &sc.g_fx,
         company: Some((&sc.c_fx, sc.c_person)),
@@ -438,168 +374,47 @@ fn revenue_ref(sc: &Sc, env: &Env) -> (i32, u32, u32) {
         terrs: &|_| Some(sc.t_fx),
     };
     let eff = |e: usize| effect_ref(e, 1, 0, sc.d_terr, &fxw);
-
-    // distance
-    let dx = f64::from(sc.d_xy.0 - sc.s_xy.0);
-    let dy = f64::from(sc.d_xy.1 - sc.s_xy.1);
-    let d = ftol((dx * dx + dy * dy).sqrt());
-
-    let yrs = year.min(2000) - 1800;
-    let ratio = (f64::from(d) * 1.4) / (f64::from(yrs) * 0.5 + 15.0);
-    let s = f64::from(cgo.ship);
-    let x: f32 = (ratio * s + (1.0 - s)) as f32;
-    let xf = f64::from(x);
-
-    let mut r: i32;
-    let mut ind_id = 0u32;
-    let level_mul = |lvl: u8| -> f64 {
-        if sc.model >= 2 {
-            f64::from(t_demand[lvl as usize])
-        } else {
-            1.0
-        }
+    let consumers: Vec<Consumer> = sc
+        .inds
+        .iter()
+        .map(|i| Consumer {
+            id: i.id,
+            kind: i.ty,
+            inputs: env.ind_inputs[i.ty as usize],
+            stock: i.stock,
+        })
+        .collect();
+    let d = Delivery {
+        year: sc.year,
+        now: sc.now,
+        econ_state: sc.state,
+        model: sc.model,
+        slider_lo: sc.lo,
+        slider_hi: sc.hi,
+        cargo_id: c,
+        cargo: env.cg[c],
+        lot_id: sc.lot_id,
+        lot_industry: sc.lot_src,
+        lot_origin_station: sc.lot_origin,
+        t_created: sc.t_created,
+        t_loaded: sc.t_loaded,
+        src_station_id: sc.s_id,
+        src_xy: sc.s_xy,
+        src_upgrades: sc.s_upgrades,
+        dst_station_id: sc.d_id,
+        dst_xy: sc.d_xy,
+        dst_demands_cargo: sc.d_demanded,
+        dst_price_level: sc.d_level,
+        consumers: &consumers,
+        train_flags: sc.train_flags,
+        human: sc.human,
+        computer_factor: sc.c_m,
+        company_multiplier: sc.c_mult,
+        effect_all: eff(0x3d),
+        effect_cargo: eff(if c < 32 { 0x3e + c } else { 0xf1 + c }),
     };
-    if sc.lot_origin as u32 == sc.d_id && sc.human {
-        r = 0;
-    } else {
-        r = 0;
-        let mut accepted = false;
-        if sc.d_demanded && !sc.inds.is_empty() {
-            let cnt = sc.inds.len() as i32;
-            let off = rng_hash(sc.lot_id, 0, cnt - 1);
-            let mut best = 9999.0f32;
-            let mut best_id: Option<u32> = None;
-            let mut housing = 0;
-            for k in 0..cnt {
-                let ind = &sc.inds[((off + k) % cnt) as usize];
-                if ind.ty == 0x12 {
-                    housing += 1;
-                }
-                if ind.ty == 0x27 {
-                    housing += 2;
-                }
-                if ind.id != sc.lot_src || sc.lot_src == 0 {
-                    let inp = ind_inputs(ind.ty);
-                    for (slot, &ic) in inp.iter().enumerate() {
-                        if ic as usize == c && ind.stock[slot] < best {
-                            best = ind.stock[slot];
-                            best_id = Some(u32::from(ind.id));
-                        }
-                    }
-                }
-            }
-            if let Some(id) = best_id {
-                r = ftol(level_mul(sc.d_level) * f64::from(cgo.price));
-                ind_id = id;
-                accepted = true;
-            } else if (housing > 7 && i32::from(cgo.cities) >= year)
-                || (housing > 3 && i32::from(cgo.towns) >= year)
-            {
-                r = ftol(level_mul(sc.d_level) * f64::from(cgo.price));
-                accepted = true;
-            }
-        }
-        if !accepted {
-            let idx = usize::from(sc.human) * 3 + usize::from(sc.model);
-            r = ftol(f64::from(cgo.price) * f64::from(t_undem[idx]));
-            if sc.model >= 2 && d < 16 {
-                r = r.wrapping_mul(d) >> 4;
-            }
-        }
-    }
-    if r != 0 && d < 20 {
-        r = (d + 1).wrapping_mul(r) / 21;
-    }
-
-    // time
-    let mut p1 = sc.t_loaded.wrapping_sub(sc.t_created) / 1440;
-    if cgo.storage != 0 && sc.s_upgrades & (1u32 << (cgo.storage & 31)) != 0 {
-        p1 = ((p1 as i32) >> 1) as u32;
-    }
-    let p2 = sc.now.wrapping_sub(sc.t_loaded) / 1440;
-    let total = p2.wrapping_add(p1) as i32;
-    let allowed = ftol(f64::from(cgo.days) * xf);
-    let yv = if year > 2000 {
-        ((2000 - 1920) >> 1) + 1920
-    } else if year < 1850 {
-        year * 3 - 3700
-    } else if year <= 1920 {
-        year
-    } else {
-        ((year - 1920) >> 1) + 1920
-    };
-    let diff = 1960 - yv;
-    let mut allowed2 = ftol((f64::from(diff) * 0.005 + 1.0) * f64::from(allowed));
-    if allowed2 <= 1 {
-        allowed2 = 1;
-    }
-    let e = if total <= 0 { 0 } else { total };
-    let e2 = if sc.human {
-        e
-    } else {
-        ftol(f64::from(e) - f64::from(sc.c_m) * f64::from(e) * 0.25)
-    };
-    let rem = allowed2.wrapping_sub(e2);
-    let mut rr = f64::from(rem) / f64::from(allowed2);
-    if rr < 0.0 {
-        rr = 0.0;
-    }
-    let t = rr * 0.7 + 0.3;
-    let flag;
-    if t <= 0.0 {
-        r = 0;
-        flag = 0;
-    } else {
-        r = ftol(f64::from(r) * t * xf);
-        flag = 1;
-    }
-    r = ftol(f64::from(r) * xf);
-    r = ftol(f64::from(eff(0x3d)) * f64::from(r));
-    let e2 = if c < 32 { 0x3e + c } else { 0xf1 + c };
-    r = ftol(f64::from(eff(e2)) * f64::from(r));
-    if c == 0 {
-        if sc.train_flags & 1 != 0 {
-            r = ftol(f64::from(r) * 1.2);
-        }
-        if sc.train_flags & 4 != 0 {
-            r = ftol(f64::from(r) * 1.15);
-        }
-    }
-    // human / computer revenue modifier (the lot always has a car id)
-    if sc.human {
-        r = ftol(f64::from(r) * f64::from(t_human[sc.lo as usize]));
-    } else {
-        let m = f64::from(sc.c_m);
-        let mult =
-            f64::from(t_human[sc.lo as usize]) * (1.0 - m) + f64::from(t_ai[sc.hi as usize]) * m;
-        r = ftol(mult * f64::from(r));
-    }
-    r = ftol(f64::from(r) * f64::from(t_econ[sc.state]));
-    r = ftol(f64::from(r) * f64::from(sc.c_mult));
-    for (thr, _) in [(80_000, 0), (120_000, 0), (180_000, 0), (250_000, 0)] {
-        if r > thr {
-            r -= (r - thr) >> 2;
-        } else {
-            break;
-        }
-    }
-    (r, flag, ind_id)
-}
-
-/// `0x4f06f0` (see docs/spec/rng.md section 3), `hi >= lo`.
-fn rng_hash(seed: u32, lo: i32, hi: i32) -> i32 {
-    let span = hi.wrapping_sub(lo);
-    if span > 0x7fff {
-        let a = rng_hash(seed, 0, 0x7fff) as u32;
-        let b = rng_hash(seed.wrapping_add(7), 0, 0x7fff) as u32;
-        return ((b | (a << 15)) % (span as u32 + 1)).wrapping_add(lo as u32) as i32;
-    }
-    if hi == lo {
-        return hi;
-    }
-    let t = 0x3039u32.wrapping_sub(seed.wrapping_mul(0x3e39_b193));
-    let v = ((t as i32) >> 16) & 0x7fff;
-    (v % (span + 1)).wrapping_add(lo)
+    let r = delivery_revenue(&d, &env.tables);
+    (r.amount, r.flag, r.industry)
 }
 
 struct World {
@@ -709,7 +524,7 @@ impl World {
     }
 }
 
-fn rand_scenario(xs: &mut Xs, cg: &[Cargo]) -> Sc {
+fn rand_scenario(xs: &mut Xs, cg: &[CargoType]) -> Sc {
     let year = match xs.below(4) {
         0 => xs.range(1800, 1860),
         1 => xs.range(1850, 1925),
@@ -834,29 +649,41 @@ fn rand_scenario(xs: &mut Xs, cg: &[Cargo]) -> Sc {
     }
 }
 
-/// Prepares the table state the game builds at start-up and returns the shared reference data.
+/// Prepares the table state the game builds at start-up and returns the shared data. The tables
+/// come from rt2-sim's loader; they are cross-checked against the emulated `.data` here.
 struct Env {
     rebuilt_for: Option<u16>,
     ind_inputs: Vec<[u8; 8]>,
-    cg: Vec<Cargo>,
-    t_demand: Vec<f32>,
-    t_undem: Vec<f32>,
-    t_econ: Vec<f32>,
-    t_human: Vec<f32>,
-    t_ai: Vec<f32>,
+    cg: Vec<CargoType>,
+    tables: RevenueTables,
 }
 
 fn prepare(o: &mut Oracle) -> Env {
+    let sim = sim_data();
     init_cargo_table(o);
+    // loader + start-up fix-ups == what the original holds in memory after `0x471b10`
+    for (i, c) in sim.cargo.iter().enumerate() {
+        let r = CARGO_TABLE + 0x21 * i as u32;
+        assert_eq!(o.read_u32(r).unwrap() as i32, c.price, "cargo {i} price");
+        assert_eq!(
+            o.read_u32(r + 8).unwrap() as i32,
+            c.wait_scale,
+            "cargo {i} wait scale"
+        );
+    }
+    let tables = RevenueTables {
+        demand_level: read_f32s(o, TBL_DEMAND_LEVEL, 10).try_into().unwrap(),
+        undemanded: read_f32s(o, TBL_UNDEMANDED, 6).try_into().unwrap(),
+        econ_revenue: read_f32s(o, TBL_ECON_REVENUE, 5).try_into().unwrap(),
+        slider_human: read_f32s(o, TBL_SLIDER_HUMAN, 11).try_into().unwrap(),
+        slider_ai: read_f32s(o, TBL_SLIDER_AI, 11).try_into().unwrap(),
+    };
+    assert_eq!(tables, sim.revenue);
     Env {
         rebuilt_for: None,
         ind_inputs: Vec::new(),
-        cg: read_cargo(o),
-        t_demand: read_f32s(o, TBL_DEMAND_LEVEL, 10),
-        t_undem: read_f32s(o, TBL_UNDEMANDED, 6),
-        t_econ: read_f32s(o, TBL_ECON_REVENUE, 5),
-        t_human: read_f32s(o, TBL_SLIDER_HUMAN, 11),
-        t_ai: read_f32s(o, TBL_SLIDER_AI, 11),
+        cg: sim.cargo,
+        tables,
     }
 }
 
@@ -971,51 +798,6 @@ const ERA_SET: u32 = 0x0057_04ac; // byte 0 selects the industry table set
 const BASIC_MODEL: u32 = 0x0057_3d77; // 1 when the industrial model is Basic
 const SANDBOX: u32 = 0x0057_0227;
 
-/// Reference for `0x40a8c0`: lots per year the slot currently yields (before event effects).
-fn production_rate_ref(
-    rec: &[u8],
-    year: i32,
-    basic: bool,
-    sandbox: bool,
-    ty: u8,
-    stock: &[f32; 8],
-    slot: usize,
-) -> f64 {
-    let i16at = |o: usize| i32::from(i16::from_le_bytes([rec[o], rec[o + 1]]));
-    let f32at = |o: usize| f32::from_le_bytes(rec[o..o + 4].try_into().unwrap());
-    let o = slot * 0x20;
-    let (from, to) = (i16at(o), i16at(o + 2));
-    let out = rec[o + 5];
-    let rate = f32at(o + 6);
-    if out == 0x7f || year < from || year > to || rate == 0.0 {
-        return 0.0;
-    }
-    let mut alt = 0;
-    if (year < i16at(0) || year > i16at(2)) && i16at(0x20) <= year && year <= i16at(0x22) {
-        alt = 1;
-    }
-    let base = if rec[o + 4] == 0 {
-        if (!basic && !sandbox) || slot != alt {
-            return 0.0;
-        }
-        match ty {
-            0x20 => 3.0,
-            0x0e => 1.0,
-            _ => 2.0,
-        }
-    } else {
-        f64::from(rate)
-    };
-    let mut bonus = 1.0f64;
-    if rec[o + 0xa] != 0x7f && f32at(o + 0xc) <= stock[rec[o + 0x10] as usize] {
-        bonus = f64::from(f32at(o + 0xc)) + 1.0;
-    }
-    if rec[o + 0x15] != 0x7f && f32at(o + 0x17) <= stock[rec[o + 0x1b] as usize] {
-        bonus += f64::from(f32at(o + 0x17));
-    }
-    bonus * base
-}
-
 #[test]
 fn production_rate_matches_original() {
     let Some(mut o) = oracle() else { return };
@@ -1049,7 +831,15 @@ fn production_rate_matches_original() {
             .read_mem(IND_TABLE + (set * 53 + u32::from(ty)) * 0x90, 0x90)
             .unwrap();
         for slot in 0..4usize {
-            let want = production_rate_ref(&rec, year as i32, basic, sandbox, ty, &stock, slot);
+            // implementation under test: rt2_sim::cargo::IndustryType::production_rate
+            let want = IndustryType::from_raw(&rec).production_rate(
+                slot,
+                ty,
+                year as i32,
+                basic,
+                sandbox,
+                &stock,
+            );
             o.call_thiscall(PROD_RATE, r, &[slot as u32]).unwrap();
             let got = o.st0().unwrap();
             assert_eq!(

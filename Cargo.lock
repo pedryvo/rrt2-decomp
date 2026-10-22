@@ -1734,6 +1734,7 @@ name = "rt2-oracle"
 version = "0.1.0"
 dependencies = [
  "rt2-formats",
+ "rt2-sim",
  "thiserror 2.0.21",
  "unicorn-engine",
 ]
@@ -1749,6 +1750,13 @@ dependencies = [
  "rt2-formats",
  "thiserror 2.0.21",
  "wgpu",
+]
+
+[[package]]
+name = "rt2-sim"
+version = "0.1.0"
+dependencies = [
+ "thiserror 2.0.21",
 ]
 
 [[package]]

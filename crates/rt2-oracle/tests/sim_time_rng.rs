@@ -2,6 +2,8 @@
 //! (docs/spec/rng.md, docs/spec/time.md). Skipped when the executable is absent.
 
 use rt2_oracle::Oracle;
+use rt2_sim::calendar::{self, SpeedTable};
+use rt2_sim::rng::{GameRng, hash_range};
 use unicorn_engine::RegisterX86;
 
 fn oracle() -> Option<Oracle> {
@@ -36,43 +38,20 @@ const RNG_SEED: u32 = 0x004f_06d0; // fastcall(ECX = seed)
 const RNG_GET: u32 = 0x004f_06e0;
 const RNG_HASH: u32 = 0x004f_06f0; // fastcall(ECX = seed, EDX = lo, [hi]) ret 4
 
-/// One step of the ANSI C LCG; returns the 15-bit output.
-fn rng_next15(state: &mut u32) -> i32 {
-    *state = state.wrapping_mul(0x41c6_4e6d).wrapping_add(0x3039);
-    ((*state as i32) >> 16) & 0x7fff
-}
-
-/// Reference for `rng_range`; `None` where the original divides by zero.
-fn rng_range(state: &mut u32, lo: i32, hi: i32) -> Option<i32> {
-    let span = hi.wrapping_sub(lo);
-    if span > 0x7fff {
-        let a = rng_range(state, 0, 0x7fff)? as u32;
-        let b = rng_range(state, 0, 0x7fff)? as u32;
-        let v = b | (a << 15);
-        return Some((v % (span as u32 + 1)).wrapping_add(lo as u32) as i32);
-    }
-    if hi == lo {
-        return Some(hi);
-    }
-    let v = rng_next15(state);
-    let d = span.wrapping_add(1);
-    if d == 0 {
-        return None;
-    }
-    Some((v % d).wrapping_add(lo))
-}
-
 #[test]
 fn rng_step_range_matches_original() {
     let Some(mut o) = oracle() else { return };
     let mut xs = Xs(0x1234_5678);
-    let mut state = 0u32;
+    // implementation under test: rt2_sim::rng::GameRng
+    let mut rng = GameRng::new(0);
+    let mut state = rng.state();
     o.write_u32(RNG_STATE, state).unwrap();
     let mut checked = 0;
     for i in 0..30_000 {
         if i % 997 == 0 {
             // reseed through the original setter
             state = xs.next();
+            rng.seed(state);
             o.call_fastcall(RNG_SEED, state, 0, &[]).unwrap();
             assert_eq!(o.read_u32(RNG_STATE).unwrap(), state);
             assert_eq!(o.call_fastcall(RNG_GET, 0, 0, &[]).unwrap(), state);
@@ -88,31 +67,19 @@ fn rng_step_range_matches_original() {
                 (xs.next() % 200_000) as i32 - 1000,
             ),
         };
-        let want = rng_range(&mut state, lo, hi).expect("no div by zero in generated cases");
+        let want = rng.range(lo, hi);
         let got = o
             .call_fastcall(RNG_RANGE, lo as u32, hi as u32, &[])
             .unwrap() as i32;
         assert_eq!(got, want, "rng_range({lo}, {hi}) call {i}");
-        assert_eq!(o.read_u32(RNG_STATE).unwrap(), state, "state after {i}");
+        assert_eq!(
+            o.read_u32(RNG_STATE).unwrap(),
+            rng.state(),
+            "state after {i}"
+        );
         checked += 1;
     }
     assert_eq!(checked, 30_000);
-}
-
-/// Reference for the stateless hash RNG at 0x4f06f0 (only the `hi >= lo` path).
-fn rng_hash(seed: u32, lo: i32, hi: i32) -> i32 {
-    let span = hi.wrapping_sub(lo);
-    if span > 0x7fff {
-        let a = rng_hash(seed, 0, 0x7fff) as u32;
-        let b = rng_hash(seed.wrapping_add(7), 0, 0x7fff) as u32;
-        return ((b | (a << 15)) % (span as u32 + 1)).wrapping_add(lo as u32) as i32;
-    }
-    if hi == lo {
-        return hi;
-    }
-    let t = 0x3039u32.wrapping_sub(seed.wrapping_mul(0x3e39_b193));
-    let v = ((t as i32) >> 16) & 0x7fff;
-    (v % (span + 1)).wrapping_add(lo)
 }
 
 #[test]
@@ -129,7 +96,7 @@ fn rng_hash_matches_original() {
             _ => (xs.next() % 300_000) as i32,
         };
         let hi = lo + span;
-        let want = rng_hash(seed, lo, hi);
+        let want = hash_range(seed, lo, hi); // rt2-sim under test
         let got = o
             .call_fastcall(RNG_HASH, seed, lo as u32, &[hi as u32])
             .unwrap() as i32;
@@ -199,20 +166,6 @@ const DATE_PACK: u32 = 0x004a_4950; // fastcall(ECX = year, EDX = month, [day, h
 const DATE_PACK_PACKED: u32 = 0x004a_4990; // stdcall(date_u32, time_u32)
 const DATE_UNPACK: u32 = 0x004a_4a30; // thiscall(ECX = minutes, [out*]) writes year u16, month, day, hour, minute
 
-fn date_to_minutes(y: i32, mo: i32, d: i32, h: i32, mi: i32) -> i32 {
-    ((((y * 12 + mo) * 28 + d - 29) * 24 + h) * 60) + mi
-}
-
-fn minutes_to_date(t: i32) -> (u16, u8, u8, u8, u8) {
-    let y = t / 483_840;
-    let r = t - y * 483_840;
-    let mo = r / 40_320 + 1;
-    let r = r - (mo - 1) * 40_320;
-    let d = r / 1440 + 1;
-    let r = r - (d - 1) * 1440;
-    (y as u16, mo as u8, d as u8, (r / 60) as u8, (r % 60) as u8)
-}
-
 #[test]
 fn date_pack_and_unpack_match_original() {
     let Some(mut o) = oracle() else { return };
@@ -224,7 +177,7 @@ fn date_pack_and_unpack_match_original() {
         let d = 1 + (xs.next() % 28) as i32;
         let h = (xs.next() % 24) as i32;
         let mi = (xs.next() % 60) as i32;
-        let t = date_to_minutes(y, mo, d, h, mi);
+        let t = calendar::date_to_minutes(y, mo, d, h, mi); // rt2-sim under test
 
         let got = o
             .call_fastcall(
@@ -246,7 +199,9 @@ fn date_pack_and_unpack_match_original() {
             o.call_thiscall(DATE_UNPACK, v as u32, &[out]).unwrap();
             let b = o.read_mem(out, 6).unwrap();
             let got = (u16::from_le_bytes([b[0], b[1]]), b[2], b[3], b[4], b[5]);
-            assert_eq!(got, minutes_to_date(v), "unpack {v} case {i}");
+            let want = calendar::minutes_to_date(v);
+            let want = (want.year, want.month, want.day, want.hour, want.minute);
+            assert_eq!(got, want, "unpack {v} case {i}");
         }
         o.call_thiscall(DATE_UNPACK, t as u32, &[out]).unwrap();
         let b = o.read_mem(out, 6).unwrap();
@@ -296,10 +251,13 @@ fn speed_table_and_ticks_match_original() {
     // MSVC CRT start-up leaves the x87 in 53-bit precision (CW 0x27f); that is the assumed
     // run-time state of the original (see docs/spec/time.md, "Em aberto").
     set_fpcw(&mut o, 0x27f);
+    // implementation under test: rt2_sim::calendar::SpeedTable
+    let sim_table = SpeedTable(tbl.clone().try_into().expect("11 entries"));
+    assert_eq!(scale, calendar::SPEED_SCALE);
     for idx in 0..=10u32 {
         o.write_u32(SPEED_IDX, idx).unwrap();
         for ms in 0..=1500u32 {
-            let want = (f64::from(tbl[idx as usize]) * f64::from(ms) * scale) as i32;
+            let want = sim_table.minutes_for_ms(idx as u8, ms);
             let got = o.call_thiscall(TICKS_FOR_MS, ms, &[]).unwrap() as i32;
             assert_eq!(got, want, "speed {idx}, {ms} ms");
         }
