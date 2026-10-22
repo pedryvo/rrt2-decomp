@@ -47,7 +47,7 @@ _The 1998 classic you know, from the same isometric viewpoint,<br>now native at 
 | Simulation specs (trains, cargo, economy…) | 🟡 | Time/calendar/main loop, RNGs, cargo economy and train movement/breakdowns/costs, mostly verified bit-exact against the original · [time](docs/spec/time.md) · [rng](docs/spec/rng.md) · [cargo](docs/spec/cargo.md) · [trains](docs/spec/trains.md) |
 | Differential test harness (Unicorn) | ✅ | Runs original functions in an emulator for bit-exact comparison · [docs](docs/oracle.md) |
 | Rendering engine (wgpu) | 🟡 | Isometric terrain viewer: `cargo run --release -p rt2-viewer -- <map>` |
-| Playable simulation | ⏳ | |
+| Playable simulation | 🟡 | `rt2-sim` core: RNGs, calendar, cargo revenue and train physics, checked bit-exact against the original; world loop not yet wired |
 | Game UI | ⏳ | |
 | Scenario editor | ⏳ | |
 
@@ -105,6 +105,7 @@ python3 re/scripts/pk2_hash.py setup.imb
 ```
 crates/
   rt2-formats/   pure parsers for the game's file formats (PK2, LNG, …)
+  rt2-sim/      deterministic simulation core (no I/O, no rendering)
   rt2-render/    wgpu terrain renderer (mesh, isometric camera; no game logic)
   rt2-viewer/    `rt2-viewer <map>`: window or `--screenshot` PNG
   rt2-oracle/    differential-test harness (original EXE in Unicorn)

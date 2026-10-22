@@ -47,7 +47,7 @@ O **rrt2-decomp** estuda o executável original de _Railroad Tycoon II Platinum_
 | Specs de simulação (trens, carga, economia…) | 🟡 | Tempo, calendário, laço principal, RNGs, economia de carga e movimento, quebras e custos dos trens, em boa parte verificados bit a bit contra o original · [tempo](docs/spec/time.md) · [rng](docs/spec/rng.md) · [carga](docs/spec/cargo.md) · [trens](docs/spec/trains.md) |
 | Harness de teste diferencial (Unicorn) | ✅ | Roda funções do original num emulador para comparação bit a bit · [docs](docs/oracle.md) |
 | Motor gráfico (wgpu) | 🟡 | Visualizador de terreno: `cargo run --release -p rt2-viewer -- <mapa>` |
-| Simulação jogável | ⏳ | |
+| Simulação jogável | 🟡 | Núcleo `rt2-sim`: RNGs, calendário, receita de carga e física dos trens, conferidos bit a bit com o original; o laço do mundo ainda não está ligado |
 | Interface do jogo | ⏳ | |
 | Editor de cenários | ⏳ | |
 
@@ -105,6 +105,7 @@ python3 re/scripts/pk2_hash.py setup.imb
 ```
 crates/
   rt2-formats/   parsers puros dos formatos do jogo (PK2, LNG, …)
+  rt2-sim/      núcleo determinístico da simulação (sem I/O, sem render)
   rt2-render/    renderizador de terreno em wgpu (malha, câmera isométrica; sem lógica de jogo)
   rt2-viewer/    `rt2-viewer <mapa>`: janela ou PNG com `--screenshot`
   rt2-oracle/    harness de teste diferencial (EXE original no Unicorn)
