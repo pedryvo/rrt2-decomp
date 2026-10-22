@@ -1939,3 +1939,458 @@ name = "buffer_checksum"
 kind = "function"
 comment = "checksum de um buffer (soma de bytes + hash rotativo); o gravador 0x477540 grava o resultado em +0x86f7 do arquivo 0x2348, com esse campo zerado durante o calculo"
 spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x43aea0"
+name = "stock_fundamental_price"
+kind = "function"
+comment = "thiscall ECX=company; cached per minute (+0x4250/+0x4254): weighted earnings/revenue/dividend/book criteria x econ x effect 0x1e; floor 1.0; [V]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x43b410"
+name = "stock_trade_price"
+kind = "function"
+comment = "thiscall ECX=company (n shares, commit); price with trade pressure (+0x34), young-company blend and piecewise clamp 0.3..6; ftol(r*Pf+0.5); [V]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x43b650"
+name = "credit_rating"
+kind = "function"
+comment = "thiscall ECX=company (extra debt X); 0..10 score from interest coverage and debt/assets; [V]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x4392e0"
+name = "bond_rate"
+kind = "function"
+comment = "thiscall ECX=company (X); prime + (10 - rating(X))*0.01; [V]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x46bac0"
+name = "prime_rate_for"
+kind = "function"
+comment = "fastcall ECX=company id; ftol((effect pct 0x20*0.01 + prime_rate + 0.001)*100)*0.01; [V]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x43a440"
+name = "company_annualized"
+kind = "function"
+comment = "thiscall ECX=company (index 0..14); current-year category total annualized and blended with last year; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x43ad60"
+name = "company_metric"
+kind = "function"
+comment = "thiscall ECX=company (0..13): price, equity/share, revenue/share, EPS, dividend, 5y return, rating, ...; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x43a060"
+name = "company_account"
+kind = "function"
+comment = "thiscall ECX=company (0..9): balance accounts (+0x4766[8]), 8 = sum of assets, 9 = -equity; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x43a0a0"
+name = "company_account_year"
+kind = "function"
+comment = "thiscall ECX=company (year, account): archived balance account; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x43a660"
+name = "company_cat_sum_live"
+kind = "function"
+comment = "thiscall ECX=company (i): current-year category total (13 sum, 14 revenue, else expenses); [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x43a6d0"
+name = "company_cat_sum_alt"
+kind = "function"
+comment = "thiscall ECX=company (i): same over +0x46fe (year 9001 marker); [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x43a740"
+name = "company_cat_sum_archive"
+kind = "function"
+comment = "thiscall ECX=company (k-1, i): archived category totals; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x43a7d0"
+name = "company_cat_sum_year"
+kind = "function"
+comment = "thiscall ECX=company (year, i): category totals of a year (live, archive or marker); [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x43a940"
+name = "company_cat_range_alt"
+kind = "function"
+comment = "thiscall (from, to): sum over +0x46fe range; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x43a970"
+name = "company_cat_range"
+kind = "function"
+comment = "thiscall (from, to): sum of current-year categories; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x43a9e0"
+name = "company_index"
+kind = "function"
+comment = "fastcall ECX=company -> position in the company set (index of the persons' holdings), -1 if absent; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x43aa20"
+name = "company_holder_count"
+kind = "function"
+comment = "thiscall ECX=company: count of persons holding the stock; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x43aac0"
+name = "company_top_holder"
+kind = "function"
+comment = "thiscall ECX=company (rank, include_short): person index with the rank-th largest holding; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x43abc0"
+name = "company_five_year_return"
+kind = "function"
+comment = "fastcall ECX=company: weighted 5-year return (price change + dividends); [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x43b3f0"
+name = "company_prev_month_price"
+kind = "function"
+comment = "fastcall ECX=company: f32 +0x4282; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x43b400"
+name = "company_last_price"
+kind = "function"
+comment = "fastcall ECX=company: f32 +0x427e (last committed quote); [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x43bd90"
+name = "company_highest_rate_bond"
+kind = "function"
+comment = "fastcall ECX=company: index of the bond with the highest rate, -1 if none; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x4394e0"
+name = "company_avg_bond_rate"
+kind = "function"
+comment = "fastcall ECX=company: principal-weighted average bond rate; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x4399d0"
+name = "company_month_step"
+kind = "function"
+comment = "fastcall ECX=company; monthly: investor mood, track maintenance, overhead, cash interest, quarterly bond interest and dividends, salaries, price commit; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x4398d0"
+name = "company_account_move"
+kind = "function"
+comment = "thiscall (account, f64 x): account 0 adjusts cash/equity, else moves cash into the account; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x439930"
+name = "company_asset_post"
+kind = "function"
+comment = "thiscall (account, f64 x, cat): posts to an account and a category; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x439060"
+name = "company_issue_stock"
+kind = "function"
+comment = "thiscall ECX=company (n, flag, price); price from trade_price(-0.7n), 5% fee in cat 12; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x438f70"
+name = "company_buy_back_stock"
+kind = "function"
+comment = "thiscall ECX=company (n); price from trade_price(0.7n), 3% brokerage; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x439320"
+name = "company_issue_bond"
+kind = "function"
+comment = "thiscall ECX=company (principal, term, fee_flag); needs rating >= 5.0, max 20 bonds; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x4391b0"
+name = "company_repay_bond"
+kind = "function"
+comment = "thiscall ECX=company (index, penalty_flag); 2% prepayment fee; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x43bc30"
+name = "company_declare_bankruptcy"
+kind = "function"
+comment = "fastcall ECX=company; halves bonds/negative cash, forfeits cash, +50% shares, +0x158 = year; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x43bfd0"
+name = "company_set_dividend"
+kind = "function"
+comment = "thiscall ECX=company (f32): +0x30; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x43bf80"
+name = "company_resign_chairman"
+kind = "function"
+comment = "thiscall ECX=company (person): clears the chairman if it matches; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x438900"
+name = "company_set_chairman"
+kind = "function"
+comment = "thiscall ECX=company (person): reputation transfer, +0x134 = 10000; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x43edf0"
+name = "company_max_dividend"
+kind = "function"
+comment = "fastcall ECX=company: maximum sustainable annual dividend per share; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x43d800"
+name = "company_year_end"
+kind = "function"
+comment = "fastcall ECX=company; archives metrics/categories/accounts, overhead, bond maturity, stock split; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x43c760"
+name = "company_annual_review"
+kind = "function"
+comment = "fastcall ECX=company; chairman reputation, shareholder meeting, liquidation of failing companies; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x43e580"
+name = "company_free_float"
+kind = "function"
+comment = "fastcall ECX=company: shares minus long positions held by persons; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x43e340"
+name = "company_short_limit"
+kind = "function"
+comment = "thiscall ECX=company (flag): shares available for short selling; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x4a7300"
+name = "person_buy_stock"
+kind = "function"
+comment = "thiscall ECX=person (company idx, n, forced); 3% brokerage; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x4a73d0"
+name = "person_sell_stock"
+kind = "function"
+comment = "thiscall ECX=person (company idx, n, forced); 3% brokerage; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x4a6f60"
+name = "person_can_buy"
+kind = "function"
+comment = "thiscall ECX=person (company idx, margin, n); [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x4a7190"
+name = "person_can_sell"
+kind = "function"
+comment = "thiscall ECX=person (company idx, short, ?, n); [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x4a6e00"
+name = "person_trade_lot"
+kind = "function"
+comment = "thiscall ECX=person (company idx, buy flag): default lot (multiples of 1000); [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x4a7570"
+name = "person_cash_add"
+kind = "function"
+comment = "thiscall ECX=person (int): +0x12a += x; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x4a7590"
+name = "person_month_step"
+kind = "function"
+comment = "fastcall ECX=person: cash interest (prime - 4%)/12; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x4a7620"
+name = "person_net_worth"
+kind = "function"
+comment = "fastcall ECX=person: cash + sum(holdings * live quote); [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x4a76b0"
+name = "person_wealth_part"
+kind = "function"
+comment = "thiscall ECX=person (0 cash, 1 stocks, 2 total); [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x4a7a40"
+name = "person_margin_call"
+kind = "function"
+comment = "fastcall ECX=person: margin equity check, deadline and forced liquidation; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x46bb10"
+name = "margin_check_all"
+kind = "function"
+comment = "cdecl: runs person_margin_call for every person when margin is enabled; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x4a8100"
+name = "chairman_performance_penalty"
+kind = "function"
+comment = "fastcall ECX=person: (min(10, years as chairman) - 10) * 7; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x469fb0"
+name = "economy_set_state"
+kind = "function"
+comment = "fastcall ECX=state: prime_rate = 0.09 - state*0.01 and requote all companies; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x45fbf0"
+name = "company_ai_finance"
+kind = "function"
+comment = "fastcall ECX=company id; AI bond/stock/dividend/bankruptcy decisions; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x4015a0"
+name = "merger_resolve"
+kind = "function"
+comment = "cdecl (ECX=proposal id): votes of the AI holders and merger outcome; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x48b4f0"
+name = "merger_propose"
+kind = "function"
+comment = "fastcall (acquirer, target, offer): creates a merger proposal; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x42ee00"
+name = "chairman_election_resolve"
+kind = "function"
+comment = "fastcall ECX=election id: votes of the AI holders; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x42ed10"
+name = "chairman_election_start"
+kind = "function"
+comment = "fastcall (company, challenger): creates an election; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x438170"
+name = "company_remove"
+kind = "function"
+comment = "thiscall ECX=company (leave_assets): removes a company, clears holdings; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x438780"
+name = "company_set_manager"
+kind = "function"
+comment = "thiscall ECX=company (manager idx, charge_fee): hires a manager; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x43eb60"
+name = "company_industry_trade"
+kind = "function"
+comment = "thiscall ECX=company (industry, sell flag): buy/sell an industry; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x5706c9"
+name = "brokerage_rate"
+kind = "global"
+comment = "f32 0.03 set in 0x472980: brokerage on share trades and buybacks"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x5706cd"
+name = "stock_liquidity"
+kind = "global"
+comment = "f32 100.0 set in 0x472980: divisor in the trade-pressure term"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x5706d5"
+name = "min_bond_rating"
+kind = "global"
+comment = "f32 5.0: minimum credit rating to issue bonds"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x550064"
+name = "price_weights"
+kind = "table"
+comment = "i32[4] 40,10,20,30: earnings, revenue, dividends, book value"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x550074"
+name = "price_age_weights"
+kind = "table"
+comment = "i32[5][4] per-age multipliers of the weights"
+spec = "docs/spec/finance.md"

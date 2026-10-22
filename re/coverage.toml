@@ -3,11 +3,11 @@
 # Ver docs/re-workflow.md.
 #
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
-# Classificadas (categoria != unknown): 899 (30.5%)
-# Por categoria: lib=258, platform=116, render=11, audio=70, ui=248, sim=196, unknown=2046
-# Por estado:   unknown=2764, named=64, spec=93, verified=24
-# Entradas manuais: 180
-# sim spec coverage: 49.5% (97 de 196 funcoes sim em spec/verified)
+# Classificadas (categoria != unknown): 960 (32.6%)
+# Por categoria: lib=258, platform=116, render=11, audio=70, ui=247, sim=258, unknown=1985
+# Por estado:   unknown=2759, named=64, spec=93, verified=29
+# Entradas manuais: 240
+# sim spec coverage: 39.5% (102 de 258 funcoes sim em spec/verified)
 
 [[function]]
 addr = "0x401005"
@@ -1456,9 +1456,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4015a0"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x4015a5"
@@ -4846,9 +4847,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x40235b"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x43b410"
 
 [[function]]
 addr = "0x402360"
@@ -6952,9 +6953,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x402c02"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x43aea0"
 
 [[function]]
 addr = "0x402c0c"
@@ -9254,16 +9255,18 @@ why = "no-evidence"
 [[function]]
 addr = "0x42ed10"
 size = 230
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x42ee00"
 size = 1461
-category = "ui"
+category = "sim"
 status = "unknown"
-why = "string:\n{[HJL]%s}{[HJR]%s}"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x42f5f0"
@@ -9653,9 +9656,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x438170"
 size = 631
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x4383f0"
@@ -9681,16 +9685,18 @@ why = "no-evidence"
 [[function]]
 addr = "0x438780"
 size = 371
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x438900"
 size = 258
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x438a10"
@@ -9702,44 +9708,50 @@ why = "no-evidence"
 [[function]]
 addr = "0x438f70"
 size = 240
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x439060"
 size = 331
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x4391b0"
 size = 297
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x4392e0"
 size = 50
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x439320"
 size = 439
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x4394e0"
 size = 88
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x439620"
@@ -9772,45 +9784,50 @@ why = "no-evidence"
 [[function]]
 addr = "0x4398d0"
 size = 86
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x439930"
 size = 62
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x439970"
 size = 84
 category = "sim"
 status = "spec"
-why = "cargo.md 6"
+why = "finance/stock market (docs/spec/finance.md)"
 manual = true
 
 [[function]]
 addr = "0x4399d0"
 size = 1636
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x43a060"
 size = 60
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x43a0a0"
 size = 178
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x43a160"
@@ -9829,121 +9846,138 @@ why = "no-evidence"
 [[function]]
 addr = "0x43a440"
 size = 530
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x43a660"
 size = 104
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x43a6d0"
 size = 104
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x43a740"
 size = 141
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x43a7d0"
 size = 366
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x43a940"
 size = 39
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x43a970"
 size = 39
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x43a9e0"
 size = 49
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x43aa20"
 size = 150
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x43aac0"
 size = 246
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x43abc0"
 size = 407
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x43ad60"
 size = 250
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x43aea0"
 size = 1358
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x43b3f0"
 size = 7
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x43b400"
 size = 7
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x43b410"
 size = 573
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x43b650"
 size = 1270
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x43bb50"
@@ -9962,16 +9996,18 @@ why = "no-evidence"
 [[function]]
 addr = "0x43bc30"
 size = 341
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x43bd90"
 size = 73
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x43bde0"
@@ -9984,16 +10020,18 @@ manual = true
 [[function]]
 addr = "0x43bf80"
 size = 80
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x43bfd0"
 size = 87
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x43c030"
@@ -10034,16 +10072,18 @@ why = "no-evidence"
 [[function]]
 addr = "0x43c760"
 size = 4254
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x43d800"
 size = 1170
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x43dca0"
@@ -10076,16 +10116,18 @@ why = "no-evidence"
 [[function]]
 addr = "0x43e340"
 size = 454
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x43e580"
 size = 110
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x43e760"
@@ -10125,9 +10167,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x43eb60"
 size = 309
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x43eca0"
@@ -10139,9 +10182,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x43edf0"
 size = 656
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x43f080"
@@ -10997,9 +11041,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x45fbf0"
 size = 1523
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x460370"
@@ -11779,9 +11824,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x469fb0"
 size = 93
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x46a010"
@@ -12028,16 +12074,18 @@ why = "no-evidence"
 [[function]]
 addr = "0x46bac0"
 size = 70
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x46bb10"
 size = 138
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x46bd70"
@@ -12827,9 +12875,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x48b4f0"
 size = 214
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x48b5d0"
@@ -13805,37 +13854,42 @@ why = "no-evidence"
 [[function]]
 addr = "0x4a6e00"
 size = 338
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x4a6f60"
 size = 550
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x4a7190"
 size = 368
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x4a7300"
 size = 203
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x4a73d0"
 size = 198
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x4a74a0"
@@ -13854,16 +13908,18 @@ why = "no-evidence"
 [[function]]
 addr = "0x4a7570"
 size = 19
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x4a7590"
 size = 66
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x4a75e0"
@@ -13875,16 +13931,18 @@ why = "no-evidence"
 [[function]]
 addr = "0x4a7620"
 size = 97
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x4a76b0"
 size = 171
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x4a7760"
@@ -13924,9 +13982,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4a7a40"
 size = 1650
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x4a80c0"
@@ -13938,9 +13997,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4a8100"
 size = 70
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "finance/stock market (docs/spec/finance.md)"
+manual = true
 
 [[function]]
 addr = "0x4a8150"
