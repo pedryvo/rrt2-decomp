@@ -151,3 +151,6 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Feature: the in-game map is live: engines, tenders and wagons are drawn from the car pool at their interpolated positions (record by direction and view rotation, depth-sorted with buildings and trees), with steam puffs from the animation pool
 - Improved: static map layers (buildings, track, stations) rebuild when the save's building/track/tile fingerprint changes
 - Feature: rrt2 --screenshot accepts --focus X,Y, --zoom, --rotation and --bench N for map shots and frame timing
+- Fix: the language selector in the main menu no longer clips its labels at any UI scale or language (it stacks into two lines when the canvas is narrow)
+- Fix: Chinese dates read "1876年1月12日" (the date string can use the abbreviated month with %4)
+- Docs: the stacked cars near the Example station curve are not a drawing bug: a diagonal map direction is vertical on screen and the double-track lanes are 0.54 tile apart (docs/ui.md)

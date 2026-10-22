@@ -35,6 +35,8 @@ pub mod id {
     pub const PREVIOUS: u32 = 303;
     /// January; the 12 months are consecutive.
     pub const MONTH_FIRST: u32 = 1441;
+    /// January abbreviated; also consecutive.
+    pub const MONTH_SHORT_FIRST: u32 = 1426;
 }
 
 impl Texts {
@@ -164,8 +166,22 @@ impl Texts {
     pub fn date(&self, month: u8, day: u8, year: impl std::fmt::Display) -> String {
         self.af(
             "%1 %2, %3",
-            &[self.month(month), day.to_string(), year.to_string()],
+            &[
+                self.month(month),
+                day.to_string(),
+                year.to_string(),
+                self.month_short(month),
+            ],
         )
+    }
+
+    /// Abbreviated month name (LNG 1426.., "Jan"; "1月" in Chinese), the date's `%4`.
+    pub fn month_short(&self, month: u8) -> String {
+        const EN: [&str; 12] = [
+            "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+        ];
+        let i = usize::from(month.clamp(1, 12)) - 1;
+        self.get(id::MONTH_SHORT_FIRST + i as u32, EN[i])
     }
 
     pub fn month(&self, month: u8) -> String {
@@ -262,6 +278,20 @@ mod tests {
         assert_eq!(app_strings_id("%1 %2, %3"), 100_007);
         assert_eq!(fixture().date(1, 5, 1880), "5 de Janeiro, 1880");
         assert_eq!(subst("%1+%1 %9", &["a".into()]), "a+a ");
+    }
+
+    #[test]
+    fn the_date_can_use_the_abbreviated_month() {
+        let mut t = fixture();
+        t.set_locale("xx");
+        // %4 is the abbreviated month (LNG 1426..), English fallback "Jan" here.
+        assert_eq!(
+            subst(
+                "%3 %4 %2",
+                &[t.month(1), "5".into(), "1880".into(), t.month_short(1)]
+            ),
+            "1880 Jan 5"
+        );
     }
 
     fn app_strings_id(s: &str) -> u32 {

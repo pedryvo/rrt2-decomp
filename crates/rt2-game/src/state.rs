@@ -45,6 +45,8 @@ const A_SAVE: u32 = 23;
 const A_MENU: u32 = 24;
 /// Language buttons of the main menu: `A_LANG + index` in `Texts::languages()`.
 const A_LANG: u32 = 200;
+/// Gap between language buttons and between the selector's lines.
+const LANG_GAP: f32 = 8.0;
 
 /// Wall time of one simulation frame (`calendar::NOMINAL_FRAME_MS`).
 const STEP_MS: f32 = rt2_sim::calendar::NOMINAL_FRAME_MS as f32;
@@ -1013,8 +1015,10 @@ impl AppState {
                 let panel = ui.add(
                     layer,
                     Kind::Panel { fill: Fill::Panel },
-                    Layout::at(Anchor::Top, bw + 2.0 * pad, h)
-                        .offset(0.0, top.min((ch - h - 40.0).max(0.0))),
+                    Layout::at(Anchor::Top, bw + 2.0 * pad, h).offset(
+                        0.0,
+                        top.min((ch - h - self.language_height(cw) - 12.0).max(0.0)),
+                    ),
                 );
                 ui.set_stack(panel, Stack::column(gap, pad).centered());
                 for (text, action, hot) in [
@@ -1113,36 +1117,93 @@ impl AppState {
         }
     }
 
+    /// Sizes of the language selector for a canvas width: `(label_w, button_w, font, stacked)`.
+    /// There is no text measurement here, so the advance is an estimate (em per script) that is
+    /// generous enough for no label to clip. When the labels would need a font under 9 logical
+    /// pixels (high UI scales shrink the canvas) the selector stacks into two button lines with
+    /// its caption above them.
+    fn language_plan(&self, canvas_w: f32) -> (f32, f32, rt2_ui::FontStyle, bool) {
+        let langs = self.texts.languages();
+        let em = |t: &str| {
+            t.chars()
+                .map(|c| if (c as u32) >= 0x2e80 { 1.05 } else { 0.72 })
+                .sum::<f32>()
+        };
+        let label_w = (em(&self.texts.a("Language")) * game_font(6).size + 16.0).max(60.0);
+        let widest = langs.iter().map(|(_, name)| em(name)).fold(1.0, f32::max);
+        let fit = |n: f32, avail: f32| {
+            let bw = ((avail - 16.0) / n - LANG_GAP).clamp(60.0, 190.0);
+            (bw, ((bw - 16.0) / widest).floor().min(game_font(2).size))
+        };
+        let n = langs.len() as f32;
+        let (bw, size) = fit(n, canvas_w - label_w);
+        let (bw, size, stacked) = if size >= 9.0 {
+            (bw, size, false)
+        } else {
+            let (bw2, size2) = fit((n / 2.0).ceil(), canvas_w);
+            (bw2, size2.max(8.0), true)
+        };
+        let mut font = game_font(2);
+        font.size = size;
+        (label_w, bw, font, stacked)
+    }
+
+    /// Vertical room taken by the language selector above the bottom margin.
+    fn language_height(&self, canvas_w: f32) -> f32 {
+        if self.language_plan(canvas_w).3 {
+            3.0 * (34.0 + LANG_GAP) + 40.0
+        } else {
+            34.0 + 40.0
+        }
+    }
+
     /// One button per available language, labelled with its own name; the current one is
     /// disabled (it reads as selected).
     fn language_row(&self, ui: &mut Ui, layer: NodeId, canvas_w: f32) {
         let langs = self.texts.languages();
-        let (gap, label_w) = (8.0, 100.0);
-        let n = langs.len() as f32;
-        let bw = ((canvas_w - label_w - 24.0) / n - gap).clamp(90.0, 190.0);
-        let w = label_w + n * (bw + gap);
-        let row = ui.add(
-            layer,
-            Kind::Panel { fill: Fill::None },
-            Layout::at(Anchor::Bottom, w, 34.0).offset(0.0, 40.0),
-        );
-        ui.set_stack(row, Stack::row(gap, 0.0));
-        ui.add(
-            row,
-            label(
-                &self.texts.a("Language"),
-                game_font(6).with_shadow(),
-                Align::Right,
-                Color::rgb(0xf2, 0xe9, 0xd0),
-            ),
-            Layout::at(Anchor::Left, label_w, 34.0),
-        );
+        let (label_w, bw, font, stacked) = self.language_plan(canvas_w);
+        let caption = self.texts.a("Language");
+        let cream = Color::rgb(0xf2, 0xe9, 0xd0);
+        let per = if stacked {
+            langs.len().div_ceil(2)
+        } else {
+            langs.len()
+        };
+        let line_h = 34.0 + LANG_GAP;
+        let mut rows = Vec::new();
+        for line in 0..(langs.len().div_ceil(per)) {
+            let count = per.min(langs.len() - line * per) as f32;
+            let w = count * (bw + LANG_GAP) + if stacked { 0.0 } else { label_w };
+            // The last line sits on the bottom margin; earlier lines stack above it.
+            let up = 40.0 + (if stacked { 1 - line } else { 0 }) as f32 * line_h;
+            let row = ui.add(
+                layer,
+                Kind::Panel { fill: Fill::None },
+                Layout::at(Anchor::Bottom, w, 34.0).offset(0.0, up),
+            );
+            ui.set_stack(row, Stack::row(LANG_GAP, 0.0));
+            if !stacked {
+                ui.add(
+                    row,
+                    label(&caption, game_font(6).with_shadow(), Align::Right, cream),
+                    Layout::at(Anchor::Left, label_w, 34.0),
+                );
+            }
+            rows.push(row);
+        }
+        if stacked {
+            ui.add(
+                layer,
+                label(&caption, game_font(6).with_shadow(), Align::Center, cream),
+                Layout::at(Anchor::Bottom, canvas_w, 34.0).offset(0.0, 40.0 + 2.0 * line_h),
+            );
+        }
         for (i, (locale, name)) in langs.iter().enumerate() {
             ui.add(
-                row,
+                rows[i / per],
                 Kind::Button {
                     text: name.clone(),
-                    font: game_font(2),
+                    font,
                     action: A_LANG + i as u32,
                     enabled: locale != self.texts.locale(),
                     hotkey: None,
