@@ -206,12 +206,12 @@ fn maps_thirty_days_are_equal() {
     }
 }
 
-/// Thirty days of the Example cross the year end (10 Dec 1875 to 12 Jan 1876). What still
-/// differs is exactly what the specs leave open (docs/fidelity-status.md): the yearly history
-/// record (`state`), the terrain marking of created and demolished buildings (`tiles`,
-/// `elevation`, `structures`), the station counters of `0x4beae0` (`stations`) and the AI
-/// company and its chairman (`companies`, `persons`). The pools of the buildings, places, lots
-/// and links, the trains and the other companies are equal, and the year-end RNG draws (annual
+/// Thirty days of the Example cross the year end (10 Dec 1875 to 12 Jan 1876). The only gap
+/// left is the AI company and its chairman (`companies`, `persons`: the AI turn lives in
+/// `ai/`). The yearly history record (`state`, `history_snapshot` `0x4e9770`), the terrain
+/// marking of the created and demolished buildings (`tiles`, `elevation`, `structures`) and the
+/// station counters of `0x4beae0` (`stations`) are equal, as are the pools of the buildings,
+/// places, lots and links, the trains and the other companies; the year-end RNG draws (annual
 /// reviews, manager picks, town growth) stay in step.
 #[test]
 fn example_thirty_days_residual_is_the_documented_gap() {
@@ -229,15 +229,7 @@ fn example_thirty_days_residual_is_the_documented_gap() {
         .collect();
     groups.sort();
     groups.dedup();
-    let allowed = [
-        "companies",
-        "elevation",
-        "persons",
-        "state",
-        "stations",
-        "structures",
-        "tiles",
-    ];
+    let allowed = ["companies", "persons"];
     for g in &groups {
         assert!(allowed.contains(&g.as_str()), "unexpected group {g}");
     }

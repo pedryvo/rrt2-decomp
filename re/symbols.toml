@@ -4463,3 +4463,136 @@ name = "station_of_building_at"
 kind = "function"
 comment = "fastcall(x,y): estacao do predio do tile se for estacao (+7 == 0); [S]"
 spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x43c730"
+name = "company_rating_step"
+kind = "function"
+comment = "fastcall(empresa): degrau 0..12 = clamp((+0x46a + 0x3a) / 9, 0, 12), divisao inteira com sinal; [V]"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x43a160"
+name = "company_metric_of_year"
+kind = "function"
+comment = "thiscall ECX=empresa (ano, i): metrica i do ano (viva se ano atual, senao arquivo +0x49b6 + (i + (atual-ano)*14)*8); [V]"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x4a7760"
+name = "person_wealth_of_year"
+kind = "function"
+comment = "thiscall ECX=pessoa (ano, i): 0 caixa, 1 acoes, 2 soma; ano atual vivo, anterior do arquivo +0x123 + (i + (atual-ano)*2)*8; [V]"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x4a80c0"
+name = "person_owns_all_shares"
+kind = "function"
+comment = "thiscall ECX=pessoa (empresa_id): 1 se empresa+0x2c == pessoa+0x1d3[indice no conjunto]; [V]"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x46b3c0"
+name = "local_player_person"
+kind = "function"
+comment = "devolve list_record(pessoas, [0x566ca4]) ou 0; [S]"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x46a890"
+name = "player_set_count"
+kind = "function"
+comment = "devolve [0x570775]: numero de pessoas do conjunto de jogadores"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x46a8a0"
+name = "player_set_at"
+kind = "function"
+comment = "fastcall(i): list_record(pessoas, u16 0x570779[i])"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x409770"
+name = "building_footprint_geometry"
+kind = "function"
+comment = "fastcall(predio): cantos por rotacao (+0xa/+0x12), caixa +0x26..+0x2c, ancora +0x1a, e tile_struct_add(tile, 3, id) em cada celula & 0xc3; [V]"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x409580"
+name = "building_level_terrain"
+kind = "function"
+comment = "fastcall(predio): os cantos das celulas & 0xc1 vao a (h + media + 1) >> 1 (0x426000, limite -255..510); [V]"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x409120"
+name = "building_save_tile"
+kind = "function"
+comment = "thiscall(predio, dx, dy): guarda o tile da celula & 0x40 em pool_88 (cadeia +0x50); [S]"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x4091f0"
+name = "building_restore_tiles"
+kind = "function"
+comment = "fastcall(predio): devolve os tiles guardados em +0x50 (pool_88) e repinta transicoes de campos (0x42a7d0); [V parcial]"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x4072c0"
+name = "building_link_stations"
+kind = "function"
+comment = "fastcall(predio_id): cria elos pool_58 com cada estacao (+0x45 == 0) cuja captacao alcanca o predio (station_catchment_test); [V]"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x424c10"
+name = "terrain_flags_region"
+kind = "function"
+comment = "fastcall(x0,y0,x1,y1): flags tile+6 bits 4 (inconstruivel), 2 e 3 (borda) e nibble de vegetacao da regiao; [V]"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x417880"
+name = "terrain_flat_flags"
+kind = "function"
+comment = "redesenho adiado do retangulo sujo: tile+6 bit 0 = 4 cantos com a mesma elevacao (e minimos por lado); [V]"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x417770"
+name = "terrain_dirty_rect"
+kind = "function"
+comment = "fastcall(x0,y0,x1,y1): acumula o retangulo sujo do terreno (0x4175c0 por janela)"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x417c40"
+name = "terrain_view_flush"
+kind = "function"
+comment = "executa 0x417880 e redesenha o retangulo acumulado (0x416bf0, 0x416d40)"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x426000"
+name = "terrain_set_corner"
+kind = "function"
+comment = "fastcall(indice, altura, redesenha): grava elevation[indice] limitado a -255..510"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x415f80"
+name = "tile_blocks_building"
+kind = "function"
+comment = "fastcall(tile): 1 se ponte (tile+2 & 0x80), vao (tile+3 & 0x40) ou overlay de trilho (camada 4/5); [V]"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x42e250"
+name = "tile_building_flag_refresh"
+kind = "function"
+comment = "fastcall(tile): tile+2 bit 4 = ha estrutura tipo 3 na cadeia"
+spec = "docs/spec/world-growth.md"

@@ -300,7 +300,7 @@ se escolha: building_destroy(escolha, 1)
 ```
 O prédio de **menor lucratividade** (com ruído de +-10%) da classe pedida é demolido; prédios de empresas e prédios de estação são imunes, e prédios novos (rating 0) são os primeiros da fila. Não há falência de indústria por outra via: **uma indústria só fecha quando o lugar encolhe** (laço de encolhimento ou demolição espontânea, 3.3), e a escolhida é a menos lucrativa; uma indústria sem nenhum serviço continua viva enquanto o alvo do lugar a comportar.
 
-`building_destroy` (`0x40adb0`) [S]: decrementa `0x570713` (se real), tira o prédio da lista do lugar (`0x430da0`), libera lotes sem estação, destrói a estação ligada, devolve os tiles (`0x42e320`), limpa a máscara de pegada e marca `+0x4f = 1`.
+`building_destroy` (`0x40adb0`) [S]: decrementa `0x570713` (se real), tira o prédio da lista do lugar (`0x430da0`), libera lotes sem estação, destrói a estação ligada, devolve os tiles (`0x42e320`), limpa a máscara de pegada e marca `+0x4f = 1` (4.5).
 
 ### 3.7 Reinício (`town_reset` `0x4317f0`) [S]
 
@@ -368,7 +368,7 @@ enquanto tentativas != 0:
 devolve falso
 ```
 - A distribuição de `dx` é `sqrt(a*b)`, com `a, b` uniformes em `[0, raio]`: mais denso perto do centro; o raio cresce de ~0/1 a `raio_max + 1` (5, 7, 8, 10, 12) ao longo das tentativas.
-- `building_can_place` (`0x4087a0`) valida a pegada 10x10 (limites do mapa, sem estrutura/trilho, sem água onde a máscara exige, ...); detalhes em `terrain-track.md`/em aberto.
+- `building_can_place` (`0x4087a0`) valida a pegada 10x10: regras completas em 4.6.
 - `building_shape_pick` (`0x40ba00`) [V]: tipo `> 0x30` vira `0x12`; para os tipos 10, 11, 0x10, 0x12, 0x1c, 0x1d, 0x1e, 0x21 e 0x27..0x29 sorteia `n = rng(1, 24)`, senão `n = 1`; devolve a `n`-ésima forma (a partir do índice 0, circular em `0x7a`) cujo tipo bate.
 
 ### 4.3 Classes de floresta e declive (`site_classes` `0x42fb10`) [V]
@@ -377,7 +377,7 @@ Amostra 9 pontos em cruz em torno de `(x, y)`: o centro (peso 32), os 4 vizinhos
 
 ### 4.4 Criação (`building_create` `0x409010` -> `building_construct` `0x409a30`) [S]
 
-Aloca um registro em `list_industries` e o inicializa: `+7 = tipo da forma`; se tipo != 0, `0x570713 += 1`; `+2 =` o lugar passado pelo crescimento (ou `place_at(x, y)` se nenhum foi passado); relógios `+0x53` por `0x40bb40` (abaixo); `+0x93 = 0,5`; `+0x47 = 1,0`; `+0x3c = ano`; contadores zerados; cria casas/indústrias com `+0x2e = 0`; o prédio entra na **cabeça** da lista do lugar (`0x430d80`); marca o terreno (tiles com estrutura tipo 3), refaz o relevo (campos de fazenda, `0x429fc0`/`0x42a3e0`/`0x42a7d0`: **um `rng(lo, hi)` por tile da pegada** cuja textura está fora da faixa da classe, ainda não decodificados) e recalcula estações ligadas. Se `0x570603[tipo] == 0` (primeiro prédio do tipo desde o início do jogo) dispara a manchete "A new type of building has been built for the first time near X" (LNG 94; 95 sem cidade), onde X é a cidade mais próxima por `0x42fa30` (distância inteira), e marca o tipo como visto.
+Aloca um registro em `list_industries` e o inicializa: `+7 = tipo da forma`; se tipo != 0, `0x570713 += 1`; `+2 =` o lugar passado pelo crescimento (ou `place_at(x, y)` se nenhum foi passado); relógios `+0x53` por `0x40bb40` (abaixo); `+0x93 = 0,5`; `+0x47 = 1,0`; `+0x3c = ano`; contadores zerados; cria casas/indústrias com `+0x2e = 0`; o prédio entra na **cabeça** da lista do lugar (`0x430d80`); marca o terreno e refaz o relevo (4.5; campos de fazenda, `0x429fc0`/`0x42a3e0`/`0x42a7d0`: **um `rng(lo, hi)` por tile da pegada** cuja textura está fora da faixa da classe, ainda não decodificados) e liga as estações ao alcance. Se `0x570603[tipo] == 0` (primeiro prédio do tipo desde o início do jogo) dispara a manchete "A new type of building has been built for the first time near X" (LNG 94; 95 sem cidade), onde X é a cidade mais próxima por `0x42fa30` (distância inteira), e marca o tipo como visto.
 
 `building_init_slot_clocks` (`0x40bb40`) [V]: para cada slot `k` (4, mesmo vazios):
 
@@ -390,6 +390,56 @@ se o prédio é real (+0x2e == 0):
     relógio[k] = ftol( f32(relógio[k]) - ((r * (483840 / taxa')) * 0,01f) * m )
 ```
 ou seja, o primeiro lote do prédio sai até um período antes do normal, o que espalha as primeiras produções (cargo.md 7.3: `relógio = min(relógio, agora)`).
+
+### 4.5 Marcação do terreno de `building_create` e `building_destroy` [V no Example, 30 dias]
+
+Tudo isto mexe no mapa (`tiles`, `elevation`) e no pool de estruturas `0x574c54`; sem RNG para os tipos de pegada simples (casas e a maioria dos prédios: células só com `& 0xc3`). Funções em `crates/rt2-sim/src/tilemark.rs`; prova: o Example em 30 dias (2 casas criadas, 2 prédios de 2 tiles demolidos) bate em `tiles`, `elevation`, `structures` e `stations` com o original (1099 + 268 + 65 + 33 campos antes).
+
+**Pegada.** `building_shape_table` (`0x5457ef`, `0x154` bytes por forma): `+9` tipo do prédio, `+10`/`+11` (`0x5457f9`/`fa`) orientação e deslocamento de trilho (estações), `+12`/`+13` (`0x5457fb`/`fc`) largura e altura, `+14`/`+15` (`0x5457fd`/`fe`) deslocamentos da célula de região; a grade `10x10` de palavras de flags termina em `0x5458c5` e é lida **de trás para a frente**: a célula `(lin, col)` está em `0x5458c5 + 0x154*forma - 20*lin - 2*col` e cai no tile `(cx - col, cy - lin)`. Bits: `0x1`/`0x2` solo, `0x40` campo (textura), `0x80`, `0x100`/`0x200` água/estrada, `0x2c1`/`0x102` terra/água (4.6); `& 0xc3` faz parte do prédio, `& 0xc1` do nivelamento, `& 0x43` da captação (`terrain-track.md` 3.3).
+
+**Geometria do registro** (`0x409a30` + `0x409770`), com `(x, y)` a âncora passada:
+```
++0x1a,+0x1c = (x, y)            +0x1e = x + (largura >> 1)      +0x20 = y + (altura >> 1)
++0x22 = +0x1e - b(0x5457fd)     +0x24 = +0x20 - b(0x5457fe)     +0x9d = região do tile (+0x22,+0x24)
++0x26,+0x28,+0x2a,+0x2c = caixa (xmin, ymin, xmax, ymax) das células & 0xc3   (inicia 9999,9999,0,0)
+cantos: para k em 0..4, entre as células & 3 (lin externo, col interno; primeiro máximo vence):
+    chave k=0: tx*1001 + ty*1000 ; k=1: ty*1001 + (L-tx)*1000 ;
+    k=2: (L-tx)*1001 + (A-ty)*1000 ; k=3: (A-ty)*1001 + tx*1000          (L, A = largura e altura do mapa)
+    +0x0a+2k = tx ; +0x12+2k = ty                (0xffff se nenhuma célula)
+```
+**Criação** (na ordem do original; `id` = slot do prédio):
+1. `0x409770` fim: para cada célula `& 0xc3` dentro do mapa (`lin` externo, `col` interno) `tile_struct_add(tile, 3, id)` (`0x42e850`: cadeia do tile ordenada por tipo decrescente, o novo vai depois do último de tipo `>=`; aloca no pool de estruturas, **a ordem de alocação decide os ids que os marcadores dos trens recebem depois**; liga `tile+2 |= 0x10`).
+2. `0x409580` (nivelamento): para as células `& 0xc1` dentro do mapa, os 4 cantos do tile (deslocamentos `0x580fd8` = `0, 1, L+2, L+1` em índices de `(L+1)*y + x`; sem repetição); `m = ((n >> 1) + soma) / n` (divisão inteira com sinal) e cada canto vira `(h + m + 1) >> 1`, limitado a `-255..510` (`0x426000`).
+3. Células `& 0x40`: `0x409120` guarda o tile (deslocamento i8,i8 + bytes de textura) no pool `0x574c88` (cadeia em `+0x50` do prédio) e as texturas de campo são sorteadas (`0x429fc0` tipos 10/0x1d/0x1e, `0x42a3e0` tipos 0xb/0x10/0x21, depois `0x42a7d0` das transições): **RNG por tile, não portado** (gancho `building_create_field_textures`).
+4. `0x4093e0`: sprites do prédio (somente runtime).
+5. Estações ligadas (`0x4072c0`, só prédios com tipo != 0): para cada estação da lista com `+0x45 == 0`, se `station_catchment_test` (`0x407030`: distância da estação à âncora `<= raio + 11` e menor distância às células `& 0x43` `<= raio`; raio por tamanho em `0x54fd9c`) cria um elo em `pool_58` `{u16 prédio, u16 estação, u16 distância, i32 próximo do prédio (+0x2f), i32 próximo da estação (+0x3d)}`, cabeça nova nos dois, `prédio+0x33 += 1`, `estação+0x41 += 1`. Depois `0x40a610(prédio, 1)` (pilhas).
+6. `0x424c10(x-4, y-4, x+4, y+4)` com a âncora `(+0x1a, +0x1c)` (flags do terreno, abaixo).
+7. Fim: o prédio vai para a cabeça da lista do lugar (`0x430d80`), a manchete do primeiro do tipo (4.4) e, no redesenho adiado (`0x417c40` -> `0x417880`), `tile+6 & 1` = "tile plano" (os 4 cantos com a mesma elevação) é recalculado para o retângulo `caixa +- 1` (`0x417770`). Um tile plano tem sempre o bit; o carregador também o calcula (conferido em todos os tiles do Example: 55395 planos, 34605 não).
+
+**Flags do terreno** (`0x424c10(x0, y0, x1, y1)`, região cortada ao mapa; duas passadas sobre toda a região):
+```
+passada 1, por tile:  c = classe(tile+0 >> 6), n = tile+2 & 0xf
+    inconstruível = c == 18 ou (c == 0 e n != 4) ou c in {9, 10, 11} ou track_id (u16 em +7) != 0
+                    ou tile+0 & 1 (rio) ou (há prédio vivo no tile (0x408fd0) e n < 10)
+    tile+6 bit 4 (0x10) = inconstruível
+    se árvores (tile+3 & 0x1f) == 0 e n in {1, 2, 4..9}: tile+2 &= 0xf0
+    tile+6 bit 2 (0x04) = !(bit 4) e (tile+2 & 0xf) != 0
+passada 2, por tile:  tile+6 bit 3 (0x08) = !(bit 2) ou x < 1 ou vizinho oeste bit 4 ou y < 2 (sic) ou vizinho norte bit 4
+                      ou x >= L-1 ou vizinho leste bit 4 ou y >= A-1 ou vizinho sul bit 4
+```
+**Demolição** (`0x40adb0(prédio, 1)`, depois do que 3.6 descreve: lista do lugar, lotes sem estação, elos): `tile_struct_remove(tile, 3, id)` (`0x42e320`: desliga e libera o primeiro registro `(3, id)`; `tile+2 & 0x10` passa a valer se ainda há tipo 3) para todos os tiles da caixa `+0x26..+0x2c` (**`x` externo, `y` interno**); `0x4091f0` devolve os tiles guardados em `+0x50` (`flags2` nibble, árvores, terreno) e libera `pool_88`; para tipos 0xb/0x10/0x21 repinta as transições (`0x42a7d0`, **RNG, não portado**); `0x424c10(caixa +- 1)`; `+0x4f = 1`. A elevação **não** volta ao que era (só as prévias restauram a lista `0x564fc8`). Prédios de estação (`+8 != 0`) também chamam `station_remove` (`terrain-track.md`). O contador `0x570713` e a venda ao dono (`0x43eb60`) estão em 3.6/5.3.
+
+### 4.6 `building_can_place` (`0x4087a0`) [V]
+
+Assinatura `fastcall(x, y, forma, empresa, cedo?, permitido, estacao, &a, &b, estrada)`; o crescimento chama com `empresa = 0`, `param_5 = 0`, `permitido = 0`, `estacao = 1`, `estrada = (tentativas > 300)` (o argumento que 4.2 chama `cedo`). Origem da pegada: `(x + (largura >> 1), y + (altura >> 1))`. Para cada célula `c` com `c & 0x3c3 != 0`, em `lin` externo / `col` interno, no tile `(cx - col, cy - lin)`, **falha** se:
+1. o tile está fora do mapa;
+2. `c & 0x200`, o tile não é estrada (`tile+3 & 0x20 == 0`) e `estrada != 0`;
+3. há prédio vivo no tile (cadeia tipo 3 + registro em `list_industries`) e `permitido == 0` (com `permitido != 0` o prédio tem de ser esse);
+4. `tile+0 & 8` (com `param_5 == 0`) ou `tile+0 & 1` (rio);
+5. estrada (`tile+3 & 0x20`) e `c & 1`;
+6. terreno de classe 18 (água) sem `c & 0x102`, ou outra classe sem `c & 0x2c1`;
+7. forma de estação (tipo 0): `tile+2 & 0x20`; outra forma: `0x415f80(tile)` = o tile tem ponte (`tile+2 & 0x80`), vão (`tile+3 & 0x40`) ou uma camada de trilho (4 ou 5) na lista de overlays (`tile+10`).
+Depois, só para estações (`tipo 0` e `estacao != 0`), as arestas ao lado da âncora (`terrain-track.md` 3.2): não portadas aqui. O clone modela a camada de trilho como `track_id != 0` (a lista de overlays é derivada do desenho); `crates/rt2-oracle/tests/placement.rs` roda `0x4087a0` no emulador sobre um mapa aleatório (rios, bit 3, estradas, pontes, trilho com overlays, prédios nas cadeias) com todas as formas de prédios, 78 400 casos, e compara com `tilemark::can_place` (aceita 5 331). **Divergência do clone antigo**: ignorava as regras 2, 5 e 7 (estrada, ponte/vão/trilho) e o argumento `estrada`.
 
 ## 5. Indústrias
 
@@ -539,8 +589,10 @@ Os `rng(0, 0)` não avançam o estado. `sim_week_end` e `0x40b7c0` não sorteiam
 | `industry_rating_matches_original` | `0x40b450` (prédio sem dono; os dois conjuntos; `slot_valid` real): `+0x93`, `+0x4b`, `+0x36` | 8000 |
 | `initial_slot_clocks_match_original` | `0x40bb40`: 4 relógios e RNG | 4000 |
 | `town_bounty_offer_matches_original` | `0x431660` com as rotinas de mensagem neutralizadas: lugar escolhido, bônus, RNG | 3000 |
+| `can_place_matches_original` (`crates/rt2-oracle/tests/placement.rs`) | `0x4087a0` inteiro (formas de prédios) sobre um mapa aleatório com rios, bit 3, estradas, pontes, trilho com overlays e prédios nas cadeias; as duas versões de `estrada` | 78 400 |
+| `example_thirty_days_residual_is_the_documented_gap` (`crates/rt2-sim/tests/worldloop.rs`) | `building_construct`/`building_destroy` inteiros no Example (30 dias): `tiles`, `elevation`, `structures`, `stations`, `pool_58` iguais ao original | 2 criações, 2 demolições |
 
-Os stubs são código de máquina escrito sobre o corpo do callee na imagem emulada (`Asm` no teste); o lado Rust roda o mesmo cenário com ambientes equivalentes (`TownEnv`, `SiteEnv`). Não testados: o pagamento do bônus (`0x46a370`), a compra/venda (`0x43eb60`, depende de listas de empresa), o laço anual `0x430a40` (chama a UI), `building_construct` e a demolição.
+Os stubs são código de máquina escrito sobre o corpo do callee na imagem emulada (`Asm` no teste); o lado Rust roda o mesmo cenário com ambientes equivalentes (`TownEnv`, `SiteEnv`). Não testados no emulador: o pagamento do bônus (`0x46a370`), a compra/venda (`0x43eb60`, depende de listas de empresa) e o laço anual `0x430a40` (chama a UI); `building_construct` e a demolição são provadas só pelo Example (4.5).
 
 ## 10. Fidelidade e implicações para o clone
 
@@ -556,7 +608,8 @@ Os stubs são código de máquina escrito sobre o corpo do callee na imagem emul
 
 - Rótulo de lucratividade da UI (LNG 2466..2471 "Poor" .. "Gushing Cash"; 2475..2482 "Atrocious" .. "Good"): a função que mapeia `+0x4b`/`+0x36` aos textos não foi localizada.
 - Sorteios de textura de campos na criação (`0x429fc0`, `0x42a3e0`, `0x42a7d0`, chamados por `0x409a30` para tipos 10, 11, 0x10, 0x1d, 0x1e, 0x21): um `rng(lo, hi)` por tile da pegada fora da faixa da classe; faixas em `0x540aa4..0x540b08`. Necessário para reproduzir o RNG depois de criar uma fazenda.
-- `building_can_place` (`0x4087a0`): regras completas da pegada (máscaras `0x5458c5`), incluindo a restrição de água; só o contrato com `0x42fcb0` foi verificado.
+- Texturas de campo na criação e repintura na demolição (`0x42a3e0` com RNG por tile, `0x429fc0`, `0x409120`, `0x42a7d0`): só as chamadas e os pontos de RNG estão descritos (4.5); a parte de estações de `building_can_place` (arestas de trilho ao lado da âncora, `0x4629f0`, `0x4603a0`) é de `terrain-track.md`.
+- Os overlays de trilho (camada 4/5) são derivados do desenho: o clone usa `track_id != 0`.
 - `+0x4b` inicial de um prédio novo (a alocação `0x4f1690` zera o registro?) e `+0x4a` (pesos por tipo) no formato do `.MAP`: o decodificador de `map-gam.md` ainda não os expõe (o registro de arquivo tem 0x96 bytes, a memória 0xb4).
 - Significado de `0x573d7a` (modo editor), `0x570237` (desliga crescimento, economia e finanças) e `0x5748f8` (trava).
 - Quem define `0x570223` e `0x57022b` ao carregar um mapa (bloco de estado do `.MAP`/`.GAM`): o editor (`0x47fea0`) mostra "Annual Growth Rate" e o nível de economia após 30 anos.

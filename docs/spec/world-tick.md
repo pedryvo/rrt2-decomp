@@ -119,7 +119,7 @@ Correção a `time.md` 7.4 item 8: em dezembro o gatilho 2 (início de mês) **t
 | 4 | para cada empresa (C): `company_annual_review` `0x43c760` | avaliação da diretoria, bônus, demissão, liquidação; **RNG** (seção 4) | `finance.md` 8.1 (resumo) |
 | 5 | para cada pessoa (C): `person_year_nop` `0x4a7870` | vazio (`ret`) | aqui |
 | 6 | `event_fire_trigger(1)` | regras "fim de ano" | |
-| 7 | `history_snapshot(&0x570a82)` `0x4e9770` | registro anual do jogador (ano, empresa, métricas) para histórico/pontuação | **não especificada** |
+| 7 | `history_snapshot(&0x570a82)` `0x4e9770` | refaz do zero o registro anual do jogador e as classificações de empresas e pessoas (3.4.1) | 3.4.1 [V] |
 | 8 | `0x5705d1 = f32(pow(1 + f32[0x57022b], ano - [0x570508] + 1) * i32[0x570223] * 0.01)` | meta composta anual (papel incerto; `0x570508` = ano inicial) | Em aberto |
 | 9 | para cada empresa (C): `company_year_end` `0x43d800` | arquivo anual, overhead, títulos, desdobramento | `finance.md` 8 |
 | 10 | para cada pessoa (C): `person_year_step` `0x4a7880` | desloca o arquivo de patrimônio (`+0x133` -> `+0x143`, 0x90 B) e grava caixa e valor das ações (`0x43b410`) | aqui |
@@ -127,13 +127,62 @@ Correção a `time.md` 7.4 item 8: em dezembro o gatilho 2 (início de mês) **t
 | 12 | para cada território (C): `territory_year_step` `0x4c8520` | `+0x52 (u16) = 0` | aqui |
 | 13 | se `0x570237 == 0`: `town_year_step(0)` `0x430a40` | crescimento de cidades e construções; **RNG pesado** (seção 4) | **não especificada** |
 | 14 | `sim_week_end()` | segundo passo semanal no mesmo minuto | 3.2 |
-| 15 | para cada indústria (C): `industry_year_reset` `0x40b7c0` | se ativa: zera `+0x34`, `+0x63`, `+0x67`, recontagem de pilhas, `0x4beae0` na estação ligada (`+8`) | **não especificada** (`0x4beae0`) |
+| 15 | para cada indústria (C): `industry_year_reset` `0x40b7c0` | se ativa: zera `+0x34`, `+0x63`, `+0x67`, recontagem de pilhas, `0x4beae0` na estação ligada (`+8`) | `0x4beae0(estação)` zera 8 bytes `+0x59..+0x60` (as receitas do ano como origem `+0x59` e destino `+0x5d`, `cargo.md` 7) e os três `u16` `+0x4b5`, `+0x4b7`, `+0x4b9` (`finance.md` 13.4) [V no Example: `stations` em 30 dias iguais]; o resto **não especificada** |
 | 16 | peças de trilho (slots decrescentes): `+0x1f = +0x1b; +0x1b = 0` | desgaste do ano anterior | `terrain-track.md` |
 | 17 | data -> 1/jan 00:00, `T += 1`; zera `0x573d05/09/0d`; se `0x573e02 < 0x573d9e`: `0x573e02 = ftol(...)` | | `time.md` 7.5 |
 | 18 | `industry_rebuild_inputs(i)` `0x471880`, i = 0..52 | tipos de indústria | `cargo.md` |
 | 19 | mensagens históricas (1877, 1879, 1900, 1910, 1960) | LNG 2630, 2851, 419, 417, 420 | `time.md` 7.5 |
 | 20 | `event_fire_trigger(0)` | regras "início de ano" | |
 | — | (de volta em `sim_month_end`) `event_fire_trigger(2)` | | |
+
+### 3.4.1 `history_snapshot` (`0x4e9770`) [V no Example, 30 dias]
+
+Roda no item 7 de `sim_year_end`, **depois** das revisões anuais e **antes** de `company_year_end`, `person_year_step` e do deslocamento dos arquivos: lê as categorias do ano corrente (`+0x4286`), os arquivos das empresas (`+0x42ee`, `+0x49b6`) e das pessoas (`+0x133`) ainda não deslocados. Não tem RNG. Grava no estado global, em `0x570a82` (offset de estado `0x59a`, 0x3283 bytes até `0x57381c`, logo antes dos contadores anuais `0x573d05`), um registro **inteiro novo** (zera `0xca0` dwords + 3 bytes, depois preenche). Consome: a janela de histórico/briefing (`0x444e10`, não analisada).
+
+Campos (offsets no registro; `co` = empresa local, `p` = pessoa local; f64 não alinhados):
+
+| Off | Tipo | Conteúdo |
+|---|---|---|
+| `+0x00` | u32 | 1 (registro válido) |
+| `+0x04` | u32 | ano (`game_date & 0xffff`) |
+| `+0x08` | u32 | `min(9, ano - [0x570508] + 1)`: anos de histórico |
+| `+0x0c` | u32 | `[0x574414]`, id da empresa local (0 = nenhuma) |
+| `+0x10` / `+0x18` | f64 | `co` total do ano das categorias 0..4 (`0x43a660(14)`, receita) / das 13 categorias (`0x43a660(13)`, resultado) |
+| `+0x20` | u32 | `0x43c730(co)`: degrau 0..12 = `clamp((+0x46a + 0x3a) / 9, 0, 12)` (divisão inteira com sinal) |
+| `+0x24` | f64 | `(double) co+0x134` (salário do chairman, métrica 13) |
+| `+0x2c` | f64 | `(double) co+0x474` (último bônus pago) |
+| `+0x34` | u32 | 4 (constante) |
+| `+0x38` | u8 | `[0x570717]` (estado econômico) |
+| `+0x39` | f64 | métrica 9 = `(double) co+0x196` |
+| `+0x41` | f64 | `ftol(0x43a660(1) + 0x43a660(0)) / max(métrica 9, 1,0)` (categorias 0 e 1 do ano; `0x5350c8` = 1,0) |
+| `+0x49` | i16 | métrica 11 = `co+0x19a / max(co+0x196, 1)` (inteiro) |
+| `+0x4b` | f64 | se `co+0x148 == ano`: `co+0x134 - 10000`; senão `co+0x134 - arquivo[1][13]` (`0x43a160(co, ano-1, 13)` = `co+0x49b6 + (13 + 14)*8`, a métrica 13 de um ano atrás) |
+| `+0x53`, `+0x54` | u8 | `0xff`; em ano **ímpar**, `co+0x140` e `co+0x144` (bytes baixos dos dois candidatos a gerente) |
+| `+0x55` | u8 | `0x4a80c0(p, co)`: 1 se a pessoa local tem **todas** as ações (`co+0x2c == p+0x1d3[índice da empresa no conjunto]`) |
+| `+0x56` | char[~4 KB] | texto das regras de gatilho 7 (`rule_collect_status` `0x458210`; vazio sem regras 7) |
+| `+0x105b` | u32 | número de empresas do conjunto (`0x46a7e0`) |
+| `+0x105f` | u32[2][0x24] | ids das empresas ordenadas: fileira 0 por `ftol(0x43a660(14))` decrescente, fileira 1 por `ftol(0x43a660(13))` |
+| `+0x117f` | f64[2][0x24][10] | para cada posição e cada um dos últimos 10 anos (`ano - j`): se `ano - j < co+0x148` o marcador `12343,0` (`0x40c81b8000000000`); senão o total da categoria 14 (fileira 0) ou 13 (fileira 1) daquele ano (`0x43a7d0`: ano corrente = vivo, anterior = `co+0x42ee + (ano - y - 1)*0x68`) |
+| `+0x27ff` | u32 | número de pessoas do conjunto de jogadores (`0x46a890` = `[0x570775]`) |
+| `+0x2803` | u32[32] | ids das pessoas por patrimônio líquido decrescente (`ftol(0x4a7620)` = caixa + ações * cotação) |
+| `+0x2883` | f64[n][10] | patrimônio (caixa + valor das ações, `0x4a7760(p, ano - j, 2)`) por pessoa e ano: o ano corrente é vivo; os anteriores vêm do arquivo `p+0x123 + (ano - y)*16` (caixa, ações); `j = 9` lê `+0x1b3`, ainda dentro do arquivo de 9 entradas |
+
+Ordenação (as duas): seleção repetida do maior entre os ainda não usados, na ordem do conjunto; o primeiro candidato é aceito sempre, os seguintes só se **estritamente** maiores (empate fica com o primeiro do conjunto). As fileiras de empresas usam o espaçamento `0x24` mesmo com poucas empresas; o resto fica zero.
+
+Pseudocódigo:
+```
+rec = zeros(0x3283)
+rec.u32[0]=1; rec.year=ano; rec.n=min(9, ano-inicio+1); rec.company=[0x574414]
+rec.b53=rec.b54=0xff
+se [0x574414] != 0:                       ; campos de co, tabela acima
+rec.b38 = estado_econômico; rec.u32[0x34]=4
+para k em 0..2: para rank em 0..n: ordena (14 ou 13); grava id; para j em 0..10: histórico
+pessoas: idem, chave ftol(patrimônio); histórico por 0x4a7760
+rule_collect_status(rec+0x56)              ; só texto, sem efeitos
+```
+O clone: `rt2_sim::tick::history` (`crates/rt2-sim/src/tick/history.rs`), ligado ao item 7. Verificado: o Example em 30 dias (a virada de 1875 para 1876) deixa de ter diferenças em `state` (de 1099 campos para 0).
+
+Suposições fora do save: `[0x574414]` e `[0x566ca4]` (empresa e pessoa da interface) não estão no arquivo; o clone usa a primeira pessoa humana (`+0x122`) e a empresa em que ela é chairman (`+0x263`), que dá `4` no Example (igual ao original). Sem pessoa humana o registro fica sem a parte da empresa. Texto de regras 7: o original copia a string vazia `0x5667f0` e roda as regras do gatilho 7 em modo de coleta; o clone só conta o gancho quando existe uma regra 7 (`history_status_text`).
 
 ### 3.5 Turno mensal da IA (`ai_monthly_turn` `0x436d60`) [S, D]
 Se `0x5748fc == 0` e `0x570229 == 0`:
@@ -230,9 +279,9 @@ TR_LOG=/caminho/trace.log re/scripts/wine/trace_save.py $SB "$SB/games/Example s
 3. `company_annual_review` `0x43c760` (detalhar além do resumo de `finance.md` 8.1) e `0x438450` (geração de pessoas/candidatos).
 4. Regras de cenário: `event_fire_trigger` `0x457fe0`, `0x455f30`, `0x454270`, `0x454ae0` (condições e efeitos, códigos 4..6).
 5. `train_step` interno: `0x4d1bb0`, `0x413550`, `0x4d0a70`, `0x4d0bc0`, `0x4d3c80`, `0x4cb090`, `tile_reroll_variant` `0x4259e0` (RNG em tile), roubo em `0x4cf390`.
-6. `industry_year_step` `0x40b450`, `industry_year_reset` `0x40b7c0` e `0x4beae0`.
+6. ~~`industry_year_step`, `industry_year_reset` e `0x4beae0`~~ (feitos: `world-growth.md` 5, 3.4 item 15).
 7. `station_networks_rebuild` `0x46a370` (e quem liga `0x5794f0`).
-8. `history_snapshot` `0x4e9770` e o par `0x5705d1`/`0x573e08` (para que servem).
+8. ~~`history_snapshot` `0x4e9770`~~ especificada (3.4.1); falta o papel do par `0x5705d1`/`0x573e08` e o consumidor do registro (`0x444e10`).
 9. `build_preview_suspend`/`build_preview_resume` `0x46b150`/`0x46b290`: apagam e refazem a indústria-prévia da ferramenta de construção (`0x574cf0`, um registro de `list_industries`) em volta de cada turno de IA/cidades. Sem jogador interagindo não há prévia; com prévia, o slot e a posição na lista mudam (confirmar se a prévia recriada volta ao fim da lista).
 
 ## Em aberto

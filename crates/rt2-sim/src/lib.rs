@@ -43,6 +43,7 @@ pub mod pool;
 pub mod rng;
 pub mod scenario;
 pub mod tick;
+pub mod tilemark;
 pub mod track;
 pub mod trains;
 pub mod trainstep;

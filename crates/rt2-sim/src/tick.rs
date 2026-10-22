@@ -31,6 +31,7 @@ use crate::world::World;
 
 mod company;
 mod events;
+mod history;
 mod review;
 mod town;
 mod year;
@@ -696,12 +697,7 @@ impl SimState {
             self.company_annual_review(w, slot);
         }
         self.event_trigger(w, 1);
-        todo_hook!(
-            self.log,
-            "history_snapshot",
-            "history_snapshot 0x4e9770 (yearly record of the player: not specified)",
-            "world-tick.md 3.4 item 7"
-        );
+        self.history_snapshot(w);
         self.year_growth_factor(w);
         for slot in pool::list_order(&self.save.companies) {
             self.company_year_end(w, slot);

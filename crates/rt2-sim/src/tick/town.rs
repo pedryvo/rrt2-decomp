@@ -18,6 +18,7 @@ use crate::growth::{
     town_place_building, type_scarcity_percent,
 };
 use crate::rng::GameRng;
+use crate::tilemark;
 use rt2_formats::terrain;
 
 const ST_LAST_YEAR_STEP: usize = 0x1F5; // 0x5706dd u32
@@ -186,6 +187,33 @@ struct SiteWorld<'a> {
 }
 
 impl SiteWorld<'_> {
+    /// What `building_construct` writes into the map after the record is allocated (world-growth
+    /// 4.5): structure chain of the footprint tiles (`0x409770`), terrain levelling (`0x409580`),
+    /// station links (`0x4072c0`), terrain flags around the anchor (`0x424c10`) and the flat
+    /// bit of the redrawn tiles.
+    fn mark_terrain(&mut self, slot: usize, shape: usize, geo: &tilemark::Geometry) {
+        let (cx, cy) = (i32::from(geo.origin.0), i32::from(geo.origin.1));
+        {
+            let st = &mut *self.s;
+            let img = &st.data.image;
+            tilemark::mark_building(&mut st.save, img, shape, slot as u16, cx, cy);
+            tilemark::level_terrain(&mut st.save, img, shape, cx, cy);
+            if tilemark::cells().any(|(l, c)| tilemark::shape_cell(img, shape, l, c) & 0x40 != 0) {
+                todo_hook!(
+                    st.log,
+                    "building_create_field_textures",
+                    "0x409120 saved tile data and 0x429fc0/0x42a3e0/0x42a7d0 field textures (RNG per tile)",
+                    "world-growth.md 4.5"
+                );
+            }
+        }
+        self.s.link_building(slot);
+        let (ax, ay) = (i32::from(geo.anchor.0), i32::from(geo.anchor.1));
+        tilemark::recompute_flags(&mut self.s.save, ax - 4, ay - 4, ax + 4, ay + 4);
+        let b = geo.bbox.map(i32::from);
+        tilemark::recompute_flat(&mut self.s.save, b[0] - 1, b[1] - 1, b[2] + 1, b[3] + 1);
+    }
+
     fn width(&self) -> i32 {
         self.s.save.map.width as i32
     }
@@ -256,47 +284,10 @@ impl SiteEnv for SiteWorld<'_> {
         })
     }
 
-    /// `building_can_place` (`0x4087a0`): best-effort reading of terrain-track.md 4.3. Every cell
-    /// of the 10x10 footprint with flags `& 0x3c3` must be inside the map, free of river and of
-    /// another building, and (land) allow `flags & 0x2c1` or (water) `flags & 0x102`.
-    fn can_place(&mut self, x: i32, y: i32, shape: usize, _early: bool) -> bool {
-        todo_hook!(
-            self.s.log,
-            "building_can_place",
-            "building_can_place 0x4087a0: full footprint rules (best-effort reading)",
-            "world-growth.md 4.2, 9; terrain-track.md 4.3"
-        );
-        let base = 0x0054_57efu32 + 0x154 * shape as u32 + 0x10;
-        for lin in 0..10i32 {
-            for col in 0..10i32 {
-                let cell = self
-                    .s
-                    .data
-                    .image
-                    .u16(base + 0xc6 - 20 * lin as u32 - 2 * col as u32);
-                if cell & 0x3c3 == 0 {
-                    continue;
-                }
-                let (tx, ty) = (x - col, y - lin);
-                let Some(t) = self.tile(tx, ty) else {
-                    return false;
-                };
-                if t.var & 9 != 0 || t.flags2 & 0x10 != 0 {
-                    return false;
-                }
-                let id = u16::from(t.var) | (u16::from(t.ground) << 8);
-                let water = terrain::tables().class_of_id(id >> 6) == 18;
-                let ok = if water {
-                    cell & 0x102 != 0
-                } else {
-                    cell & 0x2c1 != 0
-                };
-                if !ok {
-                    return false;
-                }
-            }
-        }
-        true
+    /// `building_can_place` (`0x4087a0`, world-growth.md 4.6), checked against the original by
+    /// `crates/rt2-oracle/tests/placement.rs`.
+    fn can_place(&mut self, x: i32, y: i32, shape: usize, early: bool) -> bool {
+        tilemark::can_place(&self.s.save, &self.s.data.image, x, y, shape, early)
     }
 
     /// `building_create` (`0x409010` -> `0x409a30`, world-growth.md 4.4).
@@ -304,32 +295,26 @@ impl SiteEnv for SiteWorld<'_> {
         let ty = self.tab.shape_type[shape];
         let mut d = vec![0u8; self.s.save.objects.record_size];
         put_u16(&mut d, BD_PLACE, self.place as u16);
-        // The 4 corner x, 4 corner y and 5 (x, y) pairs from `+0xa` (all the anchor for a 1x1
-        // footprint, the only one checked against the original; larger footprints use the
-        // bounding box of the mask cells in the order x0, x0, x1, x1 / y0, y1, y1, y0).
-        let base = 0x0054_57efu32 + 0x154 * shape as u32 + 0x10;
-        let (mut x0, mut x1, mut y0, mut y1) = (x, x, y, y);
-        for lin in 0..10i32 {
-            for col in 0..10i32 {
-                let cell = self
-                    .s
-                    .data
-                    .image
-                    .u16(base + 0xc6 - 20 * lin as u32 - 2 * col as u32);
-                if cell & 0x3c3 != 0 {
-                    x0 = x0.min(x - col);
-                    x1 = x1.max(x - col);
-                    y0 = y0.min(y - lin);
-                    y1 = y1.max(y - lin);
-                }
-            }
+        // Footprint geometry (`0x409770`, world-growth.md 4.5): corners per view rotation,
+        // anchor, origin cell, region tile and bounding box.
+        let geo = tilemark::geometry(&self.s.data.image, shape, x, y, self.width(), self.height());
+        for k in 0..4 {
+            pool::put_i16(&mut d, 0xa + 2 * k, geo.corner_x[k]);
+            pool::put_i16(&mut d, 0x12 + 2 * k, geo.corner_y[k]);
         }
-        for (k, v) in [x0, x0, x1, x1, y0, y1, y1, y0].into_iter().enumerate() {
-            pool::put_i16(&mut d, 0xa + 2 * k, v as i16);
-        }
-        for k in 0..5 {
-            pool::put_i16(&mut d, 0x1a + 4 * k, x as i16);
-            pool::put_i16(&mut d, 0x1c + 4 * k, y as i16);
+        for (o, v) in [
+            (0x1a, geo.anchor.0),
+            (0x1c, geo.anchor.1),
+            (0x1e, geo.origin.0),
+            (0x20, geo.origin.1),
+            (0x22, geo.region_tile.0),
+            (0x24, geo.region_tile.1),
+            (0x26, geo.bbox[0]),
+            (0x28, geo.bbox[1]),
+            (0x2a, geo.bbox[2]),
+            (0x2c, geo.bbox[3]),
+        ] {
+            pool::put_i16(&mut d, o, v);
         }
         put_u16(&mut d, 0x3e, 0xffff);
         put_u16(&mut d, 0x40, 0xffff);
@@ -338,7 +323,9 @@ impl SiteEnv for SiteWorld<'_> {
         put_u16(&mut d, 0x3c, self.year as u16);
         put_f32(&mut d, industry::OFF_RATING, 1.0);
         put_f32(&mut d, industry::OFF_QUALITY, 0.5);
-        d[industry::OFF_TERRITORY] = self.tile(x, y).map_or(0, |t| t.region);
+        d[industry::OFF_TERRITORY] = self
+            .tile(i32::from(geo.region_tile.0), i32::from(geo.region_tile.1))
+            .map_or(0, |t| t.region);
         let clocks = initial_slot_clocks(
             rng,
             &self.s.types[usize::from(ty)],
@@ -375,17 +362,77 @@ impl SiteEnv for SiteWorld<'_> {
                 "world-growth.md 4.4"
             );
         }
-        todo_hook!(
-            self.s.log,
-            "building_create_terrain",
-            "building_construct 0x409a30: terrain marking, farm textures (RNG per tile), linked stations",
-            "world-growth.md 4.4, 9"
-        );
+        self.mark_terrain(slot, shape, &geo);
         self.s.log.ran("building_create");
     }
 }
 
 impl SimState {
+    /// `0x4072c0(building)`: links a new building to every station whose catchment reaches it
+    /// (`station_catchment_test` `0x407030`): one `pool_58` record per station, chained from
+    /// the building (`+0x2f`) and from the station (`+0x3d`).
+    pub(super) fn link_building(&mut self, b: usize) {
+        let Some(br) = pool::record(&self.save.objects, b) else {
+            return;
+        };
+        let bd = br.data.clone();
+        let shape = usize::from(bd[BD_SHAPE]);
+        let (bx, by) = (i32::from(i16_at(&bd, 0x1a)), i32::from(i16_at(&bd, 0x1c)));
+        let (ox, oy) = (i32::from(i16_at(&bd, 0x1e)), i32::from(i16_at(&bd, 0x20)));
+        for st in pool::list_order(&self.save.stations) {
+            let Some(sr) = pool::record(&self.save.stations, st) else {
+                continue;
+            };
+            if i32_at(&sr.data, 0x45) != 0 {
+                continue;
+            }
+            let own = i32_at(&sr.data, 4) as usize;
+            if bd[BD_TYPE] == 0 && own != b {
+                continue;
+            }
+            let (sx, sy) = (i32_at(&sr.data, 0xa), i32_at(&sr.data, 0xe));
+            if sx < 0 {
+                continue;
+            }
+            let img = &self.data.image;
+            let radius = img.i32(0x0054_fd9c + 4 * u32::from(sr.data[8]));
+            if crate::track::tile_distance(sx, sy, bx, by) > radius + 11 {
+                continue;
+            }
+            let mut min = 9999;
+            for (lin, col) in tilemark::cells() {
+                if tilemark::shape_cell(img, shape, lin, col) & 0x43 != 0 {
+                    min = min.min(crate::track::tile_distance(sx, sy, ox - col, oy - lin));
+                }
+            }
+            if min > radius {
+                continue;
+            }
+            let (next_ind, next_st) = (
+                pool::record(&self.save.objects, b).map_or(0, |r| u32_at(&r.data, 0x2f)),
+                pool::record(&self.save.stations, st).map_or(0, |r| u32_at(&r.data, 0x3d)),
+            );
+            let mut rec = vec![0u8; self.save.pool_58.record_size];
+            put_u16(&mut rec, 0, b as u16);
+            put_u16(&mut rec, 2, st as u16);
+            put_u16(&mut rec, 4, min as u16);
+            put_u32(&mut rec, 6, next_ind);
+            put_u32(&mut rec, 0xa, next_st);
+            let Ok(link) = pool::alloc(&mut self.save.pool_58, rec) else {
+                return;
+            };
+            if let Some(r) = pool::record_mut(&mut self.save.objects, b) {
+                put_u32(&mut r.data, 0x2f, link as u32);
+                r.data[industry::OFF_STATIONS] = r.data[industry::OFF_STATIONS].wrapping_add(1);
+            }
+            if let Some(r) = pool::record_mut(&mut self.save.stations, st) {
+                put_u32(&mut r.data, 0x3d, link as u32);
+                let n = i32_at(&r.data, 0x41);
+                put_u32(&mut r.data, 0x41, (n + 1) as u32);
+            }
+        }
+    }
+
     /// `building_destroy(b, 1)` (`0x40adb0`, world-growth.md 3.6).
     fn building_destroy(&mut self, slot: usize) {
         let Some(rec) = pool::record(&self.save.objects, slot) else {
@@ -480,18 +527,39 @@ impl SimState {
             pool::free(&mut self.save.pool_58, link as usize);
             link = next_ind;
         }
+        // Tiles of the footprint (world-growth.md 4.5): the kind-3 structures leave the chains
+        // of the bounding box, the saved field tiles come back, the terrain flags of the box
+        // and its ring are recomputed.
+        let (bbox, origin, saved, shape_ty) = {
+            let d = &pool::record(&self.save.objects, slot).expect("record").data;
+            (
+                [0x26, 0x28, 0x2a, 0x2c].map(|o| i16_at(d, o)),
+                (i32::from(i16_at(d, 0x1e)), i32::from(i16_at(d, 0x20))),
+                u16_at(d, 0x50),
+                d[BD_TYPE],
+            )
+        };
+        tilemark::unmark_building(&mut self.save, slot as u16, bbox);
+        if saved != 0 {
+            tilemark::restore_saved_tiles(&mut self.save, saved, origin.0, origin.1);
+        }
+        if matches!(shape_ty, 0xb | 0x10 | 0x21) {
+            todo_hook!(
+                self.log,
+                "building_destroy_field_textures",
+                "0x4091f0 repaints the transitions around a field (0x42a7d0)",
+                "world-growth.md 4.5"
+            );
+        }
+        let b = bbox.map(i32::from);
+        tilemark::recompute_flags(&mut self.save, b[0] - 1, b[1] - 1, b[2] + 1, b[3] + 1);
         if let Some(r) = pool::record_mut(&mut self.save.objects, slot) {
             put_u32(&mut r.data, 0x2f, 0);
+            put_u16(&mut r.data, 0x50, 0);
             r.data[industry::OFF_STATIONS] = 0;
             put_u16(&mut r.data, BD_PLACE, 0);
             r.data[industry::OFF_INACTIVE] = 1;
         }
-        todo_hook!(
-            self.log,
-            "building_destroy_tiles",
-            "building_destroy 0x40adb0: linked station, tiles (0x42e320) and footprint mask",
-            "world-growth.md 3.6"
-        );
         self.log.ran("building_destroy");
     }
 
