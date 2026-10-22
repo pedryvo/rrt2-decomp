@@ -134,3 +134,4 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - RE: `building_destroy` limpa `+2` (lugar), `+0x2f/+0x33` (elos de estacao) e libera os elos de `pool_58`; `0x4c8540` mantem bytes de resumo em `empresa+0x422d/+0x422e` (inferido)
 - Feature: Brazilian Portuguese translation of all 2807 game strings.
 - Feature: Simplified Chinese translation of all 2807 game strings and a Chinese README.
+- Feature: Spanish translation of all 2807 game strings and a Spanish README.
