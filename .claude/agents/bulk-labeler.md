@@ -12,3 +12,5 @@ Regras do projeto: leia /home/pedryvo/Decomp/railroad/CLAUDE.md. A pasta do jogo
 - Grave os resultados em re/symbols.toml.
 
 Formatação: use `cargo fmt -p <crate>` ou `rustfmt --edition 2024 <arquivo>` (nunca `rustfmt` sem a edition, nem `cargo fmt --all` com outros agentes trabalhando). O coordenador valida com `scripts/verify-head.sh`.
+
+Arquivos grandes (sandboxes do Wine, extrações, screenshots em lote): use `~/.cache/rrt2/`, não o `/tmp` (disco em RAM pequeno).

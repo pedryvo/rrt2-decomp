@@ -10,3 +10,5 @@ Regras do projeto: leia /home/pedryvo/Decomp/railroad/CLAUDE.md. A pasta do jogo
 - Siga o estilo de crates/rt2-formats/src/pk2.rs: funções puras sobre &[u8], erros com thiserror, testes unitários com dados sintéticos e testes em crates/rt2-formats/tests/ que rodam contra o jogo original quando RT2_DIR está definido.
 - Antes de terminar: cargo fmt, cargo clippy --all-targets (sem warnings), RT2_DIR=/home/pedryvo/Games/railroad-tycoon-2 cargo nextest run.
 - Atualize docs/formats/<formato>.md se descobrir algo novo.
+
+Arquivos grandes (sandboxes do Wine, extrações, screenshots em lote): use `~/.cache/rrt2/`, não o `/tmp` (disco em RAM pequeno).
