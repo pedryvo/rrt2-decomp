@@ -111,6 +111,14 @@ pub enum CmdError {
     /// `0x5706b9` off, type not buyable (`0x535c39 + type*0x27`), already owned, or no track
     /// rights in the territory (`+0x479 & 2`, LNG 2288).
     NotBuyable,
+    /// A command input the original's windows cannot produce (slider value, colour, person).
+    InvalidInput,
+    /// The person already chairs a company (`0x4bd950`, LNG 2863).
+    AlreadyChairman,
+    /// 36 companies exist (`0x4bd950`, LNG 144).
+    TooManyCompanies,
+    /// Less than 672 days since the person's last founding (`0x4bd950`, LNG 2708).
+    FoundingCooldown,
     /// The bulldozer refused (reason of `bulldoze_area`, LNG 1121..1128).
     Bulldoze(super::bulldoze::BulldozeError),
 }

@@ -187,9 +187,6 @@ fn write_date(o: &mut Oracle, year: i32, month: i32, day: i32) {
 fn cdiv(a: i32, b: i32) -> i32 {
     a.wrapping_div(b)
 }
-fn crem(a: i32, b: i32) -> i32 {
-    a.wrapping_rem(b)
-}
 /// `__ftol` (truncation toward zero).
 fn ftol(x: f64) -> i32 {
     x as i64 as i32
@@ -444,17 +441,7 @@ const PE_CHAIR_OF: u32 = 0x263;
 const PE_REP: u32 = 0x52b;
 
 fn credit_mult_ref(human: bool, rep: i32, chair_of: i32, since: i32, year: i32) -> f64 {
-    if !human {
-        return 10.0;
-    }
-    let pen = if chair_of == 0 {
-        0
-    } else {
-        let t = (year - since).clamp(0, 10);
-        (t - 10) * 7
-    };
-    // Both clamps use `<=`: the original replaces a value equal to the bound by the bound.
-    (f64::from(rep + 100 + pen) * 0.1).clamp(0.5, 15.0)
+    rt2_sim::found::credit_multiplier(human, rep, chair_of != 0, since, year)
 }
 
 #[test]
@@ -544,21 +531,13 @@ struct PlayerSlider {
 }
 
 fn player_slider_ref(w: i32) -> PlayerSlider {
-    let (step, min) = if w < 1_000_000 {
-        (10_000, 100_000)
-    } else if w < 10_000_000 {
-        (100_000, 100_000)
-    } else {
-        let s = if w > 99_999_999 {
-            10_000_000
-        } else {
-            1_000_000
-        };
-        (s, s)
-    };
-    let max = w - crem(w, step);
-    let n = (cdiv(max - min, step) + 1).max(1);
-    PlayerSlider { min, max, n }
+    // The shipped function (`rt2_sim::found`) is the reference under test.
+    let s = rt2_sim::found::player_slider(w);
+    PlayerSlider {
+        min: s.min,
+        max: s.max,
+        n: s.n,
+    }
 }
 
 struct OutsideSlider {
@@ -568,36 +547,12 @@ struct OutsideSlider {
 }
 
 fn outside_slider_ref(m: f64, p: i32) -> OutsideSlider {
-    let mp = m * f64::from(p);
-    let mut c = if mp >= 1.0e9 { 1_000_000_000 } else { ftol(mp) };
-    if c <= 200_000 - p {
-        c = 200_000 - p;
+    let s = rt2_sim::found::outside_slider(m, p);
+    OutsideSlider {
+        min: s.min,
+        max: s.max,
+        n: s.n,
     }
-    let step;
-    if c <= 50_000 {
-        c = 50_000;
-        step = 1000;
-    } else if c >= 4_000_000 {
-        c = 4_000_000;
-        step = 100_000;
-    } else if c < 100_000 {
-        step = 1000;
-    } else if c < 1_000_000 {
-        step = 10_000;
-    } else {
-        step = 100_000;
-    }
-    let half = cdiv(c, 2);
-    let mut min = half.min(500_000 - p).max(0);
-    if crem(min, step) != 0 {
-        min += step - crem(min, step);
-    }
-    let mut max = c - crem(c, step);
-    if max <= min + step {
-        max = min + step;
-    }
-    let n = (cdiv(max - min, step) + 1).max(3);
-    OutsideSlider { min, max, n }
 }
 
 #[test]
@@ -2082,14 +2037,7 @@ const G_TEMP_NAME: u32 = 0x0057_07b9; // counter into TEMP_COMPANY_NAMES
 
 /// Initial price and share count of a company founded with `capital` dollars (finance.md 17).
 fn founding_ref(capital: i32) -> (f32, i32, i32) {
-    let k = if capital == -1 { 500_000 } else { capital };
-    let mut price = cdiv(k, 10_000) as f32;
-    while price >= 100.0 {
-        price *= 0.5;
-    }
-    let shares = ftol(f64::from(k) / f64::from(price) * f64::from(0.001f32)) * 1000;
-    let cash = ftol(f64::from(price)).wrapping_mul(shares);
-    (price, shares, cash)
+    rt2_sim::found::initial_stock(capital)
 }
 
 #[test]

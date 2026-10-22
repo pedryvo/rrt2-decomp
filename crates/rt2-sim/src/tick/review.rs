@@ -14,12 +14,12 @@ use crate::fp::ftol as ftol_;
 use crate::rng::GameRng;
 
 // State/trailer offsets (VA - 0x5704e8).
-const ST_MANAGER_AVAIL: usize = 0x150; // 0x570638 u8[40]
+pub(super) const ST_MANAGER_AVAIL: usize = 0x150; // 0x570638 u8[40]
 const ST_CHAIRMAN_FIRE: usize = 0x1D2; // 0x5706ba
 const ST_FIN_ADVANCED: usize = 0x388D; // 0x573d75
 const ST_EDITOR: usize = 0x3892; // 0x573d7a
 const ST_REF_SPEED: usize = 0x3920; // 0x573e08
-const ST_MANAGER_USE: usize = 0x3921; // 0x573e09 u8[40]
+pub(super) const ST_MANAGER_USE: usize = 0x3921; // 0x573e09 u8[40]
 const TRAILER_OPTIONS: usize = 0x32; // 0x574872 (trailer starts at 0x574840)
 
 const CO_REP: usize = 0x46a;
@@ -53,22 +53,22 @@ fn cdiv(a: i32, b: i32) -> i32 {
 }
 
 /// Inputs of `pick_ref` (`0x438450`).
-struct PickIn<'a> {
-    year: i32,
-    month: i32,
-    founded: i32,
-    cats: &'a [f64; 13],
-    arch: &'a [[f64; 13]; 10],
-    c140: i32,
-    c144: i32,
-    uses: [u8; 40],
-    avail: [u8; 40],
-    sal: [i32; 40],
+pub(super) struct PickIn<'a> {
+    pub(super) year: i32,
+    pub(super) month: i32,
+    pub(super) founded: i32,
+    pub(super) cats: &'a [f64; 13],
+    pub(super) arch: &'a [[f64; 13]; 10],
+    pub(super) c140: i32,
+    pub(super) c144: i32,
+    pub(super) uses: [u8; 40],
+    pub(super) avail: [u8; 40],
+    pub(super) sal: [i32; 40],
 }
 
 /// `manager_pick_candidate(-1)` (`0x438450`): the index of a manager, drawing the game RNG.
 /// The network-lock branch (`0x5748f8 != 0`) never happens in a local game.
-fn pick_manager(p: &PickIn, rng: &mut GameRng) -> i32 {
+pub(super) fn pick_manager(p: &PickIn, rng: &mut GameRng) -> i32 {
     let y = p.year - i32::from(p.month != 12);
     let mut acc = 0.0f64;
     let mut cnt = 0i32;
@@ -131,7 +131,7 @@ fn pick_manager(p: &PickIn, rng: &mut GameRng) -> i32 {
 }
 
 impl SimState {
-    fn manager_salaries(&self) -> [i32; 40] {
+    pub(super) fn manager_salaries(&self) -> [i32; 40] {
         let mut s = [0i32; 40];
         for (i, v) in s.iter_mut().enumerate() {
             *v = self.data.image.i32(MANAGER_TABLE + 0x11 * i as u32);

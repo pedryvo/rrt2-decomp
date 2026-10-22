@@ -219,12 +219,14 @@ impl Ai<'_, '_> {
             }
             if !any && year - c.bankrupt_year >= 5 {
                 c.declare_bankruptcy(&ctx);
-                todo_hook!(
-                    self.ts.log,
-                    "ai_bankruptcy_news",
-                    "news LNG 182 after company_declare_bankruptcy 0x43bc30 (positions and stations: finance.md 9)",
-                    "ai.md 10"
-                );
+                // LNG 182; the positions and stations of finance.md 9 are not ported.
+                self.ts.log.ran("ai_bankruptcy_news");
+                self.ts
+                    .g
+                    .news
+                    .push(crate::message::GameMessage::CompanyBankrupt {
+                        company: self.company,
+                    });
             }
         }
         // 6. Dividend review in December.

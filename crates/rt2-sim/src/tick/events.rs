@@ -539,8 +539,13 @@ impl ScenarioWorld for ScWorld<'_> {
     fn stations_visited(&self) -> i32 {
         0
     }
-    fn show_message(&mut self, _message: &Message) -> usize {
-        self.skip("scenario_message", "rule message window / newspaper (UI)");
+    fn show_message(&mut self, message: &Message) -> usize {
+        // Output queue only (message.rs); a choice runs the effect set of button 0.
+        self.s
+            .ts_globals
+            .news
+            .push(crate::message::GameMessage::Scenario(message.clone()));
+        self.s.log.ran("scenario_message");
         0
     }
     fn credit_company(&mut self, company: i32, amount: i32) {

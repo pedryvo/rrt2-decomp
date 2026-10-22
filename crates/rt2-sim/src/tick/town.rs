@@ -355,12 +355,14 @@ impl SiteEnv for SiteWorld<'_> {
         let seen = ST_SEEN_TYPE + usize::from(ty);
         if self.s.save.state.get(seen) == Some(&0) {
             self.s.save.state[seen] = 1;
-            todo_hook!(
-                self.s.log,
-                "building_first_of_type_message",
-                "headline for the first building of a type (LNG 94/95)",
-                "world-growth.md 4.4"
-            );
+            self.s.log.ran("building_first_of_type_message");
+            self.s
+                .ts_globals
+                .news
+                .push(crate::message::GameMessage::FirstOfType {
+                    building_type: ty,
+                    place: self.place as i32,
+                });
         }
         self.mark_terrain(slot, shape, &geo);
         self.s.log.ran("building_create");

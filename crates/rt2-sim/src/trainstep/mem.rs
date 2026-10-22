@@ -58,6 +58,8 @@ pub struct Globals {
     /// `0x5794f0`: a track change with 20 stations or more deferred `station_networks_rebuild`
     /// to the next `sim_month_end` (step 1).
     pub networks_dirty: bool,
+    /// Output queue of player-visible messages ([`crate::message`]); never read by the rules.
+    pub news: Vec<crate::message::GameMessage>,
 }
 
 pub struct Ts<'a> {

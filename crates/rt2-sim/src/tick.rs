@@ -31,6 +31,7 @@ use crate::world::World;
 
 mod company;
 mod events;
+mod found;
 mod history;
 mod review;
 mod town;
@@ -125,6 +126,44 @@ impl World {
         s.game_seed = self.game_seed;
         s.sync_scalars();
         s
+    }
+
+    /// Drains the output queue of player-visible messages ([`crate::message`]), oldest first.
+    /// Deterministic: the queue is filled by the rules and never read by them.
+    pub fn take_messages(&mut self) -> Vec<crate::message::GameMessage> {
+        self.sim
+            .as_mut()
+            .map(|s| std::mem::take(&mut s.ts_globals.news))
+            .unwrap_or_default()
+    }
+
+    /// The end of the game decided by the scenario rules (`GameOver.state` 1..=3 victory
+    /// bronze/silver/gold, 4 defeat, scenarios.md 3.3), `None` while playing.
+    pub fn game_over(&self) -> Option<crate::message::Outcome> {
+        use crate::message::Outcome;
+        match self.sim.as_ref()?.scenario.as_ref()?.game_over.state {
+            1 => Some(Outcome::Bronze),
+            2 => Some(Outcome::Silver),
+            3 => Some(Outcome::Gold),
+            4 => Some(Outcome::Lose),
+            _ => None,
+        }
+    }
+
+    /// Text the winning/losing rule supplied (empty without one).
+    pub fn game_over_text(&self) -> &str {
+        self.sim
+            .as_ref()
+            .and_then(|s| s.scenario.as_ref())
+            .map_or("", |sc| sc.game_over.text.as_str())
+    }
+
+    /// Defeat because another player won (LNG `0xa83`).
+    pub fn game_over_other_won(&self) -> bool {
+        self.sim
+            .as_ref()
+            .and_then(|s| s.scenario.as_ref())
+            .is_some_and(|sc| sc.game_over.other_won)
     }
 
     /// Step counters of the world loop (implemented and missing steps); `None` when the world was
@@ -278,6 +317,29 @@ impl SimState {
         let r = f(&mut ts);
         self.ts_globals = ts.g;
         r
+    }
+
+    /// Historical notices of `sim_year_end` item 19 (time.md 7.5, world-growth.md 8): 1877 (type
+    /// 36), 1879 (type 29 or 10), 1900 (type 12), 1910 (always), 1960 (type 14). The condition is
+    /// the "type seen" flag `0x570603[type]` (set by the first building of the type) and the
+    /// economy-off header byte `0x570237 == 0`; the polarity of the flag is read as "seen".
+    fn year_start_messages(&mut self, year: i32) {
+        if self.hdr(HDR_NO_ECONOMY) != 0 {
+            return;
+        }
+        let seen = |s: &Self, t: usize| s.save.state.get(0x11B + t).is_some_and(|&v| v != 0);
+        let lng = match year {
+            1877 if seen(self, 36) => 2630,
+            1879 if seen(self, 29) || seen(self, 10) => 2851,
+            1900 if seen(self, 12) => 419,
+            1910 => 417,
+            1960 if seen(self, 14) => 420,
+            _ => return,
+        };
+        self.log.ran("year_start_messages");
+        self.ts_globals
+            .news
+            .push(crate::message::GameMessage::Historical { year, lng });
     }
 
     /// The 23:59 step (`fim_de_dia`, world-tick.md 2 and 3.1) of a local game.
@@ -524,12 +586,13 @@ impl SimState {
         }
         let new_state = new_state.clamp(0, 4);
         if new_state != state {
-            todo_hook!(
-                self.log,
-                "economy_headline",
-                "news headline of the new economic state (0x4a42f0 / 0x46aa90)",
-                "cargo.md 9"
-            );
+            self.log.ran("economy_headline");
+            self.ts_globals
+                .news
+                .push(crate::message::GameMessage::EconomyChanged {
+                    from: state as u8,
+                    to: new_state as u8,
+                });
             put_f32(st, ST_PRIME_RATE, prime_rate_for_state(new_state as usize));
             put_u32(st, ST_ECON_STATE, new_state as u32);
             // Every company of the set quotes again (`0x43b410(0, 1)`, cargo.md 9, finance.md
@@ -594,12 +657,14 @@ impl SimState {
             if let Some(r) = pool::record_mut(&mut self.save.places, slot) {
                 put_u32(&mut r.data, 0x36, bonus as u32);
             }
-            todo_hook!(
-                self.log,
-                "town_bonus_message",
-                "bonus offer news message (LNG 226) and map ping (0x475da0, 0x469320)",
-                "world-tick.md 3.6"
-            );
+            // LNG 226 (the map ping `0x475da0` is UI).
+            self.log.ran("town_bonus_message");
+            self.ts_globals
+                .news
+                .push(crate::message::GameMessage::TownBonusOffer {
+                    place: slot as i32,
+                    amount: bonus,
+                });
             return;
         }
     }
@@ -745,12 +810,7 @@ impl SimState {
         // 18. Industry type inputs for the new year.
         let year = i32::from(date_of(w.minutes).year);
         self.rebuild_types(year);
-        todo_hook!(
-            self.log,
-            "year_start_messages",
-            "historical messages (LNG 2630, 2851, 419, 417, 420)",
-            "world-tick.md 3.4 item 19"
-        );
+        self.year_start_messages(year);
         self.event_trigger(w, 0);
     }
 }

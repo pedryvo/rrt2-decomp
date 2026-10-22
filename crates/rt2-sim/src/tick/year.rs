@@ -312,12 +312,13 @@ impl SimState {
                     put_u32(&mut r.data, PE_HOLDINGS + 4 * i, h.wrapping_mul(n) as u32);
                 }
             }
-            todo_hook!(
-                self.log,
-                "company_split_message",
-                "stock split message (LNG 169)",
-                "finance.md 8 item 4"
-            );
+            self.log.ran("company_split_message");
+            self.ts_globals
+                .news
+                .push(crate::message::GameMessage::StockSplit {
+                    company: slot as i32,
+                    ratio: n,
+                });
         }
         self.log.ran("company_year_end");
     }

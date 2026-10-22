@@ -328,20 +328,25 @@ impl Ai<'_, '_> {
                     if built && let Some(k) = last_k {
                         self.company_name_from_towns(tid[pa[k]], tid[pb[k]]);
                     }
-                    todo_hook!(
-                        self.ts.log,
-                        "ai_news_founded",
-                        "news LNG 166 '%1 has just started the %2.'",
-                        "ai.md 5.3"
-                    );
+                    self.ts.log.ran("ai_news_founded");
+                    self.ts
+                        .g
+                        .news
+                        .push(crate::message::GameMessage::CompanyStarted {
+                            company: self.company,
+                        });
                 }
             } else if built {
-                todo_hook!(
-                    self.ts.log,
-                    "ai_news_connected",
-                    "news LNG 240 '%1 has connected %2 to %3.'",
-                    "ai.md 5.3"
-                );
+                self.ts.log.ran("ai_news_connected");
+                let (from, to) = last_k.map_or((0, 0), |k| (tid[pa[k]] as i32, tid[pb[k]] as i32));
+                self.ts
+                    .g
+                    .news
+                    .push(crate::message::GameMessage::CompanyConnected {
+                        company: self.company,
+                        from,
+                        to,
+                    });
             }
         }
         built

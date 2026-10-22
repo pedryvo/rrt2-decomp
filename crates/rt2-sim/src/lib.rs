@@ -19,6 +19,8 @@
 //! | [`world`] | state: clock, RNG, speed, plus the save pools when built with `World::from_save` | `docs/spec/time.md` |
 //! | [`tick`], [`industry`], [`pool`], [`hooks`] | the world loop (`sim_advance`, day/week/month/year hooks), weekly industry production, slot pools, counters of implemented and missing steps | `docs/spec/world-tick.md`, `cargo.md` 7 |
 //! | [`scenario`] | scenario rule engine: condition language (compile, 8-pass reducer), 350-row effect table, rule evaluation, effects, undo rules, victory/loss state; [`scenario::fire_trigger`] is NOT yet called by the world: wire `tick.rs` `event_trigger(k)` (year/month hooks 0..3, track change 4, company created 5, start/load 6, 0, 2 in that order) to it, `docs/spec/world-tick.md` and `scenarios.md` 2.2 | `docs/spec/scenarios.md` |
+//! | [`found`] | founding dialog math (sliders, price, shares, "You buy") and command `0x26` | `docs/spec/finance.md` 17 |
+//! | [`message`] | output queue of dialogs, headlines and the game outcome | `docs/spec/scenarios.md` 2.4, `time.md` 7.5 |
 //! | [`exe`], [`data`] | run-time loader for the copyrighted data tables (cargo, industries, engines, vehicles, track and station tables, stock economy multiplier and company-age weights) | `docs/spec/cargo.md` 3, 7.1; `trains.md` 2; `terrain-track.md` 2.2, 3.3; `finance.md` 3.1 |
 //! | [`growth`] | yearly town/region growth, building type pick and site search, removal pick, industry rating | `docs/spec/world-growth.md` |
 //! | [`fp`] | `ftol`, f32 stores, `pow` (integer x87 emulation of the CRT `_CIpow`, no libm) | `docs/spec/time.md` 3; `trains.md` 8 |
@@ -36,10 +38,12 @@ pub mod data;
 pub mod effects;
 pub mod exe;
 pub mod finance;
+pub mod found;
 pub mod fp;
 pub mod growth;
 pub mod hooks;
 pub mod industry;
+pub mod message;
 pub mod pool;
 pub mod rng;
 pub mod scenario;
@@ -52,4 +56,5 @@ pub mod view;
 pub mod world;
 
 pub use command::{Command, SpeedChange};
+pub use message::{GameMessage, Outcome};
 pub use world::World;

@@ -171,3 +171,6 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Feature: briefing and goals popup from the scenario rules, Start New Company dialog with the finance.md 17 sliders, File Options, year-end report, newspaper and win/lose dialogs using the original art
 - Improved: UI toolkit gains toggle buttons, icon buttons, cell grids with pointer events and scrolling text
 - Docs: screens.md status updated for A1-A5, B1-B4, C1-C2, G1, I1-I4, J1
+- Feature: rt2-sim output queue World::take_messages (scenario dialogs/newspapers/choices, year-end historical notices, economy change, first building of a type, town bonus offers, AI company started/connected/bankrupt, stock split) and World::game_over (bronze/silver/gold/lose)
+- Feature: rt2-sim command 0x26 (start company) with the window checks of 0x4bd950, company_init and the founder's share purchase (World::apply_found)
+- RE: the founding dialog "You buy" rounds the founder's shares to the nearest 1000 (half up), so the cost can exceed the investment (150,000 buys 3,000 shares for 157,500 at 52.50); rt2_sim::found::founding_preview is the single source for the UI

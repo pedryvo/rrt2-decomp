@@ -34,6 +34,10 @@ pub enum Command {
     /// sell a train (`0x1f`), replace an engine (`0x20`), buy or sell an industry (`0x2d`).
     /// See [`World::apply_build`] for the result.
     Build(crate::build::cmd::BuildCmd),
+    /// `0x26` start a company (`cmd_found_company` `0x4bdcd0`, docs/spec/finance.md 17); see
+    /// [`World::apply_found`] for the result and [`crate::found::founding_preview`] for the
+    /// numbers of the dialog.
+    StartCompany(crate::found::FoundCompany),
 }
 
 impl World {
@@ -61,6 +65,9 @@ impl World {
             Command::Build(c) => {
                 let _ = self.apply_build(c);
             }
+            Command::StartCompany(c) => {
+                let _ = self.apply_found(c);
+            }
         }
     }
 
@@ -76,6 +83,23 @@ impl World {
             return Err(crate::build::cmd::CmdError::NoSuchObject);
         };
         let r = sim.apply_build(self, cmd);
+        self.sim = Some(sim);
+        r
+    }
+}
+
+impl World {
+    /// Starts a company (command `0x26`): the window checks of `0x4bd950`, `company_init` and the
+    /// founder's purchase. Returns the new company id or why nothing was done. Without save pools
+    /// every founding fails with `NoSuchObject`.
+    pub fn apply_found(
+        &mut self,
+        cmd: crate::found::FoundCompany,
+    ) -> Result<i32, crate::build::cmd::CmdError> {
+        let Some(mut sim) = self.sim.take() else {
+            return Err(crate::build::cmd::CmdError::NoSuchObject);
+        };
+        let r = sim.found_company(self, cmd);
         self.sim = Some(sim);
         r
     }
