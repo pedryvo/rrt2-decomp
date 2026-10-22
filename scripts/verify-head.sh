@@ -11,7 +11,7 @@ if [[ -f "$repo/re/bin/RT2_PLAT.EXE" ]]; then
     mkdir -p "$wt/re/bin" && cp "$repo/re/bin/RT2_PLAT.EXE" "$wt/re/bin/"
 fi
 cd "$wt"
-cargo fmt --all --check
-CARGO_TARGET_DIR="$repo/target" cargo clippy --workspace --all-targets -q -- -D warnings
-CARGO_TARGET_DIR="$repo/target" cargo nextest run --workspace 2>&1 | tail -3
+nice -n 10 cargo fmt --all --check
+CARGO_TARGET_DIR="$repo/target" nice -n 10 cargo clippy --workspace --all-targets -q -- -D warnings
+CARGO_TARGET_DIR="$repo/target" nice -n 10 cargo nextest run --workspace 2>&1 | tail -3
 scripts/check-changelog.sh
