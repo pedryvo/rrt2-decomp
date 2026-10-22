@@ -15,34 +15,34 @@ desc = "Tutorial (sem trens, sem estações)"
 [[scenario]]
 name = "Example"
 save = "games/Example save game.GAM"
-days = [1, 7]
+days = [1, 7, 30]
 seed = 1234
 desc = "Example save game (9 trens, 11 estações)"
 
 [[scenario]]
 name = "Alaska"
 save = "maps/Alaska.MP2"
-days = [1, 7]
+days = [1, 7, 30]
 seed = 1234
 desc = "Mapa Alaska.MP2"
 
 [[scenario]]
 name = "Austria"
 save = "maps/Austria.MP2"
-days = [1, 7]
+days = [1, 7, 30]
 seed = 1234
 desc = "Mapa Austria.MP2"
 
 [[scenario]]
 name = "Brazil"
 save = "maps/Brazil.MP2"
-days = [1, 7]
+days = [1, 7, 30]
 seed = 1234
 desc = "Mapa Brazil.MP2"
 
 [[scenario]]
 name = "Atlantis"
 save = "maps/Atlantis.MP2"
-days = [1, 7]
+days = [1, 7, 30]
 seed = 1234
 desc = "Mapa Atlantis.MP2"

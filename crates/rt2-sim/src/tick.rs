@@ -29,6 +29,12 @@ use crate::pool::{
 use crate::todo_hook;
 use crate::world::World;
 
+mod company;
+mod events;
+mod review;
+mod town;
+mod year;
+
 // State block offsets (VA - 0x5704e8), version 0x2348.
 const ST_PRIME_RATE: usize = 0x1E9; // 0x5706d1 f32
 const ST_ECON_STATE: usize = 0x22F; // 0x570717 i32
@@ -57,6 +63,8 @@ pub struct SimState {
     pub(crate) log: HookLog,
     /// Runtime globals of the train step that outlive a call.
     ts_globals: crate::trainstep::Globals,
+    /// The decoded scenario rule pool, built on the first trigger.
+    scenario: Option<crate::scenario::Scenario>,
 }
 
 impl PartialEq for SimState {
@@ -91,6 +99,7 @@ impl World {
             types: Vec::new(),
             log: HookLog::default(),
             ts_globals: Default::default(),
+            scenario: None,
         };
         sim.rebuild_types(i32::from(save.date.year));
         w.sim = Some(Box::new(sim));
@@ -409,23 +418,12 @@ impl SimState {
 
     // ---- month (world-tick.md 3.3) -------------------------------------------------------
 
-    fn event_trigger(&mut self, _code: u8) {
-        if !self.save.rules.is_empty() {
-            todo_hook!(
-                self.log,
-                "event_fire_trigger",
-                "event_fire_trigger 0x457fe0: scenario rules (may draw RNG for random conditions)",
-                "world-tick.md 3.7"
-            );
-        }
-    }
-
     fn month_end(&mut self, w: &mut World) {
         self.log.ran("sim_month_end");
         let date = date_of(w.minutes);
         // 1. station_networks_rebuild (flag 0x5794f0 never set in a loaded game).
-        self.event_trigger(4);
-        self.event_trigger(3);
+        self.event_trigger(w, 4);
+        self.event_trigger(w, 3);
         if date.month == 2 || date.month == 8 {
             self.economy_state_step(w, date);
         }
@@ -435,20 +433,10 @@ impl SimState {
         if !self.sandbox() {
             self.expire_lots(w);
         }
-        todo_hook!(
-            self.log,
-            "ai_monthly_turn",
-            "ai_monthly_turn 0x436d60: AI persons and companies (RNG)",
-            "world-tick.md 3.5"
-        );
+        self.ai_monthly_turn(w);
         // 8. Companies (pattern C).
-        for _ in 0..self.save.companies.count {
-            todo_hook!(
-                self.log,
-                "company_month_step",
-                "company_month_step 0x4399d0 on the raw company record",
-                "finance.md 5; world-tick.md 3.3 item 8"
-            );
+        for slot in pool::list_order(&self.save.companies) {
+            self.company_month_step(w, slot);
         }
         // 9. Persons (pattern C).
         for slot in pool::list_order(&self.save.persons) {
@@ -484,19 +472,14 @@ impl SimState {
                 self.log.ran("station_recompute_supply_demand");
             }
         }
-        todo_hook!(
-            self.log,
-            "margin_check_all",
-            "margin_check_all 0x46bb10: margin calls",
-            "finance.md 7.3; world-tick.md 3.3 item 12"
-        );
+        self.margin_check_all();
         // 13. `report_due_flag` is a UI flag.
         if date.month == 12 {
             self.year_end(w);
         } else {
             self.set_clock(w, w.minutes + 1);
         }
-        self.event_trigger(2);
+        self.event_trigger(w, 2);
     }
 
     /// `economy_state_step` (`0x46a010`, cargo.md 9) [S]; the RNG draws are [D] (world-tick.md 4).
@@ -548,13 +531,10 @@ impl SimState {
             );
             put_f32(st, ST_PRIME_RATE, prime_rate_for_state(new_state as usize));
             put_u32(st, ST_ECON_STATE, new_state as u32);
-            for _ in 0..self.save.companies.count {
-                todo_hook!(
-                    self.log,
-                    "company_economy_change",
-                    "0x43b410 per company after an economic state change",
-                    "cargo.md 9; finance.md"
-                );
+            // Every company of the set quotes again (`0x43b410(0, 1)`, cargo.md 9, finance.md
+            // 3.3).
+            for slot in self.company_set() {
+                self.company_quote(w.minutes, slot, true);
             }
         }
     }
@@ -623,10 +603,13 @@ impl SimState {
         }
     }
 
-    /// Lot expiry (`sim_month_end` item 6, cargo.md 7.6): the due lots are detected, the removal
-    /// (`0x466a60`: unlink from the pile, free the slot) is not implemented.
+    /// Lot expiry (`sim_month_end` item 6, cargo.md 7.6): lots without a station that are older
+    /// than 150 days and, when their industry exists, than half the cargo's wait scale (a
+    /// quarter when the industry has no linked station) are freed (`lot_free` `0x466a60`) and
+    /// the pile count of the industry drops. Slots are visited in descending order.
     fn expire_lots(&mut self, w: &mut World) {
         self.log.ran("lot_expiry_scan");
+        let mut due: Vec<(i32, Option<(usize, usize)>)> = Vec::new();
         for r in self.save.pool_7c.records.iter().rev() {
             let lot = &r.data;
             if u16_at(lot, industry::LOT_STATION) != 0 {
@@ -637,6 +620,7 @@ impl SimState {
                 continue;
             }
             let ind = usize::from(u16_at(lot, industry::LOT_INDUSTRY));
+            let mut count_slot = None;
             if let Some(ir) = pool::record(&self.save.objects, ind) {
                 let wait = self
                     .data
@@ -651,13 +635,26 @@ impl SimState {
                 if age < (wait >> shift) {
                     continue;
                 }
+                let ty = usize::from(ir.data[industry::OFF_TYPE]);
+                let slot = self.types.get(ty).and_then(|t| {
+                    t.slots
+                        .iter()
+                        .position(|s| s.output == lot[industry::LOT_CARGO])
+                });
+                count_slot = slot.map(|k| (ind, k));
             }
-            todo_hook!(
-                self.log,
-                "lot_expiry",
-                "free an expired lot (0x466a60) and decrement the pile count",
-                "cargo.md 7.6; world-tick.md 3.3 item 6"
-            );
+            due.push((r.slot as i32, count_slot));
+        }
+        for (lot, count) in due {
+            if let Some((ind, k)) = count
+                && let Some(ir) = pool::record_mut(&mut self.save.objects, ind)
+            {
+                let o = industry::OFF_PILE_COUNT + 2 * k;
+                let v = i16_at(&ir.data, o).wrapping_sub(1);
+                pool::put_i16(&mut ir.data, o, v);
+            }
+            self.with_trainstep(w, |ts| ts.lot_free(lot));
+            self.log.ran("lot_expiry");
         }
     }
 
@@ -689,50 +686,28 @@ impl SimState {
     fn year_end(&mut self, w: &mut World) {
         self.log.ran("sim_year_end");
         // Items 1-2: company metric average and ai_pick_engine (RNG [80,120] per candidate).
-        todo_hook!(
-            self.log,
-            "year_ai_pick_engine",
-            "company_metric(11) average and ai_pick_engine(1) 0x4d86f0 (RNG), 0x573e08",
-            "world-tick.md 3.4 items 1-2"
-        );
-        for _ in 0..self.save.objects.count {
-            todo_hook!(
-                self.log,
-                "industry_year_step",
-                "industry_year_step 0x40b450",
-                "world-tick.md 3.4 item 3 (not specified)"
-            );
+        self.year_reference_speed(w);
+        // 3. Buildings (pattern C).
+        for slot in pool::list_order(&self.save.objects) {
+            self.industry_year_step(w, slot);
         }
-        for _ in 0..self.save.companies.count {
-            todo_hook!(
-                self.log,
-                "company_annual_review",
-                "company_annual_review 0x43c760 (RNG)",
-                "world-tick.md 3.4 item 4; finance.md 8.1"
-            );
+        // 4. Companies (pattern C).
+        for slot in pool::list_order(&self.save.companies) {
+            self.company_annual_review(w, slot);
         }
-        self.event_trigger(1);
+        self.event_trigger(w, 1);
         todo_hook!(
             self.log,
             "history_snapshot",
-            "history_snapshot 0x4e9770 and the compound target 0x5705d1",
-            "world-tick.md 3.4 items 7-8"
+            "history_snapshot 0x4e9770 (yearly record of the player: not specified)",
+            "world-tick.md 3.4 item 7"
         );
-        for _ in 0..self.save.companies.count {
-            todo_hook!(
-                self.log,
-                "company_year_end",
-                "company_year_end 0x43d800",
-                "finance.md 8; world-tick.md 3.4 item 9"
-            );
+        self.year_growth_factor(w);
+        for slot in pool::list_order(&self.save.companies) {
+            self.company_year_end(w, slot);
         }
-        for _ in 0..self.save.persons.count {
-            todo_hook!(
-                self.log,
-                "person_year_step",
-                "person_year_step 0x4a7880 (net worth archive)",
-                "world-tick.md 3.4 item 10"
-            );
+        for slot in pool::list_order(&self.save.persons) {
+            self.person_year_step(w, slot);
         }
         // 11. Trains (pattern C): shift the yearly statistics.
         if self.v2348() {
@@ -751,22 +726,13 @@ impl SimState {
         }
         self.log.ran("territory_year_step");
         if self.hdr(HDR_NO_ECONOMY) == 0 {
-            todo_hook!(
-                self.log,
-                "town_year_step",
-                "town_year_step 0x430a40 (growth.rs has the rules; the GrowthWorld/PickWorld traits are not yet implemented over the save pools)",
-                "world-tick.md 3.4 item 13 (not specified)"
-            );
+            self.town_year_step(w);
         }
         // 14. Second weekly pass in the same minute.
         self.week_end(w);
-        for _ in 0..self.save.objects.count {
-            todo_hook!(
-                self.log,
-                "industry_year_reset",
-                "industry_year_reset 0x40b7c0",
-                "world-tick.md 3.4 item 15 (not specified)"
-            );
+        // 15. Buildings (pattern C).
+        for slot in pool::list_order(&self.save.objects) {
+            self.industry_year_reset(w, slot);
         }
         // 16. Track piece wear of the year that ends (slots descending; order-free).
         for r in self.save.track_pieces.records.iter_mut().rev() {
@@ -779,12 +745,7 @@ impl SimState {
         self.log.ran("track_piece_wear_rotation");
         // 17. 1 Jan 00:00.
         self.set_clock(w, w.minutes + 1);
-        todo_hook!(
-            self.log,
-            "year_counters_reset",
-            "zero 0x573d05/09/0d and update 0x573e02",
-            "world-tick.md 3.4 item 17; time.md 7.5"
-        );
+        self.year_counters_reset();
         // 18. Industry type inputs for the new year.
         let year = i32::from(date_of(w.minutes).year);
         self.rebuild_types(year);
@@ -794,6 +755,6 @@ impl SimState {
             "historical messages (LNG 2630, 2851, 419, 417, 420)",
             "world-tick.md 3.4 item 19"
         );
-        self.event_trigger(0);
+        self.event_trigger(w, 0);
     }
 }

@@ -4418,3 +4418,13 @@ name = "station_unlink_lot"
 kind = "function"
 comment = "thiscall(estacao, lote): tira o lote da lista de largados +0x4be"
 spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4beae0"
+name = "station_year_reset"
+comment = "chamado por industry_year_reset (0x40b7c0) na estacao ligada: zera +0x4b5/+0x4b7/+0x4b9 (finance.md 13.4); o original tambem grava a tabela de +0x34c..+0x35c (20 B por carga) e zera +0x58..+0x5f: efeito completo NAO especificado"
+
+[[symbol]]
+addr = "0x4c8540"
+name = "territory_set_rights"
+comment = "(territorio, mascara, permitir, empresa, 0): liga/desliga bits de direitos do bloco da empresa (+0x479 + t*0x1ed); ao negar o ultimo direito de um territorio t >= 4 zera o byte empresa+0x4229+t (inferido, Alaska regras 47/51)"

@@ -3,11 +3,11 @@
 # Ver docs/re-workflow.md.
 #
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
-# Classificadas (categoria != unknown): 1176 (39.9%)
-# Por categoria: lib=258, platform=115, render=11, audio=68, ui=251, sim=473, unknown=1769
-# Por estado:   unknown=2516, named=109, spec=194, verified=126
+# Classificadas (categoria != unknown): 1178 (40.0%)
+# Por categoria: lib=258, platform=115, render=11, audio=68, ui=251, sim=475, unknown=1767
+# Por estado:   unknown=2514, named=111, spec=194, verified=126
 # Entradas manuais: 423
-# sim spec coverage: 61.9% (293 de 473 funcoes sim em spec/verified)
+# sim spec coverage: 61.7% (293 de 475 funcoes sim em spec/verified)
 
 [[function]]
 addr = "0x401005"
@@ -2125,9 +2125,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x401889"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4beae0"
 
 [[function]]
 addr = "0x401893"
@@ -14723,10 +14723,11 @@ manual = true
 
 [[function]]
 addr = "0x4beae0"
+name = "station_year_reset"
 size = 30
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "symbol:station_year_reset"
 
 [[function]]
 addr = "0x4beb00"
@@ -15143,9 +15144,10 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x4c8540"
+name = "territory_set_rights"
 size = 501
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]

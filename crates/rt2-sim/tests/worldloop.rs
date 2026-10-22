@@ -176,3 +176,69 @@ fn example_seven_days_is_equal() {
     assert_eq!(unmasked(&fid, "orig_ex_7.GAM", &s), Vec::<String>::new());
     assert_eq!(w.hook_log().unwrap().skipped_steps().count(), 0);
 }
+
+/// Entity group of a diff path: `companies[5].raw[..]` -> `companies`.
+fn group(path: &str) -> &str {
+    let end = path.find(['.', '[']).unwrap_or(path.len());
+    &path[..end]
+}
+
+/// The four stock maps (`maps/<Name>.MP2`) over the 28th of a month: the monthly company step,
+/// the dividends, the interest, the scenario triggers (rules of 1967..1986 fire effects on
+/// rights, levels, variables and the economic state) and the monthly town draws equal the
+/// original field by field. Files: `base_<name>.GAM` and `orig_<name>_30.GAM` in
+/// `RT2_FIDELITY_DIR` (the cache of `scripts/fidelity.py`, renamed).
+#[test]
+fn maps_thirty_days_are_equal() {
+    let Some((fid, data, _)) = setup() else {
+        eprintln!("RT2_DIR / RT2_FIDELITY_DIR not set; skipping");
+        return;
+    };
+    for name in ["alaska", "austria", "brazil", "atlantis"] {
+        let (b, o) = (format!("base_{name}.GAM"), format!("orig_{name}_30.GAM"));
+        if !fid.join(&b).exists() || !fid.join(&o).exists() {
+            eprintln!("{b} / {o} not in RT2_FIDELITY_DIR; skipping");
+            continue;
+        }
+        let base = Save::parse(&std::fs::read(fid.join(&b)).unwrap()).unwrap();
+        let (_, s) = clone_advance(&base, &data, 30);
+        assert_eq!(unmasked(&fid, &o, &s), Vec::<String>::new(), "{name}");
+    }
+}
+
+/// Thirty days of the Example cross the year end (10 Dec 1875 to 12 Jan 1876). What still
+/// differs is exactly what the specs leave open (docs/fidelity-status.md): the yearly history
+/// record (`state`), the terrain marking of created and demolished buildings (`tiles`,
+/// `elevation`, `structures`), the station counters of `0x4beae0` (`stations`) and the AI
+/// company and its chairman (`companies`, `persons`). The pools of the buildings, places, lots
+/// and links, the trains and the other companies are equal, and the year-end RNG draws (annual
+/// reviews, manager picks, town growth) stay in step.
+#[test]
+fn example_thirty_days_residual_is_the_documented_gap() {
+    let Some((fid, data, _)) = setup() else {
+        eprintln!("RT2_DIR / RT2_FIDELITY_DIR not set; skipping");
+        return;
+    };
+    let Some(base) = example(&fid, 30) else {
+        return;
+    };
+    let (_, s) = clone_advance(&base, &data, 30);
+    let mut groups: Vec<String> = unmasked(&fid, "orig_ex_30.GAM", &s)
+        .iter()
+        .map(|p| group(p).to_string())
+        .collect();
+    groups.sort();
+    groups.dedup();
+    let allowed = [
+        "companies",
+        "elevation",
+        "persons",
+        "state",
+        "stations",
+        "structures",
+        "tiles",
+    ];
+    for g in &groups {
+        assert!(allowed.contains(&g.as_str()), "unexpected group {g}");
+    }
+}

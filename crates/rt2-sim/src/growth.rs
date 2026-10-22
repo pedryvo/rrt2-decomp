@@ -183,9 +183,9 @@ pub trait TownEnv {
     /// `0x430400`.
     fn stats(&mut self) -> BuildingStats;
     /// `0x42ffc0(town, _, house)`: `true` when a building was created.
-    fn add_building(&mut self, house: bool) -> bool;
+    fn add_building(&mut self, rng: &mut GameRng, house: bool) -> bool;
     /// `0x4302c0(town, house)`.
-    fn remove_worst(&mut self, house: bool);
+    fn remove_worst(&mut self, rng: &mut GameRng, house: bool);
 }
 
 /// World values read by the growth step.
@@ -335,7 +335,7 @@ pub fn town_growth_step(
             if -p * MILLION <= f64::from(r) {
                 break;
             }
-            env.remove_worst(pass == 0);
+            env.remove_worst(rng, pass == 0);
             removed = true;
         }
         // Spontaneous removal ("churn").
@@ -345,7 +345,7 @@ pub fn town_growth_step(
             if n > 4 {
                 let r = rng.range(0, 1_000_000);
                 if f64::from(r) < (f64::from(n) * a) * MILLION {
-                    env.remove_worst(pass == 0);
+                    env.remove_worst(rng, pass == 0);
                     continue;
                 }
             }
@@ -361,7 +361,7 @@ pub fn town_growth_step(
                     break;
                 }
             }
-            if !env.add_building(pass == 0) {
+            if !env.add_building(rng, pass == 0) {
                 break;
             }
             let st = env.stats();
@@ -551,7 +551,7 @@ pub trait SiteEnv {
     /// `0x4087a0`.
     fn can_place(&mut self, x: i32, y: i32, shape: usize, early: bool) -> bool;
     /// `0x409010`.
-    fn create(&mut self, x: i32, y: i32, shape: usize);
+    fn create(&mut self, rng: &mut GameRng, x: i32, y: i32, shape: usize);
 }
 
 /// The place fields `town_place_building` reads.
@@ -636,12 +636,12 @@ pub fn town_place_building(
             if ty == TYPE_PORT {
                 for k in 0..4 {
                     if env.can_place(x, y, 0x54 + k, false) {
-                        env.create(x, y, 0x54 + k);
+                        env.create(rng, x, y, 0x54 + k);
                         return true;
                     }
                 }
             } else if env.can_place(x, y, shape, attempts > 300) {
-                env.create(x, y, shape);
+                env.create(rng, x, y, shape);
                 return true;
             }
         }

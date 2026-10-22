@@ -506,7 +506,7 @@ impl TownEnv for StubTown {
             size_sum: self.s,
         }
     }
-    fn add_building(&mut self, house: bool) -> bool {
+    fn add_building(&mut self, _rng: &mut GameRng, house: bool) -> bool {
         if self.budget == 0 {
             return false;
         }
@@ -520,7 +520,7 @@ impl TownEnv for StubTown {
         }
         true
     }
-    fn remove_worst(&mut self, house: bool) {
+    fn remove_worst(&mut self, _rng: &mut GameRng, house: bool) {
         self.rems.push(house);
         if house {
             self.h -= 1;
@@ -900,7 +900,7 @@ fn town_place_building_matches_original() {
             self.can.push([x, y, shape as i32, i32::from(early)]);
             self.cp[((y << 8) + x) as usize] != 0
         }
-        fn create(&mut self, x: i32, y: i32, shape: usize) {
+        fn create(&mut self, _rng: &mut GameRng, x: i32, y: i32, shape: usize) {
             self.created.push([x, y, shape as i32, self.town_id]);
         }
     }

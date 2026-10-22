@@ -415,12 +415,7 @@ impl Ts<'_> {
             );
         }
         if self.u16(P::Lot, lot, 3) == 0 {
-            todo_hook!(
-                self.log,
-                "lot_unload_origin",
-                "0x468b40 (lot never loaded: pile counts)",
-                "cargo.md 7.6"
-            );
+            self.lot_unload_origin(lot);
         }
         let car = i32::from(self.u16(P::Lot, lot, 5));
         if car != 0 && self.i32(P::Car, car, 0x2d) == lot {

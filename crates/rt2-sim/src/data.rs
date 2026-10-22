@@ -68,6 +68,10 @@ pub struct GameData {
     /// `groups[header[3]].k` of each record (trains.md 10.6). Empty until
     /// [`GameData::load_sprites`] runs; without it the animation step cannot expire objects.
     pub anim_frames: Vec<i32>,
+    /// The 350-row scenario effect table (`0x550550`, scenarios.md 4.1).
+    pub scenario_effects: crate::scenario::EffectTable,
+    /// Town growth and building tables (world-growth.md 2.3, 2.4, 2.5).
+    pub growth: crate::growth::GrowthTables,
 }
 
 /// First and last+1 VA kept in [`DataImage`]: `.rdata` (0x535000) and the initialized part of
@@ -247,6 +251,8 @@ impl GameData {
                 .collect::<Result<Vec<_>, ExeError>>()?,
             image: DataImage::load(exe)?,
             anim_frames: Vec::new(),
+            scenario_effects: crate::scenario::EffectTable::load(exe)?,
+            growth: crate::growth::GrowthTables::load(exe)?,
         })
     }
 

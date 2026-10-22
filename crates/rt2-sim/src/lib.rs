@@ -29,6 +29,7 @@
 pub mod calendar;
 pub mod cargo;
 pub mod command;
+pub mod company_record;
 pub mod data;
 pub mod effects;
 pub mod exe;

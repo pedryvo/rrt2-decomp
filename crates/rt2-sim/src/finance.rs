@@ -196,14 +196,19 @@ pub fn prime_rate_for_state(state: usize) -> f32 {
     (0.09 - state as f64 * 0.01) as f32
 }
 
+/// `0x535540`: 1/12 as the f64 the original multiplies by.
+pub const MONTH: f64 = 0.083_333_333_333_333_33;
+
 /// Interest paid on a cash balance per month (`0x4399d0` step 4, finance.md 5) [S]. Positive cash
 /// earns `prime - 4%`; a negative balance (overdraft) pays `prime + (10 - rating)*1% + 2%`. The
 /// result has the sign of `cash` (negative = expense).
 pub fn cash_interest(cash: f64, prime: f64, rating: f64) -> f64 {
+    // `0x535540` = 1/12: the original multiplies (verified against the original, month 1 of
+    // Alaska: dividing by 12 differs by one ulp in the salary sum).
     if cash >= 0.0 {
-        (prime - 0.04) * cash / 12.0
+        (prime - 0.04) * cash * MONTH
     } else {
-        (prime + (10.0 - rating) * 0.01 + 0.02) * cash / 12.0
+        (prime + (10.0 - rating) * 0.01 + 0.02) * cash * MONTH
     }
 }
 
@@ -924,7 +929,7 @@ impl Company {
         // 3. Overhead.
         self.credit(
             CAT_OVERHEAD,
-            -(f64::from(self.overhead)) / 12.0 * inp.overhead_effect,
+            -(f64::from(self.overhead)) * MONTH * inp.overhead_effect,
         );
         // 4. Cash interest.
         let interest = self.monthly_cash_interest(ctx);
@@ -938,16 +943,16 @@ impl Company {
         }
         // 6. Salaries.
         let chairman = f64::from(self.chairman_salary);
-        self.credit(CAT_SALARY, -chairman / 12.0);
+        self.credit(CAT_SALARY, -chairman * MONTH);
         self.credit(
             CAT_SALARY,
-            -f64::from(inp.manager_salary) / 12.0 * inp.manager_effect,
+            -f64::from(inp.manager_salary) * MONTH * inp.manager_effect,
         );
         // 7. Pressure decay and quote.
         self.decay_and_quote(ctx);
         MonthlyReport {
             dividend,
-            chairman_pay: ftol(chairman / 12.0),
+            chairman_pay: ftol(chairman * MONTH),
         }
     }
 }
