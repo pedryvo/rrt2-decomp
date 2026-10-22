@@ -1442,3 +1442,171 @@ name = "maint_price_level"
 kind = "table"
 comment = "f32[3] {1.05, 1.0, 0.95} indexado por 0x567d6d[tipo]"
 spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4f24c0"
+name = "font_new"
+kind = "function"
+comment = "thiscall(this, hash do nome fontN.dat): escolhe a fonte 1..10 comparando o hash (os dois hashes) com 'fontN.dat', preenche altura/espacamento/entrelinha/sublinhado e carrega o banco LAD copp*.imb/scri11/fran13/haet46/htra46 (tipo 0); ver docs/formats/font.md"
+spec = "docs/formats/font.md"
+
+[[symbol]]
+addr = "0x4f1f60"
+name = "font_glyph_index"
+kind = "function"
+comment = "thiscall(font, ch): indice do glifo = ch-0x20 (display fonts: acentos e minusculas dobram para maiuscula), 0 se fora da faixa"
+spec = "docs/formats/font.md"
+
+[[symbol]]
+addr = "0x4f2970"
+name = "font_char_advance"
+kind = "function"
+comment = "thiscall(font, ch): avanco do cursor em px = largura do box do glifo + min(x,0) + espacamento (fonte 7: tabela 0x55d358); espaco = largura do '1'; [ ] { } | e controles = 0"
+spec = "docs/formats/font.md"
+
+[[symbol]]
+addr = "0x4f3570"
+name = "font_draw_text"
+kind = "function"
+comment = "thiscall(font, destino, texto, x, y, w, h, cor, ...): quebra de linha por largura, markup [..] {..}, alinhamento, desenha glifos camada 1 (e sombra camada 2) e sublinhado"
+spec = "docs/formats/font.md"
+
+[[symbol]]
+addr = "0x4f33b0"
+name = "font_measure_line"
+kind = "function"
+comment = "thiscall(font, texto, largura_max): largura da linha ate o ultimo espaco que cabe (markup [N..] muda modo de digitos tabulares)"
+spec = "docs/formats/font.md"
+
+[[symbol]]
+addr = "0x4fff00"
+name = "sprite_draw_text_rle"
+kind = "function"
+comment = "fastcall(imagem, destino, x, y, ...cor): desenhador da codificacao RLE 3 com tokens extras: 0x80-0x9f escurece destino (tabela), 0xa0-0xbf corre de alfa sobre a cor do texto; ver docs/formats/font.md"
+spec = "docs/formats/font.md"
+
+[[symbol]]
+addr = "0x470b50"
+name = "shade_tables_build"
+kind = "function"
+comment = "constroi as 5 tabelas de 64K u16 de escurecimento/cinza usadas pelos tokens 0x80-0x9f (max(c-8,c/2), max(c-4,c/2), (0x78+3c)/8, (0x5a+3c)/8, ...)"
+spec = "docs/formats/font.md"
+
+[[symbol]]
+addr = "0x507600"
+name = "ui_window_load"
+kind = "function"
+comment = "thiscall(janela, x, y, nome.win): le o layout .win do PK2 (marcadores 0x7d0..0x7d4, struct de 65 bytes, lista de controles), instancia cada controle por tipo, insere ordenado por z e aplica ajustes por nome de janela; ver docs/formats/ui.md"
+spec = "docs/formats/ui.md"
+
+[[symbol]]
+addr = "0x507000"
+name = "ui_find_control"
+kind = "function"
+comment = "thiscall(janela, id): procura o controle com esse id (u16 em +4) na lista encadeada da janela"
+spec = "docs/formats/ui.md"
+
+[[symbol]]
+addr = "0x5075a0"
+name = "ui_window_add_control"
+kind = "function"
+comment = "thiscall(janela, controle): insere o controle na lista duplamente encadeada ordenada pelo byte z (+8)"
+spec = "docs/formats/ui.md"
+
+[[symbol]]
+addr = "0x50eaf0"
+name = "ui_control_read_base"
+kind = "function"
+comment = "thiscall(controle, buf): copia os 53 bytes da base comum (id, tipo, z, retangulo, fonte em +0x27) e zera strings; carrega a fonte do controle"
+spec = "docs/formats/ui.md"
+
+[[symbol]]
+addr = "0x50c850"
+name = "ui_button_new"
+kind = "function"
+comment = "controle tipo 1 (botao): le 0x52 bytes + campo 0xbba; frames cima/baixo, tecla de atalho, retangulo do rotulo"
+spec = "docs/formats/ui.md"
+
+[[symbol]]
+addr = "0x509960"
+name = "ui_label_new"
+kind = "function"
+comment = "controle tipo 2 (rotulo de texto): le 0x4d bytes + campo 0xbbb"
+spec = "docs/formats/ui.md"
+
+[[symbol]]
+addr = "0x50afe0"
+name = "ui_image_new"
+kind = "function"
+comment = "controle tipo 4 (imagem de sprite): le 0x3f bytes; registro do banco em +0x35"
+spec = "docs/formats/ui.md"
+
+[[symbol]]
+addr = "0x5047f0"
+name = "ui_list_new"
+kind = "function"
+comment = "controle tipo 8 (lista com barra): le 0x91 bytes + campo 0xbc0 (banco de preenchimento)"
+spec = "docs/formats/ui.md"
+
+[[symbol]]
+addr = "0x508480"
+name = "ui_hotarea_new"
+kind = "function"
+comment = "controle tipo 0x10 (area sensivel, so a base de 0x35 bytes)"
+spec = "docs/formats/ui.md"
+
+[[symbol]]
+addr = "0x5088f0"
+name = "ui_type20_new"
+kind = "function"
+comment = "controle tipo 0x20: le 0x45 bytes (finalidade desconhecida)"
+spec = "docs/formats/ui.md"
+
+[[symbol]]
+addr = "0x503790"
+name = "ui_movie_new"
+kind = "function"
+comment = "controle tipo 0x40 (superficie de video Smacker nos smackwi*.win): le 0x45 bytes"
+spec = "docs/formats/ui.md"
+
+[[symbol]]
+addr = "0x50a890"
+name = "ui_bar_new"
+kind = "function"
+comment = "controle tipo 0x80 (barra/valor): le 0x4f bytes"
+spec = "docs/formats/ui.md"
+
+[[symbol]]
+addr = "0x507cf0"
+name = "ui_custom_new"
+kind = "function"
+comment = "controle tipo 0x100 (desenhado pelo dono): le 0x61 bytes + campo 0xbc1"
+spec = "docs/formats/ui.md"
+
+[[symbol]]
+addr = "0x50b8d0"
+name = "ui_slider_new"
+kind = "function"
+comment = "controle tipo 0x200 (slider, banco horsb_*.imb): le 0x55 bytes"
+spec = "docs/formats/ui.md"
+
+[[symbol]]
+addr = "0x4f4220"
+name = "pk2_read_field"
+kind = "function"
+comment = "thiscall(tag, &saida): le [u32 marcador][u32 len][bytes] do arquivo de pack corrente e devolve buffer malloc"
+spec = "docs/formats/ui.md"
+
+[[symbol]]
+addr = "0x4f4120"
+name = "pk2_read_marker"
+kind = "function"
+comment = "le 4 bytes (marcador de estrutura) do arquivo de pack corrente"
+spec = "docs/formats/ui.md"
+
+[[symbol]]
+addr = "0x4f40e0"
+name = "pk2_read_bytes"
+kind = "function"
+comment = "fastcall(buf, n): le n bytes do arquivo de pack corrente; erro 0xb77 se curto"
+spec = "docs/formats/ui.md"

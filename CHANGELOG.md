@@ -42,3 +42,12 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - RE: oráculo `tests/trains.rs`: rampa, curva de velocidade, passo de aceleração e chance de quebra idênticos ao original em 70 000 casos aleatórios
 - Docs: preços do apêndice do guia que divergem do executável (GP9, SD45, E60CP, Eurostar, TGVs) anotados em `docs/spec/trains.md`
 - RE: precisão x87 medida no original sob Wine (winedbg --gdb + gdb): thread principal em FPCW 0x27F (53 bits) no porteiro de quadros e em sim_advance; sandbox e sondas em re/scripts/wine/ (docs/dynamic-analysis.md)
+- Feature: novo crate `rt2-sim`, nucleo de simulacao deterministico: RNG do jogo (LCG e hash), calendario e velocidade, multiplicador de efeitos, receita de entrega, taxa de producao e reconstrucao de entradas das industrias, curva de velocidade, aceleracao, chance de quebra e custos mensais dos trens, camada de comandos (`Command`, `World::apply`) e carregador em tempo de execucao das tabelas do EXE
+- Improved: os testes diferenciais do oraculo (`sim_time_rng`, `cargo`, `trains`) agora exercitam as funcoes publicas do `rt2-sim` em vez de copias locais, e conferem o carregador de tabelas contra a memoria emulada
+- Docs: `docs/spec/time.md` registra a divergencia intencional do clone (quadro nominal fixo de 100 ms)
+- RE: bitmap fonts: `font%s.dat` is only a name (hash) selecting one of 10 built-in definitions (`0x4f24c0`) over LAD banks `copp6/8/10/12/14/24.imb`, `scri11`, `fran13`, `haet46`, `htra46`; glyph = record `ch-0x20`, group 0 alpha mask, group 1 shadow; metrics in `docs/formats/font.md`
+- RE: glyph RLE (`0x4fff00`) has tokens beyond plain LAD: 0x80-0x9f darken the destination, 0xa0-0xbf are alpha runs over the text colour
+- RE: `.win` UI layouts (46 files) decoded from the loader `0x507600`: 65-byte window struct, 10 control types with action id, rectangle, font and sprite bank; see `docs/formats/ui.md`
+- Feature: bitmap font reader (`rt2_formats::font`) and the `rt2-font` tool that renders text to PNG
+- Feature: UI layout parser (`rt2_formats::ui`) and the `rt2-ui` tool that draws a window's geometry with its sprites
+- Docs: `docs/formats/font.md` and `docs/formats/ui.md`

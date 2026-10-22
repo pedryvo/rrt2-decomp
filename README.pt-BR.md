@@ -41,7 +41,7 @@ O **rrt2-decomp** estuda o executável original de _Railroad Tycoon II Platinum_
 | Textos **LNG** | ✅ | 2807 strings e tabelas nomeadas · [spec](docs/formats/lng.md) |
 | Nomes dos arquivos nos PK2 | 🟡 | 328 nomes recuperados do EXE, de 2898 hashes |
 | Sprites (LAD) e paletas | ✅ | Sprites decodificam com as cores certas, 1990/1990 bancos · [spec](docs/formats/lad.md) |
-| Layouts de interface (`.imb` `.win`) | 🔍 | Identificados, ainda não decodificados |
+| Layouts de interface (`.win`) e fontes bitmap | ✅ | Os 46 layouts de janela são lidos; as 10 fontes do jogo decodificam com métricas · [ui](docs/formats/ui.md) · [fontes](docs/formats/font.md) |
 | Áudio (`.raw` `.wav`) | 🔍 | A maioria parece PCM mono de 16 bits |
 | Mapas e saves (`.MAP` `.GAM`) | 🟡 | Os 33 arquivos são lidos até o último byte: terreno, data, semente, lugares, empresas e regras; estações e trens parciais · [spec](docs/formats/map-gam.md) |
 | Specs de simulação (trens, carga, economia…) | 🟡 | Tempo, calendário, laço principal, RNGs, economia de carga e movimento, quebras e custos dos trens, em boa parte verificados bit a bit contra o original · [tempo](docs/spec/time.md) · [rng](docs/spec/rng.md) · [carga](docs/spec/cargo.md) · [trens](docs/spec/trains.md) |
@@ -53,7 +53,7 @@ O **rrt2-decomp** estuda o executável original de _Railroad Tycoon II Platinum_
 
 <sub>✅ pronto · 🟡 parcial · 🔍 em análise · ⏳ planejado</sub>
 
-**Engenharia reversa:** 2945 funções no executável (1837 sem os thunks do linker) · 206 símbolos em [`re/symbols.toml`](re/symbols.toml) · 833 classificadas (28%), 2112 ainda sem classificação · 90 funções especificadas (81 delas de simulação), 22 verificadas bit a bit contra o original ([`re/coverage.toml`](re/coverage.toml)). O percentual de cobertura da simulação será publicado quando a classificação estiver completa.
+**Engenharia reversa:** 2945 funções no executável (1837 sem os thunks do linker) · 230 símbolos em [`re/symbols.toml`](re/symbols.toml) · 855 classificadas (29%), 2090 ainda sem classificação · 101 funções especificadas (81 delas de simulação), 22 verificadas bit a bit contra o original ([`re/coverage.toml`](re/coverage.toml)). O percentual de cobertura da simulação será publicado quando a classificação estiver completa.
 
 ## 🧭 Roteiro
 

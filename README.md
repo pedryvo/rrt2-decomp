@@ -41,7 +41,7 @@ _The 1998 classic you know, from the same isometric viewpoint,<br>now native at 
 | **LNG** string tables | ✅ | 2807 strings and named tables · [spec](docs/formats/lng.md) |
 | Filenames inside PK2 | 🟡 | 328 names recovered from the EXE, out of 2898 hashes |
 | Sprites (LAD) and palettes | ✅ | Sprites decode with correct colours, 1990/1990 banks · [spec](docs/formats/lad.md) |
-| UI layouts (`.imb` `.win`) | 🔍 | Identified, not decoded |
+| UI layouts (`.win`) and bitmap fonts | ✅ | All 46 window layouts parse; the 10 game fonts decode with metrics · [ui](docs/formats/ui.md) · [fonts](docs/formats/font.md) |
 | Audio (`.raw` `.wav`) | 🔍 | Most look like 16-bit mono PCM |
 | Maps and saves (`.MAP` `.GAM`) | 🟡 | All 33 files parse to the last byte: terrain, date, seed, places, companies, rules; stations and trains partial · [spec](docs/formats/map-gam.md) |
 | Simulation specs (trains, cargo, economy…) | 🟡 | Time/calendar/main loop, RNGs, cargo economy and train movement/breakdowns/costs, mostly verified bit-exact against the original · [time](docs/spec/time.md) · [rng](docs/spec/rng.md) · [cargo](docs/spec/cargo.md) · [trains](docs/spec/trains.md) |
@@ -53,7 +53,7 @@ _The 1998 classic you know, from the same isometric viewpoint,<br>now native at 
 
 <sub>✅ done · 🟡 partial · 🔍 under analysis · ⏳ planned</sub>
 
-**Reverse engineering:** 2945 functions in the executable (1837 excluding linker thunks) · 206 symbols in [`re/symbols.toml`](re/symbols.toml) · 833 classified (28%), 2112 still unclassified · 90 functions specified (81 of them simulation), 22 verified bit-exact against the original ([`re/coverage.toml`](re/coverage.toml)). A simulation coverage percentage will be published once classification is complete.
+**Reverse engineering:** 2945 functions in the executable (1837 excluding linker thunks) · 230 symbols in [`re/symbols.toml`](re/symbols.toml) · 855 classified (29%), 2090 still unclassified · 101 functions specified (81 of them simulation), 22 verified bit-exact against the original ([`re/coverage.toml`](re/coverage.toml)). A simulation coverage percentage will be published once classification is complete.
 
 ## 🧭 Roadmap
 

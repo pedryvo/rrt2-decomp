@@ -3,10 +3,10 @@
 # Ver docs/re-workflow.md.
 #
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
-# Classificadas (categoria != unknown): 833 (28.3%)
-# Por categoria: lib=258, platform=113, render=9, audio=70, ui=233, sim=150, unknown=2112
-# Por estado:   unknown=2819, named=36, spec=68, verified=22
-# Entradas manuais: 133
+# Classificadas (categoria != unknown): 855 (29.0%)
+# Por categoria: lib=258, platform=116, render=11, audio=70, ui=250, sim=150, unknown=2090
+# Por estado:   unknown=2795, named=49, spec=79, verified=22
+# Entradas manuais: 157
 # sim spec coverage: 54.0% (81 de 150 funcoes sim em spec/verified)
 
 [[function]]
@@ -12143,9 +12143,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x470b50"
 size = 1184
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "render"
+status = "named"
+why = "papel identificado: shade_tables_build"
+manual = true
 
 [[function]]
 addr = "0x4710b0"
@@ -16767,9 +16768,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4f1f60"
 size = 868
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "formato decodificado e implementado em crates/rt2-formats: font_glyph_index"
+manual = true
 
 [[function]]
 addr = "0x4f22d0"
@@ -16782,8 +16784,9 @@ why = "no-evidence"
 addr = "0x4f24c0"
 size = 1134
 category = "ui"
-status = "unknown"
-why = "string:-font%1.dat"
+status = "spec"
+why = "formato decodificado e implementado em crates/rt2-formats: font_new"
+manual = true
 
 [[function]]
 addr = "0x4f2960"
@@ -16795,9 +16798,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4f2970"
 size = 214
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "formato decodificado e implementado em crates/rt2-formats: font_char_advance"
+manual = true
 
 [[function]]
 addr = "0x4f2a50"
@@ -16858,37 +16862,42 @@ why = "no-evidence"
 [[function]]
 addr = "0x4f33b0"
 size = 190
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "named"
+why = "papel identificado: font_measure_line"
+manual = true
 
 [[function]]
 addr = "0x4f3570"
 size = 2925
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "named"
+why = "papel identificado: font_draw_text"
+manual = true
 
 [[function]]
 addr = "0x4f40e0"
 size = 49
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "named"
+why = "papel identificado: pk2_read_bytes"
+manual = true
 
 [[function]]
 addr = "0x4f4120"
 size = 54
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "named"
+why = "papel identificado: pk2_read_marker"
+manual = true
 
 [[function]]
 addr = "0x4f4220"
 size = 179
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "named"
+why = "papel identificado: pk2_read_field"
+manual = true
 
 [[function]]
 addr = "0x4f42e0"
@@ -17721,9 +17730,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4fff00"
 size = 1069
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "render"
+status = "spec"
+why = "formato decodificado e implementado em crates/rt2-formats: sprite_draw_text_rle"
+manual = true
 
 [[function]]
 addr = "0x500330"
@@ -18015,9 +18025,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x503790"
 size = 154
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "named"
+why = "papel identificado: ui_movie_new"
+manual = true
 
 [[function]]
 addr = "0x503830"
@@ -18085,9 +18096,10 @@ why = "smacker:SMACKW32!_SmackClose@4"
 [[function]]
 addr = "0x5047f0"
 size = 347
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "formato decodificado e implementado em crates/rt2-formats: ui_list_new"
+manual = true
 
 [[function]]
 addr = "0x504950"
@@ -18246,9 +18258,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x507000"
 size = 33
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "formato decodificado e implementado em crates/rt2-formats: ui_find_control"
+manual = true
 
 [[function]]
 addr = "0x507030"
@@ -18302,16 +18315,18 @@ why = "no-evidence"
 [[function]]
 addr = "0x5075a0"
 size = 88
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "named"
+why = "papel identificado: ui_window_add_control"
+manual = true
 
 [[function]]
 addr = "0x507600"
 size = 1104
 category = "ui"
-status = "unknown"
-why = "string:BPADDBUI.WIN"
+status = "spec"
+why = "formato decodificado e implementado em crates/rt2-formats: ui_window_load"
+manual = true
 
 [[function]]
 addr = "0x507a80"
@@ -18344,9 +18359,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x507cf0"
 size = 318
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "named"
+why = "papel identificado: ui_custom_new"
+manual = true
 
 [[function]]
 addr = "0x507e30"
@@ -18379,9 +18395,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x508480"
 size = 168
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "named"
+why = "papel identificado: ui_hotarea_new"
+manual = true
 
 [[function]]
 addr = "0x508530"
@@ -18421,9 +18438,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x5088f0"
 size = 95
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "named"
+why = "papel identificado: ui_type20_new"
+manual = true
 
 [[function]]
 addr = "0x508950"
@@ -18484,9 +18502,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x509960"
 size = 282
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "formato decodificado e implementado em crates/rt2-formats: ui_label_new"
+manual = true
 
 [[function]]
 addr = "0x509a80"
@@ -18526,9 +18545,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x50a890"
 size = 274
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "named"
+why = "papel identificado: ui_bar_new"
+manual = true
 
 [[function]]
 addr = "0x50a9b0"
@@ -18561,9 +18581,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x50afe0"
 size = 144
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "formato decodificado e implementado em crates/rt2-formats: ui_image_new"
+manual = true
 
 [[function]]
 addr = "0x50b070"
@@ -18596,9 +18617,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x50b8d0"
 size = 142
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "named"
+why = "papel identificado: ui_slider_new"
+manual = true
 
 [[function]]
 addr = "0x50b960"
@@ -18659,9 +18681,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x50c850"
 size = 343
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "formato decodificado e implementado em crates/rt2-formats: ui_button_new"
+manual = true
 
 [[function]]
 addr = "0x50c9b0"
@@ -18876,9 +18899,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x50eaf0"
 size = 114
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "formato decodificado e implementado em crates/rt2-formats: ui_control_read_base"
+manual = true
 
 [[function]]
 addr = "0x50eb70"
