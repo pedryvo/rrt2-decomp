@@ -89,7 +89,7 @@ pub fn load_stack(assets: &GameAssets, bank: &str) -> LayerStack {
     LayerStack { layers }
 }
 
-/// The three texture stacks the terrain pass samples.
+/// The texture stacks the terrain pass samples.
 #[derive(Debug, Clone, Default)]
 pub struct TerrainTextures {
     /// `ground.imb`, 221 records.
@@ -98,24 +98,42 @@ pub struct TerrainTextures {
     pub ocean: LayerStack,
     /// `tracks.imb` (65 records) followed by `trackd.imb` (69 records).
     pub track: LayerStack,
+    /// `riveran.imb` (90 records = 5 animation frames x 18 pieces) followed by `road.imb` (15).
+    pub extra: LayerStack,
+    /// `grbeacha.imb` (256 records = 32 animation frames x 8 shore pieces).
+    pub beach: LayerStack,
 }
 
 /// Layer of `trackd` record 0 inside [`TerrainTextures::track`]: the stack is single then double.
 pub const TRACK_DOUBLE_BASE: usize = 65;
+/// Records of `riveran.imb`; `road.imb` follows them in [`TerrainTextures::extra`].
+pub const RIVER_RECORDS: usize = 90;
+pub const ROAD_RECORDS: usize = 15;
+pub const BEACH_RECORDS: usize = 256;
+
+/// Pad a stack to `n` layers so the layers of the bank that follows keep a fixed base.
+fn pad_stack(stack: &mut LayerStack, n: usize) {
+    let empty = [(); MIP_LEVELS as usize].map(|_| vec![0u8; 4]);
+    while stack.layers.len() < n {
+        stack.layers.push(empty.clone());
+    }
+}
 
 impl TerrainTextures {
     pub fn load(assets: &GameAssets) -> TerrainTextures {
         let mut track = load_stack(assets, "tracks.imb");
         // Keep the single/double split stable even if a bank is short.
-        let empty = [(); MIP_LEVELS as usize].map(|_| vec![0u8; 4]);
-        while track.layers.len() < TRACK_DOUBLE_BASE {
-            track.layers.push(empty.clone());
-        }
+        pad_stack(&mut track, TRACK_DOUBLE_BASE);
         track.layers.extend(load_stack(assets, "trackd.imb").layers);
+        let mut extra = load_stack(assets, "riveran.imb");
+        pad_stack(&mut extra, RIVER_RECORDS);
+        extra.layers.extend(load_stack(assets, "road.imb").layers);
         TerrainTextures {
             ground: load_stack(assets, "ground.imb"),
             ocean: load_stack(assets, "groceana.imb"),
             track,
+            extra,
+            beach: load_stack(assets, "grbeacha.imb"),
         }
     }
 }

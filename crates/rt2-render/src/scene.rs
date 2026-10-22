@@ -5,10 +5,11 @@
 use std::sync::Arc;
 
 use rt2_formats::map::{Map, Save};
+use rt2_formats::terrain::{GameRng, TerrainGrid, TileBytes, WATER_CLASS, tables};
 
 use crate::assets::{GameAssets, LoadedBank, NATURAL_SHADE, RgbaImage};
 use crate::atlas::{Atlas, bake_atlas};
-use crate::ground_map::{ground_texture, texture_turns, tile_hash, track_record, water_variant};
+use crate::ground_map::{cell_look, tile_hash, track_record};
 use crate::mesh::{TerrainMesh, TileLook, height_scale, surface_elevation};
 use crate::textures::{TRACK_DOUBLE_BASE, TerrainTextures};
 
@@ -36,9 +37,10 @@ const TREE_BANKS: [&str; 12] = [
     "treswam", "treprod", "trerubb", "trecoff",
 ];
 
-/// Station art style letter. PROVISIONAL: the original picks one of `V C M T K` per station
-/// (`sprite-catalog.md` section 1, `"VCMTBK"` at `0x550474`); the selector is not decoded.
-const STATION_STYLE: char = 'V';
+/// Station art style letters, indexed by byte `+0x52` of the object record (`0x4093e0`:
+/// `"VCMTBK"[record[0x52]]` replaces the third character of the `staNN` name). `B` has no art in
+/// the game; the viewer falls back to `V` for it.
+const STATION_STYLES: [char; 6] = ['V', 'C', 'M', 'T', 'B', 'K'];
 
 /// Tree species for a tile's vegetation class (`tile.flags2 & 0xf`).
 ///
@@ -132,6 +134,34 @@ pub struct Instance {
 pub struct RotationSprites {
     pub atlas: Atlas,
     pub instances: Vec<Instance>,
+    /// Ground shadows of trees, drawn before every sprite.
+    pub shadows: Vec<Instance>,
+}
+
+/// A soft elliptical shadow, premultiplied black. The original darkens the ground beside each
+/// tree towards the lower left (seen in the game itself; the shadow is not part of the sprite
+/// banks: group 1 of a tree record is a sparse rim layer, not a shadow).
+fn shadow_image() -> RgbaImage {
+    const W: usize = 72;
+    const H: usize = 26;
+    let mut rgba = vec![0u8; W * H * 4];
+    for y in 0..H {
+        for x in 0..W {
+            let dx = (x as f32 + 0.5 - W as f32 / 2.0) / (W as f32 / 2.0);
+            let dy = (y as f32 + 0.5 - H as f32 / 2.0) / (H as f32 / 2.0);
+            let d = (dx * dx + dy * dy).sqrt();
+            let a = ((1.0 - d) * 1.6).clamp(0.0, 1.0) * 0.6;
+            rgba[(y * W + x) * 4 + 3] = (a * 255.0) as u8;
+        }
+    }
+    RgbaImage {
+        width: W,
+        height: H,
+        // Centre of the ellipse sits a little to the lower left of the trunk.
+        x: -(W as i32) / 2 - 18,
+        y: -(H as i32) / 2 + 5,
+        rgba,
+    }
 }
 
 impl SpritePlan {
@@ -144,14 +174,14 @@ impl SpritePlan {
     }
 
     /// Plan trees and, with a save, the buildings of the object pool.
-    pub fn build(map: &Map, save: Option<&Save>) -> SpritePlan {
+    pub fn build(map: &Map, save: Option<&Save>, water: &[bool]) -> SpritePlan {
         let mut plan = SpritePlan::default();
         // Trees: one to eight sprites per tile by the density byte (`tile[3]`), scattered with a
         // position hash (the original's own scatter uses `rng_hash_range`, not decoded).
         for ty in 0..map.height {
             for tx in 0..map.width {
                 let t = map.tile(tx, ty);
-                if t.is_water() || t.trees == 0 {
+                if water[ty * map.width + tx] || t.trees == 0 {
                     continue;
                 }
                 let h0 = tile_hash(tx, ty, 0x7EE5);
@@ -196,7 +226,11 @@ impl SpritePlan {
                 };
                 let (kind, stem) = if kind_idx < 24 {
                     let mut s: Vec<char> = name.chars().collect();
-                    s[2] = STATION_STYLE;
+                    let style = STATION_STYLES
+                        .get(d.get(0x52).copied().unwrap_or(0) as usize)
+                        .copied()
+                        .unwrap_or('V');
+                    s[2] = if style == 'B' { 'V' } else { style };
                     (BankKind::Station, s.into_iter().collect::<String>())
                 } else {
                     (BankKind::Building, name.to_string())
@@ -248,8 +282,11 @@ impl SpritePlan {
             }
             lookup.push(per_record);
         }
+        let shadow_index = images.len();
+        images.push(shadow_image());
         let atlas = bake_atlas(&images);
         let mut instances = Vec::with_capacity(self.placements.len());
+        let mut shadows = Vec::new();
         for p in &self.placements {
             let records = &lookup[p.bank as usize];
             if records.is_empty() {
@@ -263,14 +300,29 @@ impl SpritePlan {
             let Some(entry) = records[record].and_then(|i| atlas.entries[i]) else {
                 continue;
             };
+            let pos = [p.pos[0], p.pos[1] * height_scale, p.pos[2]];
+            if self.banks[p.bank as usize].kind == BankKind::Tree
+                && let Some(sh) = atlas.entries[shadow_index]
+            {
+                shadows.push(Instance {
+                    pos,
+                    shade: 1.0,
+                    rect: sh.rect,
+                    uv: sh.uv,
+                });
+            }
             instances.push(Instance {
-                pos: [p.pos[0], p.pos[1] * height_scale, p.pos[2]],
+                pos,
                 shade: 1.0,
                 rect: entry.rect,
                 uv: entry.uv,
             });
         }
-        RotationSprites { atlas, instances }
+        RotationSprites {
+            atlas,
+            instances,
+            shadows,
+        }
     }
 }
 
@@ -307,32 +359,30 @@ impl Scene {
         let scale = height_scale();
         let textures = TerrainTextures::load(&assets);
         let ground_layers = textures.ground.len() as u16;
+        let grid = build_grid(map);
+        let water: Vec<bool> = grid
+            .cells
+            .iter()
+            .map(|c| tables().class_of_id(c.id()) == WATER_CLASS)
+            .collect();
         let mut looks = Vec::with_capacity(map.tiles.len());
         for y in 0..map.height {
             for x in 0..map.width {
                 let t = map.tile(x, y);
                 let track = save.and_then(|s| track_layer(s, t.track_id));
-                let look = if t.is_water() {
-                    TileLook {
-                        ground: None,
-                        water: Some(water_variant(t)),
-                        track,
-                        turns: 0,
-                    }
-                } else {
-                    TileLook {
-                        ground: Some(ground_texture(t).min(ground_layers.saturating_sub(1))),
-                        water: None,
-                        track,
-                        turns: texture_turns(t),
-                    }
-                };
-                looks.push(look);
+                let l = cell_look(grid.cell(x, y));
+                looks.push(TileLook {
+                    ground: l.ground.map(|g| g.min(ground_layers.saturating_sub(1))),
+                    water: l.water,
+                    track,
+                    turns: l.turns,
+                    overlays: l.overlays,
+                });
             }
         }
         let mesh = TerrainMesh::build(map, scale, &looks);
         let plan = if options.sprites {
-            SpritePlan::build(map, save)
+            SpritePlan::build(map, save, &water)
         } else {
             SpritePlan::default()
         };
@@ -345,6 +395,32 @@ impl Scene {
             height_scale: scale,
         }
     }
+}
+
+/// Seed of the generator that picks the random ground variants, so a map always looks the same.
+const GRID_SEED: u32 = 0x5254_3200;
+
+/// The terrain of a map as the original's loader leaves it: terrain ids (old files converted to
+/// the current id scheme with random variants), then rivers, roads and ground blends and shores.
+pub fn build_grid(map: &Map) -> TerrainGrid {
+    let tile = |x: usize, y: usize| {
+        let t = map.tile(x, y);
+        TileBytes {
+            b0: t.var,
+            b1: t.ground,
+            b2: t.flags2,
+            b3: t.trees,
+            b6: t.flags6,
+        }
+    };
+    let mut rng = GameRng(GRID_SEED);
+    let mut grid = if map.version < 0x233d {
+        TerrainGrid::from_old_ids(map.width, map.height, tile, &mut rng)
+    } else {
+        TerrainGrid::from_new_ids(map.width, map.height, tile)
+    };
+    grid.build_overlays(&mut rng);
+    grid
 }
 
 /// Track-stack layer for a tile's `track_id`: the piece's edge mask (`+0`) picks the record, bit 0

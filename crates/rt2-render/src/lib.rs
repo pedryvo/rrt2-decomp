@@ -15,4 +15,4 @@ pub use assets::{AssetError, GameAssets};
 pub use camera::Camera;
 pub use mesh::{NATIVE_ZOOM, TerrainMesh, Vertex, height_scale};
 pub use renderer::{DEPTH_FORMAT, RenderError, Renderer, render_offscreen, write_png};
-pub use scene::{Scene, SceneOptions};
+pub use scene::{Scene, SceneOptions, build_grid};

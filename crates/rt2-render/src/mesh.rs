@@ -32,6 +32,8 @@ pub struct Vertex {
     /// `[ground layer, ocean layer, track layer, quarter turns]`; a layer is [`NO_LAYER`] when the
     /// tile has none of that kind.
     pub layers: [u32; 4],
+    /// Up to four overlay codes (`ground_map::overlay_code`), first = on top; [`NO_LAYER`] = none.
+    pub overlays: [u32; 4],
 }
 
 /// What a tile is drawn with (decided by the scene builder, the mesh only carries it).
@@ -45,6 +47,8 @@ pub struct TileLook {
     pub track: Option<u16>,
     /// Quarter turns applied to the ground texture.
     pub turns: u8,
+    /// Overlay codes drawn over the ground (`ground_map::overlay_code`), first = on top.
+    pub overlays: [u32; 4],
 }
 
 #[derive(Debug, Clone)]
@@ -58,13 +62,14 @@ pub struct TerrainMesh {
     pub max_y: f32,
 }
 
-/// Sea level of the map: the median elevation of the corners of water tiles (the original has no
+/// Sea level of the map: the median elevation of the corners of water tiles (`water`: one flag per
+/// tile, row-major) (the original has no
 /// single known field for it; it varies per map, e.g. 0 for Britain and ~41 for the B&O).
-pub fn sea_level(map: &Map) -> f32 {
+pub fn sea_level(map: &Map, water: &[bool]) -> f32 {
     let mut levels: Vec<i16> = Vec::new();
     for y in 0..map.height {
         for x in 0..map.width {
-            if map.tile(x, y).is_water() {
+            if water[y * map.width + x] {
                 levels.push(map.corner(x, y));
             }
         }
@@ -127,6 +132,7 @@ impl TerrainMesh {
                         normal: normal(x, y),
                         uv,
                         layers,
+                        overlays: look.overlays,
                     });
                 }
                 indices.extend_from_slice(&[
@@ -185,6 +191,7 @@ mod tests {
                 water: None,
                 track: None,
                 turns: 1,
+                overlays: [NO_LAYER; 4],
             };
             n
         ]
@@ -238,9 +245,8 @@ mod tests {
     #[test]
     fn sea_level_is_median_of_water_corners() {
         let mut map = flat_map(2, 1, 5);
-        map.tiles[0].ground = 0x61;
         map.elevation[0] = -1;
-        assert_eq!(sea_level(&map), -1.0);
+        assert_eq!(sea_level(&map, &[true, false]), -1.0);
     }
 
     #[test]

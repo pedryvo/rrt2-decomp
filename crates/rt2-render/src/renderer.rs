@@ -32,6 +32,9 @@ struct Uniforms {
     viewport: [f32; 2],
     sprite_scale: f32,
     water_frame: u32,
+    /// Free-running animation counter (rivers use `% 5`, shores `& 31`, ocean `& 15`).
+    anim: u32,
+    _pad: [u32; 3],
 }
 
 /// Sprites of one view rotation on the GPU, already in back-to-front order.
@@ -39,6 +42,8 @@ struct RotationGpu {
     bind_group: wgpu::BindGroup,
     instances: wgpu::Buffer,
     count: u32,
+    shadows: wgpu::Buffer,
+    shadow_count: u32,
 }
 
 pub struct Renderer {
@@ -57,6 +62,7 @@ pub struct Renderer {
     size: (u32, u32),
     rotations: [Option<RotationGpu>; 4],
     water_frame: u32,
+    anim: u32,
 }
 
 fn depth_view(device: &wgpu::Device, size: (u32, u32)) -> wgpu::TextureView {
@@ -237,6 +243,8 @@ impl Renderer {
                     texture_entry(1, wgpu::TextureViewDimension::D2Array),
                     texture_entry(2, wgpu::TextureViewDimension::D2Array),
                     sampler_entry(3),
+                    texture_entry(4, wgpu::TextureViewDimension::D2Array),
+                    texture_entry(5, wgpu::TextureViewDimension::D2Array),
                 ],
             });
         let sprite_bind_layout =
@@ -277,7 +285,7 @@ impl Renderer {
                     array_stride: size_of::<Vertex>() as u64,
                     step_mode: wgpu::VertexStepMode::Vertex,
                     attributes: &wgpu::vertex_attr_array![
-                        0 => Float32x3, 1 => Float32x3, 2 => Float32x2, 3 => Uint32x4
+                        0 => Float32x3, 1 => Float32x3, 2 => Float32x2, 3 => Uint32x4, 4 => Uint32x4
                     ],
                 })],
             },
@@ -378,6 +386,8 @@ impl Renderer {
         let ground = upload_stack(device, queue, "ground", &scene.textures.ground);
         let ocean = upload_stack(device, queue, "ocean", &scene.textures.ocean);
         let track = upload_stack(device, queue, "track", &scene.textures.track);
+        let extra = upload_stack(device, queue, "river and road", &scene.textures.extra);
+        let beach = upload_stack(device, queue, "beach", &scene.textures.beach);
         let texture_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("terrain textures"),
             layout: &terrain_tex_layout,
@@ -397,6 +407,14 @@ impl Renderer {
                 wgpu::BindGroupEntry {
                     binding: 3,
                     resource: wgpu::BindingResource::Sampler(&terrain_sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 4,
+                    resource: wgpu::BindingResource::TextureView(&extra),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 5,
+                    resource: wgpu::BindingResource::TextureView(&beach),
                 },
             ],
         });
@@ -436,6 +454,7 @@ impl Renderer {
             size,
             rotations: [None, None, None, None],
             water_frame: 0,
+            anim: 0,
         }
     }
 
@@ -450,6 +469,7 @@ impl Renderer {
     /// Ocean animation frame (0..16). Screenshots leave it at 0 so they stay deterministic.
     pub fn set_water_frame(&mut self, frame: u32) {
         self.water_frame = frame & 15;
+        self.anim = frame;
     }
 
     /// Bake the sprite atlas of a view rotation and upload it (once per rotation).
@@ -465,6 +485,7 @@ impl Renderer {
         // Painter's order: farthest first (largest distance along the on-screen "up" direction).
         let fwd = Camera::ground_forward(r as u8);
         let mut instances = sprites.instances;
+        let shadows = sprites.shadows;
         instances.sort_by(|a, b| {
             let key = |i: &Instance| fwd.dot(Vec2::new(i.pos[0], i.pos[2]));
             key(b).total_cmp(&key(a))
@@ -489,10 +510,17 @@ impl Renderer {
             contents: bytemuck::cast_slice(&instances),
             usage: wgpu::BufferUsages::VERTEX,
         });
+        let shadow_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("shadow instances"),
+            contents: bytemuck::cast_slice(&shadows),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
         self.rotations[r] = Some(RotationGpu {
             bind_group,
             instances: buffer,
             count: instances.len() as u32,
+            shadows: shadow_buffer,
+            shadow_count: shadows.len() as u32,
         });
     }
 
@@ -518,6 +546,8 @@ impl Renderer {
             viewport: [self.size.0 as f32, self.size.1 as f32],
             sprite_scale,
             water_frame: self.water_frame,
+            anim: self.anim,
+            _pad: [0; 3],
         };
         queue.write_buffer(&self.uniforms, 0, bytemuck::bytes_of(&data));
 
@@ -557,6 +587,8 @@ impl Renderer {
                 pass.set_pipeline(&self.sprite_pipeline);
                 pass.set_bind_group(0, &self.bind_group, &[]);
                 pass.set_bind_group(1, &rot.bind_group, &[]);
+                pass.set_vertex_buffer(0, rot.shadows.slice(..));
+                pass.draw(0..4, 0..rot.shadow_count);
                 pass.set_vertex_buffer(0, rot.instances.slice(..));
                 pass.draw(0..4, 0..rot.count);
             }

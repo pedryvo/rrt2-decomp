@@ -81,26 +81,17 @@ Total 1987.
 
 ## 4. Terreno e trilho
 
-### 4.1 `ground.imb` (221 registros)
-O registro é escolhido por `DAT_005804ac[id_de_terreno]` (`id = tile[0] >> 6`; tabela montada em `0x471b10` a partir da tabela de classes `0x540aa0`, ver `terrain-track.md`; **a tabela id -> registro ainda não foi decodificada**, é o próximo passo e pode ser lida do original por oráculo). A água (classe 18) usa `groceana`/`groceann`. Famílias de textura visíveis (aproximado, por cor; `rt2-sheet stats 1889`):
+### 4.1 `ground.imb` (221 registros): tabela id -> registro (decodificada)
 
-| Registros | Aparência |
-|---|---|
-| 0 a 20 | areia clara (0-2, 13-18) e **costa**: registros com ruído de água (3-4, 19-20) e formas de margem (5-12) |
-| 21 a 47 | areia escura / deserto / terra (marrom-amarelado) com variantes de costa |
-| 48 a 79 | grama seca (oliva-amarelada) |
-| 80 a 111 | grama e grama viçosa (verde), 106-111 verde acinzentado (pântano) |
-| 112 a 118 | neve |
-| 119 a 123 | campo ocre (trigo) |
-| 124 a 135 | **formas de costa em diagonal** sobre ocre (água + terra divididos pela diagonal do tile, 6 formas) |
-| 136 a 152 | campo listrado (algodão / cana) e mais formas de costa diagonais |
-| 153 a 169 | verde escuro viçoso com formas de costa diagonais |
-| 170 a 179 | pântano marrom-acinzentado |
-| 180 a 191 | cinza escuro / marrom escuro (rocha escura) |
-| 192 a 208 | rocha cinza-bege, com manchas de neve (196, 197, 202, 203) |
-| 209 a 220 | rocha com costa |
+O registro do chão é `0x5804ac[id]` (id de terreno de 10 bits, `map-gam.md` 3.2); a classe é `0x581090[id]`. Ambas são construídas em `0x471b10` a partir de 19 descritores de classe (`0x540aa0`, passo 0xc0: `+0` multiplicador de custo f32, `+0x64..0x70` tamanhos `n0..n3` dos quatro grupos próprios, `+0x74 + 4j` = nº de peças de transição com a classe `j`). Reimplementação em `rt2_formats::terrain::Tables` (conferida id a id com as tabelas despejadas do original):
 
-Cada família termina em "tiers" de transição (ruído de água = tile só parcialmente coberto). O sombreamento é a paleta (índice 0 a 31 da paleta do registro).
+- Cada classe `c` ocupa ids consecutivos, na ordem das classes: **`n0` variantes comuns, `n1` raras (1 vez em 40), `n2` peças de mistura (canto, lado), `n3` peças de margem da praia (classe 0) ou estágios de cultura (classes 9, 10, 11, 17)** (`S0..S4` = início de cada grupo; `S4` = fim dos ids próprios), depois **19 "fillers"** (`S4 + j`: tile da classe `c` que mostra o chão da classe `j`, registro = primeiro registro da classe `j`), depois as peças de **transição** com cada classe `j` com par definido (3 por par: canto, lado, cheio), em ordem de `j`.
+- `n0..n3` por classe 0..18: `(3,0,2,8) (6,0,2,0) (6,0,2,0) (6,3,2,0) (6,3,2,0) (6,3,2,0) (6,3,2,0) (6,4,2,0) (5,0,2,0) (5,0,0,12) (5,0,0,12) (5,0,0,12) (8,0,2,0) (4,0,2,0) (4,0,2,0) (4,0,2,0) (4,0,2,0) (5,0,0,12) (4,0,0,0)`. Pares com transição (3 peças): (3,4) (3,5) (3,6) (3,7) (4,5) (4,6) (5,6) (5,7) (6,7). Total de ids por classe = `n0+n1+n2+n3 + 19 + 3*(nº de pares com a classe)`; ids totais 613; primeiros ids das classes 0..18: 0 32 59 86 128 167 209 251 291 317 353 389 425 454 479 504 529 554 590.
+- Registros: ids próprios da classe `c` -> `primeiro_registro[c] + (id - S0)`; os pares `(a, b)`, `a < b`, têm 3 registros logo depois dos registros próprios de `a`, na ordem dos `b`; os ids de transição de `a` contra `b` **e** de `b` contra `a` usam os mesmos 3 registros (o código troca giro/tipo quando `b < a`). A água (classe 18) tem 4 ids próprios = registros 221..224 (= as 4 variantes do oceano) e seu "registro" 221 serve de filler.
+
+Famílias de ground.imb por classe (registros próprios): 0 praia 0-12 (0-2 areia, 3-4 mistura, 5-12 margem animada), 1 deserto 13-20, 2 terra devastada 21-28, 3 terra 29-39, 4 grama seca 52-62, 5 grama 69-79, 6 grama viçosa 86-96, 7 pântano 100-111, 8 neve 112-118, 9 trigo 119-135, 10 algodão 136-152, 11 cana 153-169, 12 montanha 170-179, 13..16 rochas escura / marrom / cinza / bege (180-203), 17 rocha com costa (204-220); 40-51, 63-68, 80-85 e 97-99 são as transições entre os solos 3-7. Classes 13..17 só aparecem em mapas `.MP2`. Nomes do editor (lng 700..713) para as classes 0..12: beach, desert, wasteland, dirt, dry grass, grass, lush grass, swamp, snow, wheat field, cotton field, sugar cane, mountain.
+
+Cada tile desenha: a textura base (`record_of_id`, giros `tile[0] >> 4 & 3`) e os overlays (`map-gam.md` 3.2): transições de solo, margem da praia sobre a água (animada com `grbeacha.imb`), rios (`riveran.imb`, 90 = 5 quadros x 18 peças), estradas (`road.imb`, 15). O renderizador usa a paleta 22 (sombreamento natural). Os registros 3-4 / 19-20 / ... ("ruído de água") são as peças de mistura `n2` de cada classe, índice de cor 0 = transparente.
 
 ### 4.2 Trilho (`tracks`, `trackd`)
 Registro do trilho = `shape_record[forma * 4 + giro]`, com `(forma, giro) = edge_shape_table[máscara]` (`0x5365e8`) e `shape_record` em `0x536594` (21 formas x 4; 99 = inválido); a máscara tem 1 bit por aresta (bit `d`, direção `d` de `terrain-track.md` 1.1). Os registros 14-18, 33-36, 47-49 e 60-62 pertencem às formas 14..18, que nenhuma máscara de aresta usa (provável pontes, estações, fim de linha). `trackd` (via dupla) tem a mesma tabela e 4 registros a mais. Registros por máscara (decimal; arestas listadas como dígitos de direção `0..7`):
@@ -137,9 +128,9 @@ Registros não usados por máscara: 14-18, 33-36, 47-49, 60-62.
 
 ## 5. Pontes, árvores e efeitos
 
-- `bridge01..04`: um banco por tipo de ponte (`track_bridge_type` 1..4 de `terrain-track.md`), 96 registros cada, 2 camadas (grupo 0 = estrutura, grupo 1 = camada de frente do trem). Os registros cobrem 6 linhas de 16 (8 direções x dois tipos de peça por linha); o mapeamento exato peça/direção -> registro não foi decodificado.
+- `bridge01..04`: um banco por tipo de ponte (`track_bridge_type` 1..4 de `terrain-track.md`), 96 registros cada, 2 camadas (grupo 0 = estrutura, grupo 1 = camada de frente do trem). Os registros cobrem 6 linhas de 16 (8 direções x dois tipos de peça por linha); o mapeamento exato peça/direção -> registro não foi decodificado. Trilho e overlays: **os nós de trilho vivem na mesma lista de overlays do tile** (banco 4 = `tracks`, 5 = `trackd`, camada 4/5; byte de sombra -8 em trilho de outro dono, `0x4cb090`), com o registro `shape_record[forma*4+giro]`.
 - `ends1..4` (8 direções) e `arch1..4` (4 direções): rampas e arcos da ponte de pedra, um banco por rotação (a ordem dos registros gira junto).
-- Árvores (`treoak_`, `trepine`, `trepalm`, `trecact`, `trebrus`, `tremesq`, `trerfor`, `treswam`, `treprod`, `trerubb`, `trecoff`, `scrub__`): registros = variantes de copa (carvalho/pinheiro/floresta 8, palmeira/café/borracha 3, deserto 6, arbusto 4, mesquite 4, pântano 6, produção 1, scrub 32); a classe de vegetação do tile (`tile+2 & 0xf`, `terrain-track.md` 2.2) e a contagem `tile+3 & 0x1f` decidem a espécie e a densidade. 32 paletas por banco (luz). A associação espécie -> classe de vegetação não foi lida (aberta).
+- Árvores (`treoak_`, `trepine`, `trepalm`, `trecact`, `trebrus`, `tremesq`, `trerfor`, `treswam`, `treprod`, `trerubb`, `trecoff`, `scrub__`): registros = variantes de copa (carvalho/pinheiro/floresta 8, palmeira/café/borracha 3, deserto 6, arbusto 4, mesquite 4, pântano 6, produção 1, scrub 32); a classe de vegetação do tile (`tile+2 & 0xf`, `terrain-track.md` 2.2) e a contagem `tile+3 & 0x1f` decidem a espécie e a densidade. 32 paletas por banco (luz). A associação espécie -> classe de vegetação não foi lida (aberta). O estilo de estação (`V C M T B K`) é o byte `+0x52` do registro do objeto (`0x4093e0`: `"VCMTBK"[registro[0x52]]`); `B` não tem arte.
 - `SMOKE.imb` (1x1, 156 imagens) e `smoke2.imb` (4x25, 313): 9 registros, 13 grupos de quadros animados (nuvens de fumaça e vapor).
 
 ## 6. Estações
@@ -346,9 +337,9 @@ Vários bancos por carga são **eras** (anos de disponibilidade do tipo; o sufix
 
 ## 10. Em aberto
 
-1. Tabela `id de terreno -> registro de ground.imb` (`DAT_005804ac`, montada em `0x471b10`; precisa de oráculo no Wine ou porte do laço).
+1. ~~Tabela id -> registro de ground.imb~~: resolvido (4.1, `map-gam.md` 3.2).
 2. Como o jogo escolhe a paleta (n = 1, 3, 4, 32) de cada banco: níveis de sombreamento do chão e das árvores (0..31) vêm do relevo; os bancos de prédio com 3 ou 4 paletas (estação, indústria) podem ser estação do ano ou iluminação.
-3. Significado do grupo 1 de cada registro (camada esparsa com índices reservados).
+3. Grupo 1 de cada registro: **não é sombra** (conferido em `treoak_1` e `bl1housa`: pixels esparsos ao longo da borda esquerda do desenho, índices 0 e 8..25, 128..135, 192+; parece um realce de borda). As sombras escuras no chão ao lado das árvores (vistas no original rodando) não vêm dos bancos; o viewer desenha uma elipse procedural.
 4. Mapeamento peça/direção -> registro das pontes e das formas 14..18 de trilho.
 5. Qual banco de rotação o jogo usa para cada visão, e se a ordem dos registros gira com ela (comparar `ends1` com `ends2`).
 6. Nome dos 132 bancos de interface restantes e dos 4 veículos `RT2/0552..0555`; semântica de `kind` e dos pares do cabeçalho.

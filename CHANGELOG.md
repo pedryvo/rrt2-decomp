@@ -102,3 +102,6 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Feature: videos Smacker de anim convertidos por ffmpeg para ~/.cache/rrt2/video na primeira vez
 - Docs: formato dos sons (docs/formats/sound.md): descritores de 0x12 bytes, 123 efeitos PCM cru (11025 Hz mono 16 bit; clock82m 22050 Hz 8 bit), tabela de eventos, regras de musica e tabela de videos
 - RE: 28 funcoes, tabelas e globais de audio nomeadas (sound_play, music_request_category, music_pick_random, sound_table, video_table...); a taxa de amostragem e o formato dos blobs de audio dos PK2 vem da tabela de descritores em 0x55e7b0
+- RE: tabela id de terreno -> classe/registro de ground.imb decodificada (0x471b10) e as passadas de overlay do carregador (0x42a7d0 transicoes e praias, 0x4294d0 rios, 0x428fe0 estradas) portadas e validadas bit a bit contra o original no emulador
+- Fix: o viewer usa os ids de terreno reais (fim das manchas azuladas na grama), com transicoes de solo, praias animadas, rios, estradas, estilo de estacao do registro e sombras de arvores
+- Docs: map-gam.md 3.2 (id de terreno, classes, overlays), sprite-catalog.md 4.1 (tabela id -> registro), terrain-track.md (tabela de classes resolvida)

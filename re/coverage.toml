@@ -5,7 +5,7 @@
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
 # Classificadas (categoria != unknown): 1077 (36.6%)
 # Por categoria: lib=258, platform=117, render=11, audio=68, ui=250, sim=373, unknown=1868
-# Por estado:   unknown=2614, named=109, spec=168, verified=54
+# Por estado:   unknown=2605, named=118, spec=168, verified=54
 # Entradas manuais: 344
 # sim spec coverage: 53.6% (200 de 373 funcoes sim em spec/verified)
 
@@ -8865,9 +8865,10 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x4258e0"
+name = "terrain_update_tile_flags"
 size = 123
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -9081,16 +9082,18 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x428fe0"
+name = "terrain_build_roads"
 size = 1252
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
 addr = "0x4294d0"
+name = "terrain_build_rivers"
 size = 1096
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -9137,23 +9140,26 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x42a3e0"
+name = "terrain_randomize_variant"
 size = 596
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
 addr = "0x42a640"
+name = "terrain_next_neighbour_run"
 size = 399
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
 addr = "0x42a7d0"
+name = "terrain_build_ground_overlays"
 size = 2326
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -9186,16 +9192,18 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x42bdf0"
+name = "terrain_animate_crop_ids"
 size = 408
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
 addr = "0x42bf90"
+name = "terrain_build_territory_borders"
 size = 901
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -12378,9 +12386,10 @@ why = "symbol:industry_load_fixups"
 
 [[function]]
 addr = "0x471b10"
+name = "world_tables_init"
 size = 3537
 category = "ui"
-status = "unknown"
+status = "named"
 why = "string:ground.imb"
 
 [[function]]

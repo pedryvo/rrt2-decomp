@@ -1,9 +1,9 @@
-//! Which texture a tile gets, and which track record a piece draws.
+//! Which textures a tile gets, and which track record a piece draws.
 //!
-//! The ground mapping is PROVISIONAL, see [`ground_texture`]. The track mapping is exact
-//! (`docs/formats/sprite-catalog.md` section 4.2).
+//! The ground mapping is the original's (`rt2_formats::terrain`, `docs/formats/sprite-catalog.md`
+//! section 4.1); so is the track mapping (section 4.2).
 
-use rt2_formats::map::Tile;
+use rt2_formats::terrain::{self, Cell, Node, tables};
 
 /// Deterministic per-tile hash used to vary sprites and scatter trees.
 pub fn tile_hash(x: usize, y: usize, salt: u32) -> u32 {
@@ -15,127 +15,80 @@ pub fn tile_hash(x: usize, y: usize, salt: u32) -> u32 {
     h ^ (h >> 15)
 }
 
-/// A run of `ground` bytes drawn with a run of "pure" `ground.imb` records (the interior
-/// textures, not the transition tiers with transparent water noise).
-///
-/// Reading of the contact sheet (`sprite-catalog.md` section 4.1): the bank is a sequence of
-/// families, each a few pure records followed by two transition records, e.g. light sand 0-2,
-/// ochre sand 13-18, dirt 21-26, ochre 29-37, yellow-olive 40-60, olive-green 63-77, green 80-94,
-/// deep green 97-109, snow 112-116, wheat 119-123, swamp 170-177, dark rock 180-183, brown rock
-/// 186-189, grey rock 192-195, beige rock 198-201.
-struct Cluster {
-    ground: (u8, u8),
-    records: (u16, u16),
+/// Marks "no overlay" in an overlay code.
+pub const NO_OVERLAY: u32 = u32::MAX;
+
+/// Stack an overlay code samples: bits 14-15 of the code.
+pub const STACK_GROUND: u32 = 0;
+/// `riveran.imb`; the shader adds the animation frame (5 frames x 18 pieces).
+pub const STACK_RIVER: u32 = 1;
+/// `road.imb`, after the 90 river layers of the "extra" stack.
+pub const STACK_ROAD: u32 = 2;
+/// `grbeacha.imb`; the shader adds the animation frame (32 frames x 8 pieces).
+pub const STACK_BEACH: u32 = 3;
+
+/// Ground records 5..=12 are the shore pieces the original replaces with the animated
+/// `grbeacha.imb` bank (`0x511a90`: `(record - 5) + (counter & 31) * 8`).
+const SHORE_RECORDS: std::ops::RangeInclusive<u16> = 5..=12;
+
+/// Records of `ground.imb`; record numbers from here up are the ocean variants.
+pub const GROUND_RECORDS: u16 = terrain::GROUND_RECORDS;
+
+/// Packs an overlay node for the shader: `layer | turns << 12 | stack << 14`. `None` for layers the
+/// viewer does not draw (territory borders).
+pub fn overlay_code(node: &Node) -> Option<u32> {
+    let rec = node.record();
+    let (stack, layer) = match node.bank() {
+        terrain::BANK_GROUND if SHORE_RECORDS.contains(&rec) => (STACK_BEACH, rec - 5),
+        terrain::BANK_GROUND => (STACK_GROUND, rec),
+        terrain::BANK_RIVER => (STACK_RIVER, rec),
+        terrain::BANK_ROAD => (STACK_ROAD, rec),
+        _ => return None,
+    };
+    Some(u32::from(layer) | u32::from(node.turns & 3) << 12 | stack << 14)
 }
 
-const CLUSTERS: [Cluster; 17] = [
-    Cluster {
-        ground: (0x00, 0x00),
-        records: (0, 2),
-    },
-    Cluster {
-        ground: (0x01, 0x05),
-        records: (13, 18),
-    },
-    Cluster {
-        ground: (0x06, 0x0b),
-        records: (29, 37),
-    },
-    Cluster {
-        ground: (0x0c, 0x10),
-        records: (52, 60),
-    },
-    Cluster {
-        ground: (0x11, 0x17),
-        records: (63, 77),
-    },
-    Cluster {
-        ground: (0x18, 0x1a),
-        records: (40, 60),
-    },
-    Cluster {
-        ground: (0x1b, 0x20),
-        records: (63, 77),
-    },
-    Cluster {
-        ground: (0x21, 0x25),
-        records: (66, 77),
-    },
-    Cluster {
-        ground: (0x26, 0x2f),
-        records: (80, 94),
-    },
-    Cluster {
-        ground: (0x30, 0x3f),
-        records: (97, 99),
-    },
-    Cluster {
-        ground: (0x40, 0x42),
-        records: (112, 116),
-    },
-    Cluster {
-        ground: (0x43, 0x43),
-        records: (170, 177),
-    },
-    Cluster {
-        ground: (0x44, 0x4f),
-        records: (119, 123),
-    },
-    Cluster {
-        ground: (0x50, 0x5a),
-        records: (186, 189),
-    },
-    Cluster {
-        ground: (0x5b, 0x5c),
-        records: (198, 201),
-    },
-    Cluster {
-        ground: (0x5d, 0x60),
-        records: (192, 195),
-    },
-    Cluster {
-        ground: (0x61, 0xff),
-        records: (80, 94),
-    },
-];
-
-/// `ground.imb` record for a tile.
-///
-/// PROVISIONAL. The original picks the record with `DAT_005804ac[terrain id]`, built in `0x471b10`,
-/// where the terrain id is the 10-bit value `tile[0..2] >> 6` (that is `ground << 2 | var >> 6`).
-/// That table is not decoded yet (`sprite-catalog.md` section 10, open question 1). Evidence that
-/// ids are ordered like the records: `ground 0x00` only ever uses `var >> 6` 0..2 (ids 0-2, the
-/// three pure light-sand records, never id 3 = the transparent transition) and `0x04` is almost
-/// all `var >> 6 = 3` (id 19 = the water-noise record) at the shoreline. Beyond the first
-/// families the offset between id and record is unknown, so each run of `ground` bytes is spread
-/// monotonically over the pure records of the family it looks like (neighbouring ids give
-/// neighbouring, similar textures, so the map stays smooth). Water ids 0x61/0x62 do not use
-/// `ground.imb` at all (they use the ocean bank).
-// TODO(sprite-catalog.md section 10.1): replace by the real id -> record table once decoded.
-pub fn ground_texture(tile: &Tile) -> u16 {
-    let g = tile.ground;
-    let c = CLUSTERS
-        .iter()
-        .find(|c| (c.ground.0..=c.ground.1).contains(&g))
-        .unwrap_or(&CLUSTERS[8]);
-    let first_id = c.ground.0 as u32 * 4;
-    let ids = (c.ground.1 as u32 - c.ground.0 as u32 + 1) * 4;
-    let id = g as u32 * 4 + (tile.var >> 6) as u32;
-    let (lo, hi) = (c.records.0 as u32, c.records.1 as u32);
-    (lo + (id - first_id) * (hi - lo + 1) / ids).min(hi) as u16
+/// What a terrain cell is drawn with.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CellLook {
+    /// Record of `ground.imb` for the base texture; `None` for water.
+    pub ground: Option<u16>,
+    /// Variant 0..4 of the ocean texture for water; the shader adds the animation frame.
+    pub water: Option<u16>,
+    /// Quarter turns of the base texture.
+    pub turns: u8,
+    /// Overlay codes (first = on top), [`NO_OVERLAY`] = unused slot.
+    pub overlays: [u32; 4],
 }
 
-/// Ocean variant 0..4 (the four turns of one animation frame): the water terrain ids are
-/// `0x185..=0x188`, i.e. `ground 0x61` with `var >> 6 = 1..=3` and `ground 0x62` with 0.
-pub fn water_variant(tile: &Tile) -> u16 {
-    let id = (tile.ground as u16) << 2 | (tile.var >> 6) as u16;
-    id.wrapping_sub(0x185) & 3
-}
-
-/// Quarter turns (0..4) the tile's texture is rotated by: `tile[0] >> 4 & 3`
-/// (`sprite-catalog.md` section 2.1).
-pub fn texture_turns(tile: &Tile) -> u8 {
-    (tile.var >> 4) & 3
+/// Looks of a terrain cell: the base texture picked by `0x5804ac[id]` and the overlay list.
+pub fn cell_look(cell: &Cell) -> CellLook {
+    let rec = tables().record_of_id(cell.id());
+    let mut overlays = [NO_OVERLAY; 4];
+    let mut n = 0;
+    for node in &cell.nodes {
+        if let Some(code) = overlay_code(node)
+            && n < overlays.len()
+        {
+            overlays[n] = code;
+            n += 1;
+        }
+    }
+    if rec >= GROUND_RECORDS {
+        CellLook {
+            ground: None,
+            water: Some(rec - GROUND_RECORDS),
+            turns: 0,
+            overlays,
+        }
+    } else {
+        CellLook {
+            ground: Some(rec),
+            water: None,
+            turns: cell.turns(),
+            overlays,
+        }
+    }
 }
 
 /// `(edge mask, tracks.imb record)` for the 50 valid masks (`sprite-catalog.md` section 4.2,
@@ -206,18 +159,10 @@ pub fn track_record(mask: u8) -> Option<u8> {
 mod tests {
     use super::*;
 
-    fn tile(ground: u8, var: u8) -> Tile {
-        Tile {
-            var,
-            ground,
-            flags2: 0,
-            trees: 0,
-            struct_id: 0,
-            reserved5: 0,
-            flags6: 0,
-            track_id: 0,
-            reserved8: 0,
-            region: 1,
+    fn cell(id: u16, low: u16) -> Cell {
+        Cell {
+            v: id << 6 | low,
+            ..Default::default()
         }
     }
 
@@ -245,40 +190,60 @@ mod tests {
     }
 
     #[test]
-    fn ground_records_stay_inside_the_bank() {
-        for g in 0..=0x62u8 {
-            for v in [0u8, 0x40, 0x80, 0xc0] {
-                let r = ground_texture(&tile(g, v));
-                assert!(r < 221, "ground {g:#x} -> {r}");
-            }
+    fn ground_ids_pick_the_tables_record() {
+        // Lush grass (class 6) ids 209..=214 are records 86..=91; ids 215..=217 the rare ones.
+        assert_eq!(cell_look(&cell(209, 0)).ground, Some(86));
+        assert_eq!(cell_look(&cell(214, 0)).ground, Some(91));
+        assert_eq!(cell_look(&cell(0, 0)).ground, Some(0));
+        // Turns come from the tile's own bits 4-5.
+        assert_eq!(cell_look(&cell(209, 0x30)).turns, 3);
+    }
+
+    #[test]
+    fn water_ids_use_the_ocean_variants() {
+        // Class 18 starts at id 590; its four own ids are ocean variants 0..4.
+        for (i, id) in (590u16..594).enumerate() {
+            let l = cell_look(&cell(id, 0));
+            assert_eq!(l.ground, None);
+            assert_eq!(l.water, Some(i as u16));
         }
     }
 
     #[test]
-    fn neighbouring_ids_give_neighbouring_records() {
-        // The grass plateau of Britain (ground 0x2d, ids 0xb4..=0xb7) stays inside the green family.
-        let recs: Vec<u16> = (0..4)
-            .map(|v| ground_texture(&tile(0x2d, v << 6)))
-            .collect();
-        assert!(recs.windows(2).all(|w| w[0] <= w[1]));
-        assert!(recs.iter().all(|r| (80..=94).contains(r)), "{recs:?}");
-        // Light sand never selects the transparent transition records 3 and 4.
-        for v in 0..4 {
-            assert!(ground_texture(&tile(0x00, v << 6)) <= 2);
-        }
-    }
-
-    #[test]
-    fn water_variants_cover_the_four_ids() {
-        assert_eq!(water_variant(&tile(0x61, 0x40)), 0);
-        assert_eq!(water_variant(&tile(0x61, 0x80)), 1);
-        assert_eq!(water_variant(&tile(0x61, 0xc0)), 2);
-        assert_eq!(water_variant(&tile(0x62, 0x00)), 3);
-    }
-
-    #[test]
-    fn texture_turns_use_bits_four_and_five() {
-        assert_eq!(texture_turns(&tile(0, 0x30)), 3);
-        assert_eq!(texture_turns(&tile(0, 0xc1)), 0);
+    fn overlay_codes_select_the_stack() {
+        // Ground piece 3, one turn.
+        let n = Node {
+            word: 3 << 6,
+            turns: 1,
+            shade: 0,
+        };
+        assert_eq!(overlay_code(&n), Some(3 | 1 << 12));
+        // Ground record 6 is a shore piece, drawn from the animated beach bank.
+        let n = Node {
+            word: 6 << 6,
+            turns: 2,
+            shade: 0,
+        };
+        assert_eq!(overlay_code(&n), Some(1 | 2 << 12 | STACK_BEACH << 14));
+        // River and road nodes carry their bank in bits 3-5.
+        let river = Node {
+            word: 4 << 6 | 0x12,
+            turns: 0,
+            shade: 0,
+        };
+        assert_eq!(overlay_code(&river), Some(4 | STACK_RIVER << 14));
+        let road = Node {
+            word: 9 << 6 | 0x1b,
+            turns: 3,
+            shade: 0,
+        };
+        assert_eq!(overlay_code(&road), Some(9 | 3 << 12 | STACK_ROAD << 14));
+        // Territory borders are not drawn.
+        let t = Node {
+            word: 1 << 6 | 0x09,
+            turns: 0,
+            shade: 0,
+        };
+        assert_eq!(overlay_code(&t), None);
     }
 }

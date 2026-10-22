@@ -13,7 +13,7 @@ Complementa `docs/formats/map-gam.md`. Campos usados pelo trilho:
 | Off | Uso (endereço) |
 |---|---|
 | `+0` u16 | bits 6..15 = **id de terreno** (`>>6`, 10 bits); `terrain_class_of_id` `0x581090[id]` dá a **classe** 0..18 (18 = água, `== 0x12` em todo o código de trilho/estação); bit 0 de `+0` = **rio** (só ali há ponte, `0x460640`, `0x462a70`); bit 3 impede estação (`0x4087a0`) |
-| `+2` | nibble baixo = classe de vegetação (`0x416860`); `0x10` = tem objeto tipo 3 (predio, `0x42e850`); `0x20` = tile já limpo/ocupado por trilho (não cobra árvores, `0x463520`); `0x80` = o tile tem **ponte** (peça com `+0x11 != 0`) |
+| `+2` | nibble baixo = classe de vegetação (`0x416860`); `0x10` = tem objeto tipo 3 (predio, `0x42e850`); `0x20` = tile já limpo (não cobra árvores, `0x463520`). Atenção: em `tile+3` (byte de árvores) o bit `0x20` é **estrada** (`0x428fe0`); `0x80` = o tile tem **ponte** (peça com `+0x11 != 0`) |
 | `+3` | `&0x1f` = árvores; `0x40` = tile faz parte de **vão sobre água** (spanning); `0x20` = marcado (estação) |
 | `+4` u16 | `struct_id` (cadeia em `structure_pool` `0x574c54`, ordenada por tipo; `0x42e8f0(tile, 3)` = predio, `4` = estação) |
 | `+6` | `0x02` = estação neste tile; `0x40` = redesenhar |
@@ -74,7 +74,7 @@ custo2 = acc2                                                                   
 ```
 Consequências com modificadores neutros, solo plano, estado 2: **via simples ortogonal = 2 x 2000 = 4000 por tile**; dupla = 2 x 3000 = 6000; eletrificada simples 4000 + 6000 = 10000; dupla eletrificada 6000 + 9000 = 15000 (bate com a tabela 5-4 do guia). Diagonal: 1,4 x por aresta (5600 simples). Reforçar uma aresta existente para dupla cobra `B` por aresta (e `custo2 = B/2`).
 
-**Multiplicador de terreno** (`0x540aa0` +0, f32) por classe [D]: 0 e 1 = 1,25; 2 = 0,8; 3,4,5,6 = 1; 7 = 1,5; 8 = 2; 9,10,11 = 1; 12 = 1,5; 13 = 1,25; 14 = 1,2; 15 = 1,35; 16 = 1,3; 17 = 2; 18 (água) = 1. Nomes do editor (lng 700..713) para as 14 primeiras classes: beach, desert, wasteland, dirt, dry grass, grass, lush grass, swamp, snow, wheat field, cotton field, sugar cane, mountain, ocean. A tabela id→classe (`0x581090`) é montada em `0x471b10` (não decodificada; Em aberto). **Árvores**: `tile_tree_count`: classe de vegetação (`tile+2 & 0xf`) 0 → 0; 1,2,4,5,7,8,9 → `tile+3 & 0x1f`; demais → 1; custo 1000 cada, antes do multiplicador de terreno.
+**Multiplicador de terreno** (`0x540aa0` +0, f32) por classe [D]: 0 e 1 = 1,25; 2 = 0,8; 3,4,5,6 = 1; 7 = 1,5; 8 = 2; 9,10,11 = 1; 12 = 1,5; 13 = 1,25; 14 = 1,2; 15 = 1,35; 16 = 1,3; 17 = 2; 18 (água) = 1. Nomes do editor (lng 700..713) para as 14 primeiras classes: beach, desert, wasteland, dirt, dry grass, grass, lush grass, swamp, snow, wheat field, cotton field, sugar cane, mountain, ocean. A tabela id→classe (`0x581090`) é montada em `0x471b10` e **decodificada**: 19 classes ocupam ids consecutivos (`start_id` 0, 32, 59, 86, 128, 167, 209, 251, 291, 317, 353, 389, 425, 454, 479, 504, 529, 554, 590; 613 ids), cada uma com `n0..n3` ids próprios + 19 fillers + 3 ids por par de transição; `classe(id)` = a classe cujo intervalo contém o id, e ids >= 613 são classe 0 (`rt2_formats::terrain::tables().class_of_id`). O algoritmo completo e os grupos estão em `docs/formats/sprite-catalog.md` 4.1 e `docs/formats/map-gam.md` 3.2. Arquivos `0x233C` guardam ids antigos: classe = `0x552b00[id]` (`rt2_formats::terrain::old_class_of_id`). Para o simulador: a classe de um tile é `class_of_id(u16 >> 6)`; água = 18. **Árvores**: `tile_tree_count`: classe de vegetação (`tile+2 & 0xf`) 0 → 0; 1,2,4,5,7,8,9 → `tile+3 & 0x1f`; demais → 1; custo 1000 cada, antes do multiplicador de terreno.
 
 **Pontes** (`bridge_cost_table` `0x53ce60`, i32[tipo*2 + simples]) [D], por tile de rio, multiplicado por `m(0xe)`: tipo 1 madeira dupla 90000 / simples 60000; 2 pedra 300000 / 200000; 3 aço 225000 / 150000; 4 150000 / 100000 (tipo extra, só por opção); 0 e 5 = 0. Disponibilidade (`max_bridge_type` `0x469ef0`): opção do cenário (`+0x1bf`) se ≠ 0; senão ano < 1840 → 1, < 1880 → 2, ≥ 1880 → 3 (ou 3 se a flag `0x573d7a`) [S]. Vão sobre água aberta: 120000 x `m(0xe)` por tile em modo vão, grátis se o tile já é vão (`tile+3 & 0x40`). Túneis: **não existem** no código lido.
 
@@ -154,7 +154,7 @@ Nomeadas em `re/pending/track.toml`. Lidas e descritas: `0x463520` [V], `0x40703
 - **Reembolso na demolição**: nenhum visto; o manual não diz.
 
 ## Em aberto
-- Tabela id de terreno → classe (`0x581090`, montada em `0x471b10`) e nomes das classes 13..17.
+- Nomes das classes 13..17 (rochas escura/marrom/cinza/bege e rocha com costa pelo aspecto; sem nome no `.lng`).
 - Melhorias de estação (custos, anos, efeitos) e seu ramo de compra.
 - Custo/refundo de demolição de prédios e `0x4cdd50`; função exata de `custo2` além de teste ≠ 0.
 - Id 0xd de efeito (sem nome no editor) e uso da opção `+0x1bf` (ponte máxima).
