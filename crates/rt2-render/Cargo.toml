@@ -1,0 +1,17 @@
+[package]
+name = "rt2-render"
+description = "wgpu terrain renderer for the Railroad Tycoon II clone (no game logic)"
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+rt2-formats.workspace = true
+wgpu = "30"
+bytemuck = { version = "1", features = ["derive"] }
+png.workspace = true
+pollster = "1"
+glam = { version = "0.30", features = ["bytemuck"] }
+thiserror.workspace = true
+
+[lints]
+workspace = true

@@ -19,3 +19,5 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Docs: `docs/oracle.md` explains how to write a differential test.
 - RE: `maps/*.MAP` and `games/*.GAM` are uncompressed: header with map size at 0x231, 10-byte tile records (ground, trees, structure, track, territory) from 0xB2D7 and an i16 corner heightmap of (w+1)*(h+1); renders reproduce Britain, Chesapeake and the other 31 maps, see `docs/formats/map-gam.md` and `re/scripts/mapgam.py`.
 - RE: automatic first-pass classification of all 2945 functions Ghidra finds in RT2_PLAT.EXE (`re/coverage.toml`: 680 classified, 262 lib, 4 sim candidates), produced by `re/scripts/dump_program.sh` and `re/scripts/classify.py`.
+- Feature: `.MAP`/`.GAM` parser (`rt2_formats::map`): header, tile records and corner elevations for all 31 maps and both saves.
+- Feature: `rt2-render` (wgpu terrain mesh, 2:1 isometric camera) and `rt2-viewer`, which opens an original map with pan, zoom and 90-degree rotation, or writes a screenshot with `--screenshot`.

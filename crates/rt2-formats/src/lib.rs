@@ -2,5 +2,6 @@
 
 pub mod lad;
 pub mod lng;
+pub mod map;
 pub mod palette;
 pub mod pk2;

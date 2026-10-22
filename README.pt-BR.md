@@ -46,7 +46,7 @@ O **rrt2-decomp** estuda o executável original de _Railroad Tycoon II Platinum_
 | Mapas e saves (`.MAP` `.GAM`) | 🟡 | Grade de terreno, elevação, água e territórios decodificados nos 31 mapas · [spec](docs/formats/map-gam.md) |
 | Specs de simulação (trens, carga, economia…) | ⏳ | [`docs/spec/`](docs/spec/) |
 | Harness de teste diferencial (Unicorn) | ✅ | Roda funções do original num emulador para comparação bit a bit · [docs](docs/oracle.md) |
-| Motor gráfico (wgpu) | ⏳ | |
+| Motor gráfico (wgpu) | 🟡 | Visualizador de terreno: `cargo run --release -p rt2-viewer -- <mapa>` |
 | Simulação jogável | ⏳ | |
 | Interface do jogo | ⏳ | |
 | Editor de cenários | ⏳ | |
@@ -105,6 +105,8 @@ python3 re/scripts/pk2_hash.py setup.imb
 ```
 crates/
   rt2-formats/   parsers puros dos formatos do jogo (PK2, LNG, …)
+  rt2-render/    renderizador de terreno em wgpu (malha, câmera isométrica; sem lógica de jogo)
+  rt2-viewer/    `rt2-viewer <mapa>`: janela ou PNG com `--screenshot`
   rt2-oracle/    harness de teste diferencial (EXE original no Unicorn)
   rt2-tools/     CLIs de inspeção e extração
 docs/

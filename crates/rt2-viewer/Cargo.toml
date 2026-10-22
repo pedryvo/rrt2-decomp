@@ -1,0 +1,17 @@
+[package]
+name = "rt2-viewer"
+description = "Isometric terrain viewer for Railroad Tycoon II maps and saves"
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+rt2-formats.workspace = true
+rt2-render = { path = "../rt2-render" }
+winit = "0.30"
+wgpu = "30"
+pollster = "1"
+anyhow.workspace = true
+clap.workspace = true
+
+[lints]
+workspace = true

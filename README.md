@@ -46,7 +46,7 @@ _The 1998 classic you know, from the same isometric viewpoint,<br>now native at 
 | Maps and saves (`.MAP` `.GAM`) | 🟡 | Terrain grid, elevation, water and territories decoded for all 31 maps · [spec](docs/formats/map-gam.md) |
 | Simulation specs (trains, cargo, economy…) | ⏳ | [`docs/spec/`](docs/spec/) |
 | Differential test harness (Unicorn) | ✅ | Runs original functions in an emulator for bit-exact comparison · [docs](docs/oracle.md) |
-| Rendering engine (wgpu) | ⏳ | |
+| Rendering engine (wgpu) | 🟡 | Isometric terrain viewer: `cargo run --release -p rt2-viewer -- <map>` |
 | Playable simulation | ⏳ | |
 | Game UI | ⏳ | |
 | Scenario editor | ⏳ | |
@@ -105,6 +105,8 @@ python3 re/scripts/pk2_hash.py setup.imb
 ```
 crates/
   rt2-formats/   pure parsers for the game's file formats (PK2, LNG, …)
+  rt2-render/    wgpu terrain renderer (mesh, isometric camera; no game logic)
+  rt2-viewer/    `rt2-viewer <map>`: window or `--screenshot` PNG
   rt2-oracle/    differential-test harness (original EXE in Unicorn)
   rt2-tools/     inspection and extraction CLIs
 docs/

@@ -141,3 +141,48 @@ fn sprite_palettes_resolve_by_name() {
     }
     assert!(checked > 10_000);
 }
+
+#[test]
+fn every_map_and_save_parses() {
+    let Some(dir) = game_dir() else {
+        eprintln!("RT2_DIR not set; skipping");
+        return;
+    };
+    let mut count = 0;
+    for sub in ["maps", "games"] {
+        for entry in std::fs::read_dir(dir.join(sub)).unwrap() {
+            let path = entry.unwrap().path();
+            let ext = path
+                .extension()
+                .and_then(|e| e.to_str())
+                .map(str::to_ascii_uppercase);
+            let wanted = matches!(
+                (sub, ext.as_deref()),
+                ("maps", Some("MAP")) | ("games", Some("GAM"))
+            );
+            if !wanted {
+                continue;
+            }
+            let raw = std::fs::read(&path).unwrap();
+            let map = rt2_formats::map::Map::parse(&raw)
+                .unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+            assert!((150..=500).contains(&map.width), "{}", path.display());
+            count += 1;
+        }
+    }
+    assert_eq!(count, 33, "31 maps + 2 saves");
+}
+
+#[test]
+fn britain_water_fraction_is_plausible() {
+    let Some(dir) = game_dir() else {
+        eprintln!("RT2_DIR not set; skipping");
+        return;
+    };
+    let raw = std::fs::read(dir.join("maps").join("Britain.MAP")).unwrap();
+    let map = rt2_formats::map::Map::parse(&raw).unwrap();
+    assert_eq!((map.width, map.height), (300, 300));
+    let water = map.water_fraction();
+    assert!((0.3..0.9).contains(&water), "water fraction {water}");
+    assert!(map.tiles.iter().all(|t| t.region >= 1));
+}
