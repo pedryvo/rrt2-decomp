@@ -66,3 +66,6 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Feature: rt2-sim breakdown_check reproduces the whole 0x4cf390 dice including the theft roll and the RNG sequence
 - Improved: differential tests for monthly train costs, purchase price, production period and the breakdown/theft dice
 - RE: names for the CRT pow routines (crt_ci_pow 0x51bab0, crt_pow 0x51bad2, crt_exp2_tail 0x51f120) and the theft-roll details of 0x4cf390
+- Docs: docs/spec/world-tick.md specifies the world update order: sim_advance passes (animations, then trains in linked-list order), day/week/month/year hooks with every callee in order, game-RNG call sites per tick, confirmed against the original with a gdb call trace (Tutorial and Example saves).
+- RE: world tick list iteration (linked-list order, three removal-safe patterns), one minute per day without train movement, December month end also fires trigger 2 after the year end, monthly personal interest (prime - 4%)/12.
+- Feature: re/scripts/wine/trace_save.py traces call order and counts inside the original (gdb breakpoints that never stop) while advancing a save headless.

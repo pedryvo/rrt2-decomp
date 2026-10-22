@@ -1,0 +1,198 @@
+{
+ "0x40a610": [
+  "industry_recount_piles",
+  0
+ ],
+ "0x40aa20": [
+  "industry_production_tick",
+  0
+ ],
+ "0x40b450": [
+  "industry_year_step",
+  1
+ ],
+ "0x40b7c0": [
+  "industry_year_reset",
+  1
+ ],
+ "0x4259e0": [
+  "tile_reroll_variant",
+  1
+ ],
+ "0x4283e0": [
+  "anim_object_step",
+  0
+ ],
+ "0x42a3e0": [
+  "fn_42a3e0",
+  1
+ ],
+ "0x42a7d0": [
+  "fn_42a7d0",
+  1
+ ],
+ "0x430540": [
+  "town_update",
+  0
+ ],
+ "0x430a40": [
+  "town_year_step",
+  1
+ ],
+ "0x431660": [
+  "town_bonus_offer",
+  1
+ ],
+ "0x436b30": [
+  "ai_company_turn",
+  1
+ ],
+ "0x436d60": [
+  "ai_monthly_turn",
+  1
+ ],
+ "0x438450": [
+  "person_generate",
+  1
+ ],
+ "0x4399d0": [
+  "company_month_step",
+  1
+ ],
+ "0x43ad60": [
+  "company_metric",
+  0
+ ],
+ "0x43c760": [
+  "company_annual_review",
+  1
+ ],
+ "0x43d800": [
+  "company_year_end",
+  1
+ ],
+ "0x454ae0": [
+  "rule_eval_454ae0",
+  1
+ ],
+ "0x457fe0": [
+  "event_fire_trigger",
+  1
+ ],
+ "0x45fbf0": [
+  "company_ai_finance",
+  1
+ ],
+ "0x46a010": [
+  "economy_state_step",
+  1
+ ],
+ "0x46a370": [
+  "station_networks_rebuild",
+  1
+ ],
+ "0x46b150": [
+  "build_preview_suspend",
+  1
+ ],
+ "0x46b290": [
+  "build_preview_resume",
+  1
+ ],
+ "0x46bb10": [
+  "margin_check_all",
+  1
+ ],
+ "0x471880": [
+  "industry_rebuild_inputs",
+  0
+ ],
+ "0x4a4d00": [
+  "sim_year_end",
+  1
+ ],
+ "0x4a5270": [
+  "sim_week_end",
+  1
+ ],
+ "0x4a5320": [
+  "sim_month_end",
+  1
+ ],
+ "0x4a5cb0": [
+  "sim_advance",
+  1
+ ],
+ "0x4a7590": [
+  "person_month_step",
+  1
+ ],
+ "0x4a7880": [
+  "person_year_step",
+  1
+ ],
+ "0x4a8800": [
+  "ai_person_turn",
+  1
+ ],
+ "0x4af3d0": [
+  "cmd_queue_run",
+  0
+ ],
+ "0x4bebf0": [
+  "station_recompute_supply_demand",
+  0
+ ],
+ "0x4bf760": [
+  "cargo_revenue",
+  1
+ ],
+ "0x4c8520": [
+  "territory_year_step",
+  1
+ ],
+ "0x4cf390": [
+  "train_breakdown_check",
+  0
+ ],
+ "0x4d0400": [
+  "train_update_speed",
+  0
+ ],
+ "0x4d0ce0": [
+  "train_step",
+  0
+ ],
+ "0x4d2c10": [
+  "train_unload",
+  1
+ ],
+ "0x4d4390": [
+  "train_monthly_costs",
+  1
+ ],
+ "0x4d4620": [
+  "train_year_step",
+  1
+ ],
+ "0x4d86f0": [
+  "ai_pick_engine",
+  1
+ ],
+ "0x4d87e0": [
+  "fn_4d87e0",
+  1
+ ],
+ "0x4e9770": [
+  "history_snapshot",
+  1
+ ],
+ "0x4f0660": [
+  "rng_range",
+  1
+ ],
+ "0x51c137": [
+  "crt_rand",
+  0
+ ]
+}

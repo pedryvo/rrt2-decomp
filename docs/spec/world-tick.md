@@ -1,0 +1,244 @@
+# Ordem de atualização do mundo (world tick)
+
+Fonte: `RT2_PLAT.EXE` (sha256 `510b9e44...`), lido no C exportado (`re/db/decomp`) e no disassembly; confirmado com o original rodando no Wine (`advance_save.py` + breakpoints de contagem, seção 7). Endereços são VAs. Estado das provas: **[D]** = ordem observada no original (traço dinâmico); **[S]** = lida no código. O manual não descreve a ordem de atualização. Base de calendário, velocidade e laço principal: `time.md`. RNG: `rng.md`.
+
+Objetivo: dar ao `rt2-sim` a sequência exata de chamadas da simulação para que uma partida (semente + save) siga o mesmo caminho do original (níveis 2/3 de fidelidade, `docs/PLAN.md` seção 11). **A ordem de chamada do RNG do jogo é estado**: qualquer troca de ordem entre entidades desalinha a sequência para sempre.
+
+## 1. Iteração das listas de entidades
+
+Todas as listas da simulação são pools com lista ligada (`docs/formats/map-gam.md` 5.3). Cabeçalho do pool em memória: `+0x08` tamanho do registro, `+0x14` contagem, `+0x24` u16 head, `+0x26` u16 tail, `+0x28` base dos registros, `+0x2c` `u16 next[]`, `+0x30` `u16 prev[]`, `+0x34` bitmap de livres.
+
+| Função | Endereço | Uso |
+|---|---|---|
+| `list_record(list, id)` | `0x4f18b0` | `base + id * tam`; id 0 -> null |
+| `pool_nth_id_list_order(list, n)` | `0x4f18d0` | id do n-ésimo na ordem da lista (anda por `next` a partir do head, ou por `prev` a partir do tail se `n > contagem/2`) |
+| `pool_nth_list_order(list, n)` | `0x4f19e0` | o mesmo, devolvendo o registro |
+| `pool_next_id(list, id)` | `0x4f1960` | `next[id]` |
+| `<pool>_nth(n)` | `0x466910..0x4669e0` | wrappers por pool de `0x4f19e0` (`town_nth` `0x466910`, `territory_nth` `0x466920`, `train_nth` `0x466980`, `rule_nth` `0x466990`, `industry_nth` `0x4669a0`, `station_nth` `0x4669b0`, `person_nth` `0x4669c0`, `company_nth` `0x4669d0`) |
+
+Três padrões aparecem nos passos da simulação, **todos na ordem da lista ligada** (não na ordem dos slots), exceto onde dito:
+
+- **A (`next` antes da chamada):** `id = nth_id(list, 0); enquanto id: prox = next(id); f(id); id = prox`. Seguro contra a remoção do item corrente. Usado no caminho linear de `sim_advance` (animações e trens).
+- **B (`next` depois da chamada):** `e = nth(list, 0)` e depois `e = record(next(e.+0 u16 slot próprio))`, `n` vezes com `n = contagem` relida a cada volta. Usado em `sim_week_end`.
+- **C (`nth(i)` a cada volta):** `para i em 0..contagem-1: f(nth(list, i))`. Quadrático, mesma ordem. Usado em `sim_month_end` e `sim_year_end`.
+- **Exceção, ordem de slot decrescente:** a expiração de lotes (`list_lots` `0x574c7c`, mensal) e a rotação do desgaste das peças de trilho (`track_piece_pool` `0x574c84`, anual) percorrem os slots de `+0x10 - 1` até 0 pelo bitmap.
+
+A ordem da lista ligada é a ordem de inserção (alocação liga no fim, `0x4f1690`) com as remoções; ela é gravada no `.GAM` (arrays `next`/`prev`), então o clone deve **ler e manter** as listas `next/prev` do save, não iterar por slot.
+
+## 2. `sim_advance(dt)` (`0x4a5cb0`) [S, D]
+
+Pseudocódigo completo (jogo local, 1 jogador; os ramos de rede estão marcados):
+
+```
+sim_advance(dt):                                         ; fastcall ECX = minutos
+  se sim_busy (0x57922c): retorna
+  (rede) dt = min(dt, horizonte - T)
+  ; 1. comandos agendados (cmd_queue 0x574c8c); em jogo local cmd_queue_next_time == T,
+  ;    então todos os comandos pendentes rodam aqui, antes de qualquer avanço
+  repete: p = cmd_queue_next_time() (0x4af2d0); p == 0 -> sai
+          p > T: (rede) se dt <= p-T sai; dt -= p-T; sim_advance(p-T)
+          senão: cmd_queue_run() (0x4af3d0)
+  se dt == 0: retorna
+  novo = data(T + dt)
+  se novo.data > data:                                   ; cruza 23:59 -> 00:00
+      r = 1439 - (hora*60 + min)                         ; minutos até 23:59
+      sim_advance(r)                                     ; caminho linear até 23:59 (recursivo)
+      fim_de_dia()                                       ; 23:59
+      dt -= r + 1
+      enquanto data != novo.data:                        ; dias inteiros
+          sim_advance(1439); fim_de_dia(); dt -= 1440
+  ; 2. caminho linear com o dt que sobrou (pode ser 0, ver 2.2)
+  data/hora = data(T + dt);  T += dt
+  para cada id em pool_78 (0x574c78), padrão A: anim_object_step(id)       ; 0x4283e0
+  se jogadores == 1:
+      nop (0x4cdd30)
+      para cada trem em list_trains (0x574c64), padrão A: train_step(trem, dt, 1)   ; 0x4d0ce0
+      nop (0x4cdd30)
+
+fim_de_dia():                                            ; inline em 0x4a5e6a.. e 0x4a6010..
+  net_time_sync() (0x49e0b0)                             ; local: sem efeito
+  (rede) rng_seed(ftol(f64(T + game_seed) + pessoa0.+0x12a))
+  se dia % 7 == 0:
+      sim_week_end()                                     ; 0x4a5270
+      se dia == 28: sim_month_end(); (ele avança a data e T)   ; 0x4a5320
+      senão: data = data(T+1); T += 1
+  senão: data = data(T+1); T += 1
+  (rede) 0x46b150; trains_advance(1440) (0x4a58f0); 0x46b290
+```
+
+### 2.1 O que roda em cada passo linear
+1. **Animações do mapa** (`pool_78`, registros de 0x23 bytes, `anim_object_step` `0x4283e0`) [S]: só registros com estado `+0 in {1,2}`. `t = max(0, (T - +0x0f) * (1/2160))` (`0x5352f8` = 4,6296e-4); `quadro = ftol(t * +0x1f)`; se `quadro >= nº de quadros` da sequência `+2` (tabela `0x567a1c`), o objeto é apagado (`0x466d20`: limpa a marca no tile `(+3,+5)` e libera o slot); senão `+1 = quadro`, `+7 = ftol(+0x0b + t*+0x13)`, `+8 = ftol(+0x0c + t*+0x17)`, `+9 (u16) = ftol(+0x0d + t*+0x1b)` (interpolação linear de posição). Determinístico, sem RNG. Exemplo: 3291 chamadas em 39 passos no save Example (cerca de 84 objetos).
+2. **Trens** (jogo local): `train_step(trem, dt, 1)` para cada trem, na ordem da lista (`trains.md` 4.5). Carga e descarga **não** são um passo à parte: acontecem dentro do `train_step`, quando o trem chega à estação (`0x4d2c10`, `cargo.md` 6; receita `0x4bf760`). Quebras e acidentes também (`train_breakdown_check` `0x4cf390`, `trains.md` 5.1).
+3. **Não há** produção de carga, demanda de estação nem decisões de IA no passo linear: produção e demanda são semanais (seção 3.2), IA é mensal (3.3).
+
+### 2.2 Consequências para o clone
+- **Um minuto por dia sem movimento:** o `+1` minuto de 23:59 para 00:00 é aplicado fora do caminho linear; os trens não andam nesse minuto. Em 7 dias, o relógio anda 10 080 min e a soma dos `dt` passados a `train_step` é 10 073.
+- **Número de passos lineares:** cada chamada de `sim_advance(dt)` com `dt < 1440` faz 1 passo linear, ou 2 se cruzar a meia-noite (um até 23:59 e o resto). Com o passo fixo do oráculo (320 min) e começando em 19:03: 7 dias = 32 chamadas externas + 7 recursivas = **39 passos** [D] (`train_step` = 39 x 9 trens = 351 no save Example [D]).
+- **Passo linear com `dt = 0`:** se `dt` termina exatamente às 00:00 (`dt == r + 1`), o caminho linear roda com `dt = 0` (não há novo teste de zero): animações e `train_step(trem, 0, 1)` são chamados. O efeito em `train_step` (divisão por `dt`) não foi verificado (Em aberto).
+- **Comandos do jogador** rodam no início de cada `sim_advance` (e de cada recursão), antes do avanço; em jogo local todos de uma vez.
+
+## 3. Ganchos periódicos
+
+### 3.1 Por dia (23:59)
+Jogo local: nada além da troca de data (o RNG **não** é re-semeado). Em rede: `net_time_sync`, re-semeadura do RNG e `trains_advance(1440)` (`time.md` 7.2).
+
+### 3.2 Semana: `sim_week_end` (`0x4a5270`), dias 7, 14, 21, 28 às 23:59 [S, D]
+1. Para cada registro de `list_industries` (`0x574c74`, padrão B) com tipo `+7 != 0`: `industry_recount_piles(e, 0)` (`0x40a610`) e `industry_production_tick(e, 0)` (`0x40aa20`) — produção periódica, `cargo.md` 7.3.
+2. Para cada estação (`list_stations` `0x574c60`, padrão B): `station_recompute_supply_demand(e)` (`0x4bebf0`, `cargo.md` 8).
+Sem RNG.
+
+### 3.3 Mês: `sim_month_end` (`0x4a5320`), dia 28 às 23:59, depois do passo semanal [S, D]
+Em ordem (mês e ano ainda os do mês que termina):
+
+| # | Chamada | O quê | Spec |
+|---|---|---|---|
+| 1 | se `0x5794f0`: zera e `station_networks_rebuild` `0x46a370` | reagrupa estações em redes conectadas (`0x460370`), recalcula contagens por rede e dispara gatilho 4 | **não especificada** |
+| 2 | `event_fire_trigger(4)` se `net_min_peer_version() > 0x232c` (local: sempre) | regras de cenário de verificação periódica | `time.md` 7.4; regras: **não especificadas** |
+| 3 | `event_fire_trigger(3)` | regras "fim de mês" | idem |
+| 4 | se mês in {2, 8}: `economy_state_step` `0x46a010` | passo semestral do estado econômico; RNG `[-5,5]` e `[0,10]` (2 chamadas) [D] | `cargo.md` 9 |
+| 5 | se mês <= 10: `rng_range(0, 10000)` (`0x4a53bf`), e se `< ((50 - |ano-1860|) * (54300/L)) / 70`: `town_bonus_offer` `0x431660` | oferta de bônus de cidade (seção 3.6) | aqui |
+| 6 | se `0x570227 == 0`: expiração de lotes (slots decrescentes) | `cargo.md` 7.6 | `cargo.md` |
+| 7 | `ai_monthly_turn` `0x436d60` | turno da IA (seção 3.5) | **não especificada** |
+| 8 | para cada empresa (C): `company_month_step` `0x4399d0` | juros, dividendos trimestrais, salários, cotação | `finance.md` 5 |
+| 9 | para cada pessoa (C): `person_month_step` `0x4a7590` | `caixa += ftol((prime(0) - 0.04) * caixa / 12)` (`0x535530` = 0,04, `0x535540` = 1/12; `prime` = `0x46bac0`) | aqui; prime em `finance.md` 4.1 |
+| 10 | para cada trem (C): `train_monthly_costs` `0x4d4390` | manutenção, combustível | `trains.md` 6.2 |
+| 11 | para cada estação (C): 44 contadores `+0x271` `*= 0.94`; `station_recompute_supply_demand` | decaimento de entregas | `cargo.md` 8 |
+| 12 | `margin_check_all` `0x46bb10` | chamadas de margem dos jogadores (repete até estabilizar) | `finance.md` 7.3 |
+| 13 | relatório: `report_due_flag = 1` conforme opção (`time.md` 7.4 item 7) | | `time.md` |
+| 14 | mês 12: `sim_year_end()` e depois **`event_fire_trigger(2)`**; senão data + 1 min, `T += 1`, `event_fire_trigger(2)` | | |
+
+Correção a `time.md` 7.4 item 8: em dezembro o gatilho 2 (início de mês) **também** dispara, depois de `sim_year_end` (`0x4a560c..0x4a5611`), já em 1/jan 00:00 [D].
+
+### 3.4 Ano: `sim_year_end` (`0x4a4d00`), 28/dez 23:59, dentro do passo mensal [S, D]
+
+| # | Chamada | O quê | Spec |
+|---|---|---|---|
+| 1 | para i < `company_set_count` (`0x46a7e0` = `[0x570729]`): `company_metric(company_set_at(i), 11)` (`0x43ad60`; `company_set_at` `0x46a7f0(i)` = `list_record(empresas, u16 0x57072d[i])`) | média `m` da métrica 11 (`+0x19a/+0x196`), soma com `ftol` acumulado | `finance.md` 3 |
+| 2 | `e = ai_pick_engine(1)` (`0x4d86f0`, **RNG** `[80,120]` por motor candidato) | `0x573e08 = clamp(ftol((engine[e].vel_max * 0.5 + m) * 0.5), 4, 200)` (`engine_table+0x14`; `0x535128` = 0,5) | aqui |
+| 3 | para cada indústria (C): `industry_year_step` `0x40b450` | razão entregas/produção (`+0x63`/`+0x67`), lucratividade por tipo; sem RNG | **não especificada** |
+| 4 | para cada empresa (C): `company_annual_review` `0x43c760` | avaliação da diretoria, bônus, demissão, liquidação; **RNG** (seção 4) | `finance.md` 8.1 (resumo) |
+| 5 | para cada pessoa (C): `person_year_nop` `0x4a7870` | vazio (`ret`) | aqui |
+| 6 | `event_fire_trigger(1)` | regras "fim de ano" | |
+| 7 | `history_snapshot(&0x570a82)` `0x4e9770` | registro anual do jogador (ano, empresa, métricas) para histórico/pontuação | **não especificada** |
+| 8 | `0x5705d1 = f32(pow(1 + f32[0x57022b], ano - [0x570508] + 1) * i32[0x570223] * 0.01)` | meta composta anual (papel incerto; `0x570508` = ano inicial) | Em aberto |
+| 9 | para cada empresa (C): `company_year_end` `0x43d800` | arquivo anual, overhead, títulos, desdobramento | `finance.md` 8 |
+| 10 | para cada pessoa (C): `person_year_step` `0x4a7880` | desloca o arquivo de patrimônio (`+0x133` -> `+0x143`, 0x90 B) e grava caixa e valor das ações (`0x43b410`) | aqui |
+| 11 | para cada trem (C): `train_year_step` `0x4d4620` | desloca estatísticas anuais (`+0xfd..+0x11d`) e zera o ano | aqui |
+| 12 | para cada território (C): `territory_year_step` `0x4c8520` | `+0x52 (u16) = 0` | aqui |
+| 13 | se `0x570237 == 0`: `town_year_step(0)` `0x430a40` | crescimento de cidades e construções; **RNG pesado** (seção 4) | **não especificada** |
+| 14 | `sim_week_end()` | segundo passo semanal no mesmo minuto | 3.2 |
+| 15 | para cada indústria (C): `industry_year_reset` `0x40b7c0` | se ativa: zera `+0x34`, `+0x63`, `+0x67`, recontagem de pilhas, `0x4beae0` na estação ligada (`+8`) | **não especificada** (`0x4beae0`) |
+| 16 | peças de trilho (slots decrescentes): `+0x1f = +0x1b; +0x1b = 0` | desgaste do ano anterior | `terrain-track.md` |
+| 17 | data -> 1/jan 00:00, `T += 1`; zera `0x573d05/09/0d`; se `0x573e02 < 0x573d9e`: `0x573e02 = ftol(...)` | | `time.md` 7.5 |
+| 18 | `industry_rebuild_inputs(i)` `0x471880`, i = 0..52 | tipos de indústria | `cargo.md` |
+| 19 | mensagens históricas (1877, 1879, 1900, 1910, 1960) | LNG 2630, 2851, 419, 417, 420 | `time.md` 7.5 |
+| 20 | `event_fire_trigger(0)` | regras "início de ano" | |
+| — | (de volta em `sim_month_end`) `event_fire_trigger(2)` | | |
+
+### 3.5 Turno mensal da IA (`ai_monthly_turn` `0x436d60`) [S, D]
+Se `0x5748fc == 0` e `0x570229 == 0`:
+```
+build_preview_suspend()  (0x46b150)
+para cada pessoa (C) com +0x122 == 0 (IA):        ai_person_turn(pessoa.+0)   ; 0x4a8800
+para cada empresa (C) cujo presidente +0x23 é 0 ou é IA:  ai_company_turn(empresa.+0)  ; 0x436b30
+build_preview_resume()    (0x46b290)
+```
+Os `clock_ms` só medem tempo (perfil). `build_preview_suspend`/`resume` só tiram e repõem a prévia da ferramenta de construção da interface (seção 9, item 9). `ai_company_turn` chama `company_ai_finance` (`0x45fbf0`, `finance.md` 9.1), constrói/compra trens (`ai_pick_engine`), ferrovias e indústrias, com RNG.
+
+### 3.6 Oferta de bônus de cidade (`town_bonus_offer` `0x431660`) [S]
+Até 500 tentativas: `i = rng_range(0, n_lugares - 1)`; lugar `town_nth(i)` elegível se `+0x10 == 0` e `+0x36 < 1` e nenhuma estação a menos de `[0x53539c]` (distância euclidiana `0x4f0ca0`) dentro da caixa `(+8,+0xa)-(+0xc,+0xe)` do lugar. No primeiro elegível: `+0x36 = bonus_table[+0x2c]` (`0x53a4b0`, i32 por classe de tamanho) e mensagem LNG 226 ("%1 has offered a bonus of %2 to the first railroad to connect it to another city!"). Cada tentativa consome 1 RNG.
+
+### 3.7 Gatilhos de evento (`event_fire_trigger` `0x457fe0`)
+Percorre as regras do cenário (`rule_pool` `0x574c9c`) e avalia as de gatilho igual (`0x455f30` -> `0x454270` -> `0x454ae0`; `0x454ae0` tem um `rng_range` em `0x454db0` para condições aleatórias). Códigos e chamadores (os nomes 0..3 vêm da posição; 4..6 são hipóteses pelo contexto):
+
+| Código | Onde dispara |
+|---|---|
+| 0 | fim de `sim_year_end` (1/jan 00:00) |
+| 1 | meio de `sim_year_end` |
+| 2 | fim de `sim_month_end` (1º do mês, 00:00) |
+| 3 | início de `sim_month_end` |
+| 4 | início de `sim_month_end` e fim de `station_networks_rebuild` (`0x46a7d0`): verificação periódica |
+| 5 | turno da IA (`0x4a8a55`) e comando de jogador `0x4bdcd0` (após mudar o caixa da pessoa): ação financeira |
+| 6 | carga/início de partida (`0x479d33`, `0x47abcf`, `0x48c689`) |
+
+## 4. Chamadas do RNG do jogo (`rng_range` `0x4f0660`) num tick normal
+
+Ordem dentro de um tick (jogo local), com o local da chamada (endereço de retorno) e a faixa. `[0,1000000]` consome **duas** saídas (faixa > 0x7fff, `rng.md` 2.2). **M** = mundo/eventos, **IA** = decisão de empresa/pessoa, **T** = trens.
+
+| Ordem | Local (retorno) | Função | Faixa | Tipo | Quando |
+|---|---|---|---|---|---|
+| passo linear, por trem | `0x4cf45d` (e os demais sorteios de `0x4cf390`) | `train_breakdown_check` | `[0,1000000]`, depois `[0,100]` se quebrar; roubo | T | após o avanço, se o trem passou de 10 células |
+| passo linear, por trem | `0x425a9a` | `tile_reroll_variant` `0x4259e0` (via `0x4cb090`/`train_enter_tile`) | `[0, n-1]` | M | só quando o trem limpa sobreposições de um tile |
+| passo linear, por trem | `0x4ce4c0`, `0x4ce730` | quebra/acidente | `[60,120]`, `[30,45]` | T | consequência |
+| mês, 2 | `0x454db0` | `0x454ae0` | variável | M | regra com condição aleatória |
+| mês, 4 (meses 2 e 8) | `0x46a0a7`, `0x46a0fc` | `economy_state_step` | `[-5,5]`, `[0,10]` | M | sempre 2 chamadas [D] |
+| mês, 5 (meses 1..10) | `0x4a53c4` | `sim_month_end` | `[0,10000]` | M | sempre 1 chamada [D] |
+| mês, 5 | `0x43168d` | `town_bonus_offer` | `[0, n_lugares-1]` | M | 1 a 500 |
+| mês, 7 | vários (`0x436c06`, `0x435c20`, `0x435320`, `0x4d878a`, `0x48cc00`...) | `ai_company_turn` e filhos | variáveis | IA | depende do estado; 4 chamadas `ai_pick_engine` [80,120] observadas |
+| ano, 2 | `0x4d878a` | `ai_pick_engine(1)` | `[80,120]` por motor candidato | M (usa a rotina da IA) | sempre |
+| ano, 4 | `0x43cc56`, `0x43cef7`, `0x43cf59` (x32) | `company_annual_review` | `[20,110]`, `[-200,200]` x33 | IA | por empresa, condicionado |
+| ano, 4 | `0x438553`, `0x438593`, `0x4385cf`, `0x4386dc` (laço) | `person_generate` `0x438450` (de `0x43d235`/`0x43d244`) | `[25,180]`, `[1000,12000]`, `[0,39]`... | IA | gera candidatos (pessoas) |
+| ano, 13 | `0x430878`, `0x430916`, `0x43097e` | `town_update` `0x430540` | `[0,1000000]` | M | por lugar |
+| ano, 13 | `0x430330` | `0x4302c0` | `[88,112]` | M | |
+| ano, 13 | `0x42fd71..0x42fddc` (6 locais) | `0x42fcb0` | `[0,1..3]` | M | posicionamento de construções |
+| ano, 13 | `0x40ba37`, `0x40bc34` | `0x40ba00`, `0x40bb40` (via `building_construct`) | `[1,24]`, `[0,100]` | M | construção nova |
+
+Observado no original (save Example, semente 1234, 30 dias de 10/dez/1875 a 1/jan/1876 + 7 dias): **467 chamadas** de `rng_range` de primeiro nível (715 contando as 248 internas das 124 faixas `[0,1000000]`): 4 nos trens, 4 no turno da IA de dezembro, 4 em `ai_pick_engine` anual, 68 na avaliação das diretorias (2 de 5 empresas), 62 em `0x438450`, 120 em `town_update`, 3 em `0x4302c0`, 192 em `0x42fcb0` e 10 em construções. No Tutorial (sem trens nem estações), 30 dias a partir de 4/fev/1870: **3 chamadas** (2 de `economy_state_step` e 1 do sorteio de bônus), igual ao achado de `dynamic-analysis.md` 5.3.
+
+O `rand()` do CRT (gerador C) é chamado ~90 vezes por dia no Example (sons dos trens, `trains.md` 5.4); não afeta a simulação, mas mostra que o clone não deve compartilhar estado entre os dois geradores.
+
+## 5. Uma passagem de 28/dez a 1/jan observada [D]
+Save Example, `sim_advance` em passos de 320 min (seq. = ordem no traço):
+```
+28/12 23:59  sim_week_end (indústrias 391, estações 11)
+             sim_month_end
+               event_fire_trigger(4), event_fire_trigger(3)   (3 avaliações 0x454ae0)
+               ai_monthly_turn: build_preview_suspend, ai_person_turn(2), ai_company_turn(2), ai_company_turn(5)
+                                -> ai_pick_engine (4 RNG), company_ai_finance(5), build_preview_resume
+               company_month_step x5, person_month_step x4, train_monthly_costs x9, (estações x11), margin_check_all
+               sim_year_end
+                 ai_pick_engine(1) (4 RNG); industry_year_step x401; company_annual_review x5 (RNG nas 2 últimas)
+                 event_fire_trigger(1) (15 avaliações 0x454ae0); history_snapshot
+                 company_year_end x5; person_year_step x4; train_year_step x9; territory_year_step x3
+                 town_year_step: build_preview_suspend, 103 x town_update (RNG), build_preview_resume
+                 sim_week_end; industry_year_reset x403; industry_rebuild_inputs x53
+  1/1  00:00     event_fire_trigger(0)
+               event_fire_trigger(2)
+```
+Bate com a leitura estática das seções 3.3 e 3.4 item a item.
+
+## 6. Contagens por função (7 dias)
+`games/Tutorial.GAM` (1870-02-04 19:03), semente 1234, passo 320: `sim_advance` 39, `sim_week_end` 1, `industry_recount_piles` 387, `industry_production_tick` 387, RNG 0.
+`Example save game.GAM` (1875-12-10 21:05), semente 1234, passo 320: `sim_advance` 39, `anim_object_step` 3291, `train_step` 351, `train_update_speed` 351, `train_breakdown_check` 193, `sim_week_end` 1, indústrias 391+391, `station_recompute_supply_demand` 11, `rng_range` 1 (+2 internas, de `0x4cf45d`), `crt_rand` 530.
+
+## 7. Como reproduzir (análise dinâmica)
+`re/scripts/wine/trace_save.py` (com `trace_gdb.py` e `trace_funcs.json`) é a variante de `advance_save.py` com breakpoints Python que contam ou registram chamadas sem parar (`gdb.Breakpoint.stop` devolvendo `False`). Cada linha do registro: `seq função ret ECX EDX [esp+4] data hora estado_do_RNG`; no fim, `COUNT função n`. Mesma sequência de carga e semente de `docs/dynamic-analysis.md` seção 5.
+```
+TR_LOG=/caminho/trace.log re/scripts/wine/trace_save.py $SB "$SB/games/Example save game.GAM" 30 1234 /tmp/x.GAM --no-warmup
+```
+30 dias do Example com ~3800 breakpoints atingidos levam ~90 s. `TR_FUNCS` troca a lista de funções. Diferente de `advance_save.py`, não executa `pkill -x winedbg.exe` global; mesmo assim uma instância de `advance_save.py` em outro sandbox mata o `winedbg` desta (rodar uma de cada vez).
+
+## 8. Divergências e fidelidade
+- Manual: não descreve a ordem. Nada a anotar.
+- `time.md` 7.4 item 8 dizia que, em dezembro, `sim_month_end` retorna após `sim_year_end`; o código e o traço mostram `event_fire_trigger(2)` depois dele (corrigido aqui).
+- `time.md` 7.5 cita "loops sobre o conjunto de jogadores (`0x46a7e0`/`0x46a7f0`/`0x43ad60`)": são empresas (índice de empresas ativas `0x57072d`), não jogadores.
+- O clone precisa: (1) iterar as listas na ordem ligada do save; (2) respeitar os padrões A/B/C (remoção durante a iteração); (3) o minuto de virada sem movimento; (4) o mesmo `dt` por passo (`time.md` 9); (5) as chamadas de RNG na ordem da seção 4, inclusive as de IA, que dependem de todo o estado das empresas.
+
+## 9. Próximos alvos de RE (não especificados, por prioridade)
+1. `town_year_step` `0x430a40` + `town_update` `0x430540`, `0x4302c0`, `0x42fcb0`, `0x40ba00`, `0x40bb40`, `building_create`/`building_construct` (`0x409010`/`0x409a30`): maior consumidor de RNG por ano; crescimento de cidades e construção de indústrias.
+2. Turno da IA: `ai_monthly_turn` `0x436d60`, `ai_person_turn` `0x4a8800`, `ai_company_turn` `0x436b30` e filhos (`0x436880`, `0x436210`, `0x435c20`, `0x435320`, `0x436950`, `0x4d9210`, `0x48cc00`), `ai_pick_engine` `0x4d86f0`.
+3. `company_annual_review` `0x43c760` (detalhar além do resumo de `finance.md` 8.1) e `0x438450` (geração de pessoas/candidatos).
+4. Regras de cenário: `event_fire_trigger` `0x457fe0`, `0x455f30`, `0x454270`, `0x454ae0` (condições e efeitos, códigos 4..6).
+5. `train_step` interno: `0x4d1bb0`, `0x413550`, `0x4d0a70`, `0x4d0bc0`, `0x4d3c80`, `0x4cb090`, `tile_reroll_variant` `0x4259e0` (RNG em tile), roubo em `0x4cf390`.
+6. `industry_year_step` `0x40b450`, `industry_year_reset` `0x40b7c0` e `0x4beae0`.
+7. `station_networks_rebuild` `0x46a370` (e quem liga `0x5794f0`).
+8. `history_snapshot` `0x4e9770` e o par `0x5705d1`/`0x573e08` (para que servem).
+9. `build_preview_suspend`/`build_preview_resume` `0x46b150`/`0x46b290`: apagam e refazem a indústria-prévia da ferramenta de construção (`0x574cf0`, um registro de `list_industries`) em volta de cada turno de IA/cidades. Sem jogador interagindo não há prévia; com prévia, o slot e a posição na lista mudam (confirmar se a prévia recriada volta ao fim da lista).
+
+## Em aberto
+- Passo linear com `dt = 0` (2.2): efeito em `train_step`.
+- Papel de `0x5705d1` (meta composta) e de `0x573e08` (velocidade de referência 4..200).
+- Códigos de gatilho 4, 5, 6 (seção 3.7): nomes inferidos pelos chamadores.
+- Ordem das chamadas de RNG dentro de `ai_company_turn` e `town_update`: depende de funções ainda não especificadas (seção 9).
+
+> **Nota (coordenador):** o byte divergente no offset 34552 (`0x86F8`) cai dentro do checksum do arquivo em `+0x86F7`, que já é mascarado pelo `rt2-savediff`. As duas rodadas são equivalentes.

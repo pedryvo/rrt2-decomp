@@ -2429,3 +2429,262 @@ name = "nearest_town_id"
 kind = "function"
 comment = "fastcall(ECX = x, EDX = y): id do registro mais proximo em 0x574c5c (kind 0, ou kind 2 em terra com 0x5704ac != 0) pela distancia inteira ftol(sqrt), -1 se vazio; [V]"
 spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4f18d0"
+name = "pool_nth_id_list_order"
+kind = "function"
+comment = "thiscall(list; n) ret 4: id (slot) do n-esimo item na ordem da lista ligada (head +0x24/next +0x2c, ou tail +0x26/prev +0x30 se n > contagem/2); n=0 -> head"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x4f1960"
+name = "pool_next_id"
+kind = "function"
+comment = "thiscall(list; id) ret 4: next[id] (u16 em list+0x2c); 0 = fim"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x4f1940"
+name = "pool_prev_id"
+kind = "function"
+comment = "thiscall(list; id) ret 4: prev[id] (u16 em list+0x30)"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x4f1920"
+name = "pool_head_id"
+kind = "function"
+comment = "thiscall(list): u16 list+0x24 (primeiro da lista ligada)"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x4f1930"
+name = "pool_tail_id"
+kind = "function"
+comment = "thiscall(list): u16 list+0x26 (ultimo da lista ligada)"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x4cdd30"
+name = "nop_train_pass_hook"
+kind = "function"
+comment = "ret vazio; chamado antes e depois do laco de movimento de trens em sim_advance"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x466910"
+name = "town_nth"
+kind = "function"
+comment = "fastcall(n): pool_nth_list_order(list_towns, n), n-esimo registro na ordem da lista ligada"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x466920"
+name = "territory_nth"
+kind = "function"
+comment = "fastcall(n): pool_nth_list_order(list_territories, n), n-esimo registro na ordem da lista ligada"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x466980"
+name = "train_nth"
+kind = "function"
+comment = "fastcall(n): pool_nth_list_order(list_trains, n), n-esimo registro na ordem da lista ligada"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x466990"
+name = "rule_nth"
+kind = "function"
+comment = "fastcall(n): pool_nth_list_order(rule_pool, n), n-esimo registro na ordem da lista ligada"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x4669a0"
+name = "industry_nth"
+kind = "function"
+comment = "fastcall(n): pool_nth_list_order(list_industries, n), n-esimo registro na ordem da lista ligada"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x4669b0"
+name = "station_nth"
+kind = "function"
+comment = "fastcall(n): pool_nth_list_order(list_stations, n), n-esimo registro na ordem da lista ligada"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x4669c0"
+name = "person_nth"
+kind = "function"
+comment = "fastcall(n): pool_nth_list_order(list_persons, n), n-esimo registro na ordem da lista ligada"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x4669d0"
+name = "company_nth"
+kind = "function"
+comment = "fastcall(n): pool_nth_list_order(list_companies, n), n-esimo registro na ordem da lista ligada"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x466860"
+name = "rule_ptr"
+kind = "function"
+comment = "fastcall(id): list_record(rule_pool, id)"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x4283e0"
+name = "anim_object_step"
+kind = "function"
+comment = "fastcall(id): passo de um objeto animado do pool_78 (0x23 B): quadro = ftol(t*rate), posicao interpolada; apaga ao fim da sequencia; por passo linear de sim_advance"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x466d20"
+name = "anim_object_delete"
+kind = "function"
+comment = "fastcall(id): limpa a marca do objeto no tile (+3,+5) e libera o slot do pool_78"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x431660"
+name = "town_bonus_offer"
+kind = "function"
+comment = "sorteio mensal: ate 500 x rng_range(0,n_lugares-1) por lugar sem estacao perto; grava bonus 0x53a4b0[classe] em +0x36 e mensagem LNG 226"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x436d60"
+name = "ai_monthly_turn"
+kind = "function"
+comment = "turno mensal da IA: ai_person_turn por pessoa IA, ai_company_turn por empresa sem presidente humano, entre build_preview_suspend/resume"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x4a8800"
+name = "ai_person_turn"
+kind = "function"
+comment = "fastcall(id_pessoa): decisoes mensais de uma pessoa IA (pode disparar gatilho 5)"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x436b30"
+name = "ai_company_turn"
+kind = "function"
+comment = "fastcall(id_empresa): decisoes mensais de uma empresa IA (financas 0x45fbf0, trens, construcao; RNG)"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x46b150"
+name = "build_preview_suspend"
+kind = "function"
+comment = "antes de a IA/cidades/comandos mexerem no mundo: apaga a industria-previa da ferramenta de construcao (0x574cf0, list_industries) e guarda/zera o estado da ferramenta"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x46b290"
+name = "build_preview_resume"
+kind = "function"
+comment = "restaura o estado da ferramenta de construcao guardado por build_preview_suspend (0x48d900 refaz a previa)"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x46a370"
+name = "station_networks_rebuild"
+kind = "function"
+comment = "reagrupa estacoes em redes conectadas (+0x57), conta por rede (0x566e3c) e dispara gatilho 4; mensal se 0x5794f0"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x46a7e0"
+name = "company_set_count"
+kind = "function"
+comment = "devolve [0x570729]: numero de empresas no conjunto indexado"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x46a7f0"
+name = "company_set_at"
+kind = "function"
+comment = "fastcall(i): list_record(list_companies, u16 0x57072d[i])"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x4a7870"
+name = "person_year_nop"
+kind = "function"
+comment = "ret vazio; chamado por pessoa no passo anual"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x4a7880"
+name = "person_year_step"
+kind = "function"
+comment = "arquivo anual de patrimonio: desloca +0x133 -> +0x143 (0x90 B), grava caixa e valor das acoes"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x4d4620"
+name = "train_year_step"
+kind = "function"
+comment = "desloca as estatisticas anuais do trem (+0xfd..+0x11d) e zera o ano corrente"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x4c8520"
+name = "territory_year_step"
+kind = "function"
+comment = "territorio +0x52 (u16) = 0 no passo anual"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x40b450"
+name = "industry_year_step"
+kind = "function"
+comment = "passo anual da industria: razao entregas/producao (+0x63/+0x67) e lucratividade por tipo; sem RNG"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x40b7c0"
+name = "industry_year_reset"
+kind = "function"
+comment = "zera +0x34/+0x63/+0x67, recontagem de pilhas e 0x4beae0 na estacao ligada"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x430a40"
+name = "town_year_step"
+kind = "function"
+comment = "fastcall(flag): passo anual das cidades: town_update por lugar (RNG), construcoes; entre build_preview_suspend/resume"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x430540"
+name = "town_update"
+kind = "function"
+comment = "atualizacao de um lugar (crescimento); rng_range(0,1000000) em 0x430878/0x430916/0x43097e"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x4e9770"
+name = "history_snapshot"
+kind = "function"
+comment = "monta o registro anual do jogador em 0x570a82 (ano, empresa, metricas, estado economico)"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x4259e0"
+name = "tile_reroll_variant"
+kind = "function"
+comment = "fastcall(x,y,tipo,todos): remove sobreposicoes do tile e sorteia nova variante de terreno rng_range(0,n-1)"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x438450"
+name = "person_generate"
+kind = "function"
+comment = "thiscall: gera uma pessoa/candidato: rng (25,180), (1000,12000), (0,39) em laco"
+spec = "docs/spec/world-tick.md"

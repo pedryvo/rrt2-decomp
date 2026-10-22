@@ -3,11 +3,11 @@
 # Ver docs/re-workflow.md.
 #
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
-# Classificadas (categoria != unknown): 960 (32.6%)
-# Por categoria: lib=258, platform=116, render=11, audio=70, ui=247, sim=258, unknown=1985
-# Por estado:   unknown=2754, named=69, spec=93, verified=29
-# Entradas manuais: 240
-# sim spec coverage: 39.5% (102 de 258 funcoes sim em spec/verified)
+# Classificadas (categoria != unknown): 1003 (34.1%)
+# Por categoria: lib=258, platform=116, render=11, audio=70, ui=247, sim=301, unknown=1942
+# Por estado:   unknown=2716, named=81, spec=119, verified=29
+# Entradas manuais: 276
+# sim spec coverage: 42.5% (128 de 301 funcoes sim em spec/verified)
 
 [[function]]
 addr = "0x401005"
@@ -2293,9 +2293,9 @@ why = "thunk->0x49ef70"
 [[function]]
 addr = "0x40193d"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4669a0"
 
 [[function]]
 addr = "0x401942"
@@ -3896,9 +3896,9 @@ why = "thunk->0x40d050"
 [[function]]
 addr = "0x401faf"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x40b7c0"
 
 [[function]]
 addr = "0x401fbe"
@@ -4398,9 +4398,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x4021ad"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4d4620"
 
 [[function]]
 addr = "0x4021b2"
@@ -5492,9 +5492,9 @@ why = "thunk->0x4460e0"
 [[function]]
 addr = "0x4025e0"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x46a370"
 
 [[function]]
 addr = "0x4025ea"
@@ -6425,9 +6425,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x4029cd"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4669b0"
 
 [[function]]
 addr = "0x4029d7"
@@ -7157,9 +7157,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x402ccf"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x466980"
 
 [[function]]
 addr = "0x402cd4"
@@ -7389,9 +7389,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x402da6"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x40b450"
 
 [[function]]
 addr = "0x402dab"
@@ -8103,16 +8103,18 @@ manual = true
 [[function]]
 addr = "0x40b450"
 size = 876
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "world-tick.md 3.4 (resumo)"
+manual = true
 
 [[function]]
 addr = "0x40b7c0"
 size = 83
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "world-tick.md 3.4 (resumo)"
+manual = true
 
 [[function]]
 addr = "0x40b820"
@@ -8871,9 +8873,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4259e0"
 size = 262
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "world-tick.md 4"
+manual = true
 
 [[function]]
 addr = "0x425af0"
@@ -9028,9 +9031,10 @@ manual = true
 [[function]]
 addr = "0x4283e0"
 size = 249
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "world-tick.md 2.1"
+manual = true
 
 [[function]]
 addr = "0x4284e0"
@@ -9356,16 +9360,18 @@ why = "no-evidence"
 [[function]]
 addr = "0x430540"
 size = 1271
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "world-tick.md 4"
+manual = true
 
 [[function]]
 addr = "0x430a40"
 size = 475
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "world-tick.md 3.4 (resumo)"
+manual = true
 
 [[function]]
 addr = "0x430c20"
@@ -9426,9 +9432,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x431660"
 size = 394
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "world-tick.md 3.6"
+manual = true
 
 [[function]]
 addr = "0x4317f0"
@@ -9580,16 +9587,18 @@ why = "no-evidence"
 [[function]]
 addr = "0x436b30"
 size = 547
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "world-tick.md 3.5 (conteudo nao especificado)"
+manual = true
 
 [[function]]
 addr = "0x436d60"
 size = 304
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "world-tick.md 3.5"
+manual = true
 
 [[function]]
 addr = "0x437820"
@@ -9672,9 +9681,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x438450"
 size = 695
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "world-tick.md 4"
+manual = true
 
 [[function]]
 addr = "0x438710"
@@ -11320,9 +11330,10 @@ manual = true
 [[function]]
 addr = "0x466860"
 size = 13
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "world-tick.md 1"
+manual = true
 
 [[function]]
 addr = "0x466870"
@@ -11373,16 +11384,18 @@ why = "no-evidence"
 [[function]]
 addr = "0x466910"
 size = 13
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "world-tick.md 1"
+manual = true
 
 [[function]]
 addr = "0x466920"
 size = 13
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "world-tick.md 1"
+manual = true
 
 [[function]]
 addr = "0x466940"
@@ -11415,44 +11428,50 @@ why = "no-evidence"
 [[function]]
 addr = "0x466980"
 size = 13
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "world-tick.md 1"
+manual = true
 
 [[function]]
 addr = "0x466990"
 size = 13
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "world-tick.md 1"
+manual = true
 
 [[function]]
 addr = "0x4669a0"
 size = 13
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "world-tick.md 1"
+manual = true
 
 [[function]]
 addr = "0x4669b0"
 size = 13
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "world-tick.md 1"
+manual = true
 
 [[function]]
 addr = "0x4669c0"
 size = 13
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "world-tick.md 1"
+manual = true
 
 [[function]]
 addr = "0x4669d0"
 size = 13
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "world-tick.md 1"
+manual = true
 
 [[function]]
 addr = "0x466a00"
@@ -11556,9 +11575,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x466d20"
 size = 78
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "world-tick.md 2.1"
+manual = true
 
 [[function]]
 addr = "0x466d70"
@@ -11841,23 +11861,26 @@ manual = true
 [[function]]
 addr = "0x46a370"
 size = 1133
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "world-tick.md 3.3 (resumo)"
+manual = true
 
 [[function]]
 addr = "0x46a7e0"
 size = 6
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "world-tick.md 3.4"
+manual = true
 
 [[function]]
 addr = "0x46a7f0"
 size = 23
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "world-tick.md 3.4"
+manual = true
 
 [[function]]
 addr = "0x46a810"
@@ -11982,16 +12005,18 @@ why = "no-evidence"
 [[function]]
 addr = "0x46b150"
 size = 313
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "world-tick.md 3.5"
+manual = true
 
 [[function]]
 addr = "0x46b290"
 size = 292
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "world-tick.md 3.5"
+manual = true
 
 [[function]]
 addr = "0x46b3c0"
@@ -13782,7 +13807,7 @@ addr = "0x4a4d00"
 size = 1379
 category = "sim"
 status = "spec"
-why = "time.md 7.5"
+why = "world-tick.md 3.4"
 manual = true
 
 [[function]]
@@ -13790,7 +13815,7 @@ addr = "0x4a5270"
 size = 170
 category = "sim"
 status = "spec"
-why = "time.md 7.3"
+why = "world-tick.md 3.2"
 manual = true
 
 [[function]]
@@ -13798,7 +13823,7 @@ addr = "0x4a5320"
 size = 1110
 category = "sim"
 status = "spec"
-why = "time.md 7.4"
+why = "world-tick.md 3.3"
 manual = true
 
 [[function]]
@@ -13814,7 +13839,7 @@ addr = "0x4a5cb0"
 size = 1706
 category = "sim"
 status = "spec"
-why = "time.md 6"
+why = "world-tick.md 2"
 manual = true
 
 [[function]]
@@ -13918,8 +13943,8 @@ manual = true
 addr = "0x4a7590"
 size = 66
 category = "sim"
-status = "unknown"
-why = "finance/stock market (docs/spec/finance.md)"
+status = "spec"
+why = "world-tick.md 3.3 item 9"
 manual = true
 
 [[function]]
@@ -13955,16 +13980,18 @@ why = "no-evidence"
 [[function]]
 addr = "0x4a7870"
 size = 1
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "world-tick.md 3.4"
+manual = true
 
 [[function]]
 addr = "0x4a7880"
 size = 209
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "world-tick.md 3.4"
+manual = true
 
 [[function]]
 addr = "0x4a7960"
@@ -14014,8 +14041,8 @@ why = "no-evidence"
 addr = "0x4a8800"
 size = 744
 category = "sim"
-status = "unknown"
-why = "high: direct:date_,event_"
+status = "named"
+why = "world-tick.md 3.5 (conteudo nao especificado)"
 manual = true
 
 [[function]]
@@ -14983,9 +15010,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4c8520"
 size = 7
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "world-tick.md 3.4"
+manual = true
 
 [[function]]
 addr = "0x4c8530"
@@ -15148,9 +15176,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4cdd30"
 size = 1
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "world-tick.md 2"
+manual = true
 
 [[function]]
 addr = "0x4cdd50"
@@ -15529,9 +15558,10 @@ manual = true
 [[function]]
 addr = "0x4d4620"
 size = 59
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "world-tick.md 3.4"
+manual = true
 
 [[function]]
 addr = "0x4d4660"
@@ -15743,7 +15773,7 @@ addr = "0x4d86f0"
 size = 235
 category = "sim"
 status = "named"
-why = "escolha de motor pela IA (rng 80..120)"
+why = "world-tick.md 3.4 / 4"
 manual = true
 
 [[function]]
@@ -16114,9 +16144,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4e9770"
 size = 1087
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "world-tick.md 3.4 (resumo)"
+manual = true
 
 [[function]]
 addr = "0x4e9bb0"
@@ -16765,37 +16796,42 @@ manual = true
 [[function]]
 addr = "0x4f18d0"
 size = 77
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "world-tick.md 1"
+manual = true
 
 [[function]]
 addr = "0x4f1920"
 size = 7
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "world-tick.md 1"
+manual = true
 
 [[function]]
 addr = "0x4f1930"
 size = 7
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "world-tick.md 1"
+manual = true
 
 [[function]]
 addr = "0x4f1940"
 size = 18
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "world-tick.md 1"
+manual = true
 
 [[function]]
 addr = "0x4f1960"
 size = 18
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "world-tick.md 1"
+manual = true
 
 [[function]]
 addr = "0x4f1980"
