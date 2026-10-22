@@ -2,6 +2,8 @@
 
 Implementação: `crates/rt2-formats/src/lad.rs` e `palette.rs`; ferramenta: `rt2-sprite`. Little-endian. Os 1990 blobs LAD dos PK2 (RT2 1975, RT2_06 12, RT2_11PL 3) são consumidos exatamente até o último byte, com 30952 imagens decodificáveis (teste `lad_blobs_parse_exactly_and_decode`). Os "80 parciais" do parser heurístico eram só o formato mal interpretado.
 
+Catálogo de todos os bancos (nome, categoria, camadas, geometria do tile): `sprite-catalog.md`.
+
 ## Origem (RT2_PLAT.EXE)
 
 | Endereço | Função |

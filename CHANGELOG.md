@@ -72,3 +72,6 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Feature: modulo `rt2-sim::finance` com preco fundamental e de negociacao da acao, rating de credito, taxa prime e de bonds, juros do caixa, dividendos trimestrais e teto do conselho, desdobramento, falencia e passo mensal da empresa
 - Improved: `tests/finance.rs` agora testa o codigo de `rt2-sim` contra o original e cobre lancamentos contabeis, anualizacao, teto de dividendos e falencia
 - RE: teto de dividendos `0x43edf0`, anualizacao `0x43a440`, lancamentos `0x439970`/`0x4398d0` e falencia `0x43bc30` verificados bit a bit; leitura exata dos maximos de `0x43edf0` resolvida
+- RE: sprite catalog of all 1987 LAD banks: 1739 more filenames recovered from the `cr%s%s`, `bl%s%s`/`bn%s%s` and tree/portrait/logo sprintf patterns (1855 of 1987 banks now named); terrain banks are 64x64 mip-mapped textures projected onto 128x64 tile diamonds (2 px per elevation unit, 4 view rotations), tracks use `edge_shape_table` x `0x536594`, vehicles have 8 (locomotives) or 4 (wagons) directions per rotation bank.
+- Feature: `rt2-sheet` tool (bank listing, record dump, palette-index histogram, contact sheets) and `re/names/sprite_catalog.tsv` (hash, name, category, notes).
+- Docs: sprite catalog (`docs/formats/sprite-catalog.md`).

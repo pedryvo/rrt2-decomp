@@ -64,6 +64,8 @@ hash(s)  = h = 7
 
 ### Validação
 
+Atualização: 1739 nomes de bancos de sprites foram recuperados dos formatos `cr%s%s.imb`, `bl%s%s.imb`, `bn%s%s.imb` e afins (ver `sprite-catalog.md`); `re/names/exe_filenames.txt` agora tem 2153 linhas e 2067 casam com hashes dos PK2. O texto abaixo descreve o primeiro levantamento.
+
 Dos 414 candidatos, **328 casam** com hashes dos 4 PK2 (2898 hashes distintos). Os 86 restantes são modelos com `%s`/`%d`, DLLs, `.smk`/`.lng`/`.log` soltos e lixo. Todo nome concreto `.imb`, `.raw` e `.win` de pack casa, sem falsos negativos observados; o EXE referencia ~11% dos 2898 nomes (o resto vem de listas em dados e nomes montados com `%s`).
 
 ## Em aberto
