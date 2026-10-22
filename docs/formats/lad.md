@@ -59,3 +59,7 @@ Os arquivos guardam sempre 1555 (o parser anterior assumindo RGB565 estava errad
 - Semântica de `kind` (1 vs 3), dos pares 0/1 do cabeçalho e dos valores de `flags` além do bit 1.
 - Semântica do `x, y` (hotspot) e como os grupos se combinam (imagem + sombra?).
 - `palette_id` > 712 (bancos nos PK2 de patch) não foram renderizados individualmente.
+
+## Nota: tokens extras no RLE
+
+O desenhador de texto (`0x4fff00`, ver `font.md`) decodifica `0x80..0x9f` (escurecer o destino) e `0xa0..0xbf` (corrida de alfa) em vez de "literais"; `lad.rs::decode` ainda os trata como literais, o que só importa para imagens que usem esses tokens (fontes: use `font::decode_text_image`). Resta confirmar se os sprites de mundo usam o mesmo conjunto.
