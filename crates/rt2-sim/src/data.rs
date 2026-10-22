@@ -12,6 +12,7 @@ use crate::cargo::{
     RevenueTables,
 };
 use crate::exe::{Exe, ExeError};
+use crate::track::TrackTables;
 use crate::trains::{
     ENGINE_COUNT, ENGINE_RECORD_SIZE, Engine, VEHICLE_COUNT, VEHICLE_RECORD_SIZE, VehicleType,
 };
@@ -26,6 +27,7 @@ pub const ADDR_FUEL_LEVEL: u32 = 0x0055_2ae8;
 pub const ADDR_MAINT_LEVEL: u32 = 0x0055_2af4;
 const ADDR_DEMAND_LEVEL: u32 = 0x0055_0524;
 const ADDR_UNDEMANDED: u32 = 0x0055_050c;
+pub const ADDR_ECON_PRODUCTION: u32 = 0x0055_0494;
 const ADDR_ECON_REVENUE: u32 = 0x0055_04bc;
 const ADDR_SLIDER_HUMAN: u32 = 0x0055_0448;
 const ADDR_SLIDER_AI: u32 = 0x0055_041c;
@@ -46,6 +48,10 @@ pub struct GameData {
     pub fuel_levels: [f32; 3],
     pub maintenance_levels: [f32; 3],
     pub revenue: RevenueTables,
+    /// `0x550494` f32[5]: production multiplier by economy state (cargo.md 7.3).
+    pub production_econ: [f32; 5],
+    /// Track cost and station tables (terrain-track.md 2.2, 3.3).
+    pub track: TrackTables,
 }
 
 fn arr<const N: usize>(exe: &Exe, va: u32) -> Result<[f32; N], ExeError> {
@@ -107,6 +113,8 @@ impl GameData {
                 slider_human: arr(exe, ADDR_SLIDER_HUMAN)?,
                 slider_ai: arr(exe, ADDR_SLIDER_AI)?,
             },
+            production_econ: arr(exe, ADDR_ECON_PRODUCTION)?,
+            track: TrackTables::load(exe)?,
         })
     }
 }

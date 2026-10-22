@@ -415,7 +415,7 @@ bônus = 1.0;  se entrada1 existe e limiar1 <= estoque[idx1]: bônus = limiar1 +
 devolve bônus * base
 ```
 
-### 7.3 Produção periódica (`0x40aa20`) **[S]**
+### 7.3 Produção periódica (`0x40aa20`) **[S; período V]**
 
 Chamada na virada de semana (dias 7, 14, 21 e 28) para toda indústria/casa da lista (ver `time.md`, 7.3) e de novo no fim do ano. Para cada slot `k` (0..3) enquanto `industry_production_rate(k) > 0,01`:
 
@@ -433,6 +433,8 @@ se entrada1 existe e limiar1 <= estoque[idx1]: estoque[idx1] -= limiar1     ; o 
 se entrada2 existe e limiar2 <= estoque[idx2]: estoque[idx2] -= limiar2     ; (nos conversores o limiar é 0: nada muda)
 cria um lote (industry_spawn_lot) e repete
 ```
+O cálculo de `m` e `período` (até o `>>= 1` do Overtime) é verificado por `tests/cargo.rs::production_period_matches_original` (fragmento `0x40abca..0x40acb2`, 3 989 casos): `m = (e(0x5e) * e(0x5f+saída)) * tabela[estado]` com piso `0.01f32`, `prod` guardado como `f32`.
+
 Ou seja, a produção anual é `prod * m` lotes e todos os lotes devidos são criados a cada chamada (a cada semana, 48 vezes por ano de 336 dias). Em modelo avançado ou expert um conversor só produz quando recebe insumo (7.4). `industry_spawn_lot` (`0x40a770`) cria o lote (`criado = agora`) na pilha, a menos que o slot já tenha 50 lotes esperando (fora do sandbox), e recalcula as estações ligadas (`0x4bebf0`, `+0x4b5 += 1`).
 
 ### 7.4 Entrada de carga e conversão (`0x40b250`) **[S]**

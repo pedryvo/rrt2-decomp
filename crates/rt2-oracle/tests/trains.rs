@@ -7,10 +7,16 @@ use rt2_oracle::Oracle;
 use rt2_sim::data::GameData;
 use rt2_sim::effects::global_modifier;
 use rt2_sim::exe::Exe;
+use rt2_sim::rng::GameRng;
+use rt2_sim::track::tile_distance;
 use rt2_sim::trains::{
-    AccelInput, BreakdownInput, Engine, SpeedMods, TargetInput, VehicleGrade, accel_step,
-    breakdown_chance, engine_max_speed, target_speed, track_segment_grade, train_grade,
+    AccelInput, BreakdownInput, CheckInput, CheckOutcome, Engine, MonthlyInput, SpeedMods,
+    TargetInput, TheftInput, VehicleGrade, accel_step, breakdown_chance, breakdown_check,
+    engine_max_speed, monthly_costs, purchase_price, target_speed, town_excess,
+    track_segment_grade, train_grade,
 };
+use std::cell::Cell;
+use std::rc::Rc;
 use unicorn_engine::RegisterX86;
 
 fn oracle() -> Option<Oracle> {
@@ -678,4 +684,293 @@ fn breakdown_chance_matches_original() {
             t.engine
         );
     }
+}
+
+// ---- monthly costs (0x4d4390) ------------------------------------------------------------------
+
+const MONTHLY_FN: u32 = 0x004d_4390; // thiscall(ECX = train)
+const COMPANIES: u32 = 0x0057_4c6c;
+const PERSONS: u32 = 0x0057_4c68;
+const PRICE_LEVEL: u32 = 0x0056_7d6d; // u8[engine kind]: index into the fuel/maintenance levels
+const FUEL_LEVELS: u32 = 0x0055_2ae8;
+const MAINT_LEVELS: u32 = 0x0055_2af4;
+const COMPANY_STRIDE: u32 = 0x5000;
+
+/// A list object as seen by `0x4f18b0`: record `id` at `base + id * stride`.
+fn make_list(o: &mut Oracle, global: u32, stride: u32, n: u32) -> u32 {
+    let base = o.alloc(stride * (n + 1)).unwrap();
+    let hdr = o.alloc(0x40).unwrap();
+    o.write_u32(hdr + 8, stride).unwrap();
+    o.write_u32(hdr + 0x28, base).unwrap();
+    o.write_u32(global, hdr).unwrap();
+    base
+}
+
+/// Cargo field of a vehicle type (`+0x30`); `0x7f` = carries nothing.
+fn vehicle_cargo(o: &Oracle, t: u32) -> u8 {
+    rd_u8(o, VEHICLES + t * 0x39 + 0x30)
+}
+
+#[test]
+fn train_monthly_costs_match_original() {
+    let Some(mut o) = oracle() else { return };
+    let links = link_engines(&mut o);
+    let cars = car_types(&o);
+    let m = setup_world(&mut o);
+    let companies = make_list(&mut o, COMPANIES, COMPANY_STRIDE, 2);
+    let persons = make_list(&mut o, PERSONS, 0x200, 2);
+    let mut xs = Xs(0x510e_527f);
+    let mut w = random_world(&mut o, &m, &mut xs);
+    let (mut humans, mut ai) = (0, 0);
+    for case in 0..10_000 {
+        if case % 250 == 0 {
+            w = random_world(&mut o, &m, &mut xs);
+            randomize_modifiers(&mut o, &mut xs);
+            for k in 0..8u32 {
+                o.write_mem(PRICE_LEVEL + k, &[xs.below(3) as u8]).unwrap();
+            }
+        }
+        let t = random_train(&o, &links, &cars, &w, &mut xs);
+        write_train(&mut o, &m, &t);
+        let human = xs.below(2) == 0;
+        // company 1, person 1 (human when its +0x122 is set)
+        let crec = companies + COMPANY_STRIDE;
+        o.write_mem(crec, &vec![0u8; COMPANY_STRIDE as usize])
+            .unwrap();
+        o.write_u32(crec + 0x23, 1).unwrap();
+        o.write_u32(persons + 0x200 + 0x122, u32::from(human))
+            .unwrap();
+        o.write_u32(m.train + 0x41, 1).unwrap();
+        let (ton_cells, cells) = (xs.range(0, 400_000), xs.range(0, 3_000));
+        o.write_u32(m.train + 0xa2, ton_cells as u32).unwrap();
+        o.write_u32(m.train + 0xe1, cells as u32).unwrap();
+        fpu_reset(&mut o);
+        o.call_thiscall(MONTHLY_FN, m.train, &[]).unwrap();
+        let got = [1u32, 2, 3].map(|c| rd_i32(&o, m.train + 0xfd + 4 * c));
+        let eng = engine(&o, t.engine);
+        let level = u32::from(rd_u8(&o, PRICE_LEVEL + u32::from(eng.kind)));
+        let want = monthly_costs(
+            &eng,
+            &MonthlyInput {
+                age: i32::from(w.year) - i32::from(t.bought),
+                ton_cells,
+                cells,
+                oil: if human { t.oil } else { 100.0 },
+                cargo_vehicles: t
+                    .vehs
+                    .iter()
+                    .filter(|v| vehicle_cargo(&o, v.typ) != 0x7f)
+                    .count() as i32,
+                fuel_level: rd_f32(&o, FUEL_LEVELS + 4 * level),
+                maint_level: rd_f32(&o, MAINT_LEVELS + 4 * level),
+                fuel_kind: modifier(&o, 0x12 + u32::from(eng.kind)),
+                fuel_all: modifier(&o, 0x11),
+                maint_kind: modifier(&o, 0x1b + u32::from(eng.kind)),
+                maint_all: modifier(&o, 0x15),
+                car_cost: modifier(&o, 0x19),
+            },
+        );
+        assert_eq!(
+            got,
+            [want.maintenance, want.cars, want.fuel],
+            "case {case}: engine {} human {human}",
+            t.engine
+        );
+        assert_eq!(rd_i32(&o, m.train + 0xa2), 0);
+        assert_eq!(rd_i32(&o, m.train + 0xe1), 0);
+        if human {
+            humans += 1;
+        } else {
+            ai += 1;
+        }
+    }
+    eprintln!("monthly costs: {humans} human, {ai} AI cases identical");
+}
+
+// ---- purchase price (0x4cdf80, fragment 0x4ce30c..0x4ce359) ------------------------------------
+
+/// `train_create` allocates vehicles and formats names, which the emulator cannot do; the price
+/// is computed by one contiguous fragment, run here on its own with the registers it expects
+/// (`ESI` = train, `EDI` = engine index * 0x3a, `EBX` = 0): `train.+8 = ftol(mod(0x1a) *
+/// mod(0x1b + kind) * price)`.
+#[test]
+fn train_purchase_price_matches_original() {
+    let Some(mut o) = oracle() else { return };
+    link_engines(&mut o);
+    let train = o.alloc(0x200).unwrap();
+    let mut xs = Xs(0x9b05_688c);
+    for case in 0..10_000 {
+        if case % 100 == 0 {
+            randomize_modifiers(&mut o, &mut xs);
+        }
+        let e = xs.below(ENGINE_COUNT);
+        o.write_mem(train, &[0u8; 0x200]).unwrap();
+        o.write_u32(train + 8, 0xdead_beef).unwrap();
+        fpu_reset(&mut o);
+        let uc = o.uc();
+        for (r, v) in [
+            (RegisterX86::ESI, u64::from(train)),
+            (RegisterX86::EDI, u64::from(e * 0x3a)),
+            (RegisterX86::EBX, 0),
+            (RegisterX86::ESP, 0x700f_fc00),
+        ] {
+            uc.reg_write(r, v).unwrap();
+        }
+        uc.emu_start(0x004c_e30c, 0x004c_e359, 0, 100_000).unwrap();
+        let got = rd_i32(&o, train + 8);
+        let eng = engine(&o, e);
+        let want = purchase_price(
+            modifier(&o, 0x1a),
+            modifier(&o, 0x1b + u32::from(eng.kind)),
+            &eng,
+        );
+        assert_eq!(got, want, "case {case}: engine {e}");
+    }
+}
+
+// ---- breakdown / crash / theft dice (0x4cf390) -------------------------------------------------
+
+const CHECK_FN: u32 = 0x004c_f390; // thiscall(ECX = train)
+const RNG_STATE: u32 = 0x0055_d2c0;
+const TOWNS: u32 = 0x0057_4c5c;
+const NO_CHECK: u32 = 0x0057_48fc;
+const NO_ACCIDENTS: u32 = 0x0057_0229;
+const THEFT_PCT: u32 = 0x0057_3e02;
+const THIEVES: u32 = 0x0057_3db7; // 4 records of 0x18 bytes: flags, u16 year, ...
+const STOPS: [(u32, u32); 4] = [
+    (0x004c_e730, 1), // train_crash
+    (0x004c_e4c0, 2), // train_breakdown
+    (0x004c_eaa0, 3), // theft
+    (0x0047_6910, 4), // string lookup of the arrest message
+];
+
+#[test]
+fn breakdown_check_dice_match_original() {
+    let Some(mut o) = oracle() else { return };
+    let links = link_engines(&mut o);
+    let cars = car_types(&o);
+    let m = setup_world(&mut o);
+    let companies = make_list(&mut o, COMPANIES, COMPANY_STRIDE, 2);
+    let persons = make_list(&mut o, PERSONS, 0x200, 2);
+    let towns = make_list(&mut o, TOWNS, 0x30, 4);
+    let thit = Rc::new(Cell::new(0u32));
+    for (addr, code) in STOPS {
+        let hit = Rc::clone(&thit);
+        o.uc()
+            .add_code_hook(u64::from(addr), u64::from(addr), move |uc, _, _| {
+                hit.set(code);
+                let _ = uc.emu_stop();
+            })
+            .unwrap();
+    }
+    // town list header: capacity 4, bitmap with slot 0 taken
+    let hdr = o.read_u32(TOWNS).unwrap();
+    let bitmap = o.alloc(16).unwrap();
+    o.write_mem(bitmap, &[1u8]).unwrap();
+    o.write_u32(hdr + 0x10, 4).unwrap();
+    o.write_u32(hdr + 0x34, bitmap).unwrap();
+    o.write_u32(NO_CHECK, 0).unwrap();
+    let mut xs = Xs(0x1f83_d9ab);
+    let mut w = random_world(&mut o, &m, &mut xs);
+    let mut counts = [0u32; 6];
+    for case in 0..30_000 {
+        if case % 250 == 0 {
+            w = random_world(&mut o, &m, &mut xs);
+            randomize_modifiers(&mut o, &mut xs);
+        }
+        let t = random_train(&o, &links, &cars, &w, &mut xs);
+        write_train(&mut o, &m, &t);
+        let tiles = xs.range(10, 80);
+        o.write_mem(m.train + 0xa0, &(tiles as i16).to_le_bytes())
+            .unwrap();
+        let human = xs.below(2) == 0;
+        let crec = companies + COMPANY_STRIDE;
+        o.write_mem(crec, &vec![0u8; COMPANY_STRIDE as usize])
+            .unwrap();
+        o.write_u32(crec + 0x23, 1).unwrap();
+        o.write_u32(persons + 0x200 + 0x122, u32::from(human))
+            .unwrap();
+        o.write_u32(m.train + 0x41, 1).unwrap();
+        // heavy cargo for the passenger/mail test is random per vehicle already (v.load)
+        let no_acc = xs.below(6) == 0;
+        o.write_mem(NO_ACCIDENTS, &[u8::from(no_acc)]).unwrap();
+        let pct = xs.range(0, 400) as i16;
+        o.write_mem(THEFT_PCT, &pct.to_le_bytes()).unwrap();
+        // a town for the proximity branch, or none
+        let town = xs.below(3) != 0;
+        let (tx, ty, level) = (xs.range(0, 60), xs.range(0, 60), xs.below(4) as u8);
+        o.write_u32(hdr + 0x14, u32::from(town)).unwrap();
+        let trec = towns + 0x30;
+        o.write_mem(trec, &[0u8; 0x30]).unwrap();
+        o.write_mem(trec, &1u16.to_le_bytes()).unwrap();
+        o.write_mem(trec + 4, &(tx as i16).to_le_bytes()).unwrap();
+        o.write_mem(trec + 6, &(ty as i16).to_le_bytes()).unwrap();
+        o.write_mem(trec + 0x2c, &[level]).unwrap();
+        // thief table: flags (bit 1 usable, bit 0 used) and the year from which it applies
+        let mut eligible = 0;
+        for k in 0..4u32 {
+            let flags = xs.below(4) as u8;
+            let from = xs.range(1800, 2020) as i16;
+            o.write_mem(THIEVES + 0x18 * k, &[flags]).unwrap();
+            o.write_mem(THIEVES + 0x18 * k + 1, &from.to_le_bytes())
+                .unwrap();
+            if flags & 2 != 0 && flags & 1 == 0 && i32::from(from) <= i32::from(w.year) {
+                eligible += 1;
+            }
+        }
+        let seed = xs.next();
+        o.write_u32(RNG_STATE, seed).unwrap();
+        thit.set(0);
+        fpu_reset(&mut o);
+        let r = o.call_thiscall(CHECK_FN, m.train, &[]);
+        let outcome = match thit.get() {
+            0 => {
+                r.unwrap();
+                0
+            }
+            c => c,
+        };
+        // implementation under test
+        let (vx, vy) = (t.vehs[0].x, t.vehs[0].y);
+        let carries_people = t
+            .vehs
+            .iter()
+            .any(|v| v.load != 0 && vehicle_cargo(&o, v.typ) <= 1);
+        let input = CheckInput {
+            tiles,
+            chance: breakdown_ref(&o, &w, &t, tiles, true) as f32,
+            human,
+            no_accidents: no_acc,
+            year: w.year,
+            theft: TheftInput {
+                pct,
+                nearby_excess: town.then(|| town_excess(tile_distance(vx, vy, tx, ty), level)),
+                theft_mod: modifier(&o, 0x21) as f32,
+                caboose: t.flags_bb & 2 != 0,
+                carries_people,
+                eligible_thieves: eligible,
+            },
+        };
+        let mut rng = GameRng::new(seed);
+        let want = breakdown_check(&mut rng, &input);
+        let want_code = match want {
+            CheckOutcome::Idle => 0,
+            CheckOutcome::Crash => 1,
+            CheckOutcome::Breakdown => 2,
+            CheckOutcome::Theft => 3,
+            CheckOutcome::Arrested { .. } => 4,
+        };
+        assert_eq!(
+            outcome, want_code,
+            "case {case}: engine {} tiles {tiles} human {human} want {want:?}",
+            t.engine
+        );
+        assert_eq!(
+            rd_i32(&o, RNG_STATE) as u32,
+            rng.state(),
+            "case {case}: RNG state after {want:?}"
+        );
+        counts[want_code as usize] += 1;
+    }
+    eprintln!("dice outcomes [idle, crash, breakdown, theft, arrested]: {counts:?}");
 }

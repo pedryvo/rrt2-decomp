@@ -5,7 +5,7 @@
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
 # Classificadas (categoria != unknown): 960 (32.6%)
 # Por categoria: lib=258, platform=116, render=11, audio=70, ui=247, sim=258, unknown=1985
-# Por estado:   unknown=2759, named=64, spec=93, verified=29
+# Por estado:   unknown=2754, named=69, spec=93, verified=29
 # Entradas manuais: 240
 # sim spec coverage: 39.5% (102 de 258 funcoes sim em spec/verified)
 
@@ -9312,9 +9312,10 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x42fa30"
+name = "nearest_town_id"
 size = 217
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -19361,23 +19362,26 @@ why = "crt-region>=0x51b000"
 
 [[function]]
 addr = "0x51bab0"
+name = "crt_ci_pow"
 size = 25
 category = "lib"
-status = "unknown"
+status = "named"
 why = "crt-region>=0x51b000"
 
 [[function]]
 addr = "0x51bad2"
+name = "crt_pow"
 size = 467
 category = "lib"
-status = "unknown"
+status = "named"
 why = "crt-region>=0x51b000"
 
 [[function]]
 addr = "0x51bca5"
+name = "crt_pow_int_parity"
 size = 40
 category = "lib"
-status = "unknown"
+status = "named"
 why = "crt-region>=0x51b000"
 
 [[function]]
@@ -19875,9 +19879,10 @@ why = "fid:__startOneArgErrorHandling"
 
 [[function]]
 addr = "0x51f120"
+name = "crt_exp2_tail"
 size = 21
 category = "lib"
-status = "unknown"
+status = "named"
 why = "crt-region>=0x51b000"
 
 [[function]]

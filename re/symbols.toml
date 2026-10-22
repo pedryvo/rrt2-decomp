@@ -2394,3 +2394,38 @@ name = "price_age_weights"
 kind = "table"
 comment = "i32[5][4] per-age multipliers of the weights"
 spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x51bab0"
+name = "crt_ci_pow"
+kind = "function"
+comment = "MSVC _CIpow (CRT estatica): ST1 = x, ST0 = y -> ST0 = x^y; guarda x,y na pilha e chama crt_pow; x>0: fyl2x, frndint, f2xm1, fscale (0x51f120); CW 0x27f"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x51bad2"
+name = "crt_pow"
+kind = "function"
+comment = "corpo do pow do CRT: checa NaN/inf/zero/negativo (0x51bca5 detecta expoente inteiro/impar) e, no caso comum, fyl2x + 0x51f120"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x51f120"
+name = "crt_exp2_tail"
+kind = "function"
+comment = "ST0 = L: devolve 2^L = fscale(1 + f2xm1(L - round(L)), round(L)); subtracao e soma a 53 bits"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x51bca5"
+name = "crt_pow_int_parity"
+kind = "function"
+comment = "ST0 = y: CL = 0 se nao inteiro, 1 se inteiro, 2 se inteiro impar (usado para base negativa)"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x42fa30"
+name = "nearest_town_id"
+kind = "function"
+comment = "fastcall(ECX = x, EDX = y): id do registro mais proximo em 0x574c5c (kind 0, ou kind 2 em terra com 0x5704ac != 0) pela distancia inteira ftol(sqrt), -1 se vazio; [V]"
+spec = "docs/spec/trains.md"

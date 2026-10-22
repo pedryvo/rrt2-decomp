@@ -4,7 +4,7 @@
 //! The numeric tables come from the original executable at run time ([`crate::data`]).
 
 use crate::calendar::MINUTES_PER_YEAR;
-use crate::fp::ftol;
+use crate::fp::{f32r, ftol};
 use crate::rng::hash_range;
 
 // ---- cargo table (cargo.md section 3) ----------------------------------------------------------
@@ -492,11 +492,21 @@ impl IndustryType {
     }
 }
 
-/// Minutes between two lots of a slot (cargo.md 7.3, `0x40aa20`) [S, no differential test]:
-/// `ftol(483840 / prod / m)` with the era speed-ups. `prod` is [`IndustryType::production_rate`],
-/// `m` the event/economy multiplier (>= 0.01), `overtime` the "Overtime" cheat.
+/// Event/economy multiplier of a slot (cargo.md 7.3, `0x40aa20`) [V]:
+/// `(effect(0x5e) * effect(0x5f + output)) * production_econ[state]`, floor 0.01 (the floor is
+/// the `f32` constant, as in the original). Both effects are `f32`; the products stay in the
+/// 53-bit x87 registers.
+pub fn production_multiplier(effect_all: f32, effect_output: f32, econ_factor: f32) -> f64 {
+    let m = f64::from(effect_all) * f64::from(effect_output) * f64::from(econ_factor);
+    if m < 0.01 { f64::from(0.01f32) } else { m }
+}
+
+/// Minutes between two lots of a slot (cargo.md 7.3, `0x40aa20`) [V]:
+/// `ftol(483840 / prod / m)` with the era speed-ups. `prod` is [`IndustryType::production_rate`]
+/// (stored as `f32` by the original), `m` is [`production_multiplier`], `overtime` the
+/// "Overtime" cheat.
 pub fn production_period(prod: f64, m: f64, year: i32, overtime: bool) -> i32 {
-    let mut period = ftol(f64::from(MINUTES_PER_YEAR) / prod / m);
+    let mut period = ftol(f64::from(MINUTES_PER_YEAR) / f32r(prod) / m);
     if year >= 1970 {
         period = ftol(f64::from(period) * 0.73);
     } else if year >= 1950 {

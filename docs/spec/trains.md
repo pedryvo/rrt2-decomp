@@ -171,7 +171,7 @@ Ao entrar num tile novo (`train_enter_tile` `0x4d5370`): `+0xa0 += 1`, `+0xe1 +=
 
 ## 5. Quebras e acidentes
 
-### 5.1 Verificação (`train_breakdown_check` `0x4cf390`) [S]
+### 5.1 Verificação (`train_breakdown_check` `0x4cf390`) [V: dados e RNG]
 Roda depois do avanço quando `+0xa0 >= 10` células e o trem não está parado por quebra/acidente; `0x5748fc != 0` desliga.
 ```
 humano = 0x43c030(empresa)                            ; jogador da empresa com +0x122 != 0
@@ -222,10 +222,10 @@ O parâmetro `/nowreck` (`game_init_paths` `0x465050`) ou a trapaça `nowreck` (
 
 ## 6. Custos
 
-### 6.1 Compra (`train_create` `0x4cdf80`) [S]
+### 6.1 Compra (`train_create` `0x4cdf80`) [V: preço]
 `preço = ftol(mod(0x1a) * mod(0x1b+t) * motor.preço)`, gravado em `+8` e lançado no razão 4 da empresa (`0x4398d0`). `empresa+0x27 += 1`.
 
-### 6.2 Mensal (`train_monthly_costs` `0x4d4390`, chamado por `sim_month_end`) [S]
+### 6.2 Mensal (`train_monthly_costs` `0x4d4390`, chamado por `sim_month_end`) [V]
 ```
 idade = ano - +0xbd
 se a empresa não é humana: areia = óleo = água = 100, acelerador = 85
@@ -247,8 +247,8 @@ A manutenção cresce com `(1 + 0.04*idade)^2` (x1,96 aos 10 anos, x3,24 aos 20)
 - Combustível anual = `motor.+0x24 * nível_comb * mod(0x11) * mod(0x12+t) * (v * 0.7 + 40) * 0.5`, com `v = engine_fuel_speed(motor, empresa, acelerador)` (`0x4d6030`) `= ftol((engine_max_speed(motor, +0x2e + 120, 0.0002, 0, 0, empresa, 0) >> 16) * acel/85 * 1.8)`.
 - Com modificadores neutros esses números **são** as colunas Cost, Maint. e Fuel da tabela A-1 do guia (anexo A, última coluna).
 
-### 6.4 Roubo de trem (`0x4cf390`, segundo ramo) [S]
-`c = células * 0.0005 * pct(0x573e02) * 0.01`; sai se `c <= 1e-5`. Se há uma cidade/estação próxima (`0x4021e4`), `k = dist(0x4f0cd0) - 2*nível - 3`; se `k < 1` não há roubo, senão `c *= 1 + 0.1k`. `c /= (mod(0x21) + 1) * 0.5`; caboose: `c *= 0.4`. Se `c > rng_range(0, 1000000) * 1e-6` e o trem leva passageiros ou correio (carga 0 ou 1), há roubo (`0x4ceaa0`) ou, com `rng_range(0,100) < (mod(0x21)+1) * 0.1 * 100` (x1.3 com caboose), os ladrões são presos (mensagens 0x8b2/0x8b3).
+### 6.4 Roubo de trem (`0x4cf390`, segundo ramo) [V: sorteios e RNG]
+`c = f32((células * 0.0005) * (pct(0x573e02) * 0.01))` (células já pela metade para a IA); sai se `c <= 1e-5`. Se há uma cidade/estação próxima (`0x4021e4`), `k = dist(0x4f0cd0) - 2*nível - 3`; se `k < 1` não há roubo, senão `c *= 1 + 0.1k`. `c /= (mod(0x21) + 1) * 0.5`; caboose: `c *= 0.4`. Se `c > rng_range(0, 1000000) * 1e-6` e o trem leva passageiros ou correio (carga 0 ou 1), há roubo (`0x4ceaa0`) ou, com `rng_range(0,100) < (mod(0x21)+1) * 0.1 * 100` (x1.3 com caboose), os ladrões são presos (mensagens 0x8b2/0x8b3).
 
 ## 7. Envelhecimento
 Não há obsolescência forçada: a idade (`ano - +0xbd`) só entra nas fórmulas: velocidade -0,5% por ano e peso efetivo +0,5% por ano até 50 anos (4.2); chance de quebra `(idade + 30)/30`, com 0 no primeiro ano e x0.6 no segundo (5.2); manutenção `(1 + 0.04 idade)^2` e combustível `(1 + 0.01 idade)^2` (6.2).
@@ -259,10 +259,17 @@ Não há obsolescência forçada: a idade (`ano - +0xbd`) só entra nas fórmula
 | Teste | Função | Casos | Resultado |
 |---|---|---|---|
 | `track_grade_matches_original` | `0x4284e0` | 20 000 | ST0 idêntico bit a bit |
-| `engine_speed_curve_matches_original` | `0x4cfea0` | 30 000 | idêntico (inclui `pow` do CRT vs. `f64::powf`) |
+| `engine_speed_curve_matches_original` | `0x4cfea0` | 30 000 | idêntico (`pow` determinístico de `rt2_sim::fp::pow`, ver abaixo) |
 | `engine_speed_reproduces_guide_table` | `0x4cfea0` | 4 motores x 5 colunas | igual à tabela A-1 |
 | `train_accel_step_matches_original` | `0x4d0400` (+ `0x4d00c0`) | 10 000 | velocidade e `+0x6d` idênticos |
 | `breakdown_chance_matches_original` | `0x4cf030` | 10 000 | ST0 idêntico bit a bit |
+| `breakdown_check_dice_match_original` | `0x4cf390` | 30 000 | desfecho (nada/quebra/acidente/roubo/preso) e estado do RNG idênticos; as consequências (`0x4ce4c0`, `0x4ce730`, `0x4ceaa0`) são paradas por hook; com e sem cidade próxima (`0x4021e4`), humano e IA |
+| `train_monthly_costs_match_original` | `0x4d4390` | 10 000 | os três lançamentos (+0xfd + 4 cat) idênticos, humano e IA |
+| `train_purchase_price_matches_original` | `0x4cdf80` (fragmento `0x4ce30c..0x4ce359`) | 10 000 | `+8` idêntico |
+
+**`pow` (`_CIpow` `0x51bab0`, CRT estática)**: para `x > 0` finito faz `L = fyl2x(x, y)`, `r = frndint(L)`, `f = L - r` (sub a 53 bits), `s = 1 + f2xm1(f)` (add a 53 bits), `fscale(s, r)` (`0x51f120`); os desvios (NaN, inf, zero, base negativa) não são usados pelo jogo. `rt2_sim::fp::pow` reproduz essa sequência em inteiros de 128/256 bits (log2 por quadraturas sucessivas, exp2 por Taylor, arredondamentos de 64 e 53 bits explícitos), sem libm. `crates/rt2-oracle/tests/pow.rs`: contra o x87 real do host (mesma sequência de instruções, CW 0x27f), 400 000 entradas do domínio do jogo (`0.98^(eff/p)` e `(20g+1)^2.3`): 10 diferem no último bit (1 ulp, empate de arredondamento do `f2xm1`/`fyl2x` do hardware) e 0 diferem após o `ftol` da fórmula de velocidade; contra o `_CIpow` no Unicorn (que calcula `fyl2x`/`f2xm1` com `double` do host, até 398 ulp de erro) 0 de 100 000 diferem após o `ftol`.
+
+Detalhes de ordem das operações achados pelo oráculo: o combustível mensal é `(mod(0x11)*mod(0x12+t)) * ((fa*fa) * -unid) * nível * (combustível*0.005) * 0.35`; a constante de manutenção `-1/12` é um `f32` (`0x537810`). No roubo, `0x573e02` vira `/3` após uma prisão; a escolha do nome do ladrão sorteia `rng_range(0, n-1)` com `n` = entradas de `0x573db7` (stride 0x18) com `flags&2 && !(flags&1) && ano_do_campo <= ano atual`.
 
 Os testes usam a palavra de controle 0x27f (53 bits); com 24 bits podem surgir diferenças de arredondamento como em `time.md`, seção 3.
 

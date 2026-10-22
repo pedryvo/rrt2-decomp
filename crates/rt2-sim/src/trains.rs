@@ -414,7 +414,7 @@ pub fn breakdown_chance(eng: &Engine, b: &BreakdownInput) -> f64 {
 /// Result of a breakdown check roll.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BreakdownOutcome {
-    /// Nothing happened (the original then rolls for theft, see TODO on [`breakdown_roll`]).
+    /// Nothing happened (the original then rolls for theft, see [`theft_roll`]).
     None,
     /// `train_breakdown` (`0x4ce4c0`): stopped for `rng_range(60, 120)` days.
     Breakdown,
@@ -422,14 +422,12 @@ pub enum BreakdownOutcome {
     Crash,
 }
 
-/// The dice of `train_breakdown_check` (`0x4cf390`, trains.md 5.1) [S, no differential test].
+/// The breakdown dice of `train_breakdown_check` (`0x4cf390`, trains.md 5.1) [V as part of
+/// [`breakdown_check`]].
 ///
 /// `p` is `f32(breakdown_chance(...))`, already halved for a non-human company by the caller
 /// (`p *= 0.5`, and 0 under flag `0x570229`). Draws from the game RNG in the original order:
 /// `rng_range(0, 1000000)`, then `rng_range(0, 100)` only on a hit.
-///
-/// TODO(trains.md 6.4, "Em aberto"): the theft roll of the `None` branch needs town/station
-/// proximity data and is not implemented, so the RNG sequence differs from the original there.
 pub fn breakdown_roll(
     rng: &mut GameRng,
     p: f32,
@@ -452,6 +450,132 @@ pub fn breakdown_roll(
         }
     } else {
         BreakdownOutcome::None
+    }
+}
+
+/// World inputs of the theft roll (trains.md 6.4).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct TheftInput {
+    /// `0x573e02`: theft percentage (divided by 3 after an arrest).
+    pub pct: i16,
+    /// Result of the nearest-town search (`0x4021e4`): `Some(ftol(dist) - 2 * level - 3)` when a
+    /// town was found, `None` otherwise (use [`town_excess`]).
+    pub nearby_excess: Option<i32>,
+    /// `effect_multiplier(0x21, ...)`.
+    pub theft_mod: f32,
+    /// The train has a caboose (`+0xbb & 2`).
+    pub caboose: bool,
+    /// Some loaded vehicle carries passengers or mail (cargo 0 or 1).
+    pub carries_people: bool,
+    /// Entries of the thief-name table (`0x573db7`, 0x18 bytes each) that are eligible: flags
+    /// `& 2 != 0`, `& 1 == 0`, year field <= current date. The pick draws `rng_range(0, n - 1)`.
+    pub eligible_thieves: i32,
+}
+
+/// `ftol(dist) - 2 * level - 3` of `0x4cf390`: distance from the train to the nearest town minus
+/// the town's size allowance.
+pub fn town_excess(dist: i32, level: u8) -> i32 {
+    dist - 2 * i32::from(level) - 3
+}
+
+/// Result of the theft roll.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TheftOutcome {
+    /// No theft (an early exit or a failed roll).
+    None,
+    /// The cargo is stolen (`0x4ceaa0`).
+    Theft,
+    /// The thieves are arrested: `0x573e02` becomes `new_pct`.
+    Arrested { new_pct: i16 },
+}
+
+/// The theft branch of `train_breakdown_check` (`0x4cf390`, trains.md 6.4) [V as part of
+/// [`breakdown_check`]]; `cells` is the (halved for AI) cell count as `f32`. Draws from the game
+/// RNG exactly where the original does.
+pub fn theft_roll(rng: &mut GameRng, cells: f32, t: &TheftInput) -> TheftOutcome {
+    let mut c = f32r(f64::from(cells) * 0.0005 * (f64::from(t.pct) * 0.01));
+    if c <= 1e-5 {
+        return TheftOutcome::None;
+    }
+    if let Some(k) = t.nearby_excess {
+        if k < 1 {
+            return TheftOutcome::None;
+        }
+        c = f32r((f64::from(k) * 0.1 + 1.0) * c);
+    }
+    let mut m = f64::from(t.theft_mod);
+    if m < 0.01 {
+        m = f64::from(0.01f32);
+    }
+    let s = m + 1.0;
+    c = f32r(c / (s * f64::from(0.5f32)));
+    let mut a = f32r(s * f64::from(0.1f32));
+    if t.caboose {
+        a = f32r(a * 1.3);
+        c = f32r(c * 0.4);
+    }
+    if c <= f64::from(rng.range(0, 1_000_000)) * 1e-6 {
+        return TheftOutcome::None;
+    }
+    if !t.carries_people {
+        return TheftOutcome::None;
+    }
+    if a * f64::from(100.0f32) <= f64::from(rng.range(0, 100)) {
+        return TheftOutcome::Theft;
+    }
+    if t.eligible_thieves > 0 {
+        // picks which thief is named in the message
+        rng.range(0, t.eligible_thieves - 1);
+    }
+    TheftOutcome::Arrested { new_pct: t.pct / 3 }
+}
+
+/// Inputs of [`breakdown_check`].
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct CheckInput {
+    /// Cells since the last check (`+0xa0`, at least 10 when the check runs).
+    pub tiles: i32,
+    /// `f32(train_breakdown_chance(train, tiles, 1))`, before the AI halving.
+    pub chance: f32,
+    /// The company is a human player's.
+    pub human: bool,
+    /// Flag `0x570229`: no accidents (and no breakdowns for the AI).
+    pub no_accidents: bool,
+    pub year: u16,
+    pub theft: TheftInput,
+}
+
+/// Result of [`breakdown_check`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CheckOutcome {
+    Idle,
+    Breakdown,
+    Crash,
+    Theft,
+    Arrested { new_pct: i16 },
+}
+
+/// `train_breakdown_check` (`0x4cf390`, trains.md 5.1, 6.4) [V]: halving for the AI, the breakdown
+/// and crash dice, then the theft roll, with the RNG draws in the original order. The caller
+/// resets `+0xa0` and applies the consequences.
+pub fn breakdown_check(rng: &mut GameRng, i: &CheckInput) -> CheckOutcome {
+    let mut p = i.chance;
+    let mut cells = i.tiles as f32;
+    if !i.human {
+        p = (f64::from(p) * 0.5) as f32;
+        cells = (f64::from(cells) * 0.5) as f32;
+    }
+    if i.no_accidents && !i.human {
+        p = 0.0;
+    }
+    match breakdown_roll(rng, p, i.year, !i.no_accidents) {
+        BreakdownOutcome::Breakdown => CheckOutcome::Breakdown,
+        BreakdownOutcome::Crash => CheckOutcome::Crash,
+        BreakdownOutcome::None => match theft_roll(rng, cells, &i.theft) {
+            TheftOutcome::None => CheckOutcome::Idle,
+            TheftOutcome::Theft => CheckOutcome::Theft,
+            TheftOutcome::Arrested { new_pct } => CheckOutcome::Arrested { new_pct },
+        },
     }
 }
 
@@ -494,20 +618,20 @@ pub struct MonthlyCosts {
     pub cars: i32,
 }
 
-/// `train_monthly_costs` (`0x4d4390`, trains.md 6.2) [S, no differential test]. The caller
+/// `train_monthly_costs` (`0x4d4390`, trains.md 6.2) [V]. The caller
 /// resets `+0xa2` and `+0xe1` afterwards.
 pub fn monthly_costs(eng: &Engine, m: &MonthlyInput) -> MonthlyCosts {
     let unit = m.ton_cells.wrapping_add(m.cells.wrapping_mul(200));
     let fa = f32r(f64::from(m.age + 100) * 0.01);
+    // Operation order of the x87 code at 0x4d4390: (kind * all) * ((fa * fa) * -unit), then the
+    // level, then (fuel * 0.005), then 0.35.
+    let weight = fa * fa * f64::from(unit.wrapping_neg());
     let fuel = ftol(
         m.fuel_kind
             * m.fuel_all
-            * fa
-            * fa
-            * f64::from(-unit)
+            * weight
             * f64::from(m.fuel_level)
-            * f64::from(eng.fuel)
-            * 0.005
+            * (f64::from(eng.fuel) * 0.005)
             * 0.35,
     );
     let age_f = f32r((f64::from(m.age * 4 + 100) * 0.01) * (f64::from(m.age * 4 + 100) * 0.01));
@@ -519,7 +643,7 @@ pub fn monthly_costs(eng: &Engine, m: &MonthlyInput) -> MonthlyCosts {
             * f64::from(eng.maintenance)
             * oil_mult
             * age_f
-            * (-1.0 / 12.0),
+            * f64::from((-1.0f64 / 12.0) as f32), // the constant at 0x537810 is an f32
     );
     let cars = ftol(m.car_cost * f64::from(-200 * m.cargo_vehicles));
     MonthlyCosts {

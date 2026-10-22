@@ -61,3 +61,8 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Improved: novo teste diferencial `tests/finance.rs` cobre taxa prime, preco de negociacao, preco fundamental, rating de credito e taxa de bond contra o original
 - Feature: rt2-savediff compares two saves (0x233C or 0x2348) field by field with a versioned mask of volatile bytes; Save::fields() walks every byte of a save
 - RE: volatile bytes of a save written by the original located (rule and train heap pointers, one person field, preview, checksum); fields that change per day/month documented in docs/dynamic-analysis.md
+- Change: rt2-sim pow is now a deterministic integer implementation of the CRT _CIpow x87 sequence (no libm); matches the host x87 within 1 ulp and exactly after ftol
+- Feature: rt2-sim track module (direction/edge-mask types, valid shapes, track tile cost, station catchment) with tables read from the EXE at run time
+- Feature: rt2-sim breakdown_check reproduces the whole 0x4cf390 dice including the theft roll and the RNG sequence
+- Improved: differential tests for monthly train costs, purchase price, production period and the breakdown/theft dice
+- RE: names for the CRT pow routines (crt_ci_pow 0x51bab0, crt_pow 0x51bad2, crt_exp2_tail 0x51f120) and the theft-roll details of 0x4cf390

@@ -5,6 +5,13 @@
 //! word is pinned to 0x27f (53 bits).
 
 use rt2_oracle::Oracle;
+use rt2_sim::data::GameData;
+use rt2_sim::effects::{EffectLevels, effect_multiplier};
+use rt2_sim::exe::Exe;
+use rt2_sim::track::{
+    CatchmentBuilding, CostGlobals, CostStep, Dir, EdgeMask, TileInfo, TrackPiece, TrackTables,
+    station_catchment, track_tile_cost,
+};
 use unicorn_engine::RegisterX86;
 
 fn exe_path() -> String {
@@ -40,8 +47,9 @@ impl Xs {
     }
 }
 
-fn ftol(x: f64) -> i32 {
-    (x.trunc() as i64) as i32
+fn load_tables() -> GameData {
+    GameData::load(&Exe::from_bytes(std::fs::read(exe_path()).expect("read exe")).expect("pe"))
+        .expect("load tables")
 }
 
 fn fpu_reset(o: &mut Oracle) {
@@ -77,6 +85,39 @@ fn make_list(o: &mut Oracle, global: u32, stride: u32, n: u32) -> u32 {
     w32(o, hdr + 0x28, base);
     w32(o, global, hdr);
     base
+}
+
+/// The tables rt2-sim reads from the executable file equal the ones in the emulated `.data`.
+#[test]
+fn track_tables_match_emulated_memory() {
+    let Some(o) = oracle() else { return };
+    let t = load_tables().track;
+    for k in 0..12u32 {
+        assert_eq!(t.bridge_cost[k as usize], rd_i32(&o, BRIDGE_TABLE + 4 * k));
+    }
+    for c in 0..19u32 {
+        assert_eq!(
+            t.terrain_mult[c as usize],
+            exe_f32(&o, CLASS_TABLE + c * 0xc0)
+        );
+    }
+    for k in 0..5u32 {
+        assert_eq!(t.econ_track[k as usize], exe_f32(&o, ECON_TRACK + 4 * k));
+    }
+    for k in 0..3u32 {
+        assert_eq!(t.station_radius[k as usize], rd_i32(&o, RADIUS + 4 * k));
+    }
+    for ty in 0..64u32 {
+        for row in 0..10u32 {
+            for col in 0..10u32 {
+                let a = FOOTPRINT + ty * 0x154 - row * 20 - col * 2;
+                assert_eq!(
+                    t.footprints[ty as usize].0[(row * 10 + col) as usize],
+                    o.read_mem(a, 1).unwrap()[0]
+                );
+            }
+        }
+    }
 }
 
 // ---- 1. per-tile track cost (0x463520) ---------------------------------------------------------
@@ -125,9 +166,8 @@ struct CostIn {
     company: u32,
     base: i32, // 0x566a64
     elec: i32, // 0x566a60
-    econ: f32,
-    terrain_mult: f32,
-    bridge_tbl: [i32; 12],
+    econ_state: usize,
+    class: usize,
     bridge_pct: i16,
     d1: i32,
     d2: i32,
@@ -136,139 +176,44 @@ struct CostIn {
 }
 
 fn effect_factor(pct: i16) -> f32 {
-    let p = if pct < -0x62 { -99 } else { i32::from(pct) };
-    let v = (f64::from(p) * 0.01 + 1.0) as f32;
-    if f64::from(v) < 0.01 { 0.01 } else { v }
+    effect_multiplier(EffectLevels {
+        global: pct,
+        ..Default::default()
+    })
 }
 
-fn tree_count(t: &Tile) -> i32 {
-    match t.flags2 & 0xf {
-        0 => 0,
-        1 | 2 | 4 | 5 | 7 | 8 | 9 => i32::from(t.b3 & 0x1f),
-        _ => 1,
-    }
-}
-
-/// Rust reference for `0x463520`; returns (cost, cost2). `None` for cost2 means "not written".
-fn cost_ref(i: &CostIn) -> (i32, Option<i32>) {
-    let bridge = f64::from(effect_factor(i.bridge_pct));
-    let has_piece = i.tile.track_id != 0;
-    let piece = if has_piece { i.piece } else { Piece::default() };
-    if i.span != 0 {
-        let c = if i.tile.b3 & 0x40 != 0 {
-            0
-        } else {
-            ftol(bridge * 120000.0)
-        };
-        return (c, None);
-    }
-    let mut single = i.single;
-    let mut base = i.base;
-    if i.mode == 0 {
-        if i.tile.flags2 & 0x80 != 0 {
-            single = if has_piece {
-                u32::from(piece.flags & 1)
-            } else {
-                0
-            };
-        }
-    } else {
-        if i.single == 0 && i.btype == 1 {
-            single = 1;
-        }
-        if matches!(i.mode, 2 | 4 | 7) {
-            let mut c2 = 0;
-            if i.tile.flags2 & 0x80 != 0 {
-                if u32::from(piece.owner) != i.company {
-                    return (0, Some(0));
-                }
-                let skip = if piece.flags & 1 == 0 && single == 0 {
-                    false
-                } else {
-                    u32::from(piece.btype) == i.btype
-                };
-                if skip {
-                    return (0, Some(0));
-                }
-                let idx = usize::from(piece.btype) * 2 + usize::from(piece.flags & 1);
-                c2 = ftol(bridge * f64::from(i.bridge_tbl[idx]));
-            }
-            let idx = (single + i.btype * 2) as usize;
-            return (ftol(bridge * f64::from(i.bridge_tbl[idx])), Some(c2));
-        }
-        base = 0;
-    }
-    let mut acc1: i32;
-    let mut acc2: i32 = 0;
-    if i.d1 != -1 {
-        let bit = 1u32 << i.d1;
-        let mask = if has_piece { u32::from(piece.mask) } else { 0 };
-        let mut f = 0f32;
-        let v = if mask & bit != 0 {
-            if has_piece && piece.flags & 1 != 0 || single != 0 {
-                0
-            } else {
-                f = 0.5;
-                base
-            }
-        } else if single != 0 {
-            base
-        } else {
-            ftol(f64::from(base) * 1.5)
-        };
-        if i.d1 & 1 != 0 {
-            acc1 = ftol(f64::from(v) * 1.4);
-            acc2 = ftol(f64::from(v) * f64::from(f) * 1.4);
-        } else {
-            acc1 = v;
-            acc2 = ftol(f64::from(v) * f64::from(f));
-        }
-        if i.electric != 0 && !(has_piece && piece.flags & 0x10 != 0) {
-            let e = if single != 0 && !(has_piece && piece.flags & 1 != 0) {
-                i.elec
-            } else {
-                ftol(f64::from(i.elec) * 1.5)
-            };
-            if mask & bit != 0 {
-                let n1 = ftol(f64::from(e) * 1.3 + f64::from(acc1));
-                acc2 = ftol(f64::from(e) * 0.3 + f64::from(acc2));
-                acc1 = n1;
-            } else {
-                acc1 += e;
-            }
-        }
-    } else {
-        acc1 = 0;
-    }
-    if i.d2 != -1 {
-        let bit = 1u32 << i.d2;
-        let mask = if has_piece { u32::from(piece.mask) } else { 0 };
-        let mut f = 0f32;
-        let v = if mask & bit != 0 {
-            if has_piece && piece.flags & 1 != 0 || single != 0 {
-                0
-            } else {
-                f = 0.5;
-                base
-            }
-        } else if single != 0 {
-            base
-        } else {
-            ftol(f64::from(base) * 1.5)
-        };
-        if i.d2 & 1 != 0 {
-            acc1 = ftol(f64::from(v) * 1.4 + f64::from(acc1));
-            acc2 = ftol(f64::from(v) * f64::from(f) * 1.4 + f64::from(acc2));
-        } else {
-            acc1 += v;
-            acc2 = ftol(f64::from(v) * f64::from(f) + f64::from(acc2));
-        }
-    }
-    if i.tile.flags2 & 0x20 == 0 {
-        acc1 += 1000 * tree_count(&i.tile);
-    }
-    let t = ftol(f64::from(acc1) * f64::from(i.terrain_mult));
-    (ftol(f64::from(t) * f64::from(i.econ)), Some(acc2))
+/// Calls `rt2_sim::track::track_tile_cost`; returns (cost, cost2). `None` = "not written".
+fn cost_ref(t: &TrackTables, i: &CostIn) -> (i32, Option<i32>) {
+    let tile = TileInfo {
+        terrain_class: i.class,
+        flags2: i.tile.flags2,
+        flags3: i.tile.b3,
+    };
+    let piece = (i.tile.track_id != 0).then_some(TrackPiece {
+        edges: EdgeMask(i.piece.mask),
+        owner: i.piece.owner,
+        bridge_type: i.piece.btype,
+        double: i.piece.flags & 1 != 0,
+        electrified: i.piece.flags & 0x10 != 0,
+    });
+    let g = CostGlobals {
+        single: i.single != 0,
+        bridge_type: i.btype,
+        electric: i.electric != 0,
+        company: i.company,
+        edge_base: i.base,
+        elec_base: i.elec,
+        econ_state: i.econ_state,
+        bridge_mult: effect_factor(i.bridge_pct),
+    };
+    let step = CostStep {
+        d_in: u8::try_from(i.d1).ok().and_then(Dir::new),
+        d_out: u8::try_from(i.d2).ok().and_then(Dir::new),
+        mode: i.mode as u8,
+        span: i.span as u8,
+    };
+    let r = track_tile_cost(t, &tile, piece.as_ref(), &g, step);
+    (r.cost, r.cost2)
 }
 
 #[test]
@@ -280,15 +225,8 @@ fn track_tile_cost_matches_original() {
     w32(&mut o, TILES, tiles);
     w32(&mut o, TILES_W, w);
     let pieces = make_list(&mut o, TRACKS, PIECE_SIZE, 4);
-    // game data read from the executable
-    let mut bridge_tbl = [0i32; 12];
-    for (k, b) in bridge_tbl.iter_mut().enumerate() {
-        *b = rd_i32(&o, BRIDGE_TABLE + 4 * k as u32);
-    }
-    let class_mult: Vec<f32> = (0..19)
-        .map(|c| exe_f32(&o, CLASS_TABLE + c * 0xc0))
-        .collect();
-    let econ_tbl: Vec<f32> = (0..5).map(|k| exe_f32(&o, ECON_TRACK + 4 * k)).collect();
+    // game data: the Rust side loads it from the executable, the emulator has it in memory
+    let tables = load_tables();
     w32(&mut o, G_COMPANY, 0);
     let mut rng = Xs(0x1357_9bdf);
     let mut ok = 0;
@@ -311,6 +249,7 @@ fn track_tile_cost_matches_original() {
             flags: (rng.below(2) as u8) | if rng.chance(40) { 0x10 } else { 0 },
         };
         let class = rng.below(19);
+        let econ_state = rng.below(5) as usize;
         let pct = (rng.below(120) as i16) - 60;
         let inp = CostIn {
             tile,
@@ -321,9 +260,8 @@ fn track_tile_cost_matches_original() {
             company: 0,
             base: 1000 * (1 + rng.below(8)) as i32,
             elec: 1000 * (1 + rng.below(8)) as i32,
-            econ: econ_tbl[rng.below(5) as usize],
-            terrain_mult: class_mult[class as usize],
-            bridge_tbl,
+            econ_state,
+            class: class as usize,
             bridge_pct: pct,
             d1: if rng.chance(10) {
                 -1
@@ -360,10 +298,7 @@ fn track_tile_cost_matches_original() {
         w32(&mut o, G_ELECTRIC, inp.electric);
         w32(&mut o, G_EDGE_BASE, inp.base as u32);
         w32(&mut o, G_ELEC_BASE, inp.elec as u32);
-        w32(&mut o, G_ECON, 0);
-        // economy state index is random: write the factor through the index
-        let econ_idx = econ_tbl.iter().position(|v| *v == inp.econ).unwrap() as u32;
-        w32(&mut o, G_ECON, econ_idx);
+        w32(&mut o, G_ECON, inp.econ_state as u32);
         w16(&mut o, EFFECT + 2 * 0xe, inp.bridge_pct as u16);
         let out = o.alloc(8).unwrap();
         w32(&mut o, out, 0x7777_7777);
@@ -390,7 +325,7 @@ fn track_tile_cost_matches_original() {
             );
         }
         let got = (rd_i32(&o, out), rd_i32(&o, out + 4));
-        let (c1, c2) = cost_ref(&inp);
+        let (c1, c2) = cost_ref(&tables.track, &inp);
         assert_eq!(got.0, c1, "cost mismatch");
         match c2 {
             Some(v) => assert_eq!(got.1, v, "cost2 mismatch"),
@@ -410,30 +345,12 @@ const FOOTPRINT: u32 = 0x0054_58c5; // cell (row, col) of type t at t*0x154 - ro
 const RADIUS: u32 = 0x0054_fd9c; // u32[3] by station size
 const STATION_STRIDE: u32 = 0x4c7;
 
-fn dist(x1: i32, y1: i32, x2: i32, y2: i32) -> i32 {
-    let dx = f64::from(x2 as f32) - f64::from(x1 as f32);
-    let dy = f64::from(y2 as f32) - f64::from(y1 as f32);
-    ftol((dx * dx + dy * dy).sqrt())
-}
-
 #[test]
 fn station_catchment_matches_original() {
     let Some(mut o) = oracle() else { return };
     o.set_instruction_limit(2_000_000);
     let stations = make_list(&mut o, STATIONS, STATION_STRIDE, 4);
-    let radius: Vec<i32> = (0..3).map(|k| rd_i32(&o, RADIUS + 4 * k)).collect();
-    // footprint grids from the executable
-    let grid = |o: &Oracle, t: u32| -> Vec<u8> {
-        // 100 cells, byte 0 of each 2-byte cell, indexed [row * 10 + col]
-        let mut g = vec![0u8; 100];
-        for row in 0..10u32 {
-            for col in 0..10u32 {
-                let a = FOOTPRINT + t * 0x154 - row * 20 - col * 2;
-                g[(row * 10 + col) as usize] = o.read_mem(a, 1).unwrap()[0];
-            }
-        }
-        g
-    };
+    let tables = load_tables();
     let building = o.alloc(0x100).unwrap();
     let station_obj = o.alloc(0x100).unwrap();
     let mut rng = Xs(0x2468_ace1);
@@ -469,22 +386,17 @@ fn station_catchment_matches_original() {
         let eax = o
             .call_fastcall(CATCH_FN, building, station_obj, &[out])
             .expect("catchment");
-        // reference
-        let r = radius[size as usize];
-        let want = if dist(sx, sy, cx, cy) <= r + 11 {
-            let g = grid(&o, btype);
-            let mut best = 9999;
-            for row in 0..10i32 {
-                for col in 0..10i32 {
-                    if g[(row * 10 + col) as usize] & 0x43 != 0 {
-                        best = best.min(dist(sx, sy, ox - col, oy - row));
-                    }
-                }
-            }
-            (best <= r).then_some(best)
-        } else {
-            None
-        };
+        // reference: rt2-sim
+        let want = station_catchment(
+            &tables.track,
+            (sx, sy),
+            size as usize,
+            &CatchmentBuilding {
+                building_type: btype as usize,
+                centre: (cx, cy),
+                origin: (ox, oy),
+            },
+        );
         match want {
             Some(d) => {
                 assert_eq!(eax, 1);

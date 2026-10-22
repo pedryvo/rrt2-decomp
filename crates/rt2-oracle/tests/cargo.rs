@@ -6,6 +6,7 @@
 use rt2_oracle::Oracle;
 use rt2_sim::cargo::{
     CargoType, Consumer, Delivery, IndustryType, RevenueTables, delivery_revenue,
+    production_multiplier, production_period,
 };
 use rt2_sim::data::GameData;
 use rt2_sim::effects::{EffectLevels, effect_multiplier};
@@ -852,4 +853,90 @@ fn production_rate_matches_original() {
         }
     }
     assert!(nonzero > 2000, "only {nonzero} non-zero rates");
+}
+
+// ---- production period (0x40aa20, fragment 0x40abca..0x40acb2) ----------------------------------
+
+const OVERTIME: u32 = 0x0057_4c10;
+
+/// `industry_production_tick` also spawns lots (list allocation the emulator cannot do); the
+/// period of a slot is computed by one contiguous fragment, run here on its own with the
+/// registers it expects: `ESI` = industry, `EBX` = slot * 0x20, `[ESP+0x10]` = production rate
+/// (f32). The result is `EBP`.
+#[test]
+fn production_period_matches_original() {
+    let Some(mut o) = oracle() else { return };
+    set_fpcw(&mut o, 0x27f);
+    let sim = sim_data();
+    let ind = o.alloc(0x100).unwrap();
+    let clock = o.alloc(16).unwrap();
+    let mut xs = Xs(0x6d2b_79f5);
+    let mut cases = 0;
+    for case in 0..8000 {
+        if case % 50 == 0 {
+            // random event percentages for effect 0x5e and 0x5f + cargo (some below the floor)
+            for id in 0x5e..0x5f + 60u32 {
+                let pct = match xs.below(4) {
+                    0 => 0,
+                    1 => xs.range(-120, -60),
+                    _ => xs.range(-60, 120),
+                };
+                w16(&mut o, EFFECT_GLOBAL + 2 * id, pct as i16 as u16);
+            }
+        }
+        let set = xs.below(2) as usize;
+        let ty = xs.below(53) as usize;
+        let slot = xs.below(4) as usize;
+        let out = sim.industries[set][ty].slots[slot].output;
+        if out >= 60 {
+            continue;
+        }
+        let year = xs.range(1830, 2010) as u32;
+        let state = xs.below(5);
+        let overtime = xs.chance(20);
+        let prod = f32::from_bits(0x3d00_0000) * (1 + xs.below(4000)) as f32 * 0.01;
+        w32(&mut o, GAME_DATE, year);
+        w32(&mut o, ERA_SET, set as u32);
+        w32(&mut o, ECON_STATE, state);
+        w32(&mut o, OVERTIME, u32::from(overtime));
+        o.write_mem(ind, &[0u8; 0x100]).unwrap();
+        w8(&mut o, ind + 7, ty as u8);
+        // stack: [esp + 0x10] = rate, [esp + 0x18] = pointer to the slot clock
+        let esp = 0x700f_fc00u32;
+        wf(&mut o, esp + 0x10, prod);
+        w32(&mut o, esp + 0x18, clock);
+        set_fpcw(&mut o, 0x27f);
+        let uc = o.uc();
+        uc.reg_write(RegisterX86::FPSW, 0).unwrap();
+        uc.reg_write(RegisterX86::FPTAG, 0xffff).unwrap();
+        for (r, v) in [
+            (RegisterX86::ESI, u64::from(ind)),
+            (RegisterX86::EBX, 0x20 * slot as u64),
+            (RegisterX86::ESP, u64::from(esp)),
+        ] {
+            uc.reg_write(r, v).unwrap();
+        }
+        uc.emu_start(0x0040_abca, 0x0040_acb2, 0, 100_000).unwrap();
+        let got = uc.reg_read(RegisterX86::EBP).unwrap() as u32 as i32;
+        let level = |id: usize| {
+            let pct = o.read_mem(EFFECT_GLOBAL + 2 * id as u32, 2).unwrap();
+            effect_multiplier(EffectLevels {
+                global: i16::from_le_bytes([pct[0], pct[1]]),
+                ..Default::default()
+            })
+        };
+        let m = production_multiplier(
+            level(0x5e),
+            level(0x5f + usize::from(out)),
+            sim.production_econ[state as usize],
+        );
+        let want = production_period(f64::from(prod), m, year as i32, overtime);
+        assert_eq!(
+            got, want,
+            "case {case}: set {set} type {ty} slot {slot} year {year} state {state} prod {prod}"
+        );
+        cases += 1;
+    }
+    eprintln!("production_period: {cases} cases identical");
+    assert!(cases > 3000);
 }

@@ -138,7 +138,7 @@ Dono da peça = `peça.+2`. Troca de dono na reconstrução: `0x4cc060` mantém 
 | `track_tile_cost_matches_original` | `0x463520` | 30 000 (tile, peça, globais, modos 0..7, vão, arestas) | custo e custo2 idênticos |
 | `station_catchment_matches_original` | `0x407030` | 20 000 (tamanhos 0..2, prédios 24..63) | retorno e distância idênticos |
 
-Limite: nos testes a empresa é 0 e a região do tile 0 (sem listas de empresas/territórios); `effect_multiplier` com empresa/território é coberto por `tests/cargo.rs`. Tile com `+2 & 0x80` sem peça trava o original (registro 0): nunca ocorre no jogo.
+`track_tables_match_emulated_memory` compara as tabelas que `rt2_sim::track::TrackTables` lê do EXE (pontes, multiplicadores de terreno, estado econômico, raios, pegadas) com a memória emulada. A implementação testada é `rt2_sim::track::{track_tile_cost, station_catchment}`. Limite: nos testes a empresa é 0 e a região do tile 0 (sem listas de empresas/territórios); `effect_multiplier` com empresa/território é coberto por `tests/cargo.rs`. Tile com `+2 & 0x80` sem peça trava o original (registro 0): nunca ocorre no jogo.
 
 ## 8. Cobertura de funções
 Nomeadas em `re/pending/track.toml`. Lidas e descritas: `0x463520` [V], `0x407030` [V]; [S]: `0x463a20`, `0x4cc060`, `0x4164f0`, `0x416210`, `0x4162b0`, `0x4ca920`, `0x462b80`, `0x4087a0`, `0x409a30`, `0x4071b0`, `0x42e8f0`, `0x42e850`, `0x469ef0`, `0x416860`. Só nomeadas: `0x460850` (A* com listas abertas, hash de nós; também roteia trens com `param_7 == 0`), `0x463b30`, `0x427ff0`, `0x460640`, `0x460520`.
