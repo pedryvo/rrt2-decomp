@@ -285,7 +285,7 @@ Descrição por id (a coluna "lê" é o que o ramo de `0x454ae0` calcula; `ftol`
 | 95 | `0x5f` | `StationVisited` | 0 | 1 | P | byte `estação(n)+0x4bb` (visitada), `n` válido no pool de estações |
 | 96 | `0x60` | `NumberOfStationsVisited` | 0 | 1 | - | `0x4c0240`: estações do jogador (dono +0x45 == 0) com `+0x4bb != 0` |
 | 97 | `0x61` | `CompanyIndustryProfitsThisYear` | 0 | 1 | C | **igual a 101** (mesmo ramo): se `empresa+0x148` (ano de fundação) < ano, `ftol(0x43a7d0(emp, ano-1, 3))`, senão 0 |
-| 98 | `0x62` | `CompanyIndustryInvestments` | 0 | 1 | C | `ftol(conta 5)` (investimento em indústrias; `finance.md` rotula as contas 4/5 trocadas) |
+| 98 | `0x62` | `CompanyIndustryInvestments` | 0 | 1 | C | `ftol(conta 5)` (investimento em indústrias; conta 5 = indústrias, `finance.md`) |
 | 99 | `0x63` | `GameIsMultiPlayer` | 0 | 1 | - | `[0x573f1c] != 0` (partida em rede) |
 | 100 | `0x64` | `GameIsNotMultiPlayer` | 0 | 1 | - | `[0x573f1c] == 0` |
 | 101 | `0x65` | `CompanyIndustryProfitsLastYear` | 0 | 1 | C | ver 97: lucro de indústrias (categoria 3) do **ano anterior** |

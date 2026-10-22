@@ -2684,7 +2684,7 @@ spec = "docs/spec/world-tick.md"
 
 [[symbol]]
 addr = "0x438450"
-name = "person_generate"
+name = "manager_pick_candidate"
 kind = "function"
 comment = "thiscall: gera uma pessoa/candidato: rng (25,180), (1000,12000), (0,39) em laco"
 spec = "docs/spec/world-tick.md"
@@ -3990,3 +3990,53 @@ name = "customs_ignore_region"
 kind = "global"
 comment = "opcao: desliga o teste de regiao da alfandega (0x4d29e0); o teste do Port continua"
 spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x48b5d0"
+name = "merger_vote_evaluate"
+comment = "avalia votacao de fusao (0x4015a0 e thunk) [V]"
+
+[[symbol]]
+addr = "0x43c3c0"
+name = "company_merge_execute"
+comment = "executa fusao (proponente absorve alvo) [S]"
+
+[[symbol]]
+addr = "0x43c050"
+name = "company_chairman_takeover"
+comment = "aplica troca de chairman vencida na votacao"
+
+[[symbol]]
+addr = "0x4a8150"
+name = "person_investor_confidence"
+comment = "multiplicador de capital externo: IA 10.0, humano clamp((rep+100+pen)*0.1,0.5,15) [V]"
+
+[[symbol]]
+addr = "0x4bc990"
+name = "founding_player_slider"
+comment = "limites do slider Player Investment [V]"
+
+[[symbol]]
+addr = "0x4bc7d0"
+name = "founding_outside_slider"
+comment = "limites do slider Outside Investment [V]"
+
+[[symbol]]
+addr = "0x4bd950"
+name = "company_found_precheck"
+comment = "pre-condicoes do botao Start Company [S]"
+
+[[symbol]]
+addr = "0x4bdcd0"
+name = "cmd_found_company"
+comment = "comando 0x26: cria empresa e compra as acoes do jogador [S]"
+
+[[symbol]]
+addr = "0x43ddb0"
+name = "company_init_territories"
+comment = "posicao e direitos iniciais por territorio"
+
+[[symbol]]
+addr = "0x438710"
+name = "company_apply_manager_effects"
+comment = "soma/subtrai os 4 efeitos do gerente em +0x1ae"

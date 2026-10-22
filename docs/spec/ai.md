@@ -247,7 +247,7 @@ senão se 0x573e09[melhor] != empresa: company_set_manager(empresa, melhor, 0)
 | `0x1a..0x1d` | `f = idade < 5 ? 2.0 : max(trens/15, 1.0)`; `e = ai_pick_engine(1)`; `(frac, casa) = (1, 1)` para 0x1a, `(n_t/trens, tipo(e) == t)` para 0x1b..0x1d (t = vapor, diesel, elétrico); `e2 = ai_pick_engine(1)`; `ftol(preço(e2) * (casa*0.7 + frac*0.3) * f * p)` |
 | outros | 0 |
 
-Cada termo é `ftol`; positivo vira `(v >> 2) + (v >> 1)` (0,75), negativo `ftol(v * 1.25)`; soma dos 4. **RNG:** cada par 0x1a..0x1d de cada gerente avaliado chama `ai_pick_engine` duas vezes. `company_set_manager` (`0x438780`) regera (`person_generate`, RNG) os candidatos `+0x140/+0x144` de qualquer empresa que apontavam para o gerente contratado.
+Cada termo é `ftol`; positivo vira `(v >> 2) + (v >> 1)` (0,75), negativo `ftol(v * 1.25)`; soma dos 4. **RNG:** cada par 0x1a..0x1d de cada gerente avaliado chama `ai_pick_engine` duas vezes. `company_set_manager` (`0x438780`) regera (`manager_pick_candidate`, RNG) os candidatos `+0x140/+0x144` de qualquer empresa que apontavam para o gerente contratado.
 
 ## 7. Trens (`ai_manage_trains` `0x4d9210`) [S, D]
 ```
@@ -327,7 +327,7 @@ senão:
     ações = min(ftol((caixa + 8000) / preço_inicial * 0.001) * 1000, ações da empresa); caixa -= ações * preço_inicial
 se chairman ou +0x54c: ai_person_trade_stocks(pessoa)
 ```
-`ai_can_found_company` (`0x4361c0`) = `ai_plan_first_line(1)` com empresa 0 (consome RNG: seção 5.3). `company_init` (`0x438a10`) sorteia a cor/logotipo entre as livres (`rng_range(0, livres-1)`) e chama `person_generate` 3 vezes (gerente e dois candidatos).
+`ai_can_found_company` (`0x4361c0`) = `ai_plan_first_line(1)` com empresa 0 (consome RNG: seção 5.3). `company_init` (`0x438a10`) sorteia a cor/logotipo entre as livres (`rng_range(0, livres-1)`) e chama `manager_pick_candidate` 3 vezes (gerente e dois candidatos).
 
 ### 9.2 Bolsa (`ai_person_trade_stocks` `0x4a8af0`) [S]
 Laço guloso, um lote de 1000 ações por volta, até a melhor oportunidade valer < 1.15:
@@ -364,11 +364,11 @@ Local = endereço de retorno da chamada a `rng_range` (`0x4f0660`). Tudo dentro 
 |---|---|---|---|---|
 | P1 | `0x435cf0` | `ai_plan_first_line(1)` via `ai_can_found_company`, por pessoa IA que tenta fundar | `[70,130]` | 1 por lugar elegível (<= 128) |
 | P2 | `0x435f9f` | idem | `[1,10]` | 1 por par tentado |
-| P3 | `0x438c7d`, `person_generate` (`0x438553`...) | `company_init` da nova empresa | `[0, livres-1]`, ... | se fundou |
+| P3 | `0x438c7d`, `manager_pick_candidate` (`0x438553`...) | `company_init` da nova empresa | `[0, livres-1]`, ... | se fundou |
 | P4 | regras (`0x454db0`) | `event_fire_trigger(5)` | variável | se fundou |
 | P5 | todo o turno da empresa nova (C1..C9) | `ai_company_turn(nova)` | | se fundou |
 | C1 | `0x4d878a` (x2 por par) | `ai_manager_value` -> `ai_pick_engine` | `[80,120]` | ano ímpar, 1º turno do ano: 2 x candidatos por par de efeito 0x1a..0x1d de cada gerente |
-| C1' | `person_generate` | `company_set_manager` | | se contratou |
+| C1' | `manager_pick_candidate` | `company_set_manager` | | se contratou |
 | C2 | `0x4d878a` | `ai_pick_engine(1)` em `0x436b95` | `[80,120]` | **sempre** (empresa ativa): 1 por motor candidato |
 | C3 | `0x436c0b` | prazo de expansão | `[180,360]` | 1 se o prazo venceu |
 | C4a | `0x435cf0`, `0x435f9f` | `ai_plan_first_line(0)` | como P1/P2 | rede vazia |

@@ -114,3 +114,7 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - RE: effect id 0xd is the industry purchase price; custo2 of track_tile_cost is only a "something was built" flag; max-bridge option +0x1bf is a scenario setting (0 = by year)
 - Docs: terrain-track.md sections 2.4, 3.4, 5 and 6 rewritten from the executable; cargo.md corrected (the final LNG agrees with the code on passenger bonuses)
 - Feature: rt2-oracle tests/stations.rs checks the improvement table, availability, purchase, station removal, industry trade and the tile-priority conflict against the original (6 tests)
+- RE: finance.md 13..17 documenta a revisao anual da empresa 0x43c760 (desempenho, salario, bonus, posicao nos territorios, multiplicador de receita, aviso/demissao do chairman, liquidacao), verificada bit a bit com 8000 casos.
+- RE: 0x438450 (person_generate) escolhe um gerente da tabela fixa de 40, nao cria pessoas; spec do sorteio, da tabela de gerentes e do ciclo de vida das pessoas (sem envelhecimento nem morte).
+- RE: votacoes de fusao 0x48b5d0 e de presidencia 0x42ee00 com constantes e formulas exatas, testadas contra o executavel.
+- RE: capital inicial de empresas (sliders Player/Outside Investment, company_init 0x438a10) especificado e testado; ano 9001 = acumulador de vida inteira; contas 4/5 corrigidas (4 trens, 5 industrias).

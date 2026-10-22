@@ -177,7 +177,7 @@ Ordem dentro de um tick (jogo local), com o local da chamada (endereço de retor
 | mês, 7 | vários (`0x436c06`, `0x435c20`, `0x435320`, `0x4d878a`, `0x48cc00`...) | `ai_company_turn` e filhos | variáveis | IA | depende do estado; 4 chamadas `ai_pick_engine` [80,120] observadas |
 | ano, 2 | `0x4d878a` | `ai_pick_engine(1)` | `[80,120]` por motor candidato | M (usa a rotina da IA) | sempre |
 | ano, 4 | `0x43cc56`, `0x43cef7`, `0x43cf59` (x32) | `company_annual_review` | `[20,110]`, `[-200,200]` x33 | IA | por empresa, condicionado |
-| ano, 4 | `0x438553`, `0x438593`, `0x4385cf`, `0x4386dc` (laço) | `person_generate` `0x438450` (de `0x43d235`/`0x43d244`) | `[25,180]`, `[1000,12000]`, `[0,39]`... | IA | gera candidatos (pessoas) |
+| ano, 4 | `0x438553`, `0x438593`, `0x4385cf`, `0x4386dc` (laço) | `manager_pick_candidate` `0x438450` (de `0x43d235`/`0x43d244`) | `[25,180]`, `[1000,12000]`, `[0,39]`... | IA | gera candidatos (pessoas) |
 | ano, 13 | `0x430878`, `0x430916`, `0x43097e` | `town_update` `0x430540` | `[0,1000000]` | M | por lugar |
 | ano, 13 | `0x430330` | `0x4302c0` | `[88,112]` | M | |
 | ano, 13 | `0x42fd71..0x42fddc` (6 locais) | `0x42fcb0` | `[0,1..3]` | M | posicionamento de construções |

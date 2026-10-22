@@ -439,7 +439,7 @@ vender(empresa, B):                               ; comando 0x2d, flag = 0; só 
 - A venda devolve **metade do preço** (LNG 2338: "You will only receive half the purchase price if you sell"). O dono recebe, a cada fim de ano, o lucro da seção 5.1 em `categoria 3`.
 - O código de compra **não verifica o modelo industrial**; a restrição ao modelo Expert (SG) vem da UI (não localizada) e a IA só compra com `0x573d78 == 2` (5.4). O pré-requisito no código é o **direito de compra de prédios** do território (bit 1 do byte de direitos); o preço do direito é do editor de territórios (LNG 2461).
 - `effect_multiplier(0xd, ...)` é o efeito de gerente/evento/território de compra de indústria (cargo.md 5). Os preços base são os da tabela 2.4 (ex.: Steel Mill US$ 800.000; Cotton Farm US$ 200.000, que batem com o manual).
-- A conta contábil é o deslocamento `+0x478e` = conta 5 pelo índice de `0x4398d0` (`conta k` em `+0x4766 + 8k`). **Divergência de numeração**: `finance.md` rotula a conta 4 de "indústrias compradas" e a 5 de "trens", mas `train_create` (`0x4cdf80`) lança a compra de trens na conta **4** e `0x43eb60` a de indústrias na conta **5**; os rótulos de `finance.md` parecem trocados.
+- A conta contábil é o deslocamento `+0x478e` = conta 5 pelo índice de `0x4398d0` (`conta k` em `+0x4766 + 8k`). (conta 5 = indústrias, conforme `finance.md`, corrigido em 2026-10-22).
 
 ### 5.4 Compra pela IA (`0x436950`, chamada por `0x436b30` a partir de agosto, no máximo a cada 168 dias de jogo) [S]
 

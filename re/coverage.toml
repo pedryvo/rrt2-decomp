@@ -3,11 +3,11 @@
 # Ver docs/re-workflow.md.
 #
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
-# Classificadas (categoria != unknown): 1103 (37.5%)
-# Por categoria: lib=258, platform=117, render=11, audio=68, ui=254, sim=395, unknown=1842
-# Por estado:   unknown=2582, named=117, spec=188, verified=58
-# Entradas manuais: 365
-# sim spec coverage: 55.4% (219 de 395 funcoes sim em spec/verified)
+# Classificadas (categoria != unknown): 1109 (37.7%)
+# Por categoria: lib=258, platform=117, render=11, audio=68, ui=252, sim=403, unknown=1836
+# Por estado:   unknown=2564, named=117, spec=198, verified=66
+# Entradas manuais: 373
+# sim spec coverage: 58.8% (237 de 403 funcoes sim em spec/verified)
 
 [[function]]
 addr = "0x401005"
@@ -9291,8 +9291,8 @@ manual = true
 addr = "0x42ee00"
 size = 1461
 category = "sim"
-status = "unknown"
-why = "finance/stock market (docs/spec/finance.md)"
+status = "verified"
+why = "company.rs chairmanship_vote_matches_original"
 manual = true
 
 [[function]]
@@ -9718,8 +9718,8 @@ why = "no-evidence"
 addr = "0x438170"
 size = 631
 category = "sim"
-status = "unknown"
-why = "finance/stock market (docs/spec/finance.md)"
+status = "spec"
+why = "finance.md 15.5"
 manual = true
 
 [[function]]
@@ -9734,39 +9734,40 @@ manual = true
 addr = "0x438450"
 size = 695
 category = "sim"
-status = "named"
-why = "world-tick.md 4"
+status = "verified"
+why = "company.rs manager_pick_matches_original"
 manual = true
 
 [[function]]
 addr = "0x438710"
+name = "company_apply_manager_effects"
 size = 107
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
 addr = "0x438780"
 size = 371
 category = "sim"
-status = "named"
-why = "docs/spec/ai.md"
+status = "spec"
+why = "finance.md 14.3"
 manual = true
 
 [[function]]
 addr = "0x438900"
 size = 258
 category = "sim"
-status = "unknown"
-why = "finance/stock market (docs/spec/finance.md)"
+status = "spec"
+why = "finance.md 15.4"
 manual = true
 
 [[function]]
 addr = "0x438a10"
 size = 1368
 category = "sim"
-status = "named"
-why = "docs/spec/ai.md"
+status = "verified"
+why = "company.rs company_init_matches_original"
 manual = true
 
 [[function]]
@@ -9991,8 +9992,8 @@ manual = true
 addr = "0x43abc0"
 size = 407
 category = "sim"
-status = "unknown"
-why = "finance/stock market (docs/spec/finance.md)"
+status = "spec"
+why = "finance.md 16.2"
 manual = true
 
 [[function]]
@@ -10108,9 +10109,10 @@ manual = true
 
 [[function]]
 addr = "0x43c050"
+name = "company_chairman_takeover"
 size = 207
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -10123,9 +10125,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x43c3c0"
 size = 873
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "finance.md 15.2"
+manual = true
 
 [[function]]
 addr = "0x43c730"
@@ -10138,8 +10141,8 @@ why = "no-evidence"
 addr = "0x43c760"
 size = 4254
 category = "sim"
-status = "unknown"
-why = "finance/stock market (docs/spec/finance.md)"
+status = "verified"
+why = "company.rs annual_review_matches_original"
 manual = true
 
 [[function]]
@@ -10159,9 +10162,10 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x43ddb0"
+name = "company_init_territories"
 size = 353
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -12442,8 +12446,8 @@ why = "no-evidence"
 addr = "0x474280"
 size = 658
 category = "sim"
-status = "unknown"
-why = "high: direct:sim_,rng_"
+status = "spec"
+why = "finance.md 14.4 (inicio do mundo, pessoas)"
 manual = true
 
 [[function]]
@@ -12986,9 +12990,10 @@ manual = true
 [[function]]
 addr = "0x48b5d0"
 size = 1657
-category = "ui"
-status = "unknown"
-why = "string:\n{[HJL]%s}{[HJR]%s}"
+category = "sim"
+status = "verified"
+why = "company.rs merger_vote_matches_original"
+manual = true
 
 [[function]]
 addr = "0x48c150"
@@ -13938,9 +13943,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4a6b00"
 size = 500
-category = "ui"
-status = "unknown"
-why = "string:%s %s"
+category = "sim"
+status = "spec"
+why = "finance.md 14.4"
+manual = true
 
 [[function]]
 addr = "0x4a6d00"
@@ -14106,16 +14112,17 @@ why = "no-evidence"
 addr = "0x4a8100"
 size = 70
 category = "sim"
-status = "unknown"
-why = "finance/stock market (docs/spec/finance.md)"
+status = "spec"
+why = "finance.md 15.4"
 manual = true
 
 [[function]]
 addr = "0x4a8150"
 size = 162
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "company.rs credit_multiplier_matches_original"
+manual = true
 
 [[function]]
 addr = "0x4a8800"
@@ -14645,30 +14652,34 @@ why = "no-evidence"
 [[function]]
 addr = "0x4bc7d0"
 size = 440
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "company.rs founding_sliders_match_original"
+manual = true
 
 [[function]]
 addr = "0x4bc990"
 size = 327
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "company.rs founding_sliders_match_original"
+manual = true
 
 [[function]]
 addr = "0x4bd950"
 size = 882
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "finance.md 17.1"
+manual = true
 
 [[function]]
 addr = "0x4bdcd0"
 size = 222
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "finance.md 17.3"
+manual = true
 
 [[function]]
 addr = "0x4bddb0"
