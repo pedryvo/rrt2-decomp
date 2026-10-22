@@ -12,6 +12,8 @@ import tomllib
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 PLACEHOLDER = re.compile(r"%\d")
+# Cheat codes the player types: must stay identical to the English source.
+VERBATIM_IDS = range(2722, 2738)
 FILENAME = re.compile(r"[A-Za-z0-9_%.\\-]+\.(?:PCX|TGA|WAV|IMB|WIN|SMK|RAW|BMP)", re.IGNORECASE)
 
 
@@ -66,6 +68,8 @@ def check(path, source, limits):
             errors.append(f"id {i}: placeholders {PLACEHOLDER.findall(en)} -> {PLACEHOLDER.findall(t)}")
         if en.count("\n") != t.count("\n"):
             errors.append(f"id {i}: {en.count(chr(10))} line breaks -> {t.count(chr(10))}")
+        if i in VERBATIM_IDS and t != en:
+            errors.append(f"id {i}: cheat code must stay {en!r}")
         if FILENAME.fullmatch(en) and t != en:
             errors.append(f"id {i}: filename must stay {en!r}")
         if i in limits and len(t) > limits[i][1]:
