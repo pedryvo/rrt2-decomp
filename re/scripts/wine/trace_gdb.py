@@ -98,6 +98,7 @@ class TB(gdb.Breakpoint):
                 seq[0], self.nm, rd32(esp), reg("ecx"), reg("edx"), rd32(esp+4),
                 rd32(0x5704F8), rd32(0x5704FC) & 0xFFFF, rd32(0x55D2C0)))
         return False
+gdb.execute("set breakpoint always-inserted on")
 BPS=[TB(int(a,16), v[0], v[1]) for a, v in FUNCS.items()]
 # 5. avanca: sim_advance(ECX = minutos) em passos fixos, sem o porteiro
 remaining = 1440 * days

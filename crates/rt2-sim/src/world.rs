@@ -5,7 +5,7 @@
 //! by the specs (time.md "Em aberto", third item).
 
 use crate::calendar::{DEFAULT_SPEED, Date, MAX_SPEED, SpeedTable};
-use crate::rng::GameRng;
+use crate::rng::{CrtRng, GameRng};
 
 /// The whole deterministic state. All mutation goes through [`World::apply`] (player/network
 /// intent) and [`World::tick`] (time), so a command log plus a seed replays a game.
@@ -17,6 +17,8 @@ pub struct World {
     pub(crate) minutes: i32,
     /// Game RNG (generator A, state `0x55d2c0`).
     pub(crate) rng: GameRng,
+    /// The MSVC CRT `rand` (generator C, state `0x5609f0`): sound, UI and the saved smoke puffs.
+    pub(crate) crt: CrtRng,
     /// `game_seed` (`0x57486e`): independent of the RNG state (rng.md 2.4).
     pub(crate) game_seed: u32,
     /// `game_speed` (`0x57050e`), 0..=10, 0 = pause.
@@ -33,6 +35,7 @@ impl World {
             sim: None,
             minutes: start.to_minutes(),
             rng: GameRng::new(rng_seed),
+            crt: CrtRng::new(rng_seed),
             game_seed,
             speed: DEFAULT_SPEED,
             speed_resume: DEFAULT_SPEED,
@@ -61,6 +64,10 @@ impl World {
 
     pub fn rng(&self) -> &GameRng {
         &self.rng
+    }
+
+    pub fn crt_rng(&self) -> &CrtRng {
+        &self.crt
     }
 
     /// Mutable RNG for simulation systems; the order of draws is part of the state.

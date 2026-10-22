@@ -25,6 +25,9 @@ pub enum Command {
     TogglePause,
     /// `rng_seed(arg)` (`cmd_execute`, `0x4b02a4`): the host seeds the game RNG.
     SeedRng(u32),
+    /// `crt_srand(arg)`: seeds the MSVC CRT `rand` (generator C). The original seeds it once at
+    /// start-up; the save oracle (`advance_save.py`) seeds it together with the game RNG.
+    SeedCrtRng(u32),
 }
 
 impl World {
@@ -48,6 +51,7 @@ impl World {
                 }
             }
             Command::SeedRng(seed) => self.rng.seed(seed),
+            Command::SeedCrtRng(seed) => self.crt.seed(seed),
         }
     }
 }

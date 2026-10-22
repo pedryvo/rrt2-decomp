@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Como advance_save.py, mas com breakpoints de contagem/registro (trace_gdb.py): ordem de chamadas do tick.
-Ambiente: TR_FUNCS = JSON {"0xaddr": [nome, 1=registra|0=so conta]} (padrao trace_funcs.json), TR_LOG = arquivo de saida.
+Ambiente: TR_FUNCS = JSON {"0xaddr": [nome, 1=registra|0=so conta]} (padrao trace_funcs.json), TR_LOG = arquivo de saida,
+TR_GDBPY = script gdb alternativo (padrao trace_gdb.py; snap_gdb.py para snapshots, ver snap_call.py).
 Nao mata winedbg de outros sandboxes (so o proprio grupo de processos). docs/spec/world-tick.md secao 7.
 Original: Avanca um save N dias no ORIGINAL (Wine + gdb), sem GUI: oraculo de nivel 2.
 Uso: advance_save.py <sandbox> <in.GAM> <dias> <semente> <out.GAM> [--step MIN] [--timeout S]
@@ -40,7 +41,7 @@ def run_once(sb, infile, days, seed, step, gates, timeout, outp, quiet=False):
     script = os.path.join(sb, "..", "_advance_run.gdb")
     with open(script, "w") as f:
         f.write("set pagination off\nset architecture i386\ntarget remote localhost:%s\nsource %s\n"
-                % (port, os.path.join(os.path.dirname(os.path.realpath(__file__)), "trace_gdb.py")))
+                % (port, os.environ.get("TR_GDBPY", os.path.join(os.path.dirname(os.path.realpath(__file__)), "trace_gdb.py"))))
     env.setdefault("TR_FUNCS", os.path.join(HERE, "trace_funcs.json")); env.setdefault("TR_LOG", os.path.join(sb, "..", "trace.log"))
     env.update(ADV_NAME=name, ADV_OUT=rel_out, ADV_DAYS=str(days), ADV_SEED=str(seed & 0xFFFFFFFF),
                ADV_STEP=str(step), ADV_GATES=str(gates))

@@ -304,9 +304,31 @@ impl Save {
             pool_fields(name, pool, named, &mut out);
         }
         for e in &self.train_extras {
-            for (label, data) in [("cars", &e.cars_raw), ("route", &e.route_raw)] {
-                // Raw chunks only: the record layout of both arrays depends on the version.
-                walk(&format!("trains[{}].{label}", e.slot), data, &[], &mut out);
+            let base = format!("trains[{}]", e.slot);
+            // Raw chunks only: the record layout of both arrays depends on the version.
+            walk(&format!("{base}.cars"), &e.cars_raw, &[], &mut out);
+            let route = &e.route_raw;
+            if self.layout.route_step == 8 && route.len().is_multiple_of(8) {
+                // 0x2348: x[n], y[n] (u16), d_in[n], d_out[n] (u8), flags[n] (u16). Only bits 0-3
+                // of a flag are set by the train code; the pathfinder ORs uninitialized heap
+                // bytes into the others (`0x460850`, trains.md 10.7), so they get their own field.
+                let n = route.len() / 8;
+                walk(&format!("{base}.route"), &route[..6 * n], &[], &mut out);
+                for i in 0..n {
+                    let v = u16::from_le_bytes([route[6 * n + 2 * i], route[6 * n + 2 * i + 1]]);
+                    out.push(int(
+                        format!("{base}.route.flags[{i}]"),
+                        i64::from(v & 0xf),
+                        false,
+                    ));
+                    out.push(int(
+                        format!("{base}.route.flags_heap[{i}]"),
+                        i64::from(v & 0xfff0),
+                        false,
+                    ));
+                }
+            } else {
+                walk(&format!("{base}.route"), route, &[], &mut out);
             }
         }
         out.push(int("rules.count".into(), self.rules.len() as i64, false));
@@ -399,6 +421,12 @@ pub const MASKS: &[Mask] = &[
         path: "trains[*]",
         range: Some((0x45, 0x59)),
         why: "five heap pointers stored raw in the train record; differ per process and sandbox path",
+    },
+    Mask {
+        versions: &[0x2348],
+        path: "trains[*].route.flags_heap[*]",
+        range: None,
+        why: "bits 4-15 of a route step flag: uninitialized heap bytes ORed in by the pathfinder (0x460850)",
     },
     Mask {
         versions: &[0x2348],

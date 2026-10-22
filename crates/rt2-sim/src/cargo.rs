@@ -146,6 +146,12 @@ pub struct Revenue {
     pub flag: u32,
     /// Id of the consumer industry that takes the lot (0 if none).
     pub industry: u32,
+    /// The destination took the lot as demanded cargo (an industry input or the housing rule):
+    /// `bVar5` of the original, which gates the origin industry's delivery counter (`+0x63`).
+    pub accepted: bool,
+    /// Base revenue after the demand price and the short-distance scaling (4.2), before the time
+    /// penalty: the value the original tests for the delivery counter.
+    pub base: i32,
 }
 
 /// `cargo_delivery_revenue` with `commit = 1` (no side effects), cargo.md section 4, bit-exact
@@ -169,6 +175,7 @@ pub fn delivery_revenue(d: &Delivery, t: &RevenueTables) -> Revenue {
     // 4.2 base price from demand
     let mut r: i32;
     let mut industry = 0u32;
+    let mut took = false;
     let level_mul = |lvl: u8| -> f64 {
         if d.model >= 2 {
             f64::from(t.demand_level[usize::from(lvl.min(9))])
@@ -215,6 +222,7 @@ pub fn delivery_revenue(d: &Delivery, t: &RevenueTables) -> Revenue {
                 accepted = true;
             }
         }
+        took = accepted;
         if !accepted {
             let idx = usize::from(human) * 3 + usize::from(d.model.min(2));
             r = ftol(f64::from(cgo.price) * f64::from(t.undemanded[idx]));
@@ -226,6 +234,7 @@ pub fn delivery_revenue(d: &Delivery, t: &RevenueTables) -> Revenue {
     if r != 0 && dist < 20 {
         r = (dist + 1).wrapping_mul(r) / 21;
     }
+    let base = r;
 
     // 4.3 time penalty
     let mut p1 = d.t_loaded.wrapping_sub(d.t_created) / 1440;
@@ -299,6 +308,8 @@ pub fn delivery_revenue(d: &Delivery, t: &RevenueTables) -> Revenue {
         amount: r,
         flag,
         industry,
+        accepted: took,
+        base,
     }
 }
 

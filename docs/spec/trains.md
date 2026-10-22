@@ -53,7 +53,7 @@ As duas tabelas estão no **`.data` do executável**, não em PK2. Nenhum arquiv
 | `+0x2b` | u8 | tem tênder (runtime) | `0x471b10` |
 | `+0x2c`, `+0x2d` | u8 | tipo de veículo da locomotiva e do tênder (runtime) | idem |
 | `+0x2e` | i32 | peso cheio locomotiva + tênder (runtime) | `0x4cfea0`, `0x4cf030` |
-| `+0x32`, `+0x36` | u8, i32 | não usados nas funções lidas | Em aberto |
+| `+0x32`, `+0x36` | u8, i32 | sequência da fumaça em `SMOKE.imb` e intervalo da fumaça (min) | `0x412a90`, `0x412900` (10.6) |
 
 Classes de confiabilidade (`0x55c52c`, f32, quebras por célula): `1/400, 1/600, 1/875, 1/1100, 1/1400, 1/1800, 1/2500, 1/4000, 1/6000, 1/12000, 1/24000` (Atrocious .. Near Perfect, iguais à tabela 4-1 do guia).
 
@@ -153,7 +153,7 @@ vel += ftol(dt / div * (alvo - vel))                     ; aproximação exponen
 A velocidade fecha a fração `dt/tau` da diferença até o alvo a cada passo; o resultado depende do tamanho do passo (`time.md`, seção 4). Exemplos: Rocket (50) tem `tau = 54000` min (37,5 dias), Shinkansen (5) 5400 min.
 Com o trem parado (`+0x99 != 0`): velocidade = 0, roda a lógica de estação (carga, espera); na partida (`0x4d0a70` devolve 1) o passo começa em `dt = agora - partida` e toca o apito.
 
-### 4.5 Avanço (`train_step` `0x4d0ce0`) [S]
+### 4.5 Avanço (`train_step` `0x4d0ce0`) [S; detalhado e verificado na seção 10]
 ```
 se acidentado e agora >= +0xee: apaga o trem (train_delete 0x4cdd50)
 se ainda fora dos trilhos: monta/posiciona (0x4d1bb0) e calcula o bit 8 (elétrica sem catenária)
@@ -218,7 +218,7 @@ O parâmetro `/nowreck` (`game_init_paths` `0x465050`) ou a trapaça `nowreck` (
 `n` = número de trens da empresa (`empresa+0x27`). A penalidade sai de `empresa+0x4229` (mínimo 0) e do valor por território `empresa+0x47a + terr*0x1ed` (i16, mínimo -10000; território do tile da locomotiva, ou 1 fora dos trilhos). Os dois também marcam `+0xa8 = 20` e põem o minuto da locomotiva `+0x3d` em `agora - 500`. Acidente com velocidade de jogo > 4 rebaixa a velocidade para 4. Ao fim da quebra, `0x4d0400` limpa `+0xed`/`+0xbc` e chama `0x4d59b0`.
 
 ### 5.4 O rand do CRT nos trens
-`0x4d0400`, `0x4d2360` e `0x4d29e0` chamam `crt_rand_range(0, 3)` só para o som: nos dois primeiros o resultado é descartado (o `EAX` é sobrescrito logo depois, `0x4d07c4`/`0x4d07ec`, `0x4d253a`/`0x4d256f`); em `0x4d29e0` ele escolhe a variante do som (`+ 0x27`, índice em `0x55e7b0`). **Não afeta a simulação**, mas consome o estado do CRT. As quebras usam o RNG do jogo (`rng.md`, gerador A).
+`0x4d0400`, `0x4d2360` e `0x4d29e0` chamam `crt_rand_range(0, 3)` só para o som: nos dois primeiros o resultado é descartado (o `EAX` é sobrescrito logo depois, `0x4d07c4`/`0x4d07ec`, `0x4d253a`/`0x4d256f`); em `0x4d29e0` ele escolhe a variante do som (`+ 0x27`, índice em `0x55e7b0`). Não muda o trem, mas consome o estado do CRT, que também sorteia a fumaça gravada no save (10.6). As quebras usam o RNG do jogo (`rng.md`, gerador A).
 
 ## 6. Custos
 
@@ -285,15 +285,133 @@ Os testes usam a palavra de controle 0x27f (53 bits); com 24 bits podem surgir d
 - **Água**: "muito reduzida" = metade da velocidade alvo para vapor.
 - **Envelhecimento**: confere (-0,5% de velocidade por ano, 10% aos 20).
 
+## 10. Passo completo do trem e animações do mapa (`train_step` `0x4d0ce0`, `anim_object_step` `0x4283e0`) [V: save como oráculo]
+
+Port função a função em `crates/rt2-sim/src/trainstep/` (`mem.rs` acesso aos registros crus, `motion.rs`, `geom.rs`, `anim.rs`, `path.rs`, `station.rs`). Verificação: o save Example avançado 1 dia no clone é **idêntico** ao do original campo a campo (trens, vagões, peças de trilho, reservas `pool_80`, cadeias de estruturas, tiles, fumaça `pool_78`, rotas); em 7 dias só diferem as estações (passo semanal `0x4bebf0`, fora deste passo) e o estado do RNG bate (`0x07a864a0`, um sorteio de quebra); em 30 dias trens, vagões e fumaça continuam idênticos (as diferenças vêm dos ganchos mensais/anuais). Funções executadas num dia do Example, medidas com `trace_save.py` (72 de 1139 do fecho de chamadas): ver `re/pending/trainstep.toml`.
+
+### 10.1 Estruturas
+
+**Vagão** (`list_cars` `0x574c70`, 0x4f bytes): `+0`/`+2` i16 vagão da frente/de trás (lista do trem: `trem+0` primeiro, `trem+4` último), `+4` i16 trem, `+6` u16 id do veículo (chave na cadeia do tile), `+8` tipo de veículo, `+9`/`+0xb` i16 tile, `+0xd`/`+0xf` i16 tile anterior, `+0x11` i16 índice na rota, `+0x13` comprimento do trecho e `+0x17` posição nele (16.16), `+0x1b`/`+0x1f`/`+0x26` x, y (0..63 no tile) e direção de desenho (`0x4ca550`), `+0x23`/`+0x24` direção de entrada/saída, `+0x25` lado da via (0 simples; 1/2 via dupla), `+0x2a` nos trilhos, `+0x2d` lote de carga (0 = vazio), `+0x31` parado no meio-tile da estação, `+0x32`/`+0x34` quadro e distância da roda (`veículo+0x31`), `+0x38`/`+0x39` quadro e distância da biela (`veículo+0x35`, só vapor), `+0x3d` minuto da última fumaça, `+0x41` distância até a próxima fumaça, `+0x45` aninhamento de simulação (não mexe na cadeia do tile), `+0x47` esperando reserva, `+0x48`/`+0x4a` tile reservado.
+
+**Rota do trem** (anel de 32 passos; ponteiros `+0x45` x u16, `+0x49` y u16, `+0x4d` direção de entrada u8, `+0x51` de saída u8, `+0x55` bits u16; capacidade `+0x59`, cabeça `+0x5d`, contagem `+0x61`, alocada `+0x65`; gravados como "extras" do trem, `map-gam.md` 5.5). Bits do passo: `0x01` meio-tile (o trecho vale metade; marca a estação e a reversão), `0x06` lado da via dupla (`0x536c4c[entrada]` = {2,1,1,1,1,2,2,2} se a peça tem `+0x23 & 1`), `0x08` parada (fim do caminho). Os bits 4-15 recebem lixo de heap do pathfinder (10.7). Intervalo reservado `+0x97..+0x95` (−1 = nada).
+
+**Paradas** (`+0x37`, `+0x3b` entradas de 14 bytes, atual `+0x3c` i8): `+0` u16 estação, `+3` bits (`0x08` waypoint, `0x30` modo de descarga, `0xc0` espera: `0x40` metade dos vagões de carga cheios, `0x80` todos), `+0xa`/`+0xc` i16 tile do waypoint, `+2` e `+4..+9` cargas pedidas.
+
+**Peça de trilho** (complementa `terrain-track.md` 1.3): `+3` u16 cabeça da lista de reservas (`pool_80`), `+7`/`+9` u16 trem dono da via 1/2, `+0xb`/`+0xc` entrada e `+0xd`/`+0xe` saída do dono, `+0x17`/`+0x1b` desgaste (`+= +0xaf` a cada entrada da locomotiva), `+0x23 & 0x80` já percorrida. **Reserva** (`pool_80` `0x574c80`, 5 bytes): `+0` saída, `+1` u16 trem, `+3` u16 próxima.
+
+**Cadeia do tile** (`0x574c54`, 7 bytes; cabeça em `tile+4`): `+0` tipo (1 animação, 2 vagão, 3 prédio, 4 estação), `+1` u32 id, `+5` u16 próxima; ordenada por tipo decrescente (`0x42e850` insere depois do último de tipo `>=`); o tipo 3 liga `tile+2 & 0x10`.
+
+### 10.2 Geometria do trecho
+`track_segment_length` (`0x4ca4e0`, entrada `a`, saída `b`, lado `k`): reta (`(a-b)&7 == 4`) 64 ortogonal / 90 diagonal; curva 80 (`k = 0`), senão 69 ou 91 conforme `0x55c3d8[b + 8a]` (lado da curva) e `k`. `track_point` (`0x4ca550`, `a, b, pos, k` → x, y, direção): reta `x = ftol(pos*dx_f[a] + 0x536a08[3a+k])`, `y = ftol(pos*dy_f[a] + 0x536a68[3a+k])` (`dx_f`/`dy_f` f32 em `0x536ac8`/`0x536ae8`, ±0,7071 na diagonal), direção `b`; curva: `(L, M, H) = (80, 64, 30)`, `(69, 56, 25)` ou `(91, 73, 35)`, `u = M*pos/L` (pos limitado a `0..L-1`, o excesso segue em linha reta pela direção de saída ou de entrada), as coordenadas vêm das tabelas de bytes `0x536b8c`/`0x536b08`/`0x536b40` por `u` e por `M-1-u`, por octante (`switch(a)`), e a direção vira `b` depois de `H`.
+
+### 10.3 `train_step(trem, dt, 1)`
+```
+se acidentado e agora >= +0xee: train_delete (0x4cdd50)                         ; não portado
+se +0x9c == 0 (fora dos trilhos): se tem paradas, coloca (0x4d1bb0 + 0x413550)   ; não portado
+se +0x9c:
+    train_update_speed(trem, agora)                                              ; 10.4
+    se andando (+0x99 == 0): se +0xa7 != 0: move   senão: reserve(trem, 1, 0, 5)
+    senão se +0x71 == 0 e depart_check(trem): move                               ; 0x4d0a70
+    move: tmp = f32(vel * 0.000625 * dt); +0xbf = ftol(tmp/dt)
+          real = vehicle_advance_head(cabeça, ftol(tmp)); d = f32(real); +0xc3 = agora - dt
+          para cada vagão: r = vehicle_advance(v, ftol(d)); se r != d e v é a cabeça: d = r
+          trim_reservations(trem) (0x4d0bc0); se vel > 0 e andando: train_breakdown_check
+    para cada vagão: car_smoke_step(v)                                           ; 10.6
++0xc3 = 0; se 0x574b84: 0x4d14b0 em todos os trens e zera                       ; não portado
+```
+
+### 10.4 Velocidade, parada e partida (`0x4d0400` completo)
+O passo de aceleração (4.4) é calculado antes de olhar `+0x99`; o alvo (4.3) agora inclui as classes de estrutura: para cada vagão nos trilhos até o primeiro em curva, `tile+2 & 0x80` (ponte) dá a classe `peça+0x11` e `tile+3 & 0x40` com `peça+5 & 8` dá a classe 3, ficando a de maior prioridade em `0x55c558` = {0,4,1,3,2}; classe 3 multiplica por 0.7 e classe 1 por 0.45 e ambas ligam "restrito". Quando o trem está parado por quebra/acidente/`+0xbc` o alvo é 0 e "restrito" não é escrito (o original lê o resto da pilha; o clone repete o último valor).
+```
+se (+0xed ou +0xbc) e agora >= +0xee: zera os dois; 0x4d59b0 (fim da quebra, 10.9)
+se +0x71 != 0 e agora < +0x71: +0x6d = agora; fim
+alvo, tau2 (como 4.4)
+se andando: decorrido = +0x6d ? agora - +0x6d : 0
+senão:   +0x69 = 0
+         enquanto +0x71 != 0 e +0x71 < +0x6d:          ; a partida atrasa um passo
+             se +0x9a in {3,4,6}: station_work (0x4d18b0, 10.5)
+             (sai se +0x71 == 0, +0x71 >= +0x6d ou +0x3c < 0)
+             +0x9a == 9: +0x71 = 0; 0x4d2c10 (fim da alfândega)   +0x9a == 2: 0x4d1bb0 (10.9)
+             senão: se a parada não é waypoint, a cabeça está na estação dela e o modo de espera é
+                    0x40/0x80 e há menos vagões carregados (+0x2d) que o pedido: +0x9a = 4; fim
+                    se depart_check: decorrido = agora - +0x71; +0x71 = 0; se +0x3c == 1: +0xe5 = agora
+                        crt_rand_range(0, 3) (som; 0x49b610 é a distância à câmera, sem estado)
+                        +0xc7 = agora; +0xa6 = 1; sai do laço para o passo de aceleração
+                    senão fim
+vel += ftol(clamp(decorrido, 0, tau2) / div * (alvo - vel)); +0x6d = agora
+```
+`depart_check` (`0x4d0a70`): falso se `+0x9a == 7` e `+0x92`, ou `+0xa7 == 0`, ou sem paradas; se `route_blocked` (`0x4d3e30`: algum passo de `+0x97..+0x95` em conflito, ou nada reservado) põe `+0x9a = 1`; com `+0x9b`, testa também o passo seguinte a `+0x95`; depois `reserve(trem, 0, 0, 0)`, e se `+0x9a` ficou 0 move a cabeça uma unidade (`0x415040(cabeça, 0x10000)`) e devolve verdadeiro.
+
+**Posse da via** (`reserve` `0x4d3c80`, `trem, parado, b9b, estado`): `estado == 0` com `+0xfb ∉ {0,1}` vira `estado = +0xfb, parado = 1, +0x71 = +0x6d + 1000`; grava `+0x9a = estado`, `+0xfb = 0`, `+0x9b`; se `+0x99` muda, percorre `+0x97..+0x95`: ao andar ocupa `peça+7` (se livre ou já sua com a mesma saída) ou, em via dupla, `peça+9`, gravando entrada/saída; ao parar libera as que forem suas. **Conflito** (`0x416050`, peça do tile, trem `id`, `a`, `b`): para cada dono `h != id` das vias 1 e 2 (a 2 só em via dupla): em via dupla, se `(saída_h - b) & 7 ∈ 2..6`, há conflito só se os dois caminhos se cruzam no tile (comparação dos arcos `2a, 2b+1` com os do dono) e nunca se a máscara da peça é só `{a, b}`; senão há conflito; num conflito, se a prioridade do trem (`+0xa8 - 1`) é `< 1` ou menor que a do dono, devolve bloqueado; senão para o dono (`reserve(dono, 1, 1, 1)`).
+
+**Intervalo reservado** (`0x4d0bc0` → `0x4d3950`): a frente é o passo da cabeça (+1 se ela passou da metade do comprimento); o fundo é o passo do último vagão nos trilhos (pulando os que esperam reserva) recuado meio comprimento. `0x4d3950` estende ou recua `+0x95` e `+0x97` passo a passo; cada passo novo empilha uma reserva (`0x4d36a0`: grava `(saída, id)` em `pool_80` na cabeça da lista da peça e, se o trem anda, ocupa a via como em `reserve`) e cada passo largado a remove (`0x4d3770`, que libera a via se não sobrou reserva sua nela).
+
+### 10.5 Movimento dos vagões e estação
+`vehicle_advance_head` (`0x415040`): copia o registro da cabeça, incrementa `+0x45` e simula o avanço de `dist + meio comprimento`: em trecho normal pede o próximo passo (`0x414dd0`: estende a rota se preciso, testa conflito (`0x415ff0` com o lado da via) e, se livre, entra; senão `reserve(trem,1,1,1)`); num meio-tile marcado, para no meio se for a estação da parada atual; senão segue (`0x412ff0`). Se o passo falha: `reserve(trem, 1, 1, 7)`. Devolve a distância possível e **restaura o registro**; reservas, rota e contadores tocados no caminho ficam.
+`vehicle_advance` (`0x4147e0`): vagão fora dos trilhos → `0x413550` (põe o vagão um engate atrás do da frente, quando a rota lá está livre). Locomotiva a vapor com `+0xbf != 0`: avança em pedaços de `+0x41` e solta uma fumaça a cada `0x60000` (6 unidades) com o minuto `+0xc3 += pedaço / +0xbf`. Laço de trechos como acima; ao chegar ao meio do tile da estação da parada atual a cabeça chama `train_arrive` (10.9). No fim: roda e biela, e `track_point`.
+`route_step` (`0x412ff0`): estende a rota se o vagão está no último passo (`0x4cf8c0`). A cabeça testa o passo seguinte (bloqueado → `reserve(1,1,1)`, falha), ocupa a via (`reserve(0,0,0)`), grava o território do tile novo em `+0xf3`; se `+0x94 == 0` consome: `+0xa2 += +0xaf`, óleo `-= 0.5`, água `-= 1.2`, areia `-= |rampa| * 140` (rampa = 4.1, x87 completo); estação com serviços `+0x49` & `0x400`/`0x800`/`0x200000` enche areia/água/óleo (100); refaz o lado da via do passo. Todo vagão (fora de simulação) sai da cadeia do tile velho e entra na do novo (tipo 2, id `+6`); o último vagão encurta `+0x61` para `passos à frente + 8`; a cabeça chama `train_enter_tile` (`0x4d5370`: `+0x7d`, `+0xa0`, `+0xe1`, desgaste, `+0x23 |= 0x80`, prioridade `+0xa8 = +0xa7` (+4 em trilho próprio) se o acelerador > 65, contagem por dono `+0x81..+0x8a` ou própria `+0x7f`; `+0xa8 = 20` se quebrado).
+`station_work` (`0x4d18b0`): na estação da parada, cada vagão de carga vazio tenta carregar (`0x414580`: se a estação tem lotes da carga esperando, `+0x61[c] != 0`, pega um com `station_load_lot` `0x4bf260`; o vagão genérico, que sorteia a carga com `rng_range(0,5)`, não está portado); cada carga soma 2880 min (x0.5 com serviço `+0x49 & 8`, x0.75 com `& 0x10`, dividido por `effect(0x29)`) a `+0x71` e `+0x9a = 3`; refaz `+0xaf` (peso total) e `+0xb3` (vagões).
+`station_load_lot` (`0x4bf260`, estação, carga, vagão): o lote mais antigo (`+7` menor que `max(agora+1, 1999999999)`, estrito) da carga, ainda não carregado (`+3 == 0`), nas pilhas (`+0x4d`, por `lote+0xf`) das indústrias da captação (elos `+0x3d`/`+0x41`, só as saídas com `+0x8b[slot] != 0`), ou largado na estação (`+0x4be`, por `+0x13`); grava estação de origem (se 0), vagão (`+5`) e minuto de carga (`+0xb`); se não foi largado, `indústria+0x8b[slot] -= 1`; `0x468b40` desconta `+0x61[c]` das estações ligadas à indústria (ou da estação onde foi largado).
+
+### 10.6 Fumaça e animações (`pool_78`, 0x23 bytes)
+Registro: `+0` estado (1 deriva, 2 parada), `+1` quadro, `+2` sequência (registro de `SMOKE.imb`; motor `+0x32`), `+3`/`+5` u16 tile, `+7`/`+8` x/y, `+9` u16 altura, `+0xb`/`+0xc` i8 e `+0xd` u16 posição inicial, `+0xf` minuto de nascimento, `+0x13`/`+0x17`/`+0x1b` f32 deriva por unidade de idade, `+0x1f` f32 quadros por unidade (1 unidade = 2160 min). `anim_object_step`: `t = f32((agora - nasc) * f32(1/2160))` (subtração sem sinal), `quadro = ftol(t * +0x1f)`; se `quadro >=` k do grupo `header[3]` do registro (11 em todos os registros de `SMOKE.imb`, banco `0x567a1c`) apaga (sai da cadeia, tipo 1); senão posição = início + `t` * deriva.
+`car_smoke_step` (`0x412900`): vapor (`veículo+0x2b`) de trem não quebrado/acidentado solta uma fumaça a cada `motor+0x36` minutos (382..997); a cabeça de trem quebrado/acidentado a cada `max(30, ftol(50/comprimento*100))` (x0.7 acidentado); atraso máximo 3000 min. `car_smoke_puff` (`0x412a90`): `+0x41 = 0x60000`, `+0x3d = minuto`; registro zerado, estado 1, quadro 0xff, altura `veículo+0x2d` (0 quebrado), posição `track_point(pos>>16 + veículo+0x2c + veículo+0x26)` (com sorteio CRT `[0, comp] - comp/2` x0.7 se quebrado/acidentado) ajustada ao tile vizinho; derivas `crt[-2000,2000]*0.001` (x, y), `crt[25,35]*2` (altura), `crt[3500,5000]*0.001` (quadros); quebrado: sequência 6 e x0.8; acidentado: `crt[0,100] < 30` → estado 2 sem deriva, sequência 8, altura x0.2 e `+0xd = crt[0,8]`, senão sequência 6, x0.8 e `crt[8,16]`; entra na cadeia do tile e roda `anim_object_step` uma vez. Como a fumaça é gravada, o **rand do CRT faz parte do estado do save** (corrige 5.4): o clone o semeia junto com o RNG do jogo.
+
+### 10.7 Pathfinder (`0x4cf8c0` → `track_pathfind` `0x460850`, modo trem)
+`train_route_extend` (`0x4cf8c0`): sem paradas ou com falha anterior (`+0x92` sem `+0x93`) não tenta; espaço = `32 - +0x61`; origem = último passo da rota (ou o tile da cabeça); destino = tile da parada (waypoint `+0xa/+0xc` ou estação `+0xa/+0xe`); se origem == destino passa para a parada seguinte (`train_set_stop` `0x4d1630`: zera `+0x71` se não está carregando, `+0x7b..+0x81`, `+0xcb = -1`, `0x4d5370`, `+0x92/+0x93`, `+0xd` dos vagões, `+0x2f`) e tenta de novo. Sucesso: `+0x7b = +0x7d + comprimento`, `+0x92 = +0x93 = 0`; falha: `+0x92 = 1`.
+Busca de custo uniforme da origem ao destino sobre as arestas das peças: nó = (tile, direção que aponta para o pai); fila de baldes (`0x4fa140`, largura 4, cada balde ordenado por custo, novo antes dos de custo igual, retirada a partir do balde do último custo); melhor custo por (tile, direção) (`0x462690`: só empilha se estritamente melhor); entradas velhas na fila são expandidas de novo. Sementes: com direção inicial (entrada do último passo) o próprio tile com custo 1, senão os vizinhos de cada aresta da peça com custo `c+1`. Expansão de (tile, d): arestas `(d+3)&7`, `(d-4)&7` (em frente), `(d-3)&7` e `d` (meia-volta), cada uma se a peça a tem; custo (`0x463b30`, modo trem) 2 ortogonal / 3 diagonal em trilho da empresa (6/9 em alheio), x3 na meia-volta. Limites: o mapa menos 3 tiles de margem se o retângulo jogável (`estado+0x3896..+0x38a2`) for interior. Trem elétrico só passa por peças com `+0x23 & 0x10`; empresa com `+0x422e == 0` só por territórios com `empresa+0x479+terr*0x1ed & 1` (ou água).
+Reconstrução do destino à origem (a origem é aceita se a direção inicial não faz 90° com o último passo); cópia para o anel do fim para o começo, sem a origem quando a rota já existe: limpa os bits 0 e 3, marca o último passo com `1|8`, e quando o passo anterior do anel é o tile seguinte do caminho (meia-volta) marca `1`, inverte a saída e insere uma cópia do tile com a entrada invertida. Os bits 4-7 e 14-15 de cada passo recebem os arrays C/D do modo de construção, que no modo trem são memória de `malloc` não inicializada (lixo; `rt2-savediff` os mascara).
+
+### 10.8 Fidelidade
+- Determinístico com dois geradores: o RNG do jogo (quebras, carga genérica) e o rand do CRT (fumaça e som: `crt_rand_range(0,3)` na partida e na chegada, sempre consumido; se a câmera estivesse perto, o som tocaria e poderia consumir mais — o oráculo não renderiza, e o clone assume o som desligado).
+- Verificação por snapshots do original (`docs/dynamic-analysis.md` 6, `crates/rt2-sim/tests/trainstep_snapshots.rs`): `train_step` em dois instantes (dias 37 e 74 do Example), as duas chegadas com entrega dos primeiros 120 dias, a carga na estação, a saída da estação, custos mensais e passo anual: idênticos, inclusive os estados finais dos dois geradores.
+- Não portados (contados como ganchos ausentes): acidente e roubo (`0x4ce730`, `0x4ceaa0`) e a busca de cidade do roubo (`0x42fa30`, só com `0x573e02 != 0`), vagão genérico de `0x414580`, troca de composição em `0x4d1bb0`, lote largado para transferência (`0x4beba0`, `0x4beb20`), lote que volta à pilha (`0x4bf760`), `industry_receive_cargo` (`0x40b250`), mensagens e sons da empresa vista (`0x46abf0`, `0x4d0870`), `0x4d14b0`, `train_delete`, colocação de trem novo (`0x4d1bb0` fora dos trilhos e o ramo da cabeça de `0x413550`), os ramos da flag `0x570229`.
+- Modo de construção do pathfinder (`param_7 != 0`, usado pela IA e pelo jogador) fica para o spec de construção.
+
+### 10.9 Chegada, descarga e receita (`0x4d29e0`, `0x4d2c10`) [V: snapshots]
+```
+train_arrive(trem):                                            ; 0x4d29e0
+    crt_rand_range(0, 3)  (variante do som); estação = parada atual; estação+0x4bb = 1
+    para cada vagão de carga i: +0x47 = 1
+        se car_should_unload(i) e tem lote: (R, _, ind) = car_deliver_lot(estimativa)
+            indústria de origem do lote em outra região (território +0x2a) que a estação (sem a opção 0x570239),
+            ou entrega a um porto (tipo 0x1c): espera += 0x2d00 (0x1680 com alfândega, estação +0x49 & 0x200)
+    espera ? (+0x69 = 0; reserve(1, 0, 9); +0x71 = +0x6d + espera) : train_arrival_settlement(trem)
+car_should_unload(i) (0x4d2720): nunca em waypoint ou com 0x570236; modo = parada+3 & 0x30 >> 4;
+    modo 1 e a estação não demanda a carga (0x4d2590): fica (transferência); vagão vazio ou estação que
+    demanda a carga (+0x195[c]): descarrega; senão procura parada seguinte que demande a carga e não seja a
+    origem do lote (sandbox 0x570227: sempre acha); modo 2, ou modo != 3 sem tal parada: descarrega;
+    modo 3: só se as cargas pedidas (+2, +4..) iguais a c <= vagões anteriores carregados com c
+train_arrival_settlement(trem) (0x4d2c10):
+    reserve(1, 0, 2); waypoint: +0x71 = +0x6d e fim
+    +0xe9 = f32((agora - +0xe5) * f32(1/483840)) [/ paradas se parada != 0 e +0xe9 == 2.0], mínimo 0.5
+    região de origem = estação +0x9e (se válida) +0x4ad
+    para cada vagão de carga: transferência (0x4d2590) → +0xf5/+0xf7 e lote largado (0x4beba0, não portado)
+        descarrega → R = car_deliver_lot(entrega): passageiros (carga 0), correio (1) ou carga; taxa de $2000
+        na estação anterior e na atual
+    +0x71 = +0x6d + ftol(((n+1)*2880 [x0.5 serviço 8 | x0.75 serviço 0x10]) / max(effect(0x29), 0.1))
+    taxas creditadas aos donos das estações (razão 2); descontadas se o dono for outro
+    líquido = max(0, bruto - descontos); cada dono de trilho da lista +0x81 (ativo, +0x16e) recebe
+    líquido * f32(parte/total) (razão 4); a empresa lança ftol(parcela / f32(bruto) * f32(líquido * f32(própria/total)))
+    em 0x65 (passageiros, razão 0), 0x66 (correio) e 0x67 (carga, razão 1) via train_ledger_add; +0xb7 = 0
+    velocidade = agora > +0xc7 ? ftol(140000 * +0x7d / (agora - +0xc7) + 0.5) : 30
+    company_delivery_stats(empresa, n, +0x7d*n*10, velocidade, região origem, região destino, cargas) (0x43bde0:
+        contadores +0x192..+0x1a6, por par de regiões +0x47e.. e por carga +0x4c2.., território +0x52/+0x54,
+        globais 0x573d05..0x573d19)
+    empresa vista (0x574414): mensagem 0x46abf0 (não portado); senão empresa+0x15c = max(+0x15c, velocidade)
+    +0x9e = estação; refaz +0xaf/+0xb3; +0xbb &= ~0x20
+```
+`car_deliver_lot` (`0x414510`) chama `cargo_delivery_revenue` (`0x4bf760`, cargo.md 4) e, na entrega, zera `+0x2d`. Os efeitos da entrega seguem cargo.md 4.8, mais: o contador de entregas da indústria de origem (`+0x63 + slot da saída`, `0x468470`) sobe quando a receita-base não é 0 e a carga foi aceita por demanda; o lote é liberado (`lot_free` `0x466a60`: sai da pilha da indústria, da lista da estação e do vagão). Na estação (estado 2) `0x4d1bb0`: a IA escolhe as cargas dos vagões (`0x4d8db0`: a carga sem lote esperando cede lugar à carga esperando de maior nível de preço na próxima estação); se os vagões batem com a composição pedida, estado 6 e `station_work`; a troca de vagões (`0x4d0fa0`, `0x414220`) não está portada.
+Quebra (`0x4ce4c0`): `+0xed = 1` por `rng_range(60,120)` dias, `+0xa8 = 20`, a fumaça da locomotiva recomeça (`+0x3d = agora - 500`) e a empresa perde `2000 / (n^0.66 + 4)` (`n = +0x27`) de reputação em `+0x4229` (mínimo 0) e no território do tile (`+0x47a + terr*0x1ed`, mínimo -10000). Para a empresa vista, o original ainda põe o som em laço (`0x4d0870`: alça de som em `+0xab`, bit `0x10` de `+0xbb`) e muda a vista (`estado+0x2e`/`+0x32`): artefatos de interface gravados no save que o clone não reproduz. Fim da quebra: `0x4d59b0` refaz a prioridade `+0xa8`.
+Mês e ano: `train_monthly_costs` (`0x4d4390`, 6.2) com os níveis de preço do cabeçalho (`0x567d6d[tipo]`) e `train_year_step` (`0x4d4620`: `+0x11d..` ← `+0x10d..`, `+0x10d..` ← `+0xfd..`, zera `+0xfd..+0x10d`).
+
 ## Em aberto
 - Número máximo de vagões por trem (a UI de composição não foi lida; o teste usa até 8 veículos).
-- Sinais, via dupla e bloqueio entre trens: `vehicle_advance_head` (`0x415040`) para o trem em `0x4d3c80(trem,1,1,7)` quando `0x414dd0` falha; a regra de ocupação não foi lida.
 - Classes de estrutura 1 e 3 em `0x4d00c0` (lista `0x574c84`, campo `+0x11`, provavelmente pontes/estações) e o significado de `+0xbc`.
 - Flags globais `0x574c08` (dobra a velocidade alvo), `0x570229` (sem quebras para IA, sem acidentes; carga 0x11) e `0x5748fc` (desliga quebras): origem não identificada.
 - `0x567d6d[tipo]` (nível de preço de combustível por tipo) e quem o muda.
 - Reabastecimento de areia, óleo e água nas estações; regra de `+0xa7`/`+0xa8` (som/estado do acelerador).
-- Detalhes de `vehicle_advance_head`/`vehicle_advance` (troca de tile, meia distância de engate `+0x06`, tiles com comprimento pela metade).
-- Campos `+0x32` e `+0x36` do registro de motor; nomes dos tipos de carga 44/45 (restaurante/caboose pelo nome do veículo).
+- Nomes dos tipos de carga 44/45 (restaurante/caboose pelo nome do veículo).
 - `0x43c030`: confirmar que `jogador+0x122` significa "humano".
 - Precisão real do x87 no jogo (testado só em 53 bits).
 

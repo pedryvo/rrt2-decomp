@@ -50,11 +50,15 @@ fn main() -> anyhow::Result<()> {
     let exe =
         Exe::from_bytes(std::fs::read(&exe_path).with_context(|| exe_path.display().to_string())?)
             .context("reading RT2_PLAT.EXE")?;
-    let data = GameData::load(&exe).context("loading the data tables")?;
+    let mut data = GameData::load(&exe).context("loading the data tables")?;
+    data.load_sprites(&args.game_dir)
+        .map_err(anyhow::Error::msg)
+        .context("reading SMOKE.imb")?;
 
     let mut world = World::from_save(&save, &data);
     // Same order as the driver: load, then seed the game RNG.
     world.apply(Command::SeedRng(args.seed));
+    world.apply(Command::SeedCrtRng(args.seed));
     let start = world.minutes();
     let total = i64::from(args.days) * 1440;
     let mut done = 0i64;

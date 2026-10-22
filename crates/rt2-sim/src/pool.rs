@@ -68,44 +68,123 @@ pub fn nth(pool: &Pool, n: usize) -> usize {
     list_order(pool).get(n).copied().unwrap_or(0)
 }
 
-/// Why [`alloc`] gave up.
+/// Why [`alloc`] gave up (kept for callers that test it; the pool grows instead).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PoolFull;
 
+fn is_free(pool: &Pool, s: usize) -> bool {
+    s < pool.slots && pool.bitmap[s >> 3] & (1 << (s & 7)) != 0
+}
+
+/// `pool_grow` (`0x4f14c0`): adds `by` slots. The free bitmap keeps its old bytes (bits past the
+/// old end included) and the new bytes are `0xff`; the original leaves the new `next`/`prev`
+/// entries uninitialized (heap garbage in the file), here they are 0.
+pub fn grow(pool: &mut Pool, by: usize) {
+    let old = pool.slots;
+    let keep = if old == 0 { 0 } else { (old + 8) >> 3 };
+    let size = (old + 8 + by) >> 3;
+    pool.bitmap.truncate(keep);
+    pool.bitmap.resize(size, 0xff);
+    if pool.linked {
+        pool.next.resize(old + by, 0);
+        pool.prev.resize(old + by, 0);
+    }
+    pool.slots = old + by;
+}
+
 /// `pool_alloc` (`0x4f1690`, the path taken in a local game): scans the free bitmap upward from
-/// the last allocated slot (`field_04`), wraps to slot 1, and links the new record at the end of
-/// the list. Growing a full pool (`0x4f14c0`) is not implemented ([`PoolFull`]).
+/// the last allocated slot (`field_04`), wraps to slot 1 and scans up to `field_04`; when no slot
+/// is free the pool grows by its step (`field_0c`) and the first new slot is used. The record is
+/// linked at the end of the list.
 pub fn alloc(pool: &mut Pool, data: Vec<u8>) -> Result<usize, PoolFull> {
     let n = pool.slots;
-    let free = |pool: &Pool, s: usize| s < n && pool.bitmap[s >> 3] & (1 << (s & 7)) != 0;
-    let cursor = pool.field_04.max(0) as usize;
-    let slot = (cursor + 1..n)
-        .find(|&s| free(pool, s))
-        .or_else(|| (1..cursor.min(n)).find(|&s| free(pool, s)))
-        .ok_or(PoolFull)?;
+    let cur = pool.field_04 as i64;
+    let mut found = None;
+    let mut u = cur;
+    loop {
+        u += 1;
+        if u >= n as i64 {
+            if cur >= 2 {
+                found = (1..cur)
+                    .find(|&s| is_free(pool, s as usize))
+                    .map(|s| s as usize);
+            }
+            break;
+        }
+        if is_free(pool, u as usize) {
+            found = Some(u as usize);
+            break;
+        }
+    }
+    let slot = match found {
+        Some(s) => s,
+        None => {
+            let step = pool.field_0c.max(1) as usize;
+            grow(pool, step);
+            n
+        }
+    };
     let at = pool.records.partition_point(|r| r.slot < slot);
     pool.records.insert(at, PoolRecord { slot, data });
     if pool.linked {
         if pool.count == 0 {
             pool.prev[slot] = 0;
             pool.head = slot as u16;
+            pool.tail = slot as u16;
         } else {
             let tail = usize::from(pool.tail);
             pool.next[tail] = slot as u16;
             pool.prev[slot] = tail as u16;
+            pool.tail = slot as u16;
         }
-        pool.tail = slot as u16;
         pool.next[slot] = 0;
     }
     pool.field_04 = slot as i32;
     pool.bitmap[slot >> 3] &= !(1 << (slot & 7));
     pool.count += 1;
+    refresh_order(pool);
+    Ok(slot)
+}
+
+/// `pool_free` (`0x4f17e0`): unlinks the slot and marks it free. The count drops only if the slot
+/// was live; the freed slot keeps its stale `next`/`prev` entries, as in the original.
+pub fn free(pool: &mut Pool, slot: usize) {
+    if is_free(pool, slot) || slot >= pool.slots {
+        if slot < pool.slots {
+            pool.bitmap[slot >> 3] |= 1 << (slot & 7);
+        }
+        return;
+    }
+    pool.count -= 1;
+    if pool.linked {
+        let p = pool.prev[slot];
+        let nx = pool.next[slot];
+        if p != 0 {
+            pool.next[usize::from(p)] = nx;
+        }
+        if nx != 0 {
+            pool.prev[usize::from(nx)] = p;
+        }
+        if usize::from(pool.head) == slot {
+            pool.head = nx;
+        }
+        if usize::from(pool.tail) == slot {
+            pool.tail = p;
+        }
+    }
+    pool.bitmap[slot >> 3] |= 1 << (slot & 7);
+    if let Some(i) = index_of(pool, slot) {
+        pool.records.remove(i);
+    }
+    refresh_order(pool);
+}
+
+fn refresh_order(pool: &mut Pool) {
     pool.order = if pool.linked {
         list_order(pool)
     } else {
         pool.records.iter().map(|r| r.slot).collect()
     };
-    Ok(slot)
 }
 
 pub fn u16_at(b: &[u8], o: usize) -> u16 {
@@ -197,9 +276,16 @@ mod tests {
             Ok(1),
             "wraps to the lowest free slot"
         );
-        assert_eq!(alloc(&mut p, vec![7, 7]), Err(PoolFull));
+        p.field_0c = 4;
+        assert_eq!(alloc(&mut p, vec![7, 7]), Ok(6), "grows by the step");
+        assert_eq!(p.slots, 10);
         let slots: Vec<usize> = p.records.iter().map(|r| r.slot).collect();
-        assert_eq!(slots, [1, 2, 3, 4, 5]);
+        assert_eq!(slots, [1, 2, 3, 4, 5, 6]);
+        let before = p.count;
+        free(&mut p, 3);
+        assert_eq!(p.count, before - 1);
+        assert_eq!(p.next[2], 4);
+        assert_eq!(p.prev[4], 2);
     }
 
     #[test]

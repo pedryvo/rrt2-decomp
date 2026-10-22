@@ -4040,3 +4040,381 @@ comment = "posicao e direitos iniciais por territorio"
 addr = "0x438710"
 name = "company_apply_manager_effects"
 comment = "soma/subtrai os 4 efeitos do gerente em +0x1ae"
+
+[[symbol]]
+addr = "0x412900"
+name = "car_smoke_step"
+kind = "function"
+comment = "fastcall(car): emite as fumacas devidas desde +0x3d (vapor a cada motor+0x36 min; cabeca de trem quebrado/acidentado a cada max(30,50/comp*100)); atraso max 3000 min; [V save]"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x412a90"
+name = "car_smoke_puff"
+kind = "function"
+comment = "thiscall(car, minuto): cria uma fumaca em pool_78 com crt_rand (deriva, vida, posicao se quebrado), pendura no tile e roda anim_object_step; [V save]"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4ca550"
+name = "track_point"
+kind = "function"
+comment = "fastcall(entrada, saida, pos, lado, &x, &y, &dir): posicao 0..63 e direcao de desenho de um ponto do trecho (reta/curva 80/69/91); [V]"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x42e320"
+name = "tile_struct_remove"
+kind = "function"
+comment = "fastcall(tile, tipo, id): tira (tipo,id) da cadeia do tile (0x574c54) e recalcula tile+2&0x10; [V save]"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4667b0"
+name = "struct_ptr"
+kind = "function"
+comment = "list_record(0x574c54, id): registro da cadeia de estruturas do tile"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4f17e0"
+name = "pool_free"
+kind = "function"
+comment = "thiscall(pool, slot): desliga da lista, marca livre, contagem-- se estava vivo; next/prev do slot ficam velhos; [V save]"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4f0f60"
+name = "lad_group_ptr"
+kind = "function"
+comment = "fastcall(registro LAD, grupo, i): ponteiro do descritor de grupo (14 bytes: k, cnt, mapa, imagens) de registro+0x3c"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4f8e80"
+name = "lad_record_ptr"
+kind = "function"
+comment = "thiscall(banco, i): banco+2 + i*0x44"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4d0a70"
+name = "train_depart_check"
+kind = "function"
+comment = "fastcall(trem): rota bloqueada -> +0x9a=1; senao ocupa a via (0x4d3c80(0,0,0)) e anda a cabeca 1 unidade; 1 = pode partir; [V save]"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4d3c80"
+name = "train_set_stop_state"
+kind = "function"
+comment = "thiscall(trem, parado, +0x9b, estado): grava +0x9a/+0x9b/+0xfb; ao mudar +0x99 ocupa ou libera peca+7/+9 no intervalo +0x97..+0x95; [V save]"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4d0bc0"
+name = "train_trim_reservations"
+kind = "function"
+comment = "fastcall(trem): recalcula frente (cabeca) e fundo (ultimo vagao - meio comprimento) do intervalo reservado; [V save]"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4d3950"
+name = "train_set_reserved_range"
+kind = "function"
+comment = "thiscall(trem, frente, fundo): estende/recua +0x95/+0x97 empilhando ou removendo reservas; [V save]"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4d36a0"
+name = "track_reserve_step"
+kind = "function"
+comment = "thiscall(trem, x, y, entrada, saida): empilha (saida, id) em pool_80 na peca e ocupa a via se o trem anda; [V save]"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4d3770"
+name = "track_unreserve_step"
+kind = "function"
+comment = "thiscall(trem, x, y, entrada, saida): remove a reserva do trem da peca; libera a via se nao sobrou outra; [V save]"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4d3e30"
+name = "train_route_blocked"
+kind = "function"
+comment = "fastcall(trem): algum passo de +0x97..+0x95 em conflito (0x416050), ou nada reservado; [V save]"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x415ff0"
+name = "tile_track_conflict"
+kind = "function"
+comment = "thiscall(tile, id, entrada, saida): 0x416050 com o lado da via dupla 0x536c4c[entrada]; [V save]"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x416050"
+name = "track_piece_conflict"
+kind = "function"
+comment = "thiscall(tile, lado, id, entrada, saida): outro trem dono da via em conflito (via dupla: so se os caminhos se cruzam); prioridade +0xa8 maior para o dono; [V save]"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x414dd0"
+name = "route_next_step"
+kind = "function"
+comment = "fastcall(car): look-ahead da cabeca entra no proximo passo da rota (estende pela 0x4cf8c0, testa conflito); [V save]"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x412ff0"
+name = "route_step"
+kind = "function"
+comment = "fastcall(car): o vagao passa ao proximo passo: cabeca reserva, consome oleo/agua/areia, reabastece em estacao; cadeia do tile; enter_tile; [V save]"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x413550"
+name = "vehicle_place"
+kind = "function"
+comment = "thiscall(car, x, y, idx): poe um vagao nos trilhos (fora da cabeca: um engate atras do da frente, se a rota estiver livre); [V save, ramo nao-cabeca]"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x412770"
+name = "vehicle_rear_blocked"
+kind = "function"
+comment = "fastcall(car): o passo um comprimento atras do vagao esta em conflito"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4d18b0"
+name = "train_station_work"
+kind = "function"
+comment = "fastcall(trem): carga na estacao da parada (0x414580 por vagao), +0x71 += 2880 por carga (servicos 8/0x10, efeito 0x29), refaz +0xaf/+0xb3; [V save, sem carga]"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x414580"
+name = "car_load"
+kind = "function"
+comment = "thiscall(car, estacao): vagao vazio pega lote da estacao (generico sorteia carga rng_range(0,5)); [S]"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4cf8c0"
+name = "train_route_extend"
+kind = "function"
+comment = "fastcall(trem): pathfind da ultima posicao da rota ate a parada atual (avanca a parada se ja esta nela); +0x7b, +0x92/+0x93; [V save]"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x462690"
+name = "path_relax"
+kind = "function"
+comment = "fastcall(x, y, dir, pai, custo, b, c): no do pathfinder (0x566a74, 0x2a bytes) + fila de baldes, so se estritamente melhor; [V save]"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4fa140"
+name = "bucket_queue_init"
+kind = "function"
+comment = "thiscall(fila, tam_registro, n, passo, largura, nbaldes): fila de baldes (Dial) do pathfinder"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4fa490"
+name = "bucket_queue_push"
+kind = "function"
+comment = "thiscall(fila, entrada): insere no balde custo/largura antes da primeira de custo >=; [V save]"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4fa6c0"
+name = "bucket_queue_remove"
+kind = "function"
+comment = "thiscall(fila, slot): tira a entrada da lista do seu balde"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4fa750"
+name = "bucket_queue_entry"
+kind = "function"
+comment = "thiscall(fila, slot): ponteiro da entrada"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4fa770"
+name = "bucket_queue_min"
+kind = "function"
+comment = "thiscall(fila, custo): slot da cabeca do primeiro balde nao vazio a partir de custo/largura"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4f0830"
+name = "ring_in_range"
+kind = "function"
+comment = "fastcall(a, b, cabeca, n, 32): b esta estritamente a frente de a no anel contado a partir da cabeca"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4d1630"
+name = "train_set_stop"
+kind = "function"
+comment = "thiscall(trem, k, refresh): parada atual = k; zera +0x7b..+0x81, +0x71 (se nao carregando), +0x92/+0x93, +0xd dos vagoes; [S]"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4bf1d0"
+name = "station_at"
+kind = "function"
+comment = "fastcall(x, y): estacao da estrutura tipo 4 do tile (0 = nenhuma)"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x49b530"
+name = "camera_view_center"
+kind = "function"
+comment = "fastcall(&x, &y, &escala, &volume): centro da vista atual (UI)"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4d29e0"
+name = "train_arrive"
+kind = "function"
+comment = "fastcall(trem): chegada ao meio do tile da estacao: som (crt_rand_range(0,3)), descarga por vagao (0x4d2720, 0x414510), espera de transferencia ou liquidacao 0x4d2c10; [S]"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4d2720"
+name = "car_should_unload"
+kind = "function"
+comment = "thiscall(trem, i): o i-esimo vagao de carga descarrega nesta parada (modo +3&0x30, demanda da estacao +0x195, cargas pedidas)"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4f13d0"
+name = "pool_create"
+kind = "function"
+comment = "thiscall(pool, tam_registro, n, passo, tipo, ligada, ?): inicializa um pool de slots"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4f1310"
+name = "mem_alloc"
+kind = "function"
+comment = "operator new (malloc)"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4f1320"
+name = "mem_free"
+kind = "function"
+comment = "operator delete (free)"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4f1460"
+name = "pool_destroy"
+kind = "function"
+comment = "thiscall(pool): libera os arrays do pool"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4fa260"
+name = "bucket_queue_destroy"
+kind = "function"
+comment = "thiscall(fila): libera a fila de baldes"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x466780"
+name = "free_and_null"
+kind = "function"
+comment = "fastcall(&ptr): free(*ptr); *ptr = 0"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4f0cd0"
+name = "distance_int"
+kind = "function"
+comment = "ftol da distancia euclidiana entre dois pontos (x87)"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4667f0"
+name = "reservation_ptr"
+kind = "function"
+comment = "list_record(pool_80 0x574c80, id): reserva de passo de rota"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x466a50"
+name = "reservation_free"
+kind = "function"
+comment = "pool_free(pool_80 0x574c80, id)"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4d6330"
+name = "train_stop_cargo_lists"
+kind = "function"
+comment = "fastcall(trem): com a flag 0x570229, propaga as listas de carga pedida entre as paradas"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x468b40"
+name = "lot_leave_pile"
+kind = "function"
+comment = "fastcall(lot): o lote sai da pilha: decrementa +0x61[c] da estacao onde foi largado (e +0x169) ou de todas as estacoes ligadas a industria de origem; [V snapshot]"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x40a5c0"
+name = "industry_station_link"
+kind = "function"
+comment = "thiscall(industria, k, &raio): k-esimo elo estacao da industria (+0x2f, encadeado por +6); devolve a estacao"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4d8db0"
+name = "ai_choose_consist"
+kind = "function"
+comment = "fastcall(trem): IA troca a carga de cada vagao sem lote esperando (+0x61) pela carga esperando com maior nivel de preco (+0x321) na proxima estacao; [V snapshot]"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4682b0"
+name = "vehicle_type_for_cargo"
+kind = "function"
+comment = "fastcall(carga): primeiro tipo de veiculo com +0x30 == carga disponivel no ano (+0x1c..+0x1e); [V snapshot]"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x40ad50"
+name = "industry_unlink_lot"
+kind = "function"
+comment = "thiscall(industria, lote): tira o lote da pilha +0x4d (encadeada por lote+0xf); nao achando zera lote+0x11; [V snapshot]"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4d1bb0"
+name = "train_consist_at_stop"
+kind = "function"
+comment = "fastcall(trem): estado 2 depois da liquidacao: IA escolhe a carga (0x4d8db0); refaz a composicao se nao bate com a parada (+2, +4..); estado 6 e carga (0x4d18b0); [V snapshot, sem troca]"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x46abf0"
+name = "delivery_message"
+kind = "function"
+comment = "fastcall(&dados): mensagem e registro de entrega da empresa vista na interface (0x574414); nao portado"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4beb20"
+name = "station_unlink_lot"
+kind = "function"
+comment = "thiscall(estacao, lote): tira o lote da lista de largados +0x4be"
+spec = "docs/spec/trains.md"

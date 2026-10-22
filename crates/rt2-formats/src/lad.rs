@@ -63,6 +63,9 @@ pub struct IndexedImage {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LadGroup<'a> {
+    /// `k`: length of the frame map as stored (the map itself is only present when `k >= 2`).
+    /// For the animation banks this is the number of frames of the sequence (`0x4283e0`).
+    pub map_len: u32,
     pub frame_map: Vec<u8>,
     pub images: Vec<LadImage<'a>>,
 }
@@ -168,7 +171,11 @@ impl<'a> Lad<'a> {
                         data: c.take(size)?,
                     });
                 }
-                groups.push(LadGroup { frame_map, images });
+                groups.push(LadGroup {
+                    map_len: k as u32,
+                    frame_map,
+                    images,
+                });
             }
             records.push(LadRecord { header, groups });
         }

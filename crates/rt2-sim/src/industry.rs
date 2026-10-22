@@ -134,7 +134,14 @@ pub fn recount_piles(rec: &mut [u8], lots: &Pool, env: &Env) {
 /// `industry_spawn_lot(e, cargo)` (`0x40a770`): pushes a new lot on the head of the pile unless
 /// the output slot already has 50 waiting. Linked stations (`+0x33 > 0`) would be told
 /// (`0x468af0`, `0x4bebf0`): not implemented, counted.
-fn spawn_lot(rec: &mut [u8], lots: &mut Pool, cargo: u8, env: &Env, log: &mut HookLog) {
+fn spawn_lot(
+    rec: &mut [u8],
+    lots: &mut Pool,
+    cargo: u8,
+    env: &Env,
+    log: &mut HookLog,
+    spawned: &mut Vec<u8>,
+) {
     if rec[OFF_INACTIVE] != 0 {
         return;
     }
@@ -163,21 +170,21 @@ fn spawn_lot(rec: &mut [u8], lots: &mut Pool, cargo: u8, env: &Env, log: &mut Ho
             "world-tick.md 1; map-gam.md 5.3"
         ),
     }
+    // The linked stations (`0x468af0`, `0x4bebf0`, `+0x4b5`) are updated by the caller, which
+    // sees the station records (`crate::trainstep::Ts::industry_lot_spawned`).
     if rec[OFF_STATIONS] as i8 > 0 {
-        todo_hook!(
-            log,
-            "industry_spawn_lot_stations",
-            "lot count and supply/demand of the linked stations (0x468af0, 0x4bebf0)",
-            "cargo.md 7.3, 8"
-        );
+        spawned.push(cargo);
     }
 }
 
 /// `industry_production_tick(e, 0)` (`0x40aa20`, cargo.md 7.3): for each output slot, creates
-/// every lot that is due (one per loop turn, the slot clock advancing by one period).
-pub fn production_tick(rec: &mut [u8], lots: &mut Pool, env: &Env, log: &mut HookLog) {
+/// every lot that is due (one per loop turn, the slot clock advancing by one period). Returns
+/// the cargo of each lot created while the industry has linked stations, for the caller to
+/// update those stations.
+pub fn production_tick(rec: &mut [u8], lots: &mut Pool, env: &Env, log: &mut HookLog) -> Vec<u8> {
+    let mut spawned = Vec::new();
     if rec[OFF_INACTIVE] != 0 {
-        return;
+        return spawned;
     }
     if env.sandbox {
         todo_hook!(
@@ -186,7 +193,7 @@ pub fn production_tick(rec: &mut [u8], lots: &mut Pool, env: &Env, log: &mut Hoo
             "sandbox branch of industry_production_tick (0x40aa20, flags at +0x9e)",
             "cargo.md 7.3 (sandbox)"
         );
-        return;
+        return spawned;
     }
     let tid = rec[OFF_TYPE];
     let ty = &env.types[usize::from(tid)];
@@ -234,9 +241,10 @@ pub fn production_tick(rec: &mut [u8], lots: &mut Pool, env: &Env, log: &mut Hoo
                     }
                 }
             }
-            spawn_lot(rec, lots, slot.output, env, log);
+            spawn_lot(rec, lots, slot.output, env, log, &mut spawned);
         }
     }
+    spawned
 }
 
 /// Header offset (file offset = `0x57023b - 0x567b38`) of the saved Port record and of the two

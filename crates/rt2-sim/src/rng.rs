@@ -3,8 +3,10 @@
 //! - Generator A, [`GameRng`]: the game LCG (`rng_range` `0x4f0660`, state `0x55d2c0`).
 //! - Generator B, [`hash_range`]: the stateless seeded hash (`rng_hash_range` `0x4f06f0`).
 //!
-//! Generator C (the MSVC CRT `rand`) is intentionally absent: it only drives sound and UI and
-//! never touches simulation state (rng.md section 5, trains.md 5.4).
+//! - Generator C, [`CrtRng`]: the MSVC CRT `rand` (`crt_rand` `0x51c137`, state `0x5609f0`) and
+//!   `crt_rand_range` (`0x4f0790`). It drives sound and UI, but also the smoke puffs that the
+//!   steam engines leave in `pool_78` (`0x412a90`, trains.md 10.6), which are saved: the clone
+//!   must consume it in the same order as the original to reproduce a save.
 
 /// Generator A: ANSI C LCG, `s = s * 0x41c64e6d + 0x3039`, 15-bit output (rng.md 2.1).
 ///
@@ -61,6 +63,52 @@ impl GameRng {
             "rng_range({lo}, {hi}): division by zero in the original"
         );
         v.wrapping_rem(d).wrapping_add(lo)
+    }
+}
+
+/// Generator C: the MSVC CRT `rand`, `s = s * 214013 + 2531011`, 15-bit output.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CrtRng {
+    state: u32,
+}
+
+impl CrtRng {
+    /// `crt_srand` (`0x51c12d`).
+    pub fn new(seed: u32) -> Self {
+        CrtRng { state: seed }
+    }
+
+    pub fn seed(&mut self, seed: u32) {
+        self.state = seed;
+    }
+
+    pub fn state(&self) -> u32 {
+        self.state
+    }
+
+    /// `crt_rand` (`0x51c137`).
+    pub fn rand(&mut self) -> i32 {
+        self.state = self.state.wrapping_mul(214_013).wrapping_add(2_531_011);
+        ((self.state >> 16) & 0x7fff) as i32
+    }
+
+    /// `crt_rand_range(lo, hi)` (`0x4f0790`): inclusive; `hi == lo` and `hi < lo` return without
+    /// a draw (`hi` and `lo` respectively); spans above `0x7fff` take two draws.
+    pub fn range(&mut self, lo: i32, hi: i32) -> i32 {
+        if hi == lo {
+            return hi;
+        }
+        if hi < lo {
+            return lo;
+        }
+        let span = hi.wrapping_sub(lo);
+        if span > 0x7fff {
+            let a = self.rand() as u32;
+            let b = self.rand() as u32;
+            let v = (b & 0x7fff) | ((a & 0x7fff) << 15);
+            return (v % (span as u32).wrapping_add(1)).wrapping_add(lo as u32) as i32;
+        }
+        self.rand() % (span + 1) + lo
     }
 }
 

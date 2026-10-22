@@ -24,7 +24,7 @@ use crate::fp::ftol;
 use crate::hooks::HookLog;
 use crate::industry::{self, EffectTable, Env};
 use crate::pool::{
-    self, f32_at, f64_at, i16_at, i32_at, put_f32, put_f64, put_u16, put_u32, u16_at,
+    self, f32_at, f64_at, i16_at, i32_at, put_f32, put_f64, put_u16, put_u32, u16_at, u32_at,
 };
 use crate::todo_hook;
 use crate::world::World;
@@ -41,6 +41,8 @@ const ST_BASIC_MODEL: usize = 0x388F; // 0x573d77
 // Header offsets (VA - 0x567b38).
 const HDR_SANDBOX: usize = 0x86EF; // 0x570227
 const HDR_NO_ECONOMY: usize = 0x86FF; // 0x570237
+const HDR_FLAG_570229: usize = 0x86F1; // 0x570229
+const HDR_FLAG_570236: usize = 0x86FE; // 0x570236
 
 /// Effect id of the prime rate adjustment (`0x46bac0` asks `0x46b5d0` for `0x20`).
 const EFFECT_PRIME: usize = 0x20;
@@ -53,6 +55,8 @@ pub struct SimState {
     /// Industry types of the active set, indices rebuilt for the current year (`0x471880`).
     types: Vec<IndustryType>,
     pub(crate) log: HookLog,
+    /// Runtime globals of the train step that outlive a call.
+    ts_globals: crate::trainstep::Globals,
 }
 
 impl PartialEq for SimState {
@@ -86,6 +90,7 @@ impl World {
             data: Box::new(data.clone()),
             types: Vec::new(),
             log: HookLog::default(),
+            ts_globals: Default::default(),
         };
         sim.rebuild_types(i32::from(save.date.year));
         w.sim = Some(Box::new(sim));
@@ -205,30 +210,64 @@ impl SimState {
         self.log.ran("linear_pass");
         let t = w.minutes.wrapping_add(dt);
         self.set_clock(w, t);
-        // Map animations, pool_78 in list order (pattern A).
-        let mut id = pool::first(&self.save.pool_78);
-        while id != 0 {
-            let next = pool::next(&self.save.pool_78, id);
+        if !self.v2348() {
             todo_hook!(
                 self.log,
-                "anim_object_step",
-                "anim_object_step 0x4283e0 (map animation objects)",
-                "world-tick.md 2.1 item 1"
+                "linear_pass_233c",
+                "anim_object_step / train_step on a 0x233C file (offsets not mapped)",
+                "map-gam.md 5.1"
             );
-            id = next;
+            return;
         }
-        // Trains of the single local player, in list order (pattern A).
-        let mut id = pool::first(&self.save.trains);
-        while id != 0 {
-            let next = pool::next(&self.save.trains, id);
-            todo_hook!(
-                self.log,
-                "train_step",
-                "train_step 0x4d0ce0 (movement, loading, breakdowns)",
-                "world-tick.md 2.1 item 2; trains.md 4.5"
-            );
-            id = next;
-        }
+        self.with_trainstep(w, |ts| {
+            // Map animations, pool_78 in list order (pattern A).
+            let mut id = ts.first_id(crate::trainstep::P::Anim);
+            while id != 0 {
+                let next = ts.next_id(crate::trainstep::P::Anim, id);
+                ts.anim_object_step(id);
+                ts.log.ran("anim_object_step");
+                id = next;
+            }
+            // Trains of the single local player, in list order (pattern A).
+            let mut id = ts.first_id(crate::trainstep::P::Train);
+            while id != 0 {
+                let next = ts.next_id(crate::trainstep::P::Train, id);
+                ts.train_step(id, dt, true);
+                ts.log.ran("train_step");
+                id = next;
+            }
+        });
+    }
+
+    /// Runs `f` with the train step's view of the state (`crate::trainstep::Ts`) at the
+    /// current clock.
+    fn with_trainstep<R>(
+        &mut self,
+        w: &mut World,
+        f: impl FnOnce(&mut crate::trainstep::Ts<'_>) -> R,
+    ) -> R {
+        let date = date_of(w.minutes);
+        let flag_570229 = self.hdr(HDR_FLAG_570229);
+        let flag_570236 = self.hdr(HDR_FLAG_570236);
+        let mut ts = crate::trainstep::Ts {
+            s: &mut self.save,
+            img: &self.data.image,
+            anim_frames: &self.data.anim_frames,
+            types: &self.types,
+            cargo: &self.data.cargo,
+            revenue: &self.data.revenue,
+            now: w.minutes as u32,
+            year: date.year,
+            rng: &mut w.rng,
+            crt: &mut w.crt,
+            log: &mut self.log,
+            g: std::mem::take(&mut self.ts_globals),
+            flag_570229,
+            flag_570236,
+        };
+        let r = f(&mut ts);
+        self.ts_globals = ts.g;
+        r
     }
 
     /// The 23:59 step (`fim_de_dia`, world-tick.md 2 and 3.1) of a local game.
@@ -300,6 +339,11 @@ impl SimState {
             effects: &effects,
         };
         // Industries, pattern B: the next record is read after the call, the count is re-read.
+        // Lots created by an industry with linked stations update those stations; doing it after
+        // the loop gives the same records, since the weekly station pass below recomputes every
+        // station from scratch (only the `+0x45` stations keep the `0x468af0` increments, and the
+        // `+0x4b5` counters add up the same).
+        let mut spawned: Vec<(usize, Vec<u8>)> = Vec::new();
         let mut i = 0usize;
         let mut cur = 0usize;
         while i < self.save.objects.count {
@@ -318,8 +362,16 @@ impl SimState {
                 let mut data = rec.data.clone();
                 industry::recount_piles(&mut data, &self.save.pool_7c, &env);
                 self.log.ran("industry_recount_piles");
-                industry::production_tick(&mut data, &mut self.save.pool_7c, &env, &mut self.log);
+                let lots = industry::production_tick(
+                    &mut data,
+                    &mut self.save.pool_7c,
+                    &env,
+                    &mut self.log,
+                );
                 self.log.ran("industry_production_tick");
+                if !lots.is_empty() {
+                    spawned.push((cur, lots));
+                }
                 if let Some(r) = pool::record_mut(&mut self.save.objects, cur) {
                     r.data = data;
                 }
@@ -327,16 +379,30 @@ impl SimState {
             i += 1;
         }
         self.types = types;
-        // Stations.
+        if self.v2348() {
+            for (ind, lots) in spawned {
+                self.with_trainstep(w, |ts| {
+                    for c in lots {
+                        ts.industry_lot_spawned(ind as i32, c);
+                    }
+                });
+            }
+        }
+        // Stations, pattern B.
         let mut id = pool::first(&self.save.stations);
         while id != 0 {
             let next = pool::next(&self.save.stations, id);
-            todo_hook!(
-                self.log,
-                "station_recompute_supply_demand",
-                "station_recompute_supply_demand 0x4bebf0",
-                "cargo.md 8; world-tick.md 3.2 item 2"
-            );
+            if self.v2348() {
+                self.with_trainstep(w, |ts| ts.station_recompute_supply_demand(id as i32));
+                self.log.ran("station_recompute_supply_demand");
+            } else {
+                todo_hook!(
+                    self.log,
+                    "station_recompute_supply_demand",
+                    "station_recompute_supply_demand 0x4bebf0 on a 0x233C file",
+                    "cargo.md 8; world-tick.md 3.2 item 2"
+                );
+            }
             id = next;
         }
     }
@@ -388,11 +454,17 @@ impl SimState {
         for slot in pool::list_order(&self.save.persons) {
             self.person_month_step(slot);
         }
-        for _ in 0..self.save.trains.count {
+        // 10. Trains (pattern C).
+        if self.v2348() {
+            for slot in pool::list_order(&self.save.trains) {
+                self.with_trainstep(w, |ts| ts.train_monthly_costs(slot as i32));
+                self.log.ran("train_monthly_costs");
+            }
+        } else {
             todo_hook!(
                 self.log,
                 "train_monthly_costs",
-                "train_monthly_costs 0x4d4390 on the raw train record",
+                "train_monthly_costs 0x4d4390 on a 0x233C file",
                 "trains.md 6.2; world-tick.md 3.3 item 10"
             );
         }
@@ -407,12 +479,10 @@ impl SimState {
                     }
                 }
             }
-            todo_hook!(
-                self.log,
-                "station_recompute_supply_demand",
-                "station_recompute_supply_demand 0x4bebf0",
-                "cargo.md 8; world-tick.md 3.3 item 11"
-            );
+            if self.v2348() {
+                self.with_trainstep(w, |ts| ts.station_recompute_supply_demand(slot as i32));
+                self.log.ran("station_recompute_supply_demand");
+            }
         }
         todo_hook!(
             self.log,
@@ -664,13 +734,12 @@ impl SimState {
                 "world-tick.md 3.4 item 10"
             );
         }
-        for _ in 0..self.save.trains.count {
-            todo_hook!(
-                self.log,
-                "train_year_step",
-                "train_year_step 0x4d4620 (yearly statistics shift)",
-                "world-tick.md 3.4 item 11"
-            );
+        // 11. Trains (pattern C): shift the yearly statistics.
+        if self.v2348() {
+            for slot in pool::list_order(&self.save.trains) {
+                self.with_trainstep(w, |ts| ts.train_year_step(slot as i32));
+                self.log.ran("train_year_step");
+            }
         }
         // 12. Territories: `+0x52 (u16) = 0`.
         for slot in pool::list_order(&self.save.territories) {
@@ -699,12 +768,15 @@ impl SimState {
                 "world-tick.md 3.4 item 15 (not specified)"
             );
         }
-        todo_hook!(
-            self.log,
-            "track_piece_wear_rotation",
-            "track piece wear: +0x1f = +0x1b; +0x1b = 0 (0x574c84, slots descending)",
-            "world-tick.md 3.4 item 16"
-        );
+        // 16. Track piece wear of the year that ends (slots descending; order-free).
+        for r in self.save.track_pieces.records.iter_mut().rev() {
+            if r.data.len() >= 0x23 {
+                let w = u32_at(&r.data, 0x1b);
+                put_u32(&mut r.data, 0x1f, w);
+                put_u32(&mut r.data, 0x1b, 0);
+            }
+        }
+        self.log.ran("track_piece_wear_rotation");
         // 17. 1 Jan 00:00.
         self.set_clock(w, w.minutes + 1);
         todo_hook!(

@@ -118,3 +118,9 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - RE: 0x438450 (person_generate) escolhe um gerente da tabela fixa de 40, nao cria pessoas; spec do sorteio, da tabela de gerentes e do ciclo de vida das pessoas (sem envelhecimento nem morte).
 - RE: votacoes de fusao 0x48b5d0 e de presidencia 0x42ee00 com constantes e formulas exatas, testadas contra o executavel.
 - RE: capital inicial de empresas (sliders Player/Outside Investment, company_init 0x438a10) especificado e testado; ano 9001 = acumulador de vida inteira; contas 4/5 corrigidas (4 trens, 5 industrias).
+- Feature: rt2-sim ports train_step (movement, track reservations, pathfinder in train mode, station dwell) and anim_object_step (smoke puffs); the Example save advanced 1 day is identical to the original field by field
+- RE: train_step 0x4d0ce0 and its 50 callees specified (docs/spec/trains.md section 10): car/route/stop/reservation records, bucket-queue pathfinder, smoke puffs drawn with the CRT rand (saved state)
+- Fix: rt2-savediff masks route-step flag bits filled with uninitialized heap memory by the original pathfinder
+- Feature: train arrivals in rt2-sim: unloading, delivery revenue with its side effects (lots, station and town counters, station fees, track-sharing income, company ledgers and delivery statistics), loading at the station, AI consist choice, breakdowns, monthly train costs, yearly statistics and track wear rotation
+- RE: function snapshots of the original (re/scripts/wine/snap_call.py): the game is saved right before and after one call; crates/rt2-sim/tests/trainstep_snapshots.rs checks the port of train_step, train_arrive, consist and loading, leaving a station, monthly costs and the year step against them
+- Feature: station supply and demand (0x4bebf0) every week, every month and after each lot produced: the Example save advanced 7 days is identical to the original

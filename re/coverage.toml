@@ -3,11 +3,11 @@
 # Ver docs/re-workflow.md.
 #
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
-# Classificadas (categoria != unknown): 1109 (37.7%)
-# Por categoria: lib=258, platform=117, render=11, audio=68, ui=252, sim=403, unknown=1836
-# Por estado:   unknown=2564, named=117, spec=198, verified=66
-# Entradas manuais: 373
-# sim spec coverage: 58.8% (237 de 403 funcoes sim em spec/verified)
+# Classificadas (categoria != unknown): 1176 (39.9%)
+# Por categoria: lib=258, platform=115, render=11, audio=68, ui=251, sim=473, unknown=1769
+# Por estado:   unknown=2516, named=109, spec=194, verified=126
+# Entradas manuais: 423
+# sim spec coverage: 61.9% (293 de 473 funcoes sim em spec/verified)
 
 [[function]]
 addr = "0x401005"
@@ -68,9 +68,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x40103c"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x40a5c0"
 
 [[function]]
 addr = "0x401046"
@@ -145,9 +145,9 @@ why = "thunk->0x46b650"
 [[function]]
 addr = "0x401091"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4d0a70"
 
 [[function]]
 addr = "0x40109b"
@@ -405,9 +405,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x40117c"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4beb20"
 
 [[function]]
 addr = "0x401181"
@@ -902,9 +902,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x40137f"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4d36a0"
 
 [[function]]
 addr = "0x401384"
@@ -1268,9 +1268,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x4014e2"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4d3950"
 
 [[function]]
 addr = "0x4014e7"
@@ -1689,9 +1689,9 @@ why = "thunk->0x4e9f70"
 [[function]]
 addr = "0x40169f"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4d18b0"
 
 [[function]]
 addr = "0x4016a4"
@@ -1956,9 +1956,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x4017cb"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4d0bc0"
 
 [[function]]
 addr = "0x4017da"
@@ -2532,9 +2532,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x401a46"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4cf8c0"
 
 [[function]]
 addr = "0x401a4b"
@@ -2609,9 +2609,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x401a9b"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4d1bb0"
 
 [[function]]
 addr = "0x401aa0"
@@ -2924,9 +2924,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x401bdb"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4d3770"
 
 [[function]]
 addr = "0x401be0"
@@ -2980,9 +2980,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x401c03"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4d6330"
 
 [[function]]
 addr = "0x401c08"
@@ -3778,9 +3778,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x401f4b"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4d29e0"
 
 [[function]]
 addr = "0x401f50"
@@ -4201,9 +4201,9 @@ why = "thunk->0x4834f0"
 [[function]]
 addr = "0x4020cc"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x40ad50"
 
 [[function]]
 addr = "0x4020d1"
@@ -4588,9 +4588,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x402275"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4bf1d0"
 
 [[function]]
 addr = "0x40227a"
@@ -5115,9 +5115,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x40245a"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x416050"
 
 [[function]]
 addr = "0x40245f"
@@ -5591,9 +5591,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x402649"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4d1630"
 
 [[function]]
 addr = "0x40264e"
@@ -7003,9 +7003,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x402c48"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4ca550"
 
 [[function]]
 addr = "0x402c4d"
@@ -7454,9 +7454,9 @@ why = "thunk->0x40f980"
 [[function]]
 addr = "0x402df1"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4d3c80"
 
 [[function]]
 addr = "0x402df6"
@@ -7678,9 +7678,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x402ecd"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4d3e30"
 
 [[function]]
 addr = "0x402ed2"
@@ -8031,9 +8031,10 @@ manual = true
 [[function]]
 addr = "0x40a5c0"
 size = 63
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/trains.md 10; snapshots do original (crates/rt2-sim/tests/trainstep_snapshots.rs)"
+manual = true
 
 [[function]]
 addr = "0x40a610"
@@ -8077,9 +8078,10 @@ manual = true
 [[function]]
 addr = "0x40ad50"
 size = 85
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/trains.md 10; snapshots do original (crates/rt2-sim/tests/trainstep_snapshots.rs)"
+manual = true
 
 [[function]]
 addr = "0x40adb0"
@@ -8374,9 +8376,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x412770"
 size = 232
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/trains.md 10"
+manual = true
 
 [[function]]
 addr = "0x412860"
@@ -8388,16 +8391,18 @@ why = "no-evidence"
 [[function]]
 addr = "0x412900"
 size = 390
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
+manual = true
 
 [[function]]
 addr = "0x412a90"
 size = 837
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
+manual = true
 
 [[function]]
 addr = "0x412de0"
@@ -8417,8 +8422,8 @@ why = "no-evidence"
 addr = "0x412ff0"
 size = 1296
 category = "sim"
-status = "spec"
-why = "docs/spec/terrain-track.md 3.4 (servico de areia/agua/oleo)"
+status = "verified"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
 manual = true
 
 [[function]]
@@ -8431,9 +8436,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x413550"
 size = 2933
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
+manual = true
 
 [[function]]
 addr = "0x4140d0"
@@ -8460,16 +8466,16 @@ why = "string:cr%s%s.imb"
 addr = "0x414460"
 size = 64
 category = "sim"
-status = "spec"
-why = "peso do veiculo; exercitado por train_accel_step_matches_original"
+status = "verified"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
 manual = true
 
 [[function]]
 addr = "0x4144a0"
 size = 49
 category = "sim"
-status = "spec"
-why = "rampa sob o veiculo; exercitada por train_accel_step_matches_original"
+status = "verified"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
 manual = true
 
 [[function]]
@@ -8484,23 +8490,24 @@ manual = true
 addr = "0x414510"
 size = 108
 category = "sim"
-status = "spec"
-why = "cargo.md 6"
+status = "verified"
+why = "docs/spec/trains.md 10; snapshots do original (crates/rt2-sim/tests/trainstep_snapshots.rs)"
 manual = true
 
 [[function]]
 addr = "0x414580"
 size = 596
-category = "ui"
-status = "unknown"
-why = "string:cr%s%s.imb"
+category = "sim"
+status = "verified"
+why = "docs/spec/trains.md 10; snapshots do original (crates/rt2-sim/tests/trainstep_snapshots.rs)"
+manual = true
 
 [[function]]
 addr = "0x4147e0"
 size = 1175
 category = "sim"
-status = "named"
-why = "avanco de veiculo seguidor; detalhes em aberto"
+status = "verified"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
 manual = true
 
 [[function]]
@@ -8513,16 +8520,17 @@ why = "no-evidence"
 [[function]]
 addr = "0x414dd0"
 size = 617
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
+manual = true
 
 [[function]]
 addr = "0x415040"
 size = 1011
 category = "sim"
-status = "named"
-why = "avanco do veiculo da frente; detalhes em aberto (trains.md)"
+status = "verified"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
 manual = true
 
 [[function]]
@@ -8543,8 +8551,8 @@ why = "no-evidence"
 addr = "0x415ff0"
 size = 95
 category = "sim"
-status = "spec"
-why = "docs/spec/terrain-track.md 5 (wrapper do 0x416050)"
+status = "verified"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
 manual = true
 
 [[function]]
@@ -8552,7 +8560,7 @@ addr = "0x416050"
 size = 435
 category = "sim"
 status = "verified"
-why = "docs/spec/terrain-track.md 5; tests/stations.rs tile_conflict_priority_matches_original (20000) com 0x4d3c80 gravado"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
 manual = true
 
 [[function]]
@@ -9046,8 +9054,8 @@ manual = true
 addr = "0x4283e0"
 size = 249
 category = "sim"
-status = "spec"
-why = "world-tick.md 2.1"
+status = "verified"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
 manual = true
 
 [[function]]
@@ -9231,9 +9239,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x42e320"
 size = 238
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
+manual = true
 
 [[function]]
 addr = "0x42e410"
@@ -9246,16 +9255,16 @@ why = "no-evidence"
 addr = "0x42e850"
 size = 158
 category = "sim"
-status = "spec"
-why = "terrain-track.md"
+status = "verified"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
 manual = true
 
 [[function]]
 addr = "0x42e8f0"
 size = 70
 category = "sim"
-status = "spec"
-why = "terrain-track.md"
+status = "verified"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
 manual = true
 
 [[function]]
@@ -9867,7 +9876,7 @@ addr = "0x439970"
 size = 84
 category = "sim"
 status = "verified"
-why = "finance.md; oracle test in tests/finance.rs (company_ledger_credit)"
+why = "docs/spec/trains.md 10; snapshots do original (crates/rt2-sim/tests/trainstep_snapshots.rs)"
 manual = true
 
 [[function]]
@@ -10079,8 +10088,8 @@ manual = true
 addr = "0x43bde0"
 size = 408
 category = "sim"
-status = "spec"
-why = "cargo.md 6; statistics only"
+status = "verified"
+why = "docs/spec/trains.md 10; snapshots do original (crates/rt2-sim/tests/trainstep_snapshots.rs)"
 manual = true
 
 [[function]]
@@ -10104,7 +10113,7 @@ addr = "0x43c030"
 size = 31
 category = "sim"
 status = "verified"
-why = "oracle: cargo.md 4.4 (via cargo_delivery_revenue)"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
 manual = true
 
 [[function]]
@@ -11166,16 +11175,17 @@ manual = true
 addr = "0x460850"
 size = 7730
 category = "sim"
-status = "named"
-why = "terrain-track.md"
+status = "verified"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
 manual = true
 
 [[function]]
 addr = "0x462690"
 size = 345
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
+manual = true
 
 [[function]]
 addr = "0x4627f0"
@@ -11248,8 +11258,8 @@ manual = true
 addr = "0x463b30"
 size = 479
 category = "sim"
-status = "named"
-why = "terrain-track.md"
+status = "verified"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
 manual = true
 
 [[function]]
@@ -11314,9 +11324,10 @@ why = "string:brlogo%s%s.imb"
 [[function]]
 addr = "0x466780"
 size = 26
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/trains.md 10"
+manual = true
 
 [[function]]
 addr = "0x4667a0"
@@ -11328,9 +11339,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4667b0"
 size = 13
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/trains.md 10"
+manual = true
 
 [[function]]
 addr = "0x4667d0"
@@ -11350,9 +11362,10 @@ manual = true
 [[function]]
 addr = "0x4667f0"
 size = 13
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/trains.md 10"
+manual = true
 
 [[function]]
 addr = "0x466800"
@@ -11565,16 +11578,17 @@ why = "no-evidence"
 [[function]]
 addr = "0x466a50"
 size = 13
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/trains.md 10"
+manual = true
 
 [[function]]
 addr = "0x466a60"
 size = 159
 category = "sim"
-status = "spec"
-why = "cargo.md 7.6"
+status = "verified"
+why = "docs/spec/trains.md 10; snapshots do original (crates/rt2-sim/tests/trainstep_snapshots.rs)"
 manual = true
 
 [[function]]
@@ -11651,8 +11665,8 @@ why = "no-evidence"
 addr = "0x466d20"
 size = 78
 category = "sim"
-status = "spec"
-why = "world-tick.md 2.1"
+status = "verified"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
 manual = true
 
 [[function]]
@@ -11742,9 +11756,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4682b0"
 size = 52
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/trains.md 10; snapshots do original (crates/rt2-sim/tests/trainstep_snapshots.rs)"
+manual = true
 
 [[function]]
 addr = "0x4682f0"
@@ -11773,8 +11788,8 @@ manual = true
 addr = "0x468470"
 size = 67
 category = "sim"
-status = "spec"
-why = "cargo.md 7.3"
+status = "verified"
+why = "docs/spec/trains.md 10; snapshots do original (crates/rt2-sim/tests/trainstep_snapshots.rs)"
 manual = true
 
 [[function]]
@@ -11836,9 +11851,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x468b40"
 size = 174
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/trains.md 10; snapshots do original (crates/rt2-sim/tests/trainstep_snapshots.rs)"
+manual = true
 
 [[function]]
 addr = "0x468c30"
@@ -12038,9 +12054,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x46abf0"
 size = 436
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/trains.md 10"
+manual = true
 
 [[function]]
 addr = "0x46adb0"
@@ -13334,17 +13351,18 @@ why = "no-evidence"
 [[function]]
 addr = "0x49b530"
 size = 201
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/trains.md 10"
+manual = true
 
 [[function]]
 addr = "0x49b610"
-name = "view_distance_volume"
 size = 98
-category = "unknown"
-status = "named"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/trains.md 10"
+manual = true
 
 [[function]]
 addr = "0x49b680"
@@ -14720,9 +14738,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4beb20"
 size = 115
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/trains.md 10"
+manual = true
 
 [[function]]
 addr = "0x4beba0"
@@ -14736,8 +14755,8 @@ manual = true
 addr = "0x4bebf0"
 size = 1190
 category = "sim"
-status = "spec"
-why = "cargo.md 8"
+status = "verified"
+why = "cargo.md 8; save oracle Example 7 dias identico (crates/rt2-sim/tests/worldloop.rs)"
 manual = true
 
 [[function]]
@@ -14778,9 +14797,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4bf1d0"
 size = 49
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/trains.md 10"
+manual = true
 
 [[function]]
 addr = "0x4bf210"
@@ -14793,8 +14813,8 @@ why = "no-evidence"
 addr = "0x4bf260"
 size = 485
 category = "sim"
-status = "spec"
-why = "cargo.md 7.6"
+status = "verified"
+why = "docs/spec/trains.md 10; snapshots do original (crates/rt2-sim/tests/trainstep_snapshots.rs)"
 manual = true
 
 [[function]]
@@ -14818,7 +14838,7 @@ addr = "0x4bf760"
 size = 2604
 category = "sim"
 status = "verified"
-why = "oracle: cargo.md 4 (commit=1 path); station bonus part spec"
+why = "docs/spec/trains.md 10; snapshots do original (crates/rt2-sim/tests/trainstep_snapshots.rs)"
 manual = true
 
 [[function]]
@@ -15210,16 +15230,17 @@ why = "string:%s.lng"
 addr = "0x4ca4e0"
 size = 103
 category = "sim"
-status = "spec"
-why = "comprimento do trecho; docs/spec/trains.md 3"
+status = "verified"
+why = "docs/spec/trains.md 10; crates/rt2-oracle/tests/trainstep.rs"
 manual = true
 
 [[function]]
 addr = "0x4ca550"
 size = 939
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/trains.md 10; crates/rt2-oracle/tests/trainstep.rs"
+manual = true
 
 [[function]]
 addr = "0x4ca920"
@@ -15310,7 +15331,7 @@ addr = "0x4ce4c0"
 size = 618
 category = "sim"
 status = "spec"
-why = "quebra (classificado audio pelo som); docs/spec/trains.md 5.3"
+why = "docs/spec/trains.md 10"
 manual = true
 
 [[function]]
@@ -15347,8 +15368,8 @@ manual = true
 addr = "0x4cf390"
 size = 1247
 category = "sim"
-status = "spec"
-why = "sorteio de quebra/acidente/roubo; docs/spec/trains.md 5.1, 6.4"
+status = "verified"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
 manual = true
 
 [[function]]
@@ -15361,9 +15382,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4cf8c0"
 size = 835
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
+manual = true
 
 [[function]]
 addr = "0x4cfc10"
@@ -15384,8 +15406,8 @@ manual = true
 addr = "0x4cfd40"
 size = 168
 category = "sim"
-status = "spec"
-why = "rampa media do trem; docs/spec/trains.md 4.1"
+status = "verified"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
 manual = true
 
 [[function]]
@@ -15401,7 +15423,7 @@ addr = "0x4d00c0"
 size = 824
 category = "sim"
 status = "verified"
-why = "velocidade alvo; coberta por train_accel_step_matches_original (tiles sem estruturas)"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
 manual = true
 
 [[function]]
@@ -15409,16 +15431,16 @@ addr = "0x4d0400"
 size = 1129
 category = "sim"
 status = "verified"
-why = "passo de aceleracao (ramo em movimento); tests/trains.rs train_accel_step_matches_original"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
 manual = true
 
 [[function]]
 addr = "0x4d0870"
-name = "train_update_sound_loop"
 size = 454
 category = "sim"
-status = "named"
-why = "symbol:train_update_sound_loop"
+status = "spec"
+why = "docs/spec/trains.md 10"
+manual = true
 
 [[function]]
 addr = "0x4d0a40"
@@ -15430,23 +15452,25 @@ why = "no-evidence"
 [[function]]
 addr = "0x4d0a70"
 size = 265
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
+manual = true
 
 [[function]]
 addr = "0x4d0bc0"
 size = 274
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
+manual = true
 
 [[function]]
 addr = "0x4d0ce0"
 size = 702
 category = "sim"
-status = "spec"
-why = "passo do trem; docs/spec/trains.md 4.5"
+status = "verified"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
 manual = true
 
 [[function]]
@@ -15487,9 +15511,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4d1630"
 size = 302
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/trains.md 10; snapshots do original (crates/rt2-sim/tests/trainstep_snapshots.rs)"
+manual = true
 
 [[function]]
 addr = "0x4d1780"
@@ -15502,16 +15527,17 @@ why = "no-evidence"
 addr = "0x4d18b0"
 size = 767
 category = "sim"
-status = "spec"
-why = "docs/spec/terrain-track.md 3.4 (tempo de parada, telefone/telegrafo)"
+status = "verified"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
 manual = true
 
 [[function]]
 addr = "0x4d1bb0"
 size = 1968
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/trains.md 10; snapshots do original (crates/rt2-sim/tests/trainstep_snapshots.rs)"
+manual = true
 
 [[function]]
 addr = "0x4d2360"
@@ -15525,8 +15551,8 @@ manual = true
 addr = "0x4d2590"
 size = 218
 category = "sim"
-status = "spec"
-why = "docs/spec/cargo.md em aberto resolvido"
+status = "verified"
+why = "docs/spec/trains.md 10; snapshots do original (crates/rt2-sim/tests/trainstep_snapshots.rs)"
 manual = true
 
 [[function]]
@@ -15540,24 +15566,24 @@ why = "no-evidence"
 addr = "0x4d2720"
 size = 697
 category = "sim"
-status = "spec"
-why = "docs/spec/cargo.md em aberto resolvido (descrito em linhas gerais)"
+status = "verified"
+why = "docs/spec/trains.md 10; snapshots do original (crates/rt2-sim/tests/trainstep_snapshots.rs)"
 manual = true
 
 [[function]]
 addr = "0x4d29e0"
 size = 558
 category = "sim"
-status = "spec"
-why = "docs/spec/terrain-track.md 3.4 (alfandega)"
+status = "verified"
+why = "docs/spec/trains.md 10; snapshots do original (crates/rt2-sim/tests/trainstep_snapshots.rs)"
 manual = true
 
 [[function]]
 addr = "0x4d2c10"
 size = 2533
 category = "sim"
-status = "spec"
-why = "docs/spec/terrain-track.md 6 (partilha e taxas)"
+status = "verified"
+why = "docs/spec/trains.md 10; snapshots do original (crates/rt2-sim/tests/trainstep_snapshots.rs)"
 manual = true
 
 [[function]]
@@ -15577,37 +15603,42 @@ why = "no-evidence"
 [[function]]
 addr = "0x4d36a0"
 size = 204
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
+manual = true
 
 [[function]]
 addr = "0x4d3770"
 size = 365
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
+manual = true
 
 [[function]]
 addr = "0x4d3950"
 size = 802
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
+manual = true
 
 [[function]]
 addr = "0x4d3c80"
 size = 425
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
+manual = true
 
 [[function]]
 addr = "0x4d3e30"
 size = 266
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
+manual = true
 
 [[function]]
 addr = "0x4d3f40"
@@ -15648,24 +15679,24 @@ why = "no-evidence"
 addr = "0x4d4200"
 size = 272
 category = "sim"
-status = "spec"
-why = "lancamento de custo do trem; docs/spec/trains.md 6.2"
+status = "verified"
+why = "docs/spec/trains.md 10; snapshots do original (crates/rt2-sim/tests/trainstep_snapshots.rs)"
 manual = true
 
 [[function]]
 addr = "0x4d4390"
 size = 654
 category = "sim"
-status = "spec"
-why = "custos mensais; docs/spec/trains.md 6.2"
+status = "verified"
+why = "docs/spec/trains.md 10; snapshots do original (crates/rt2-sim/tests/trainstep_snapshots.rs)"
 manual = true
 
 [[function]]
 addr = "0x4d4620"
 size = 59
 category = "sim"
-status = "spec"
-why = "world-tick.md 3.4"
+status = "verified"
+why = "docs/spec/trains.md 10; snapshots do original (crates/rt2-sim/tests/trainstep_snapshots.rs)"
 manual = true
 
 [[function]]
@@ -15736,16 +15767,16 @@ why = "no-evidence"
 addr = "0x4d5370"
 size = 496
 category = "sim"
-status = "spec"
-why = "docs/spec/terrain-track.md 6 (contagem por dono) e 5 (prioridade +0xa8)"
+status = "verified"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
 manual = true
 
 [[function]]
 addr = "0x4d5560"
 size = 103
 category = "sim"
-status = "spec"
-why = "docs/spec/terrain-track.md 6"
+status = "verified"
+why = "docs/spec/trains.md 10; snapshots do original (crates/rt2-sim/tests/trainstep_snapshots.rs)"
 manual = true
 
 [[function]]
@@ -15788,7 +15819,7 @@ addr = "0x4d59b0"
 size = 379
 category = "sim"
 status = "spec"
-why = "docs/spec/terrain-track.md 5 (classe e prioridade)"
+why = "docs/spec/trains.md 10"
 manual = true
 
 [[function]]
@@ -15872,9 +15903,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4d6330"
 size = 435
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/trains.md 10"
+manual = true
 
 [[function]]
 addr = "0x4d86f0"
@@ -15895,9 +15927,10 @@ manual = true
 [[function]]
 addr = "0x4d8db0"
 size = 398
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/trains.md 10; snapshots do original (crates/rt2-sim/tests/trainstep_snapshots.rs)"
+manual = true
 
 [[function]]
 addr = "0x4d8f40"
@@ -16117,7 +16150,7 @@ addr = "0x4e2330"
 size = 210
 category = "sim"
 status = "verified"
-why = "growth/slot_valid (5.2)"
+why = "cargo.md 8; save oracle Example 7 dias identico (crates/rt2-sim/tests/worldloop.rs)"
 manual = true
 
 [[function]]
@@ -16717,9 +16750,10 @@ manual = true
 [[function]]
 addr = "0x4f0830"
 size = 62
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/trains.md 10; crates/rt2-oracle/tests/trainstep.rs"
+manual = true
 
 [[function]]
 addr = "0x4f0870"
@@ -16739,9 +16773,10 @@ manual = true
 [[function]]
 addr = "0x4f0cd0"
 size = 42
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/trains.md 10"
+manual = true
 
 [[function]]
 addr = "0x4f0d00"
@@ -16796,9 +16831,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4f0f60"
 size = 29
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/trains.md 10"
+manual = true
 
 [[function]]
 addr = "0x4f0f80"
@@ -16839,16 +16875,18 @@ why = "no-evidence"
 [[function]]
 addr = "0x4f1310"
 size = 14
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/trains.md 10"
+manual = true
 
 [[function]]
 addr = "0x4f1320"
 size = 12
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/trains.md 10"
+manual = true
 
 [[function]]
 addr = "0x4f1330"
@@ -16860,16 +16898,18 @@ why = "api:USER32!GetCursorPos,USER32!ScreenToClient"
 [[function]]
 addr = "0x4f13d0"
 size = 139
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/trains.md 10"
+manual = true
 
 [[function]]
 addr = "0x4f1460"
 size = 45
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/trains.md 10"
+manual = true
 
 [[function]]
 addr = "0x4f1490"
@@ -16881,9 +16921,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x4f14c0"
 size = 398
-category = "platform"
-status = "named"
-why = "pool_grow"
+category = "sim"
+status = "verified"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
 manual = true
 
 [[function]]
@@ -16896,17 +16936,18 @@ why = "no-evidence"
 [[function]]
 addr = "0x4f1690"
 size = 335
-category = "platform"
-status = "named"
-why = "pool_alloc"
+category = "sim"
+status = "verified"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
 manual = true
 
 [[function]]
 addr = "0x4f17e0"
 size = 195
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
+manual = true
 
 [[function]]
 addr = "0x4f18b0"
@@ -17553,9 +17594,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4f8e80"
 size = 20
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/trains.md 10"
+manual = true
 
 [[function]]
 addr = "0x4f8ea0"
@@ -17713,16 +17755,18 @@ why = "no-evidence"
 [[function]]
 addr = "0x4fa140"
 size = 283
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/trains.md 10"
+manual = true
 
 [[function]]
 addr = "0x4fa260"
 size = 28
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/trains.md 10"
+manual = true
 
 [[function]]
 addr = "0x4fa280"
@@ -17748,30 +17792,34 @@ why = "no-evidence"
 [[function]]
 addr = "0x4fa490"
 size = 556
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
+manual = true
 
 [[function]]
 addr = "0x4fa6c0"
 size = 134
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/trains.md 10"
+manual = true
 
 [[function]]
 addr = "0x4fa750"
 size = 22
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/trains.md 10"
+manual = true
 
 [[function]]
 addr = "0x4fa770"
 size = 38
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/trains.md 10"
+manual = true
 
 [[function]]
 addr = "0x4fabf0"

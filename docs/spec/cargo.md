@@ -462,7 +462,7 @@ Casas (tipo `0x12`) e casas grandes (tipo `0x27`) são "indústrias" de modo 1 c
 - **Transferência** (`station_store_lot`, `0x4beba0`): o lote largado fica na lista da estação com `lot.vagão = 0`.
 - **Expiração** (`sim_month_end`, `0x4a5320`, a menos que seja sandbox): lote sem estação (`lot.origem == 0`) com idade `> 216000` min (150 dias) é liberado se não tem indústria de origem; com indústria de origem só é liberado se a idade também for `>= cargo.+8 / 2` (`/ 4` se a indústria não tem estação ligada, `+0x33 == 0`), e a contagem da pilha é decrementada.
 
-## 8. Demanda da estação (`0x4bebf0`) **[S]**
+## 8. Demanda da estação (`0x4bebf0`) **[V: save Example 7 dias; `rt2_sim::trainstep::supply`]**
 
 `station_recompute_supply_demand(estação)` (chamada a cada mudança no raio e todo mês), ignorada se `estação.+0x45 != 0`. Zera `+0x61`, `+0x169`, `+0x195`, `+0x1c1`, depois percorre os elos:
 - Elo para outra estação (tipo 0): soma os lotes largados lá a `+0x61` e marca `+0x169 = 2`.

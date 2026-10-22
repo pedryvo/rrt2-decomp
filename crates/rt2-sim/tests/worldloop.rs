@@ -24,6 +24,7 @@ fn env_dir(name: &str) -> Option<PathBuf> {
 fn clone_advance(base: &Save, data: &GameData, days: i64) -> (World, Save) {
     let mut w = World::from_save(base, data);
     w.apply(Command::SeedRng(1234));
+    w.apply(Command::SeedCrtRng(1234));
     let mut left = days * 1440;
     while left > 0 {
         let dt = left.min(320) as i32;
@@ -37,7 +38,8 @@ fn clone_advance(base: &Save, data: &GameData, days: i64) -> (World, Save) {
 fn setup() -> Option<(PathBuf, GameData, Save)> {
     let (game, fid) = (env_dir("RT2_DIR")?, env_dir("RT2_FIDELITY_DIR")?);
     let exe = Exe::from_bytes(std::fs::read(game.join("RT2_PLAT.EXE")).unwrap()).unwrap();
-    let data = GameData::load(&exe).unwrap();
+    let mut data = GameData::load(&exe).unwrap();
+    data.load_sprites(&game).unwrap();
     let base = Save::parse(&std::fs::read(fid.join("base_tut.GAM")).unwrap()).unwrap();
     Some((fid, data, base))
 }
@@ -68,8 +70,7 @@ fn tutorial_one_day_is_equal() {
 }
 
 /// Seven days: world-tick.md section 6 counts for the Tutorial (39 `sim_advance`, 1 weekly step,
-/// 387 recounts and productions, no RNG), and the weekly production matches the original except
-/// for the three Port industries (see docs/fidelity-status.md).
+/// 387 recounts and productions, no RNG), and the weekly production matches the original.
 #[test]
 fn tutorial_seven_days() {
     let Some((fid, data, base)) = setup() else {
@@ -83,14 +84,7 @@ fn tutorial_seven_days() {
     assert_eq!(log.count("industry_recount_piles"), 387);
     assert_eq!(log.count("industry_production_tick"), 387);
     assert_eq!(w.rng().state(), 1234, "no RNG is drawn in a week");
-    assert_eq!(
-        unmasked(&fid, "orig_tut_7.GAM", &s),
-        [
-            "objects[88].raw[0x8c..0x90]",
-            "objects[104].raw[0x8c..0x90]",
-            "objects[236].raw[0x8c..0x90]"
-        ]
-    );
+    assert_eq!(unmasked(&fid, "orig_tut_7.GAM", &s), Vec::<String>::new());
 }
 
 /// Thirty days cross the month: economic state step (2 RNG draws), the town bonus roll (1 draw) and
@@ -106,14 +100,7 @@ fn tutorial_thirty_days() {
     let log = w.hook_log().unwrap();
     assert_eq!(log.count("economy_state_step"), 1);
     assert_eq!(log.count("person_month_step"), 4);
-    assert_eq!(
-        unmasked(&fid, "orig_tut_30.GAM", &s),
-        [
-            "objects[88].raw[0x8c..0x90]",
-            "objects[104].raw[0x8c..0x90]",
-            "objects[236].raw[0x8c..0x90]"
-        ]
-    );
+    assert_eq!(unmasked(&fid, "orig_tut_30.GAM", &s), Vec::<String>::new());
 }
 
 /// Loading a save into a `World` and writing it back without advancing is byte-identical, so
@@ -137,4 +124,55 @@ fn world_round_trip_is_byte_identical() {
         let w = World::from_save(&Save::parse(&raw).unwrap(), &data);
         assert!(w.to_save().to_bytes() == raw, "{name}");
     }
+}
+
+/// The Example save (9 trains, 11 stations) converted by the original (`base_ex.GAM`) and the
+/// original's result (`orig_ex_<days>.GAM`); `None` when the files are not there.
+fn example(fid: &std::path::Path, days: i64) -> Option<Save> {
+    let name = format!("orig_ex_{days}.GAM");
+    if !fid.join("base_ex.GAM").exists() || !fid.join(&name).exists() {
+        eprintln!("base_ex.GAM / {name} not in RT2_FIDELITY_DIR; skipping");
+        return None;
+    }
+    Some(Save::parse(&std::fs::read(fid.join("base_ex.GAM")).unwrap()).unwrap())
+}
+
+/// One day of the Example: the train steps (movement, reservations, pathfinding, smoke puffs)
+/// and the map animations reproduce the original field by field.
+#[test]
+fn example_one_day_is_equal() {
+    let Some((fid, data, _)) = setup() else {
+        eprintln!("RT2_DIR / RT2_FIDELITY_DIR not set; skipping");
+        return;
+    };
+    let Some(base) = example(&fid, 1) else { return };
+    let (w, s) = clone_advance(&base, &data, 1);
+    assert_eq!(unmasked(&fid, "orig_ex_1.GAM", &s), Vec::<String>::new());
+    let log = w.hook_log().unwrap();
+    // world-tick.md 2.2: 6 linear passes x 9 trains.
+    assert_eq!(log.count("train_step"), 54);
+    assert_eq!(
+        log.skipped_steps().count(),
+        0,
+        "every reached step is implemented"
+    );
+}
+
+/// Seven days of the Example: the weekly industry and station steps and the breakdown roll
+/// (one RNG draw) also match: the save is equal field by field.
+#[test]
+fn example_seven_days_is_equal() {
+    let Some((fid, data, _)) = setup() else {
+        eprintln!("RT2_DIR / RT2_FIDELITY_DIR not set; skipping");
+        return;
+    };
+    let Some(base) = example(&fid, 7) else { return };
+    let (w, s) = clone_advance(&base, &data, 7);
+    assert_eq!(
+        w.rng().state(),
+        0x07a8_64a0,
+        "the RNG state the original reports"
+    );
+    assert_eq!(unmasked(&fid, "orig_ex_7.GAM", &s), Vec::<String>::new());
+    assert_eq!(w.hook_log().unwrap().skipped_steps().count(), 0);
 }

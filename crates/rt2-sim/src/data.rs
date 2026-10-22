@@ -60,6 +60,124 @@ pub struct GameData {
     pub finance: FinanceTables,
     /// Town bonus offer per place size class (`0x53a4b0`, world-tick.md 3.6).
     pub town_bonus: Vec<i32>,
+    /// The `.rdata` and initialized `.data` of the executable, addressed by VA, with the start-up
+    /// fix-ups of the engine and vehicle tables applied (`0x471b10`). The train step
+    /// (`crate::trainstep`) reads its tables from here at the original addresses.
+    pub image: DataImage,
+    /// Frame count of each sequence of the map animation bank `SMOKE.imb` (`DAT_00567a1c`),
+    /// `groups[header[3]].k` of each record (trains.md 10.6). Empty until
+    /// [`GameData::load_sprites`] runs; without it the animation step cannot expire objects.
+    pub anim_frames: Vec<i32>,
+}
+
+/// First and last+1 VA kept in [`DataImage`]: `.rdata` (0x535000) and the initialized part of
+/// `.data` (0x539000..0x565000).
+pub const IMAGE_START: u32 = 0x0053_5000;
+pub const IMAGE_END: u32 = 0x0056_5000;
+
+/// Read-only copy of the executable's data sections, addressed by virtual address.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DataImage {
+    bytes: Vec<u8>,
+}
+
+impl DataImage {
+    pub fn load(exe: &Exe) -> Result<DataImage, ExeError> {
+        let mut bytes = exe.read(IMAGE_START, 0x4000)?.to_vec();
+        bytes.extend_from_slice(exe.read(0x0053_9000, (IMAGE_END - 0x0053_9000) as usize)?);
+        let mut img = DataImage { bytes };
+        img.engine_fixups();
+        Ok(img)
+    }
+
+    fn at(&self, va: u32, n: usize) -> &[u8] {
+        let o = va
+            .checked_sub(IMAGE_START)
+            .expect("VA below the data image") as usize;
+        &self.bytes[o..o + n]
+    }
+
+    fn at_mut(&mut self, va: u32, n: usize) -> &mut [u8] {
+        let o = (va - IMAGE_START) as usize;
+        &mut self.bytes[o..o + n]
+    }
+
+    pub fn u8(&self, va: u32) -> u8 {
+        self.at(va, 1)[0]
+    }
+
+    pub fn i8(&self, va: u32) -> i8 {
+        self.u8(va) as i8
+    }
+
+    pub fn u16(&self, va: u32) -> u16 {
+        u16::from_le_bytes(self.at(va, 2).try_into().expect("2 bytes"))
+    }
+
+    pub fn i16(&self, va: u32) -> i16 {
+        self.u16(va) as i16
+    }
+
+    pub fn u32(&self, va: u32) -> u32 {
+        u32::from_le_bytes(self.at(va, 4).try_into().expect("4 bytes"))
+    }
+
+    pub fn i32(&self, va: u32) -> i32 {
+        self.u32(va) as i32
+    }
+
+    pub fn f32(&self, va: u32) -> f32 {
+        f32::from_bits(self.u32(va))
+    }
+
+    pub fn f64(&self, va: u32) -> f64 {
+        f64::from_le_bytes(self.at(va, 8).try_into().expect("8 bytes"))
+    }
+
+    /// The part of `0x471b10` that rewrites the vehicle and engine tables: per vehicle type
+    /// `t` (record `0x53ddb8 + t*0x39`), clear the bank pointers (`+0x08..+0x18`) and the bank
+    /// reference count (`+0x22..+0x26`); an engine vehicle (`+0x2e == 0`) sets `engine.+0x2c =
+    /// t`, a tender (`+0x2e == 1`) sets `engine.+0x2d = t` and `engine.+0x2b = 1`, and both copy
+    /// the engine's years into `+0x1c`/`+0x1e`. Then `engine.+0x2e = loaded tons (+0x1a) of
+    /// vehicle +0x2c, plus those of vehicle +0x2d when +0x2b != 0`.
+    fn engine_fixups(&mut self) {
+        let veh = |t: u32| ADDR_VEHICLE_TABLE + t * VEHICLE_RECORD_SIZE as u32;
+        let eng = |e: i32| ADDR_ENGINE_TABLE.wrapping_add((e * ENGINE_RECORD_SIZE as i32) as u32);
+        for t in 0..VEHICLE_COUNT as u32 {
+            let v = veh(t);
+            self.at_mut(v + 0x08, 0x10).fill(0);
+            self.at_mut(v + 0x22, 4).fill(0);
+            let species = self.u8(v + 0x2e);
+            let e = i32::from(self.i8(v + 0x2f));
+            if species > 1 {
+                continue;
+            }
+            let ev = eng(e);
+            if species == 0 {
+                self.at_mut(ev + 0x2c, 1)[0] = t as u8;
+            } else {
+                self.at_mut(ev + 0x2d, 1)[0] = t as u8;
+                self.at_mut(ev + 0x2b, 1)[0] = 1;
+            }
+            let first = self.u16(ev + 1);
+            let last = self.u16(eng(i32::from(self.i8(v + 0x2f))) + 3);
+            self.at_mut(v + 0x1c, 2)
+                .copy_from_slice(&first.to_le_bytes());
+            self.at_mut(v + 0x1e, 2)
+                .copy_from_slice(&last.to_le_bytes());
+        }
+        for e in 0..ENGINE_COUNT as i32 {
+            let ev = eng(e);
+            let loco = u32::from(self.u8(ev + 0x2c));
+            let mut tons = u32::from(self.u16(veh(loco) + 0x1a));
+            if self.u8(ev + 0x2b) != 0 {
+                let tender = u32::from(self.u8(ev + 0x2d));
+                tons += u32::from(self.u16(veh(tender) + 0x1a));
+            }
+            self.at_mut(ev + 0x2e, 4)
+                .copy_from_slice(&tons.to_le_bytes());
+        }
+    }
 }
 
 fn arr<const N: usize>(exe: &Exe, va: u32) -> Result<[f32; N], ExeError> {
@@ -127,7 +245,37 @@ impl GameData {
             town_bonus: (0..TOWN_BONUS_ENTRIES)
                 .map(|i| exe.u32_at(ADDR_TOWN_BONUS + 4 * i as u32).map(|v| v as i32))
                 .collect::<Result<Vec<_>, ExeError>>()?,
+            image: DataImage::load(exe)?,
+            anim_frames: Vec::new(),
         })
+    }
+
+    /// Reads what the simulation needs from the PK2 archives of the install `game_dir`: the
+    /// frame counts of the map animation bank `SMOKE.imb` ([`GameData::anim_frames`]). The
+    /// archives are searched like the original's item lookup, patches first.
+    pub fn load_sprites(&mut self, game_dir: &std::path::Path) -> Result<(), String> {
+        const ARCHIVES: [&str; 4] = ["RT2_11PL.PK2", "RT2_09GO.PK2", "RT2_06.PK2", "RT2.PK2"];
+        for name in ARCHIVES {
+            let Ok(raw) = std::fs::read(game_dir.join("data").join(name)) else {
+                continue;
+            };
+            let pk2 = rt2_formats::pk2::Pk2::parse(&raw).map_err(|e| e.to_string())?;
+            let Some(entry) = pk2.find_name("SMOKE.imb") else {
+                continue;
+            };
+            let lad =
+                rt2_formats::lad::Lad::parse(pk2.contents(entry)).map_err(|e| e.to_string())?;
+            self.anim_frames = lad
+                .records
+                .iter()
+                .map(|r| {
+                    let g = r.header[3] as usize;
+                    r.groups.get(g).map_or(0, |g| g.map_len as i32)
+                })
+                .collect();
+            return Ok(());
+        }
+        Err("SMOKE.imb not found in the PK2 archives".into())
     }
 }
 
