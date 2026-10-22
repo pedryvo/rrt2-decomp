@@ -1,0 +1,3 @@
+[profile.default]
+# Limit parallel test processes so builds and other work stay responsive.
+test-threads = 4
