@@ -132,3 +132,5 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - RE: finance.md 5 confirmado contra o original: o passo mensal multiplica por 1/12 (0x535540) em vez de dividir por 12 (diferenca de 1 ulp no salario); a rotina de fim de ano desloca as linhas de metricas antes de gravar a linha 1, e a metrica 5 (retorno ponderado) ja enxerga o preco novo na linha 1
 - RE: `building_can_place` (0x4087a0) rejeita tile com `tile+0 & 8` (alem de rio e predio): com isso o crescimento anual das cidades do Example reproduz os mesmos 2 prédios criados, as 2 demolicoes e todos os campos de `places`
 - RE: `building_destroy` limpa `+2` (lugar), `+0x2f/+0x33` (elos de estacao) e libera os elos de `pool_58`; `0x4c8540` mantem bytes de resumo em `empresa+0x422d/+0x422e` (inferido)
+- Feature: Brazilian Portuguese translation of all 2807 game strings.
+- Feature: Simplified Chinese translation of all 2807 game strings and a Chinese README.
