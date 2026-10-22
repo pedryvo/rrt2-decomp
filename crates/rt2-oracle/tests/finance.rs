@@ -384,7 +384,7 @@ fn trade_price_ref(w: &World, c: &Co, pf: f64, n: i32) -> (i32, f32) {
     } else {
         f64::from(c.pressure)
     };
-    let p = (s * 5e-5).powf(0.33);
+    let p = rt2_sim::fp::pow(s * 5e-5, 0.33);
     let mut r = ((p * (100.0 / f64::from(w.liquidity))) * press * 1.4 + s) / s;
     if r < 0.6 {
         r = (r - 0.6) * 0.5 + 0.6;
@@ -417,7 +417,6 @@ fn trade_price_matches_original() {
     set_fpcw(&mut o, 0x27f);
     let base = o.alloc(CO_SIZE).unwrap();
     let mut xs = Xs(0x0bad_cafe);
-    let mut pow_mismatch = 0;
     for case in 0..4000 {
         let w = rand_world(&mut xs);
         write_world(&mut o, &w);
@@ -438,14 +437,7 @@ fn trade_price_matches_original() {
         o.call_thiscall(TRADE_PRICE, base, &[n as u32, u32::from(commit)])
             .unwrap();
         let got = o.st0().unwrap();
-        if got != f64::from(want) {
-            pow_mismatch += 1;
-            assert!(
-                (got - f64::from(want)).abs() <= 1.0,
-                "case {case}: got {got} want {want} n {n}"
-            );
-            continue;
-        }
+        assert_eq!(got, f64::from(want), "case {case}: n {n}");
         if commit {
             assert_eq!(
                 rf32(&o, base + CO_LAST_PRICE),
@@ -459,10 +451,6 @@ fn trade_price_matches_original() {
             assert_eq!(rf32(&o, base + CO_PRESSURE), c.pressure, "no commit {case}");
         }
     }
-    assert!(
-        pow_mismatch <= 4,
-        "{pow_mismatch} prices differ by one dollar (pow rounding)"
-    );
 }
 
 // ---- 3. fundamental price (0x43aea0) ----------------------------------------------------------

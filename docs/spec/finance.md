@@ -268,4 +268,4 @@ Id de empresa 0 em todos os casos (efeitos só globais), `CW = 0x27F`, empresa m
 
 `cargo clippy -D warnings` no crate de testes passa; o `-D warnings` do workspace falha hoje em `crates/rt2-sim/src/fp.rs:209` (`int_plus_one`, fora do escopo desta spec).
 
-> **TODO de fidelidade:** o teste `finance.rs` do preço de negociação tolera até 4 em 4000 casos com diferença de $1, por usar o `powf` da Rust. Quando a potência determinística do `rt2-sim` (equivalente ao `pow` da CRT do EXE) estiver pronta, o teste deve usá-la e exigir igualdade exata.
+> **Resolvido:** o teste do preço de negociação usa `rt2_sim::fp::pow` (a emulação fiel do `_CIpow` do EXE) e exige igualdade exata: 0 diferenças em 4000 casos.
