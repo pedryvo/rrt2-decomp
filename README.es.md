@@ -55,7 +55,7 @@ _El clásico de 1998 que conoces, desde el mismo punto de vista isométrico,<br>
 
 **Fidelidad:** el clon y el original hacen avanzar la misma partida guardada y los resultados se comparan campo por campo. Marcador actual: [`docs/fidelity-status.md`](docs/fidelity-status.md).
 
-**Ingeniería inversa:** 2945 funciones en el ejecutable (1837 sin contar los thunks del enlazador) · 660 símbolos en [`re/symbols.toml`](re/symbols.toml) · 1189 clasificadas (40%), 1756 aún sin clasificar · 337 funciones especificadas (309 de ellas de simulación), 156 verificadas bit a bit contra el original ([`re/coverage.toml`](re/coverage.toml)). Se publicará un porcentaje de cobertura de la simulación cuando termine la clasificación.
+**Ingeniería inversa:** 2945 funciones en el ejecutable (1837 sin contar los thunks del enlazador) · 741 símbolos en [`re/symbols.toml`](re/symbols.toml) · 1271 clasificadas (43%), 1674 aún sin clasificar · 406 funciones especificadas (369 de ellas de simulación), 223 verificadas bit a bit contra el original ([`re/coverage.toml`](re/coverage.toml)). Se publicará un porcentaje de cobertura de la simulación cuando termine la clasificación.
 
 ## 🧭 Hoja de ruta
 
