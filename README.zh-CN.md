@@ -46,7 +46,7 @@ _您熟悉的 1998 年经典之作，同样的等距视角，<br>如今原生支
 | 地图与存档（`.MAP` `.MP2` `.GAM`） | 🟡 | 两个格式版本（0x233C、0x2348）：随游戏附带的全部 128 个文件以及原版写出的存档均可逐字节完整解析；地形、日期、种子、地点、公司、规则已解码；车站和列车部分解码 · [spec](docs/formats/map-gam.md) |
 | 模拟规格（列车、货物、经济……） | 🟡 | 时间/日历/主循环、随机数生成器、货物经济、列车运行/故障/成本、轨道/车站建设及吸引范围、金融（股价、利息、股息）、城镇与产业增长、竞争对手 AI、世界刻顺序和场景规则语言，大部分已与原版逐位精确验证 · [time](docs/spec/time.md) · [rng](docs/spec/rng.md) · [cargo](docs/spec/cargo.md) · [trains](docs/spec/trains.md) · [track](docs/spec/terrain-track.md) · [finance](docs/spec/finance.md) · [growth](docs/spec/world-growth.md) · [AI](docs/spec/ai.md) · [world tick](docs/spec/world-tick.md) · [scenarios](docs/spec/scenarios.md) |
 | 差分测试框架（Unicorn） | ✅ | 在模拟器中运行原版函数，以进行逐位精确比较 · [docs](docs/oracle.md) |
-| 渲染引擎（wgpu） | 🟡 | 使用游戏原版地形纹理（已解码的 id 表）渲染原版地图，包括河流、道路、海滩、轨道、树木、城镇、产业和车站，视图与原版一致；精灵图针对高 DPI 放大；原生 1080p/4K。列车待完成 · `cargo run --release -p rt2-viewer -- <map>` |
+| 渲染引擎（wgpu） | 🟡 | 使用游戏原版精确地形纹理渲染原版地图，包括河流、道路、海滩、轨道、树木、城镇、产业和车站，以及平滑插值的**行驶列车与烟雾**；精灵图经高清放大；4K 下约 70 fps · `cargo run --release -p rt2-viewer -- <地图>` |
 | 可玩的模拟 | 🟡 | `rt2-sim` 世界循环，含列车、车站、经济、财务、城市发展、剧本规则和电脑对手 AI：原版存档在克隆版中推进后，在计分板 18 个用例中有 17 个逐字段**与原版完全一致**（教程 1/7/30 天、四张 .MP2 地图 1/7/30 天、含列车的示例存档 1/7 天）；示例存档推进 30 天后有 7 个字段不同（AI 建设，进行中） · [保真度计分板](docs/fidelity-status.md) |
 | 游戏界面 | 🟡 | `rrt2` 应用：使用原版美术的主菜单、场景/存档列表、带日期和速度控制的游戏内 HUD、采用与原版相匹配的 OFL 字体的清晰矢量文字、100–300% 的界面缩放 · [docs](docs/ui.md) |
 | 场景编辑器 | ⏳ | |
