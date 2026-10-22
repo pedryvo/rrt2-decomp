@@ -1,75 +1,77 @@
 <div align="center">
 
-<img src="docs/assets/logo.svg" alt="RRT2 — locomotiva a vapor ao pôr do sol" width="220">
+<img src="docs/assets/logo.svg" alt="RRT2 — steam locomotive at sunset" width="220">
 
 # rrt2-decomp
 
-**Engenharia reversa e reimplementação moderna de _Railroad Tycoon II_ em Rust**
+**Reverse engineering and a modern Rust reimplementation of _Railroad Tycoon II_**
 
 [![Rust](https://img.shields.io/badge/rust-2024_edition-b7410e?logo=rust&logoColor=white)](https://www.rust-lang.org/)
-[![Status](https://img.shields.io/badge/status-pr%C3%A9--alpha-orange)](#-progresso)
-[![Fase](https://img.shields.io/badge/fase-1_%E2%80%94_formatos_de_arquivo-blue)](docs/PLAN.md)
-[![Plataformas](https://img.shields.io/badge/plataformas-Linux_%7C_Windows-lightgrey)](#-compilando)
+[![Status](https://img.shields.io/badge/status-pre--alpha-orange)](#-progress)
+[![Phase](https://img.shields.io/badge/phase-1_%E2%80%94_file_formats-blue)](docs/PLAN.md)
+[![Platforms](https://img.shields.io/badge/platforms-Linux_%7C_Windows-lightgrey)](#-building)
 
-_O mesmo jogo de 1998 que você conhece, a mesma perspectiva isométrica,<br>agora nativo em 1080p, 4K e ultrawide._
+_The 1998 classic you know, from the same isometric viewpoint,<br>now native at 1080p, 4K and ultrawide._
+
+**English** · [Português](README.pt-BR.md)
 
 </div>
 
 ---
 
-## 🚂 Sobre
+## 🚂 About
 
-O **rrt2-decomp** estuda o executável original de _Railroad Tycoon II Platinum_ (PopTop Software, 1998–2001) para entender cada regra do jogo e reescrevê-lo do zero em Rust, mantendo a jogabilidade e a visão 2D isométrica ("falso 3D") do original e modernizando o resto:
+**rrt2-decomp** studies the original _Railroad Tycoon II Platinum_ executable (PopTop Software, 1998–2001) to understand every game rule, then rewrites the game from scratch in Rust. It keeps the gameplay and the 2D isometric ("fake 3D") view, and modernizes everything else:
 
-- 🖥️ **Qualquer resolução**: 1080p, 1440p, 4K e ultrawide, com interface escalável e HiDPI. Os trens e prédios do original são modelos 3D, então são renderizados na GPU com nitidez real, sem esticar sprites.
-- 🔍 **Zoom contínuo**, scroll suave e rotação da câmera.
-- 🧮 **Simulação fiel e determinística**: economia, carga, cidades, indústrias, bolsa de valores e IA, validadas contra o jogo original.
-- 🛠️ **Qualidade de vida**: trilho por arrastar com prévia de custo, desfazer, overlays de demanda e lucro, gerenciador de frota, autosave e atalhos remapeáveis.
-- 🌎 **Mods e localização**: dados de jogo em arquivos legíveis e tradução PT-BR.
+- 🖥️ **Any resolution**: 1080p, 1440p, 4K and ultrawide, with a scalable UI and HiDPI support. The original trains and buildings are 3D models, so they are rendered on the GPU at full sharpness instead of upscaled sprites.
+- 🔍 **Continuous zoom**, smooth scrolling and camera rotation.
+- 🧮 **Faithful, deterministic simulation**: economy, cargo, cities, industries, stock market and AI, validated against the original game.
+- 🛠️ **Quality of life**: drag-to-build track with cost preview, undo, demand and profit overlays, a fleet manager, autosave and rebindable keys.
+- 🌎 **Mods and localization**: game data in human-readable files, plus a Brazilian Portuguese translation.
 
 > [!IMPORTANT]
-> Este projeto **não contém nenhum asset do jogo original**. Para jogar, você precisa de uma cópia legítima de _Railroad Tycoon II_ (por exemplo, a versão Platinum da [GOG](https://www.gog.com/game/railroad_tycoon_2_platinum)). O clone lê os arquivos da sua instalação, no mesmo modelo de [OpenRCT2](https://github.com/OpenRCT2/OpenRCT2) e [OpenTTD](https://github.com/OpenTTD/OpenTTD).
+> This project contains **no assets from the original game**. To play, you need a legitimate copy of _Railroad Tycoon II_ (for example the Platinum edition from [GOG](https://www.gog.com/game/railroad_tycoon_2_platinum)). The clone reads the data from your install, the same model used by [OpenRCT2](https://github.com/OpenRCT2/OpenRCT2) and [OpenTTD](https://github.com/OpenTTD/OpenTTD).
 
-## 📊 Progresso
+## 📊 Progress
 
-| Área | Status | Detalhes |
+| Area | Status | Details |
 |---|:---:|---|
-| Plano e arquitetura | ✅ | [`docs/PLAN.md`](docs/PLAN.md) |
-| Contêiner **PK2** | ✅ | Layout, hash de nomes e precedência entre pacotes · [spec](docs/formats/pk2.md) |
-| Textos **LNG** | ✅ | 2807 strings e tabelas nomeadas · [spec](docs/formats/lng.md) |
-| Nomes dos arquivos nos PK2 | 🟡 | 328 nomes recuperados do EXE, de 2898 hashes |
-| Imagens (`.imb` `.pcx` `.pal`) | 🔍 | Em análise |
-| Layouts de interface (`.win`) | 🔍 | Em análise |
-| Áudio (`.raw` `.wav`) | 🔍 | Em análise |
-| Modelos 3D (`.m3d`) | ⏳ | |
-| Mapas e saves (`.MAP` `.GAM`) | ⏳ | |
-| Specs de simulação (trens, carga, economia…) | ⏳ | [`docs/spec/`](docs/spec/) |
-| Motor gráfico (wgpu) | ⏳ | |
-| Simulação jogável | ⏳ | |
-| Interface do jogo | ⏳ | |
-| Editor de cenários | ⏳ | |
+| Plan and architecture | ✅ | [`docs/PLAN.md`](docs/PLAN.md) |
+| **PK2** archives | ✅ | Layout, filename hash and archive precedence · [spec](docs/formats/pk2.md) |
+| **LNG** string tables | ✅ | 2807 strings and named tables · [spec](docs/formats/lng.md) |
+| Filenames inside PK2 | 🟡 | 328 names recovered from the EXE, out of 2898 hashes |
+| Images (`.imb` `.pcx` `.pal`) | 🔍 | Under analysis |
+| UI layouts (`.win`) | 🔍 | Under analysis |
+| Audio (`.raw` `.wav`) | 🔍 | Under analysis |
+| 3D models (`.m3d`) | ⏳ | |
+| Maps and saves (`.MAP` `.GAM`) | ⏳ | |
+| Simulation specs (trains, cargo, economy…) | ⏳ | [`docs/spec/`](docs/spec/) |
+| Rendering engine (wgpu) | ⏳ | |
+| Playable simulation | ⏳ | |
+| Game UI | ⏳ | |
+| Scenario editor | ⏳ | |
 
-<sub>✅ pronto · 🟡 parcial · 🔍 em análise · ⏳ planejado</sub>
+<sub>✅ done · 🟡 partial · 🔍 under analysis · ⏳ planned</sub>
 
-**Engenharia reversa:** 3082 funções no executável · 15 nomeadas em [`re/symbols.toml`](re/symbols.toml)
+**Reverse engineering:** 3082 functions in the executable · 15 named in [`re/symbols.toml`](re/symbols.toml)
 
-## 🧭 Roteiro
+## 🧭 Roadmap
 
 ```
-Fase 0  Fundação ......................... ✅
-Fase 1  Formatos de arquivo e extração ... 🚧  ← estamos aqui
-Fase 2  Decompilação por subsistema ...... ⏳
-Fase 3  Motor gráfico .................... ⏳  (em paralelo à fase 2)
-Fase 4  Fatia vertical jogável ........... ⏳
-Fase 5  Jogo completo .................... ⏳
-Fase 6  Modernização e polimento ......... ⏳
+Phase 0  Foundation ........................ ✅
+Phase 1  File formats and extraction ....... 🚧  ← we are here
+Phase 2  Per-subsystem decompilation ....... ⏳
+Phase 3  Rendering engine .................. ⏳  (alongside phase 2)
+Phase 4  Playable vertical slice ........... ⏳
+Phase 5  Complete game ..................... ⏳
+Phase 6  Modernization and polish .......... ⏳
 ```
 
-Detalhes de cada fase, riscos e critérios de pronto em [`docs/PLAN.md`](docs/PLAN.md).
+Phase details, risks and definitions of done are in [`docs/PLAN.md`](docs/PLAN.md) (Portuguese).
 
-## 🔧 Compilando
+## 🔧 Building
 
-Requisitos: Rust estável (fixado por [`rust-toolchain.toml`](rust-toolchain.toml)) e, no Linux, `clang` + `mold` (configurados em [`.cargo/config.toml`](.cargo/config.toml)).
+You need stable Rust (pinned by [`rust-toolchain.toml`](rust-toolchain.toml)). On Linux you also need `clang` and `mold`, which [`.cargo/config.toml`](.cargo/config.toml) uses as the linker.
 
 ```bash
 git clone https://github.com/pedryvo/rrt2-decomp.git
@@ -77,58 +79,60 @@ cd rrt2-decomp
 cargo build --release
 ```
 
-Testes (os que leem o jogo original rodam quando `RT2_DIR` aponta para a instalação):
+Tests that read the original game data run when `RT2_DIR` points at your install:
 
 ```bash
 RT2_DIR=~/Games/railroad-tycoon-2 cargo nextest run
 ```
 
-## 🧰 Ferramentas
+## 🧰 Tools
 
-Por enquanto o projeto é um conjunto de ferramentas de inspeção. O jogo vem depois.
+For now the project is a set of inspection tools. The game comes later.
 
 ```bash
-# listar o conteúdo de um PK2, nomeando o que for conhecido
+# list a PK2 archive, naming the entries we know
 cargo run --bin rt2-extract -- ~/Games/railroad-tycoon-2/data/RT2.PK2 -n re/names/exe_filenames.txt
 
-# extrair tudo para uma pasta
+# extract everything into a folder
 cargo run --bin rt2-extract -- ~/Games/railroad-tycoon-2/data/RT2.PK2 -n re/names/exe_filenames.txt -o assets-extracted/rt2
 
-# calcular o hash de um nome de arquivo
+# compute the hash of a filename
 python3 re/scripts/pk2_hash.py setup.imb
 ```
 
-## 🗂️ Estrutura
+## 🗂️ Layout
 
 ```
 crates/
-  rt2-formats/   parsers puros dos formatos do jogo (PK2, LNG, …)
-  rt2-tools/     CLIs de inspeção e extração
+  rt2-formats/   pure parsers for the game's file formats (PK2, LNG, …)
+  rt2-tools/     inspection and extraction CLIs
 docs/
-  PLAN.md        plano de desenvolvimento
-  formats/       especificação de cada formato de arquivo
-  spec/          especificação de cada subsistema do jogo
-  reference/     regras extraídas do manual e do guia de estratégia
+  PLAN.md        development plan
+  formats/       one spec per file format
+  spec/          one spec per game subsystem
+  reference/     rules extracted from the manual and strategy guide
 re/
-  symbols.toml   funções e globais identificadas no executável (fonte da verdade)
-  names/         nomes de arquivo recuperados
-  scripts/       scripts auxiliares de engenharia reversa
+  symbols.toml   functions and globals identified in the executable (source of truth)
+  names/         recovered filenames
+  scripts/       reverse-engineering helper scripts
 ```
 
-## 🔬 Metodologia
+## 🔬 Methodology
 
-1. **Âncoras**: strings, imports e tabelas do executável indicam onde cada subsistema vive.
-2. **Decompilação dirigida**: em vez de traduzir as 3082 funções, cada subsistema é entendido a partir das âncoras. As rotinas de bibliotecas (CRT, Miles, Smacker, DirectX) são descartadas cedo.
-3. **Especificação antes do código**: as regras viram documentos em [`docs/spec/`](docs/spec/) com pseudocódigo, constantes e o endereço de origem de cada uma. O código Rust é escrito a partir das specs, não do assembly.
-4. **Validação**: hipóteses são conferidas contra os dados reais do jogo e, quando necessário, contra o executável original rodando no Wine.
+1. **Anchors**: strings, imports and data tables in the executable show where each subsystem lives.
+2. **Targeted decompilation**: instead of translating all 3082 functions, we work outward from the anchors one subsystem at a time, and set aside library code (CRT, Miles, Smacker, DirectX) early.
+3. **Spec before code**: rules are written up in [`docs/spec/`](docs/spec/) with pseudocode, constants and the source address of each one. The Rust code is written from the specs, not from the assembly.
+4. **Validation**: hypotheses are checked against the real game data and, when needed, against the original executable running under Wine.
 
-A análise usa [Ghidra](https://ghidra-sre.org/) por meio do servidor MCP **REA**, e o trabalho é dividido entre agentes de IA especializados ([`.claude/agents/`](.claude/agents/)), cada um com o modelo mais adequado à tarefa.
+The analysis uses [Ghidra](https://ghidra-sre.org/) through the **REA** MCP server. The work is split between specialized AI agents ([`.claude/agents/`](.claude/agents/)), each running the model best suited to its task.
 
-## 🙏 Inspiração
+The project docs under `docs/` are written in Portuguese.
 
-- [OpenRCT2](https://github.com/OpenRCT2/OpenRCT2), [OpenTTD](https://github.com/OpenTTD/OpenTTD) e [OpenMW](https://github.com/OpenMW/openmw): reimplementações que exigem os dados originais
-- [n64decomp/sm64](https://github.com/n64decomp/sm64) e [zeldaret/oot](https://github.com/zeldaret/oot): referências em documentação de engenharia reversa
+## 🙏 Inspiration
 
-## ⚖️ Aviso legal
+- [OpenRCT2](https://github.com/OpenRCT2/OpenRCT2), [OpenTTD](https://github.com/OpenTTD/OpenTTD) and [OpenMW](https://github.com/OpenMW/openmw): reimplementations that run on the original data
+- [n64decomp/sm64](https://github.com/n64decomp/sm64) and [zeldaret/oot](https://github.com/zeldaret/oot): models for documenting reverse-engineering work
 
-_Railroad Tycoon_ é marca registrada de seus respectivos donos. Este é um projeto de fãs, sem fins lucrativos e sem afiliação com a PopTop Software, a Take-Two Interactive ou qualquer detentor de direitos. Nenhum código ou asset original é distribuído aqui: o repositório contém apenas código novo, documentação produzida por engenharia reversa para fins de interoperabilidade e nomes de arquivo necessários para ler os dados de uma cópia legítima.
+## ⚖️ Legal
+
+_Railroad Tycoon_ is a trademark of its respective owners. This is a non-profit fan project with no affiliation to PopTop Software, Take-Two Interactive or any rights holder. No original code or assets are distributed here. The repository holds only new code, documentation produced by reverse engineering for interoperability, and the filenames needed to read data from a legitimate copy.
