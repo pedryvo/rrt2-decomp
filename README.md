@@ -47,7 +47,7 @@ _The 1998 classic you know, from the same isometric viewpoint,<br>now native at 
 | Simulation specs (trains, cargo, economy…) | 🟡 | Time/calendar/main loop, RNGs, cargo economy, train movement/breakdowns/costs, track/station construction and catchment, finance (share price, interest, dividends), town and industry growth, competitor AI, the world tick order and the scenario rule language, mostly verified bit-exact against the original · [time](docs/spec/time.md) · [rng](docs/spec/rng.md) · [cargo](docs/spec/cargo.md) · [trains](docs/spec/trains.md) · [track](docs/spec/terrain-track.md) · [finance](docs/spec/finance.md) · [growth](docs/spec/world-growth.md) · [AI](docs/spec/ai.md) · [world tick](docs/spec/world-tick.md) · [scenarios](docs/spec/scenarios.md) |
 | Differential test harness (Unicorn) | ✅ | Runs original functions in an emulator for bit-exact comparison · [docs](docs/oracle.md) |
 | Rendering engine (wgpu) | 🟡 | Original maps with the game's exact terrain textures (decoded id tables), rivers, roads, beaches, track, trees, towns, industries and stations, matching the original's view; sprites upscaled for high DPI; native 1080p/4K. Trains pending · `cargo run --release -p rt2-viewer -- <map>` |
-| Playable simulation | 🟡 | `rt2-sim` world loop: an original save advanced 1, 7 and 30 days is **identical to the original** field by field (Tutorial); see the [fidelity scoreboard](docs/fidelity-status.md) |
+| Playable simulation | 🟡 | `rt2-sim` world loop: original saves advanced in the clone are **identical to the original** field by field: Tutorial at 1/7/30 days, the Example (with trains running) and four .MP2 maps at 1/7 days — 13 of 13 scoreboard cases; see the [fidelity scoreboard](docs/fidelity-status.md) |
 | Game UI | 🟡 | `rrt2` app: main menu with original art, scenario/save lists, in-game HUD with date and speed control, crisp vector text with OFL fonts matched to the originals, UI scale 100–300% · [docs](docs/ui.md) |
 | Scenario editor | ⏳ | |
 
@@ -55,7 +55,7 @@ _The 1998 classic you know, from the same isometric viewpoint,<br>now native at 
 
 **Fidelity:** the clone and the original advance the same save and the results are diffed field by field. Current scoreboard: [`docs/fidelity-status.md`](docs/fidelity-status.md).
 
-**Reverse engineering:** 2945 functions in the executable (1837 excluding linker thunks) · 545 symbols in [`re/symbols.toml`](re/symbols.toml) · 1077 classified (36%), 1868 still unclassified · 222 functions specified (200 of them simulation), 54 verified bit-exact against the original ([`re/coverage.toml`](re/coverage.toml)). A simulation coverage percentage will be published once classification is complete.
+**Reverse engineering:** 2945 functions in the executable (1837 excluding linker thunks) · 634 symbols in [`re/symbols.toml`](re/symbols.toml) · 1176 classified (39%), 1769 still unclassified · 320 functions specified (293 of them simulation), 126 verified bit-exact against the original ([`re/coverage.toml`](re/coverage.toml)). A simulation coverage percentage will be published once classification is complete.
 
 ## 🧭 Roadmap
 

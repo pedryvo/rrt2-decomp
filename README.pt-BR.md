@@ -47,7 +47,7 @@ O **rrt2-decomp** estuda o executável original de _Railroad Tycoon II Platinum_
 | Specs de simulação (trens, carga, economia…) | 🟡 | Tempo, calendário, laço principal, RNGs, economia de carga, movimento, quebras e custos dos trens, construção de trilhos e estações, área de captação e finanças (preço das ações, juros, dividendos), crescimento de cidades e indústrias, IA dos concorrentes, a ordem do tick e a linguagem de regras dos cenários, em boa parte verificados bit a bit contra o original · [tempo](docs/spec/time.md) · [rng](docs/spec/rng.md) · [carga](docs/spec/cargo.md) · [trens](docs/spec/trains.md) · [trilhos](docs/spec/terrain-track.md) · [finanças](docs/spec/finance.md) · [crescimento](docs/spec/world-growth.md) · [IA](docs/spec/ai.md) · [ordem do tick](docs/spec/world-tick.md) · [cenários](docs/spec/scenarios.md) |
 | Harness de teste diferencial (Unicorn) | ✅ | Roda funções do original num emulador para comparação bit a bit · [docs](docs/oracle.md) |
 | Motor gráfico (wgpu) | 🟡 | Mapas originais com as texturas exatas de terreno (tabelas decodificadas), rios, estradas, praias, trilhos, árvores, cidades, indústrias e estações, batendo com a vista do original; sprites com upscaling; nativo em 1080p/4K. Faltam os trens · `cargo run --release -p rt2-viewer -- <mapa>` |
-| Simulação jogável | 🟡 | Laço do mundo do `rt2-sim`: um save original avançado 1, 7 e 30 dias fica **idêntico ao original** campo a campo (Tutorial); veja o [placar de fidelidade](docs/fidelity-status.md) |
+| Simulação jogável | 🟡 | Laço do mundo do `rt2-sim`: saves originais avançados no clone ficam **idênticos ao original** campo a campo: Tutorial em 1/7/30 dias, o Example (com trens rodando) e quatro mapas .MP2 em 1/7 dias — 13 de 13 casos do placar; veja o [placar de fidelidade](docs/fidelity-status.md) |
 | Interface do jogo | 🟡 | App `rrt2`: menu principal com a arte original, listas de cenários e saves, HUD com data e controle de velocidade, texto vetorial nítido com fontes OFL equivalentes às originais, escala de UI de 100–300% · [docs](docs/ui.md) |
 | Editor de cenários | ⏳ | |
 
@@ -55,7 +55,7 @@ O **rrt2-decomp** estuda o executável original de _Railroad Tycoon II Platinum_
 
 **Fidelidade:** o clone e o original avançam o mesmo save e os resultados são comparados campo a campo. Placar atual: [`docs/fidelity-status.md`](docs/fidelity-status.md).
 
-**Engenharia reversa:** 2945 funções no executável (1837 sem os thunks do linker) · 545 símbolos em [`re/symbols.toml`](re/symbols.toml) · 1077 classificadas (36%), 1868 ainda sem classificação · 222 funções especificadas (200 delas de simulação), 54 verificadas bit a bit contra o original ([`re/coverage.toml`](re/coverage.toml)). O percentual de cobertura da simulação será publicado quando a classificação estiver completa.
+**Engenharia reversa:** 2945 funções no executável (1837 sem os thunks do linker) · 634 símbolos em [`re/symbols.toml`](re/symbols.toml) · 1176 classificadas (39%), 1769 ainda sem classificação · 320 funções especificadas (293 delas de simulação), 126 verificadas bit a bit contra o original ([`re/coverage.toml`](re/coverage.toml)). O percentual de cobertura da simulação será publicado quando a classificação estiver completa.
 
 ## 🧭 Roteiro
 
