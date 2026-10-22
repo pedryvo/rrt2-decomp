@@ -73,6 +73,7 @@ Cada fase termina com um entregável verificável e commits convencionais.
 3. **Sprites LAD e paletas:** decodificar as camadas, ligar cada sprite à sua paleta e montar o pipeline de upscaling para o cache.
 4. **MAP/GAM:** heightmap, tipos de terreno, cidades, indústrias, trilhos e estado completo do save.
 5. **LNG:** tabela de strings, incluindo uma tradução PT-BR como bônus.
+5b. **Fontes (`font*.dat` nos PK2):** o original desenha todo texto com fontes bitmap próprias, sem GDI. Decodificar o formato para medir tamanhos, espaçamento e métricas (o layout das telas depende delas) e para oferecer um modo "clássico" opcional. O padrão do clone são fontes vetoriais livres (OFL) de estilo parecido, rasterizadas na resolução nativa com `glyphon`/`cosmic-text`, nítidas em qualquer escala de UI.
 6. Smacker e áudio via ffmpeg (conversão no cache).
 - **Pronto quando:** 100% das entradas dos PK2 extraídas, um visualizador de debug mostrando sprites, paletas e mapas, testes de round-trip nos parsers, e `docs/formats/*.md` escritos.
 
