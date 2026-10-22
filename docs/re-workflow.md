@@ -40,3 +40,13 @@ re/scripts/export_decomp.sh         # Ghidra headless: importa, analisa, aplica 
 1. Explore com `rg`/`grep` sobre `re/db/decomp` (por nome, string, constante, API, `INDEX.tsv` para filtrar por categoria/estado). Exemplo: `rg -l 'rng_state' re/db/decomp`.
 2. Confirme detalhes com o REA somente quando necessário (xrefs, disassembly, tipos, anotações).
 3. Depois de adicionar nomes a `re/symbols.toml`, rode `re/scripts/export_decomp.sh` de novo para propagar os nomes (nas próprias funções e nas chamadas dos vizinhos).
+
+## Trabalho em paralelo: `re/pending/`
+
+Quando vários agentes trabalham ao mesmo tempo, nenhum deles edita `re/symbols.toml`, `re/coverage.toml`, `CHANGELOG.md` ou os READMEs. Cada um escreve seus resultados em `re/pending/` (ignorado pelo git):
+
+- `<nome>.toml`: entradas `[[symbol]]` (formato de `re/symbols.toml`) e `[[coverage]]` com `addr`, `category`, `status` e `why`
+- `<nome>.tsv`: classificação em massa, com cabeçalho `addr, category, confidence, why`
+- `<nome>.changelog`: linhas para o `CHANGELOG.md`
+
+Depois, quem coordena roda `python3 -I re/scripts/merge_pending.py`. O script aplica tudo e marca as entradas com `manual = true`, chama o `classify.py` para recalcular o resumo e move os arquivos para `re/pending/merged/`. Conflitos de nome de símbolo são reportados e nunca sobrescritos; o status só sobe (`unknown` < `named` < `spec` < `verified`).
