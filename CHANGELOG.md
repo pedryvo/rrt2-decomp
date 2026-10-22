@@ -135,3 +135,4 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Feature: Brazilian Portuguese translation of all 2807 game strings.
 - Feature: Simplified Chinese translation of all 2807 game strings and a Chinese README.
 - Feature: Spanish translation of all 2807 game strings and a Spanish README.
+- Feature: Russian translation of all 2807 game strings and a Russian README.
