@@ -26,3 +26,16 @@ fn every_pk2_parses_and_covers_the_whole_file() {
         assert_eq!(end, raw.len(), "{name}: entries should end exactly at EOF");
     }
 }
+
+#[test]
+fn default_language_file_parses() {
+    let Some(dir) = game_dir() else {
+        eprintln!("RT2_DIR not set; skipping");
+        return;
+    };
+    let raw = std::fs::read(dir.join("default2.lng")).unwrap();
+    let lng = rt2_formats::lng::Lng::parse(&raw).unwrap();
+    assert_eq!(lng.get(13), Some("Railroad Tycoon II - Platinum Edition"));
+    assert_eq!(lng.table_entry("CARGO_TYPES", 0), Some("passenger"));
+    assert_eq!(lng.strings.len(), 2807);
+}
