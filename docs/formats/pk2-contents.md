@@ -23,6 +23,8 @@ Distribuição por índice no RT2 (aprox.): 0000-0007 LAD; 0008-0013 áudio; 001
 
 ## LAD — sprite indexado com RLE (confiança alta)
 
+> Atualização: layout final, regra de paleta (`PALT%04d.PAL`, XRGB1555) e endereços em `docs/formats/lad.md`; as ressalvas e itens "em aberto" abaixo sobre paleta, `hx`, `nlayers` e os 80 parciais estão resolvidos lá.
+
 Estrutura (confirmada: 1910 arquivos são consumidos exatamente até o último byte, sem sobra):
 
 ```

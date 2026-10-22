@@ -40,7 +40,7 @@ O **rrt2-decomp** estuda o executável original de _Railroad Tycoon II Platinum_
 | Contêiner **PK2** | ✅ | Layout, hash de nomes e precedência entre pacotes · [spec](docs/formats/pk2.md) |
 | Textos **LNG** | ✅ | 2807 strings e tabelas nomeadas · [spec](docs/formats/lng.md) |
 | Nomes dos arquivos nos PK2 | 🟡 | 328 nomes recuperados do EXE, de 2898 hashes |
-| Sprites (LAD) e paletas | 🟡 | Os sprites decodificam; mapeamento de paletas em andamento · [notas](docs/formats/pk2-contents.md) |
+| Sprites (LAD) e paletas | ✅ | Sprites decodificam com as cores certas, 1990/1990 bancos · [spec](docs/formats/lad.md) |
 | Layouts de interface (`.imb` `.win`) | 🔍 | Identificados, ainda não decodificados |
 | Áudio (`.raw` `.wav`) | 🔍 | A maioria parece PCM mono de 16 bits |
 | Mapas e saves (`.MAP` `.GAM`) | ⏳ | |
@@ -52,7 +52,7 @@ O **rrt2-decomp** estuda o executável original de _Railroad Tycoon II Platinum_
 
 <sub>✅ pronto · 🟡 parcial · 🔍 em análise · ⏳ planejado</sub>
 
-**Engenharia reversa:** 3082 funções no executável · 15 nomeadas em [`re/symbols.toml`](re/symbols.toml)
+**Engenharia reversa:** 3082 funções no executável · 23 nomeadas em [`re/symbols.toml`](re/symbols.toml)
 
 ## 🧭 Roteiro
 

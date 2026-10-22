@@ -10,7 +10,8 @@ version = "0.1.0"
 rt2-formats = { path = "crates/rt2-formats" }
 anyhow = "1"
 thiserror = "2"
-clap = { version = "4", features = ["derive"] }
+clap = { version = "4", features = ["derive", "env"] }
+png = "0.17"
 
 [workspace.lints.clippy]
 all = { level = "warn", priority = -1 }

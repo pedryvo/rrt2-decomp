@@ -8,6 +8,7 @@ version.workspace = true
 rt2-formats.workspace = true
 anyhow.workspace = true
 clap.workspace = true
+png.workspace = true
 
 [lints]
 workspace = true

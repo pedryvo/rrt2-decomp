@@ -40,7 +40,7 @@ _The 1998 classic you know, from the same isometric viewpoint,<br>now native at 
 | **PK2** archives | ✅ | Layout, filename hash and archive precedence · [spec](docs/formats/pk2.md) |
 | **LNG** string tables | ✅ | 2807 strings and named tables · [spec](docs/formats/lng.md) |
 | Filenames inside PK2 | 🟡 | 328 names recovered from the EXE, out of 2898 hashes |
-| Sprites (LAD) and palettes | 🟡 | Sprites decode; palette mapping in progress · [notes](docs/formats/pk2-contents.md) |
+| Sprites (LAD) and palettes | ✅ | Sprites decode with correct colours, 1990/1990 banks · [spec](docs/formats/lad.md) |
 | UI layouts (`.imb` `.win`) | 🔍 | Identified, not decoded |
 | Audio (`.raw` `.wav`) | 🔍 | Most look like 16-bit mono PCM |
 | Maps and saves (`.MAP` `.GAM`) | ⏳ | |
@@ -52,7 +52,7 @@ _The 1998 classic you know, from the same isometric viewpoint,<br>now native at 
 
 <sub>✅ done · 🟡 partial · 🔍 under analysis · ⏳ planned</sub>
 
-**Reverse engineering:** 3082 functions in the executable · 15 named in [`re/symbols.toml`](re/symbols.toml)
+**Reverse engineering:** 3082 functions in the executable · 23 named in [`re/symbols.toml`](re/symbols.toml)
 
 ## 🧭 Roadmap
 

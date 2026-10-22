@@ -106,3 +106,59 @@ addr = "0x57b9a4"
 name = "pk2_item_cache"
 kind = "global"
 comment = "cache de itens, DAT_0057b9a8 slots de 11 bytes"
+
+[[symbol]]
+addr = "0x4f4ba0"
+name = "pk2_get_item_type0"
+kind = "function"
+comment = "thunk: pk2_get_item(0, nome), banco de sprites LAD (.imb)"
+spec = "docs/formats/lad.md"
+
+[[symbol]]
+addr = "0x4f4bb0"
+name = "pk2_get_item_type1"
+kind = "function"
+comment = "thunk: pk2_get_item(1, nome), banco de paleta PALT%04d.PAL"
+spec = "docs/formats/lad.md"
+
+[[symbol]]
+addr = "0x4f4bc0"
+name = "pk2_get_item_type2"
+kind = "function"
+comment = "thunk: pk2_get_item(2, nome), fonte (font*.dat; construtor 0x4f24c0, usa copp*.imb)"
+spec = "docs/formats/lad.md"
+
+[[symbol]]
+addr = "0x4f8b80"
+name = "lad_load"
+kind = "function"
+comment = "carrega banco LAD: u16 N, N registros de 0x44 bytes, grupos (u32 k, u16 cnt, mapa de quadros, imagens de 0x1d bytes + u32 tamanho + dados); se a 1a imagem tem flag bit 1, carrega PALT<registro+4>.PAL e guarda o ponteiro em registro+8"
+spec = "docs/formats/lad.md"
+
+[[symbol]]
+addr = "0x4f0f80"
+name = "lad_get_image"
+kind = "function"
+comment = "(registro, grupo, quadro): imagem = grupo.imagens[mapa[quadro % k]] (ou imagens[0] se k<2); imagens de 0x1d bytes"
+spec = "docs/formats/lad.md"
+
+[[symbol]]
+addr = "0x4f8ea0"
+name = "palette_new"
+kind = "function"
+comment = "construtor do item tipo 1 (paleta); chama palette_load"
+spec = "docs/formats/lad.md"
+
+[[symbol]]
+addr = "0x4f8ed0"
+name = "palette_load"
+kind = "function"
+comment = "lê u32 n, 35 bytes de slots, n*512 bytes XRGB1555; converte para o formato de tela (565/555/LUT 8 bit conforme DAT_0055d228)"
+spec = "docs/formats/lad.md"
+
+[[symbol]]
+addr = "0x55e5e0"
+name = "str_palt_pal_format"
+kind = "string"
+comment = "\"PALT%04d.PAL\": nome do banco de paleta de um registro LAD"
+spec = "docs/formats/lad.md"
