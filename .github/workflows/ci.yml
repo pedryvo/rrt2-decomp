@@ -13,11 +13,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y mold clang
+      - run: sudo apt-get update && sudo apt-get install -y mold clang cmake
       - run: rustup show
       - uses: Swatinem/rust-cache@v2
       - run: cargo fmt --all --check
-      - run: cargo clippy --all-targets -- -D warnings
+      # rt2-oracle: no libunicorn on runners, so build the bundled copy.
+      - run: cargo clippy --all-targets --no-default-features -- -D warnings
       - run: scripts/check-changelog.sh
 
   test:
@@ -29,11 +30,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y mold clang
+        run: sudo apt-get update && sudo apt-get install -y mold clang cmake
       - run: rustup show
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-nextest
       # Tests that need the original game data skip themselves without RT2_DIR.
-      - run: cargo nextest run --no-tests=warn
+      # rt2-oracle needs the original EXE (skips without it); bundled Unicorn
+      # on Linux, not built on Windows.
+      - if: runner.os == 'Linux'
+        run: cargo nextest run --no-tests=warn --no-default-features
+      - if: runner.os == 'Windows'
+        run: cargo nextest run --no-tests=warn --workspace --exclude rt2-oracle

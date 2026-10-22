@@ -45,6 +45,7 @@ O **rrt2-decomp** estuda o executável original de _Railroad Tycoon II Platinum_
 | Áudio (`.raw` `.wav`) | 🔍 | A maioria parece PCM mono de 16 bits |
 | Mapas e saves (`.MAP` `.GAM`) | ⏳ | |
 | Specs de simulação (trens, carga, economia…) | ⏳ | [`docs/spec/`](docs/spec/) |
+| Harness de teste diferencial (Unicorn) | ✅ | Roda funções do original num emulador para comparação bit a bit · [docs](docs/oracle.md) |
 | Motor gráfico (wgpu) | ⏳ | |
 | Simulação jogável | ⏳ | |
 | Interface do jogo | ⏳ | |
@@ -104,6 +105,7 @@ python3 re/scripts/pk2_hash.py setup.imb
 ```
 crates/
   rt2-formats/   parsers puros dos formatos do jogo (PK2, LNG, …)
+  rt2-oracle/    harness de teste diferencial (EXE original no Unicorn)
   rt2-tools/     CLIs de inspeção e extração
 docs/
   PLAN.md        plano de desenvolvimento

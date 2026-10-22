@@ -29,16 +29,21 @@ pub enum Pk2Error {
     },
 }
 
+/// Case fold used by the filename hash: the original's `FUN_004f0d70`
+/// (`'a'..='z'` and bytes above `0xEF` lose `0x20`).
+pub fn fold_name_byte(c: u8) -> u8 {
+    if c.is_ascii_lowercase() || c > 0xef {
+        c - 0x20
+    } else {
+        c
+    }
+}
+
 /// Filename hash used as the directory key (loop at `0x4f5070`, case fold at `0x4f0d70`).
 /// Names are bare (no directory) and matched case-insensitively.
 pub fn name_hash(name: &str) -> u32 {
     name.bytes().fold(7u32, |h, c| {
-        let c = if c.is_ascii_lowercase() || c > 0xef {
-            c - 0x20
-        } else {
-            c
-        };
-        (c as u32)
+        u32::from(fold_name_byte(c))
             .wrapping_add(0x3039)
             .wrapping_add(h.wrapping_mul(0x41c6_4e6e))
     })

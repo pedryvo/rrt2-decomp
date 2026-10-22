@@ -1,0 +1,21 @@
+[package]
+name = "rt2-oracle"
+description = "Differential-testing harness: runs functions of the original executable in the Unicorn emulator"
+edition.workspace = true
+version.workspace = true
+
+[features]
+# Link the system libunicorn (default). CI runners lack it and use
+# `--no-default-features`, which builds the bundled copy (needs cmake + clang).
+system-unicorn = ["unicorn-engine/dynamic_linkage"]
+default = ["system-unicorn"]
+
+[dependencies]
+thiserror.workspace = true
+unicorn-engine = { version = "2.1.5", default-features = false, features = ["arch_x86"] }
+
+[dev-dependencies]
+rt2-formats.workspace = true
+
+[lints]
+workspace = true

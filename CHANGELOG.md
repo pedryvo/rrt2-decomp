@@ -14,3 +14,6 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - RE: LAD layout corrected (records of image groups with frame maps); all 1990 sprite banks parse to the last byte.
 - Feature: LAD sprite and palette-bank parsers with RGBA conversion in `rt2-formats`, and the `rt2-sprite` tool that renders an entry to PNG.
 - Docs: `docs/formats/lad.md` with the sprite layout, palette rule and source addresses.
+- Feature: `rt2-oracle` differential-testing harness: a PE32 loader plus Unicorn emulation that runs single functions of the original executable (cdecl/stdcall/thiscall, IAT stubs that name any OS import touched, .data snapshot/restore, x87 ST0 readout).
+- RE: the PK2 name-hash case fold (0x4f0d70) matches `rt2_formats::pk2::fold_name_byte` for all 256 byte values, checked against the original in the emulator.
+- Docs: `docs/oracle.md` explains how to write a differential test.

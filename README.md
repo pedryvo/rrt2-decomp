@@ -45,6 +45,7 @@ _The 1998 classic you know, from the same isometric viewpoint,<br>now native at 
 | Audio (`.raw` `.wav`) | 🔍 | Most look like 16-bit mono PCM |
 | Maps and saves (`.MAP` `.GAM`) | ⏳ | |
 | Simulation specs (trains, cargo, economy…) | ⏳ | [`docs/spec/`](docs/spec/) |
+| Differential test harness (Unicorn) | ✅ | Runs original functions in an emulator for bit-exact comparison · [docs](docs/oracle.md) |
 | Rendering engine (wgpu) | ⏳ | |
 | Playable simulation | ⏳ | |
 | Game UI | ⏳ | |
@@ -104,6 +105,7 @@ python3 re/scripts/pk2_hash.py setup.imb
 ```
 crates/
   rt2-formats/   pure parsers for the game's file formats (PK2, LNG, …)
+  rt2-oracle/    differential-test harness (original EXE in Unicorn)
   rt2-tools/     inspection and extraction CLIs
 docs/
   PLAN.md        development plan

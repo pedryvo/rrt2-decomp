@@ -4,3 +4,4 @@
 *.log
 /re/bin
 __pycache__/
+/re/db
