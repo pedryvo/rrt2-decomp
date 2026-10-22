@@ -19,9 +19,9 @@ Em rede (jogadores > 1) os trens andam uma vez por dia com `dt = 1440` (`trains_
 
 ### 1.1 Estruturas
 
-- **Trem** (registro de 0x14d bytes, coleção `train_list` `0x574c64`). Campos usados aqui: `+0` id do vagão da frente; `+0x3d` id do trem; `+0x41` empresa; `+0x69` velocidade atual (i32, mph em ponto fixo 16.16); `+0x6d` minuto da última atualização de velocidade; `+0x71` minuto de partida agendada (0 = nenhuma); `+0x99` parado (1) ou andando (0); `+0x9c` já está nos trilhos; `+0xa0` células percorridas desde a última verificação de quebra (i16); `+0xa2` toneladas x células do mês (combustível); `+0xaf` peso total (t); `+0xb3` peso só dos vagões de carga; `+0xbb` bits (`2` = tem caboose, `8` = elétrica sem catenária); `+0xbd` ano de compra (u16); `+0xbf` distância por minuto (16.16); `+0xcf` areia, `+0xd3` óleo, `+0xd7` água (f32, 0..100); `+0xdb` acelerador (f32, 85 = normal); `+0xe1` células do mês; `+0xed` quebrado, `+0xf2` acidentado, `+0xbc` outro estado de parada (bytes); `+0xee` minuto em que o estado termina; `+0xf3` jogador/território do último trecho. Criação em `train_create` `0x4cdf80`: areia, óleo e água = 100, acelerador = 85, `+0xbd` = ano corrente, `+0x99 = 1` [S].
-- **Veículo** (coleção `vehicle_list` `0x574c70`; cada trem é uma lista ligada pelo campo `+2`). `+8` tipo de veículo, `+9`/`+0xb` tile x/y, `+0x13` comprimento do trecho atual (16.16), `+0x17` posição dentro do trecho (16.16), `+0x23`/`+0x24` direção de entrada/saída do tile (0..7), `+0x2a` está nos trilhos, `+0x2d` quantidade de carga (0 = vazio).
-- Coleções: `collection_get` (`0x4f18b0`) devolve `base(+0x28) + id * passo(+8)`; id 0 = nulo.
+- **Trem** (registro de 0x14d bytes, coleção `list_trains` `0x574c64`). Campos usados aqui: `+0` id do vagão da frente; `+0x3d` id do trem; `+0x41` empresa; `+0x69` velocidade atual (i32, mph em ponto fixo 16.16); `+0x6d` minuto da última atualização de velocidade; `+0x71` minuto de partida agendada (0 = nenhuma); `+0x99` parado (1) ou andando (0); `+0x9c` já está nos trilhos; `+0xa0` células percorridas desde a última verificação de quebra (i16); `+0xa2` toneladas x células do mês (combustível); `+0xaf` peso total (t); `+0xb3` peso só dos vagões de carga; `+0xbb` bits (`2` = tem caboose, `8` = elétrica sem catenária); `+0xbd` ano de compra (u16); `+0xbf` distância por minuto (16.16); `+0xcf` areia, `+0xd3` óleo, `+0xd7` água (f32, 0..100); `+0xdb` acelerador (f32, 85 = normal); `+0xe1` células do mês; `+0xed` quebrado, `+0xf2` acidentado, `+0xbc` outro estado de parada (bytes); `+0xee` minuto em que o estado termina; `+0xf3` jogador/território do último trecho. Criação em `train_create` `0x4cdf80`: areia, óleo e água = 100, acelerador = 85, `+0xbd` = ano corrente, `+0x99 = 1` [S].
+- **Veículo** (coleção `list_cars` `0x574c70`; cada trem é uma lista ligada pelo campo `+2`). `+8` tipo de veículo, `+9`/`+0xb` tile x/y, `+0x13` comprimento do trecho atual (16.16), `+0x17` posição dentro do trecho (16.16), `+0x23`/`+0x24` direção de entrada/saída do tile (0..7), `+0x2a` está nos trilhos, `+0x2d` quantidade de carga (0 = vazio).
+- Coleções: `list_record` (`0x4f18b0`) devolve `base(+0x28) + id * passo(+8)`; id 0 = nulo.
 
 ## 2. Dados das locomotivas e vagões
 
@@ -71,7 +71,7 @@ senão: +0 != 0 e engine_allowed[e] (0x570667, todos 1 por padrão; o editor cop
 ```
 Ou seja, um modelo aparece em **junho** do primeiro ano e some depois do último.
 
-### 2.5 Modificadores (`modifier_factor` `0x46b480`) [S; caminho global V]
+### 2.5 Modificadores (`effect_multiplier` `0x46b480`) [S; caminho global V]
 Fator multiplicativo por id: `f32(1 + pct * 0.01)` com `pct = max(i16, -99)` lido de `0x5707c6 + 2*id` (global do cenário), multiplicado pelos equivalentes da empresa (`+0x1ae`), do jogador/gerente (`+0x26b`) e de `0x574ca8` (`+0x58`); resultado mínimo 0.01. Ids usados pelos trens (`t` = tipo 0/1/2):
 
 | Id | Efeito |
@@ -235,10 +235,10 @@ combustível = ftol(mod(0x12+t) * mod(0x11) * fa*fa * (-unid) * nível_comb[0x56
 manut = ftol(mod(0x1b+t) * mod(0x15) * nível_man[0x567d6d[t]] * motor.+0x10 * (óleo <= 1 ? 3 : 1)
              * f32(((idade*4 + 100) * 0.01)^2) * (-1/12))
 vagões = ftol(mod(0x19) * (-200 * nº de veículos com carga != 0x7f))
-train_charge(3, combustível); train_charge(1, manut); train_charge(2, vagões)     ; 0x4d4200
+train_ledger_add(3, combustível); train_ledger_add(1, manut); train_ledger_add(2, vagões)     ; 0x4d4200
 +0xa2 = +0xe1 = 0
 ```
-`nível_comb` = `0x552ae8` `{1.15, 1.0, 0.85}`, `nível_man` = `0x552af4` `{1.05, 1.0, 0.95}`, indexados por `0x567d6d[tipo]` (estado de jogo; 1 = neutro). `train_charge` (`0x4d4200`) soma o valor nos acumuladores do trem (`+0xfd + 4*cat`, `+0x13d + 4*cat`, total `+0xb7`) e no razão da empresa (categorias 1/2/3 -> razões 6/7/8).
+`nível_comb` = `0x552ae8` `{1.15, 1.0, 0.85}`, `nível_man` = `0x552af4` `{1.05, 1.0, 0.95}`, indexados por `0x567d6d[tipo]` (estado de jogo; 1 = neutro). `train_ledger_add` (`0x4d4200`) soma o valor nos acumuladores do trem (`+0xfd + 4*cat`, `+0x13d + 4*cat`, total `+0xb7`) e no razão da empresa (categorias 1/2/3 -> razões 6/7/8).
 
 A manutenção cresce com `(1 + 0.04*idade)^2` (x1,96 aos 10 anos, x3,24 aos 20) e triplica sem óleo; o combustível cresce com `(1 + 0.01*idade)^2` e é proporcional ao peso transportado por célula.
 
