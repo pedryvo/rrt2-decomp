@@ -105,7 +105,7 @@ python3 re/scripts/pk2_hash.py setup.imb
 ```
 crates/
   rt2-formats/   pure parsers for the game's file formats (PK2, LNG, …)
-  rt2-sim/      deterministic simulation core (no I/O, no rendering)
+  rt2-sim/       deterministic simulation core (no I/O, no rendering)
   rt2-render/    wgpu terrain renderer (mesh, isometric camera; no game logic)
   rt2-viewer/    `rt2-viewer <map>`: window or `--screenshot` PNG
   rt2-oracle/    differential-test harness (original EXE in Unicorn)

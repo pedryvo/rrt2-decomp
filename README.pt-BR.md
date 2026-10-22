@@ -105,7 +105,7 @@ python3 re/scripts/pk2_hash.py setup.imb
 ```
 crates/
   rt2-formats/   parsers puros dos formatos do jogo (PK2, LNG, …)
-  rt2-sim/      núcleo determinístico da simulação (sem I/O, sem render)
+  rt2-sim/       núcleo determinístico da simulação (sem I/O, sem render)
   rt2-render/    renderizador de terreno em wgpu (malha, câmera isométrica; sem lógica de jogo)
   rt2-viewer/    `rt2-viewer <mapa>`: janela ou PNG com `--screenshot`
   rt2-oracle/    harness de teste diferencial (EXE original no Unicorn)
