@@ -105,8 +105,36 @@ Textos: ids do `default2.lng` quando conhecidos (`New Game` 1686, `Load Game` 16
 
 `rrt2 --screenshot out.png [--screen menu|new-game|load-game|game] [--size 3840x2160] [--ui-scale 200] [--days N] [arquivo]` renderiza fora da tela (sem janela). O `game` usa o `Example save game.GAM` e avança N dias simulados (semente de RNG fixa `1`).
 
+## Telas de informacao (somente leitura)
+
+Painéis sobre o jogo que só olham o estado da simulação (`World::save_ref`); nenhum enfileira `Command`. O código: `rt2-game/src/info.rs` (registros do save -> tabelas de texto, sem UI, testável), `state/info_ui.rs` (widgets, teclas, cliques) e `pick.rs` (tile sob o cursor).
+
+| Tela | Atalho | `.win` de referência | Conteúdo |
+|---|---|---|---|
+| Finanças | `F` (ou `Previous`/`Next`, setas) | `compndtl.win`, `yearend.win` | demonstração de resultados por categoria (este ano `+0x4286`, ano passado `+0x42ee`, vida inteira `+0x46fe`; rótulos LNG 961..973, `finance.md` 1), balanço (contas 0..5, dívida, patrimônio; LNG 974..981), preço da ação (`trade_price(0)`, `finance.md` 3.2), valor contábil, receita e lucro por ação, dividendo, ações, valor de mercado, rating (`finance.md` 4.2), títulos |
+| Bolsa | `M` | `stockdtl.win` | uma linha por empresa: preço, ações, valor, dividendo, valor contábil, rating; clique abre as finanças dela |
+| Trens | `T` | `trainlst.win`, `traindtl.win` | lista (nome, empresa, locomotiva, vagões, rota, velocidade, idade) e detalhe (composição, paradas com espera, peso, estado) |
+| Estações | `G` | `statnlst.win`, `statndtl.win` | lista e detalhe (dono, tamanho, melhorias decodificadas pela tabela de `terrain-track.md` 3.4, oferta, espera, demanda, nível de preço e entregas por carga) |
+| Cidades | `C` | `cityset.win` | lista e detalhe (tipo, classe de tamanho, casas, índice de crescimento, lotes entregues e despachados, indústrias do lugar) |
+| Indústrias | `I` | - | lista e detalhe (tipo, lugar, dono, lucratividade, produção por carga, estoques de entrada) |
+| Território | clique no mapa | `bpterrit.win` | região, tiles, cidades e indústrias dentro |
+
+`Esc` fecha, `Backspace` volta do detalhe para a lista, roda / `PgUp` / `PgDn` / `Home` / `End` rolam as listas, o atalho da tela aberta fecha-a. Teclas configuráveis em `[keys]` (`finance`, `stock`, `trains`, `stations`, `cities`, `industries`). Um clique do botão esquerdo no mapa (sem arrastar) abre a página do que está sob o cursor: indústria ou estação (caixa do prédio `+0x26..+0x2d`), cidade ou região (caixa do lugar), senão o território do tile (`pick.rs` desfaz a projeção da câmera, corrigindo pela elevação).
+
+Layout (referência: geometria dos `.win`; as janelas de lista são uma lista 974x686 numa tela de 1024x768, as de detalhe dois painéis lado a lado): o painel preenche a tela abaixo do HUD (largura máxima 1400 unidades lógicas), a altura da linha encolhe (25 a 14) para caber numa tela lógica pequena (escala 200 % em 1080p) e as duas colunas viram uma abaixo de 860 unidades. Arte: o painel 9-slice da skin; botões da skin; tabelas em caixas escuras. O número de linhas visíveis das listas vem da altura; o resto rola.
+
+Screenshots: `rrt2 --screenshot out.png --screen info --info finance|stock|trains|train|stations|station|cities|city|industries|industry|territory [--days N] [--size WxH] [--ui-scale N] [arquivo]`; `--click X,Y` (pixels físicos, com `--screen game`) simula o clique no mapa.
+
+Lacunas (marcadas TODO na tela): lucro do trem e estado da programação; população e demanda por carga das cidades; estado econômico (usa 2, `cargo.md` 9) e conjunto de indústrias (usa 0); qual empresa é a do jogador (usa a primeira ativa com chairman humano); direitos e efeitos de território; **saves no layout antigo 0x233C** (os `.GAM` do jogo): só nomes e posições são lidos, o resto aparece como `-` com um aviso, porque a conversão dos registros no carregamento do original (empresa 0x196C -> 0x4E86, estação 0x39B -> 0x4C7, trem 0x143 -> 0x14D...) não está decodificada. Os saves que o próprio jogo grava (0x2348) mostram tudo.
+
 ## Lacunas conhecidas
 
 - A cena do mapa (`rt2-render::Scene`) é montada uma vez no carregamento: trens e construções criados pela simulação ainda não aparecem.
 - Qual empresa é a do jogador não está decodificado; o caixa mostrado é a conta 0 da primeira empresa (`finance.md` 2).
 - Início de um jogo novo (data, empresa, economia) não está especificado: um mapa de cenário abre como mundo só com relógio, em 1860.
+
+## Pendências de revisão (coordenador, 2026-10-22)
+
+- Tela de finanças, Example 0x2348 após 30 dias: o patrimônio (book value, $3.493.896) supera os ativos ($3.434.896) em $59.000 com dívida zero. Conferir a fórmula de valor contábil contra `finance.md`: o original pode incluir um item não listado na tela (participações, terrenos?) ou a tela soma algo errado.
+- A coluna "This year" mostra $0 em 12 de janeiro com trens rodando. Confirmar se o original só acumula no fechamento do mês (finance.md) ou se a tela lê o campo errado.
+- A barra de atalhos abaixo do HUD fica parcialmente atrás do painel aberto.

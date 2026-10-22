@@ -12,8 +12,10 @@ mod artwork;
 mod catalog;
 mod config;
 mod gfx;
+mod info;
 mod keys;
 mod paths;
+mod pick;
 mod sound;
 mod state;
 mod text;
@@ -51,6 +53,14 @@ struct Args {
     /// Screen to render with --screenshot
     #[arg(long, value_enum, default_value_t = Screen::Menu)]
     screen: Screen,
+    /// With `--screen info`: finance, stock, trains, train, stations, station, cities, city,
+    /// industries, industry or territory
+    #[arg(long, default_value = "finance")]
+    info: String,
+    /// With `--screen game`: click the map at this physical pixel (X,Y) before the shot, to try
+    /// the click-to-inspect pages
+    #[arg(long, value_parser = parse_point)]
+    click: Option<(f32, f32)>,
     /// Screenshot size in pixels, WIDTHxHEIGHT
     #[arg(long, default_value = "1920x1080", value_parser = parse_size)]
     size: (u32, u32),
@@ -65,6 +75,9 @@ enum Screen {
     NewGame,
     LoadGame,
     Game,
+    /// An information screen over the loaded game: finance, stock, trains, train, stations,
+    /// station, cities, city, industries, industry or territory (see `--info`).
+    Info,
 }
 
 #[derive(Subcommand)]
@@ -81,6 +94,12 @@ fn parse_size(s: &str) -> Result<(u32, u32), String> {
         return Err("size must be non-zero".into());
     }
     Ok(size)
+}
+
+fn parse_point(s: &str) -> Result<(f32, f32), String> {
+    let (x, y) = s.split_once(',').ok_or("expected X,Y")?;
+    let p = |v: &str| v.trim().parse::<f32>().map_err(|e| e.to_string());
+    Ok((p(x)?, p(y)?))
 }
 
 fn main() -> Result<()> {
@@ -140,7 +159,7 @@ fn screenshot(init: Init, skin: rt2_ui::Skin, args: &Args, out: &std::path::Path
         Screen::Menu => {}
         Screen::NewGame => state.show_new_game(),
         Screen::LoadGame => state.show_load_game(),
-        Screen::Game => {
+        Screen::Game | Screen::Info => {
             let file = args
                 .file
                 .clone()
@@ -148,6 +167,15 @@ fn screenshot(init: Init, skin: rt2_ui::Skin, args: &Args, out: &std::path::Path
             state.start(&file)?;
             state.advance_days(args.days);
             state.update(0.0);
+            if matches!(args.screen, Screen::Info) && !state.show_info_screen(&args.info) {
+                bail!("unknown --info screen {:?}", args.info);
+            }
+            if let Some((x, y)) = args.click {
+                state.cursor_moved(x, y);
+                state.mouse_button(true, true);
+                state.mouse_button(true, false);
+                state.update(0.0);
+            }
         }
     }
     let pixels = gfx::render_offscreen(&mut gfx, &mut state, args.size)?;

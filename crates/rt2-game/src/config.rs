@@ -28,6 +28,14 @@ pub struct Keys {
     pub fullscreen: Vec<String>,
     pub mute: Vec<String>,
     pub next_track: Vec<String>,
+    /// Information screens (docs/ui.md "Telas de informacao"); pressing the key of the open
+    /// screen closes it.
+    pub finance: Vec<String>,
+    pub stock: Vec<String>,
+    pub trains: Vec<String>,
+    pub stations: Vec<String>,
+    pub cities: Vec<String>,
+    pub industries: Vec<String>,
 }
 
 fn v(keys: &[&str]) -> Vec<String> {
@@ -57,6 +65,13 @@ impl Default for Keys {
             // Modern extras (the original has no audio hotkeys). Ctrl avoids menu letter hotkeys.
             mute: v(&["ctrl+KeyM"]),
             next_track: v(&["ctrl+KeyN"]),
+            // Modern extras: the original opens these from the toolbar only.
+            finance: v(&["KeyF"]),
+            stock: v(&["KeyM"]),
+            trains: v(&["KeyT"]),
+            stations: v(&["KeyG"]),
+            cities: v(&["KeyC"]),
+            industries: v(&["KeyI"]),
         }
     }
 }

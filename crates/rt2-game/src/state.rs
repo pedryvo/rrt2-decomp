@@ -22,10 +22,14 @@ use winit::keyboard::KeyCode;
 
 use crate::catalog::{self, Entry, Source};
 use crate::config::Config;
+use crate::info::Info;
 use crate::keys::Bindings;
 use crate::paths;
 use crate::sound::{Cue, MusicRequester};
 use crate::text::{Texts, id as lng};
+
+mod info_ui;
+use info_ui::InfoState;
 
 const A_NEW: u32 = 1;
 const A_LOAD: u32 = 2;
@@ -92,6 +96,8 @@ struct GameState {
     hud: HudIds,
     /// A map without game state (a new scenario): no save is possible.
     map_only: bool,
+    /// The open information screen (finance, trains, ...), if any.
+    info: Option<InfoState>,
 }
 
 enum Screen {
@@ -136,6 +142,8 @@ pub struct AppState {
     music: MusicRequester,
     /// True while the UI events being handled come from a mouse button.
     via_mouse: bool,
+    /// Where the left button went down on the map, to tell a click from a drag.
+    press: Option<(f32, f32)>,
 }
 
 #[derive(Default, Clone, Copy)]
@@ -144,16 +152,7 @@ struct MenuHandles {
 }
 
 fn format_money(v: f64) -> String {
-    let n = v.round() as i64;
-    let digits = n.unsigned_abs().to_string();
-    let mut out = String::new();
-    for (i, c) in digits.chars().enumerate() {
-        if i > 0 && (digits.len() - i).is_multiple_of(3) {
-            out.push(',');
-        }
-        out.push(c);
-    }
-    format!("{}${out}", if n < 0 { "-" } else { "" })
+    crate::info::money(v)
 }
 
 fn format_date(d: Date, texts: &Texts) -> String {
@@ -199,6 +198,7 @@ impl AppState {
             cues: Vec::new(),
             music: MusicRequester::default(),
             via_mouse: false,
+            press: None,
         };
         s.rebuild_ui();
         s
@@ -295,12 +295,16 @@ impl AppState {
         });
         if pressed {
             self.drag = self.in_game() && !self.ui.over_ui();
+            self.press = (left && self.drag).then_some(self.cursor).flatten();
             if left && self.ui.over_ui() {
                 // sound.md 1.3 id 2: button pressed (ButtonDown, 0x50cc60).
                 self.cues.push(Cue::Event(Event::ButtonDown));
             }
         } else {
             self.drag = false;
+            if left && let Some(p) = self.press.take() {
+                self.map_click(p);
+            }
         }
         self.via_mouse = true;
         self.handle_events(ev);
@@ -309,6 +313,10 @@ impl AppState {
 
     pub fn wheel(&mut self, notches: f32) {
         self.ui.input(Input::Wheel(notches));
+        if self.info_screen().is_some() {
+            self.info_scroll(-(notches * 3.0).round() as i32);
+            return;
+        }
         if !self.ui.over_ui()
             && let Screen::Game(g) = &mut self.screen
         {
@@ -410,6 +418,23 @@ impl AppState {
 
     fn game_key(&mut self, code: KeyCode, ctrl: bool) {
         let b = self.binds.clone();
+        if !ctrl && self.info_key(code) {
+            return;
+        }
+        if !ctrl {
+            let tabs = [
+                &b.finance,
+                &b.stock,
+                &b.trains,
+                &b.stations,
+                &b.cities,
+                &b.industries,
+            ];
+            if let Some(i) = tabs.iter().position(|k| k.matches(code, false)) {
+                self.toggle_tab(i);
+                return;
+            }
+        }
         let mut cmd = None;
         if b.pause.matches(code, ctrl) {
             cmd = Some(Command::TogglePause);
@@ -435,6 +460,43 @@ impl AppState {
         }
     }
 
+    /// A left click on the map that did not move: open the page of what is under it (an
+    /// industry, a station, a city or region, else the territory).
+    fn map_click(&mut self, pos: (f32, f32)) {
+        if self.info_screen().is_some() {
+            return;
+        }
+        let Screen::Game(g) = &self.screen else {
+            return;
+        };
+        let (Some(save), Some(data)) = (g.world.save_ref(), self.data.as_ref()) else {
+            return;
+        };
+        // A press that drifted is a drag, not a click (the camera already followed it).
+        if let Some((cx, cy)) = self.cursor
+            && ((cx - pos.0).powi(2) + (cy - pos.1).powi(2)).sqrt() > 5.0
+        {
+            return;
+        }
+        let Some((tx, ty)) = crate::pick::screen_to_tile(&g.camera, self.viewport, pos, &save.map)
+        else {
+            return;
+        };
+        let d = g.world.date();
+        let info = Info {
+            save,
+            data,
+            texts: &self.texts,
+            year: i32::from(d.year),
+            month: i32::from(d.month),
+            day: i32::from(d.day),
+            minutes: g.world.minutes(),
+        };
+        if let Some(p) = info.pick(tx, ty) {
+            self.open_pick(p);
+        }
+    }
+
     // ---- per-frame update -----------------------------------------------------------------
 
     /// Advances the simulation at the fixed timestep and pans the camera. `dt_ms` is the wall
@@ -455,7 +517,7 @@ impl AppState {
         let Screen::Game(g) = &mut self.screen else {
             return;
         };
-        if (dx != 0.0 || dy != 0.0) && !ctrl {
+        if (dx != 0.0 || dy != 0.0) && !ctrl && g.info.is_none() {
             let k = PAN_SPEED * dt_ms / 1000.0;
             g.camera.pan(dx * k, dy * k);
         }
@@ -509,6 +571,7 @@ impl AppState {
             self.ui.set_visible(n, toast.is_some());
             self.ui.set_text(n, toast.unwrap_or_default());
         }
+        self.info_refresh();
     }
 
     // ---- screens --------------------------------------------------------------------------
@@ -520,6 +583,13 @@ impl AppState {
                     // sound.md 1.3 id 1: button released (ButtonUp, 0x50cbd0).
                     self.cues.push(Cue::Event(Event::ButtonUp));
                     self.activated(a);
+                }
+                UiEvent::Selected(info_ui::A_ROW, row) => {
+                    // A click on a list row opens its page (a key press only moves the cursor).
+                    if self.via_mouse {
+                        self.cues.push(Cue::Event(Event::ListClick));
+                        self.info_row(row);
+                    }
                 }
                 UiEvent::Selected(_, _) => {
                     // ids 3 / 4: list click (0x506220) vs soft scroll by wheel or keys (0x5062f0).
@@ -535,6 +605,9 @@ impl AppState {
     }
 
     fn activated(&mut self, action: u32) {
+        if self.in_game() && self.info_activated(action) {
+            return;
+        }
         match action {
             A_NEW => self.open_page(Page::NewGame),
             A_LOAD => self.open_page(Page::LoadGame),
@@ -662,6 +735,7 @@ impl AppState {
             toast: None,
             hud: HudIds::default(),
             map_only,
+            info: None,
         }));
         self.rebuild_ui();
         Ok(())
@@ -739,7 +813,11 @@ impl AppState {
                 };
                 self.build_menu(&mut ui, page, items, n_entries);
             }
-            Screen::Game(_) => self.build_hud(&mut ui),
+            Screen::Game(_) => {
+                self.build_hud(&mut ui);
+                self.build_toolbar(&mut ui);
+                self.build_info(&mut ui);
+            }
         }
         ui.layout(self.viewport);
         self.ui = ui;

@@ -131,6 +131,12 @@ pub struct Bindings {
     pub fullscreen: Binding,
     pub mute: Binding,
     pub next_track: Binding,
+    pub finance: Binding,
+    pub stock: Binding,
+    pub trains: Binding,
+    pub stations: Binding,
+    pub cities: Binding,
+    pub industries: Binding,
     /// Names in the config that were not recognised.
     pub invalid: Vec<String>,
 }
@@ -157,6 +163,12 @@ impl Bindings {
             fullscreen: b(&k.fullscreen),
             mute: b(&k.mute),
             next_track: b(&k.next_track),
+            finance: b(&k.finance),
+            stock: b(&k.stock),
+            trains: b(&k.trains),
+            stations: b(&k.stations),
+            cities: b(&k.cities),
+            industries: b(&k.industries),
             invalid: Vec::new(),
         };
         Bindings {

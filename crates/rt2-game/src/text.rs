@@ -19,6 +19,11 @@ pub mod id {
     pub const QUIT: u32 = 1684;
     pub const NEW_GAME: u32 = 1686;
     pub const LOAD_GAME: u32 = 1688;
+    pub const FINANCES: u32 = 111;
+    pub const TRAINS: u32 = 978;
+    pub const CITIES: u32 = 103;
+    pub const NEXT: u32 = 301;
+    pub const PREVIOUS: u32 = 303;
     /// January; the 12 months are consecutive.
     pub const MONTH_FIRST: u32 = 1441;
 }
@@ -41,6 +46,16 @@ impl Texts {
         self.lng
             .as_ref()
             .and_then(|l| l.get(id))
+            .unwrap_or(fallback)
+            .to_owned()
+    }
+
+    /// Entry `index` of the named LNG table (`;tNAME_0` markers, lng.md), else `fallback`.
+    pub fn table(&self, name: &str, index: u32, fallback: &str) -> String {
+        self.lng
+            .as_ref()
+            .and_then(|l| l.table_entry(name, index))
+            .filter(|s| !s.is_empty())
             .unwrap_or(fallback)
             .to_owned()
     }
