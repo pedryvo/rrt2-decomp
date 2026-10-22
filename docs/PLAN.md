@@ -15,7 +15,7 @@ Reimplementar Railroad Tycoon II Platinum em Rust, fiel à jogabilidade e à per
 
 | Item | Observação |
 |---|---|
-| Executável | `RT2_PLAT.EXE.orig`: PE32 i386, GUI, MSVC, base `0x400000`, 3.082 funções, sem símbolos. sha256 `510b9e44…7e474`. Os outros EXEs são versões com patch de resolução e serão ignorados. |
+| Executável | `RT2_PLAT.EXE.orig`: PE32 i386, GUI, MSVC, base `0x400000`, 2.945 funções (1.837 sem thunks), sem símbolos. sha256 `510b9e44…7e474`. Os outros EXEs são versões com patch de resolução e serão ignorados. |
 | Seções | `.text` 1,2 MB · `.data` ~300 KB (tabelas de balanceamento devem estar aqui) · `.rsrc` pequeno |
 | Contêineres | `data/RT2.PK2` (85 MB), `RT2_06.PK2`, `RT2_09GO.PK2`, `RT2_11PL.PK2`. O jogo carrega todos via `.\data\*.pk2` (string em `0x55d500`). O formato é proprietário: o diretório começa com um campo de tamanho e os blobs têm entropia de ~7,1–7,3, então devem ser comprimidos. Este é o **primeiro alvo de RE**. |
 | Mapas e saves | `maps/*.MAP`, `games/*.GAM`: o cabeçalho tem a mágica `0x233C` seguida do nome do cenário. |
@@ -77,7 +77,7 @@ Cada fase termina com um entregável verificável e commits convencionais.
 - **Pronto quando:** 100% das entradas dos PK2 extraídas, um visualizador de debug mostrando sprites, paletas e mapas, testes de round-trip nos parsers, e `docs/formats/*.md` escritos.
 
 ### Fase 2 — Decompilação por subsistema
-**Todas** as 3.082 funções são classificadas (biblioteca, render/UI, simulação), e **toda função de simulação precisa ser especificada**, sem exceção (ver seção 11). A ordem de ataque segue strings e xrefs, com esta prioridade:
+**Todas** as 2.945 funções (1.837 sem thunks) são classificadas (biblioteca, render/UI, simulação), e **toda função de simulação precisa ser especificada**, sem exceção (ver seção 11). A ordem de ataque segue strings e xrefs, com esta prioridade:
 
 | Prioridade | Subsistema | Saída |
 |---|---|---|
@@ -142,7 +142,7 @@ Cada tipo de tarefa vai para o modelo mais barato que a resolve bem. Os agentes 
 **Regras de economia:**
 - Os agentes recebem uma tarefa estreita e os arquivos exatos que devem ler, e devolvem só a conclusão (spec ou diff), não dumps.
 - As specs em `docs/spec/` são a memória compartilhada: um agente de implementação lê a spec e não refaz a RE.
-- Funções da CRT/MSVC e de bibliotecas (Miles, Smacker, DirectX) são identificadas cedo e ignoradas. Isso deve cortar uma fração grande das 3.082 funções.
+- Funções da CRT/MSVC e de bibliotecas (Miles, Smacker, DirectX) são identificadas cedo e ignoradas. Isso deve cortar uma fração grande das 2.945 funções (1.837 sem thunks).
 - Paralelismo só entre subsistemas independentes (ex.: RE de `cargo` enquanto se implementa `terrain`).
 
 ## 7. Modernizações propostas
@@ -213,8 +213,9 @@ Pesquisa feita em 2026-10-22, quando o OpenRCT2 estava na v0.5.6. O que vale rep
 O manual e o guia de estratégia (`docs/reference/manual-rules.md`) servem para dar pistas e nomes. **A regra vale como está no executável.** Quando o manual diverge do código, vale o código, e a divergência fica anotada na spec.
 
 **Cobertura total da simulação**
-- `re/coverage.toml` classifica cada uma das 3.082 funções: `lib` (CRT, Miles, Smacker, DirectX), `platform` (janela, input, arquivos), `render`, `ui` ou `sim`, com um estado: `unknown`, `named`, `spec` ou `verified`.
+- `re/coverage.toml` classifica cada uma das 2.945 funções (1.837 sem thunks): `lib` (CRT, Miles, Smacker, DirectX), `platform` (janela, input, arquivos), `render`, `ui` ou `sim`, com um estado: `unknown`, `named`, `spec` ou `verified`.
 - Meta da Fase 2: 100% das funções classificadas e 100% das funções `sim` em `spec`. A porcentagem aparece no README.
+- Como regenerar e editar: `docs/re-workflow.md` (`re/scripts/dump_program.sh` → `re/scripts/classify.py`).
 - Constantes e tabelas (atributos de locomotivas, cargas, indústrias, custos) são extraídas dos dados (`.data` do EXE e arquivos nos PK2), nunca digitadas a partir do manual.
 
 **Três níveis de verificação**

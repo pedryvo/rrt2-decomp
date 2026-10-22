@@ -43,7 +43,7 @@ O **rrt2-decomp** estuda o executável original de _Railroad Tycoon II Platinum_
 | Sprites (LAD) e paletas | ✅ | Sprites decodificam com as cores certas, 1990/1990 bancos · [spec](docs/formats/lad.md) |
 | Layouts de interface (`.imb` `.win`) | 🔍 | Identificados, ainda não decodificados |
 | Áudio (`.raw` `.wav`) | 🔍 | A maioria parece PCM mono de 16 bits |
-| Mapas e saves (`.MAP` `.GAM`) | ⏳ | |
+| Mapas e saves (`.MAP` `.GAM`) | 🟡 | Grade de terreno, elevação, água e territórios decodificados nos 31 mapas · [spec](docs/formats/map-gam.md) |
 | Specs de simulação (trens, carga, economia…) | ⏳ | [`docs/spec/`](docs/spec/) |
 | Harness de teste diferencial (Unicorn) | ✅ | Roda funções do original num emulador para comparação bit a bit · [docs](docs/oracle.md) |
 | Motor gráfico (wgpu) | ⏳ | |
@@ -53,7 +53,7 @@ O **rrt2-decomp** estuda o executável original de _Railroad Tycoon II Platinum_
 
 <sub>✅ pronto · 🟡 parcial · 🔍 em análise · ⏳ planejado</sub>
 
-**Engenharia reversa:** 3082 funções no executável · 23 nomeadas em [`re/symbols.toml`](re/symbols.toml)
+**Engenharia reversa:** 2945 funções no executável (1837 sem os thunks do linker) · 23 nomeadas em [`re/symbols.toml`](re/symbols.toml) · 680 classificadas (23%) · cobertura de specs da simulação **0%** ([`re/coverage.toml`](re/coverage.toml))
 
 ## 🧭 Roteiro
 
@@ -121,7 +121,7 @@ re/
 ## 🔬 Metodologia
 
 1. **Âncoras**: strings, imports e tabelas do executável indicam onde cada subsistema vive.
-2. **Decompilação dirigida**: em vez de traduzir as 3082 funções, cada subsistema é entendido a partir das âncoras. As rotinas de bibliotecas (CRT, Miles, Smacker, DirectX) são descartadas cedo.
+2. **Classificação total, decompilação dirigida**: toda função é classificada (biblioteca, plataforma, render, UI ou simulação), e cada subsistema é entendido a partir das âncoras. As rotinas de bibliotecas (CRT, Miles, Smacker, DirectX) são descartadas cedo, e toda função de simulação ganha uma spec.
 3. **Especificação antes do código**: as regras viram documentos em [`docs/spec/`](docs/spec/) com pseudocódigo, constantes e o endereço de origem de cada uma. O código Rust é escrito a partir das specs, não do assembly.
 4. **O executável é a referência, não o manual**: toda função da simulação é especificada, com a cobertura acompanhada publicamente. As fórmulas são provadas iguais rodando as funções originais num emulador x86 contra o nosso código Rust, e o comportamento do jogo inteiro é conferido avançando o mesmo save no original (no Wine) e no clone e comparando os resultados.
 

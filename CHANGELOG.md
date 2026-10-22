@@ -17,3 +17,5 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Feature: `rt2-oracle` differential-testing harness: a PE32 loader plus Unicorn emulation that runs single functions of the original executable (cdecl/stdcall/thiscall, IAT stubs that name any OS import touched, .data snapshot/restore, x87 ST0 readout).
 - RE: the PK2 name-hash case fold (0x4f0d70) matches `rt2_formats::pk2::fold_name_byte` for all 256 byte values, checked against the original in the emulator.
 - Docs: `docs/oracle.md` explains how to write a differential test.
+- RE: `maps/*.MAP` and `games/*.GAM` are uncompressed: header with map size at 0x231, 10-byte tile records (ground, trees, structure, track, territory) from 0xB2D7 and an i16 corner heightmap of (w+1)*(h+1); renders reproduce Britain, Chesapeake and the other 31 maps, see `docs/formats/map-gam.md` and `re/scripts/mapgam.py`.
+- RE: automatic first-pass classification of all 2945 functions Ghidra finds in RT2_PLAT.EXE (`re/coverage.toml`: 680 classified, 262 lib, 4 sim candidates), produced by `re/scripts/dump_program.sh` and `re/scripts/classify.py`.

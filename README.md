@@ -43,7 +43,7 @@ _The 1998 classic you know, from the same isometric viewpoint,<br>now native at 
 | Sprites (LAD) and palettes | ✅ | Sprites decode with correct colours, 1990/1990 banks · [spec](docs/formats/lad.md) |
 | UI layouts (`.imb` `.win`) | 🔍 | Identified, not decoded |
 | Audio (`.raw` `.wav`) | 🔍 | Most look like 16-bit mono PCM |
-| Maps and saves (`.MAP` `.GAM`) | ⏳ | |
+| Maps and saves (`.MAP` `.GAM`) | 🟡 | Terrain grid, elevation, water and territories decoded for all 31 maps · [spec](docs/formats/map-gam.md) |
 | Simulation specs (trains, cargo, economy…) | ⏳ | [`docs/spec/`](docs/spec/) |
 | Differential test harness (Unicorn) | ✅ | Runs original functions in an emulator for bit-exact comparison · [docs](docs/oracle.md) |
 | Rendering engine (wgpu) | ⏳ | |
@@ -53,7 +53,7 @@ _The 1998 classic you know, from the same isometric viewpoint,<br>now native at 
 
 <sub>✅ done · 🟡 partial · 🔍 under analysis · ⏳ planned</sub>
 
-**Reverse engineering:** 3082 functions in the executable · 23 named in [`re/symbols.toml`](re/symbols.toml)
+**Reverse engineering:** 2945 functions in the executable (1837 excluding linker thunks) · 23 named in [`re/symbols.toml`](re/symbols.toml) · 680 classified (23%) · simulation spec coverage **0%** ([`re/coverage.toml`](re/coverage.toml))
 
 ## 🧭 Roadmap
 
@@ -121,7 +121,7 @@ re/
 ## 🔬 Methodology
 
 1. **Anchors**: strings, imports and data tables in the executable show where each subsystem lives.
-2. **Targeted decompilation**: instead of translating all 3082 functions, we work outward from the anchors one subsystem at a time, and set aside library code (CRT, Miles, Smacker, DirectX) early.
+2. **Full classification, targeted decompilation**: every function is classified (library, platform, render, UI or simulation), and we work outward from the anchors one subsystem at a time. Library code (CRT, Miles, Smacker, DirectX) is set aside early, and every simulation function gets a spec.
 3. **Spec before code**: rules are written up in [`docs/spec/`](docs/spec/) with pseudocode, constants and the source address of each one. The Rust code is written from the specs, not from the assembly.
 4. **The executable is the reference, not the manual**: every simulation function is specified, with coverage tracked publicly. Formulas are proven equal by running the original functions in an x86 emulator against our Rust code, and whole-game behavior is checked by advancing the same save in the original (under Wine) and in the clone and diffing the results.
 
