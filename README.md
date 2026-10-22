@@ -47,13 +47,15 @@ _The 1998 classic you know, from the same isometric viewpoint,<br>now native at 
 | Simulation specs (trains, cargo, economy…) | 🟡 | Time/calendar/main loop, RNGs, cargo economy, train movement/breakdowns/costs, track/station construction and catchment, finance (share price, interest, dividends), mostly verified bit-exact against the original · [time](docs/spec/time.md) · [rng](docs/spec/rng.md) · [cargo](docs/spec/cargo.md) · [trains](docs/spec/trains.md) · [track](docs/spec/terrain-track.md) · [finance](docs/spec/finance.md) |
 | Differential test harness (Unicorn) | ✅ | Runs original functions in an emulator for bit-exact comparison · [docs](docs/oracle.md) |
 | Rendering engine (wgpu) | 🟡 | Isometric terrain viewer: `cargo run --release -p rt2-viewer -- <map>` |
-| Playable simulation | 🟡 | `rt2-sim` core: RNGs, calendar, cargo revenue and train physics, checked bit-exact against the original; world loop not yet wired |
+| Playable simulation | 🟡 | `rt2-sim` world loop: an original save advanced 1 day is **identical to the original** field by field (Tutorial); see the [fidelity scoreboard](docs/fidelity-status.md) |
 | Game UI | ⏳ | |
 | Scenario editor | ⏳ | |
 
 <sub>✅ done · 🟡 partial · 🔍 under analysis · ⏳ planned</sub>
 
-**Reverse engineering:** 2945 functions in the executable (1837 excluding linker thunks) · 384 symbols in [`re/symbols.toml`](re/symbols.toml) · 1003 classified (34%), 1942 still unclassified · 152 functions specified (132 of them simulation), 34 verified bit-exact against the original ([`re/coverage.toml`](re/coverage.toml)). A simulation coverage percentage will be published once classification is complete.
+**Fidelity:** the clone and the original advance the same save and the results are diffed field by field. Current scoreboard: [`docs/fidelity-status.md`](docs/fidelity-status.md).
+
+**Reverse engineering:** 2945 functions in the executable (1837 excluding linker thunks) · 421 symbols in [`re/symbols.toml`](re/symbols.toml) · 1025 classified (34%), 1920 still unclassified · 179 functions specified (159 of them simulation), 45 verified bit-exact against the original ([`re/coverage.toml`](re/coverage.toml)). A simulation coverage percentage will be published once classification is complete.
 
 ## 🧭 Roadmap
 

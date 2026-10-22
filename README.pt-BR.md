@@ -47,13 +47,15 @@ O **rrt2-decomp** estuda o executável original de _Railroad Tycoon II Platinum_
 | Specs de simulação (trens, carga, economia…) | 🟡 | Tempo, calendário, laço principal, RNGs, economia de carga, movimento, quebras e custos dos trens, construção de trilhos e estações, área de captação e finanças (preço das ações, juros, dividendos), em boa parte verificados bit a bit contra o original · [tempo](docs/spec/time.md) · [rng](docs/spec/rng.md) · [carga](docs/spec/cargo.md) · [trens](docs/spec/trains.md) · [trilhos](docs/spec/terrain-track.md) · [finanças](docs/spec/finance.md) |
 | Harness de teste diferencial (Unicorn) | ✅ | Roda funções do original num emulador para comparação bit a bit · [docs](docs/oracle.md) |
 | Motor gráfico (wgpu) | 🟡 | Visualizador de terreno: `cargo run --release -p rt2-viewer -- <mapa>` |
-| Simulação jogável | 🟡 | Núcleo `rt2-sim`: RNGs, calendário, receita de carga e física dos trens, conferidos bit a bit com o original; o laço do mundo ainda não está ligado |
+| Simulação jogável | 🟡 | Laço do mundo do `rt2-sim`: um save original avançado 1 dia fica **idêntico ao original** campo a campo (Tutorial); veja o [placar de fidelidade](docs/fidelity-status.md) |
 | Interface do jogo | ⏳ | |
 | Editor de cenários | ⏳ | |
 
 <sub>✅ pronto · 🟡 parcial · 🔍 em análise · ⏳ planejado</sub>
 
-**Engenharia reversa:** 2945 funções no executável (1837 sem os thunks do linker) · 384 símbolos em [`re/symbols.toml`](re/symbols.toml) · 1003 classificadas (34%), 1942 ainda sem classificação · 152 funções especificadas (132 delas de simulação), 34 verificadas bit a bit contra o original ([`re/coverage.toml`](re/coverage.toml)). O percentual de cobertura da simulação será publicado quando a classificação estiver completa.
+**Fidelidade:** o clone e o original avançam o mesmo save e os resultados são comparados campo a campo. Placar atual: [`docs/fidelity-status.md`](docs/fidelity-status.md).
+
+**Engenharia reversa:** 2945 funções no executável (1837 sem os thunks do linker) · 421 símbolos em [`re/symbols.toml`](re/symbols.toml) · 1025 classificadas (34%), 1920 ainda sem classificação · 179 funções especificadas (159 delas de simulação), 45 verificadas bit a bit contra o original ([`re/coverage.toml`](re/coverage.toml)). O percentual de cobertura da simulação será publicado quando a classificação estiver completa.
 
 ## 🧭 Roteiro
 
