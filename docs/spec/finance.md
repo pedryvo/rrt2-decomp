@@ -43,13 +43,13 @@ Lista `list_companies` (`0x574c6c`, 0x4e86 bytes por registro). O contêiner de 
 
 Categorias (13 f64 em `+0x4286 + 8*i`, rótulos LNG 961..970): 0 Passageiros, 1 Carga, 2 Estação, 3 Investimento em indústrias, 4 Diversos (receitas); 5 Trilho, 6 Motor, 7 Vagão, 8 Combustível, 9 Juros, 10 Overhead, 11 Salários, 12 Diversos (taxas de emissão e corretagem) (despesas, valores negativos). `receita = Σ cat[0..4]`, `lucro = Σ cat[0..12]`.
 
-Lançamento (`company_ledger_credit` `0x439970(cat, x)`): `cat[i] += x; ano[i] += x; caixa += x; conta7 -= x` e zera o carimbo `+0x4250`. `0x4398d0(conta, x)`: conta 0 faz caixa `+= x`, `conta7 -= x`; conta `k != 0` faz `conta[k] += x; caixa -= x`. Partida dobrada: Σ contas 0..6 + conta7 = 0.
+Lançamento **[V]** (`company_ledger_credit` `0x439970(cat, x)`): `cat[i] += x; ano[i] += x` (`ano` = f64[13] em `+0x46fe`, a cópia usada no marcador 9001); `caixa += x; conta7 -= x` e zera o carimbo `+0x4250`. `0x4398d0(conta, x)` **[V]**: conta 0 faz caixa `+= x`, `conta7 -= x`; conta `k != 0` faz `conta[k] += x; caixa -= x`. Partida dobrada: Σ contas 0..6 + conta7 = 0.
 
 Pessoa (lista `list_persons` `0x574c68`, 0x576 B): `+0x04` ativa, `+0x122` humana, `+0x12a` f64 caixa, `+0x1d3` i32[36] ações por empresa (negativo = posição vendida), `+0x263` empresa de que é chairman, `+0x26b` efeitos, `+0x52b` reputação, `+0x544` prazo da chamada de margem (minuto, 0 = nenhuma). Arquivo anual de patrimônio em `+0x123`.
 
 Métricas por empresa (`0x43ad60(i)`, as 14 do arquivo): 0 preço (`0x43b410(0,0)`), 1 patrimônio por ação (`-conta7/ações`), 2 receita por ação (`0x43a440(14)/ações`), 3 lucro por ação (`0x43a440(13)/ações`), 4 dividendo (`+0x30`), 5 retorno ponderado de 5 anos (`0x43abc0`), 6 rating de crédito (`0x43b650`), 7 `+0x38`, 8..13 contadores (`+0x192`, `+0x196`, `(+0x186 + 2*+0x18a)*10`, `+0x19a/+0x196`, `+0x46a`, `+0x134`).
 
-## 2. Anualização do ano corrente (`0x43a440(i)`) [V parcial]
+## 2. Anualização do ano corrente (`0x43a440(i)`) [V, i = 0..15; fora o ano 9001]
 
 ```
 raw = (i < 13) ? cat[i] : (i == 13) ? Σ cat[0..12] : (i == 14) ? Σ cat[0..4] : Σ cat[5..12]
@@ -177,17 +177,18 @@ se d > 0:
 ```
 Ações fora das carteiras das pessoas (público) recebem o dividendo do caixa da empresa mas o dinheiro não vai a ninguém. O controle do jogador (comando `0x12`, `0x43bfd0`) só grava `+0x30` sem validar; a recusa a aumentos acontece na interface (LNG 2370, "refuses to let you raise the dividend", usando 6.1).
 
-### 6.1 Dividendo máximo suportável (`0x43edf0`) [S]
+### 6.1 Dividendo máximo suportável (`0x43edf0`) [V]
 ```
 cashps = f32(caixa / (ações + 1));  n = min(3, ano - fund)
-NI = max_i lucro_i, Rv = max_i receita_i   (i de (mes == 12 ? 0 : 1) a n, ano i atrás; i = 0 usa o ano corrente)
+NI = max(0, max_i lucro_i), Rv = max(0, max_i receita_i)   (i de (mes == 12 ? 0 : 1) a n, ano i atrás;
+      i = 0 usa as somas brutas do ano corrente cat[0..12] e cat[0..4], sem anualizar; i >= 1 usa o arquivo k = i-1)
 X = max(NI, Rv);  y = min(NI, 0.5*X)
 se n < 2: y = max(y, ações * +0x3c * 0.05)
 y = f32(min(y / (ações + 1) * 1.25, cashps))
 ref = (n == 0) ? +0x3c : preço do fim do ano anterior (arquivo, métrica 0)
 máx = max(0, min(ref * 0.35, y))
 ```
-(Ver "Em aberto" sobre a leitura do ramo `X`.)
+Lido no desmontador e provado: os dois máximos começam em 0 (`0x535340`), `X = max(NI, Rv)` só limita `y` a metade de `X` (o motivo de `max(NI, Rv)` continua desconhecido, mas a conta está provada).
 
 ## 7. Jogador: ações, patrimônio e margem
 
@@ -213,13 +214,14 @@ máx = max(0, min(ref * 0.35, y))
 ### 8.1 Avaliação anual da diretoria (`0x43c760`) [S, resumo]
 Calcula a reputação do chairman `+0x46a` a partir do crescimento do preço e do lucro por ação, e o fator `+0x4248` (atitude); paga bônus ao chairman (`+0x474`...); se o público (ações fora do chairman) > 50% e há 2 anos de resultado ruim, a primeira vez avisa (LNG 2277) e na segunda **demite o chairman** (LNG 2275/2276, `0x438900`). **Liquidação**: três anos seguidos de preço abaixo de 5/7/9, patrimônio negativo e prejuízo => a empresa some (`0x438170`, LNG 2279/2280), com aviso no segundo ano.
 
-## 9. Falência (`bankruptcy` `0x43bc30`, comando `0x13`) [S]
+## 9. Falência (`bankruptcy` `0x43bc30`, comando `0x13`) [V: contas, ações, títulos, cache; S: restrições]
 ```
 cada título: principal = principal/2 (trunca);  H = (Σ principais originais)/2
-conta6 += H;  caixa não muda;  conta7 -= H      ; metade da dívida some e vira patrimônio
+conta6 += H;  caixa = (caixa - H) + H (sem efeito, salvo arredondamento);  conta7 -= H      ; metade da dívida some e vira patrimônio
 x = caixa;  se caixa <= 0: x = caixa*0.5            ; caixa positivo é confiscado inteiro; caixa negativo é cancelado pela metade
 caixa -= x;  conta7 += x
-ações = ftol(ações * 1.5 / 1000) * 1000            ; +50% (versão de rede >= 0x2332, sempre em jogo local)
+ações = ftol(ações * 1.5 * 0.001) * 1000          ; +50% (as constantes são 1,5 e 0,001, nesta ordem) (versão de rede >= 0x2332, sempre em jogo local)
+0x43b410(0, 0) (só recotação: o carimbo/cache do preço fundamental é recalculado com o ano de falência ANTIGO)
 +0x158 = ano atual                                 ; penalidades: preço (10 anos, 3.1) e rating (15 anos, 4.2)
 ```
 "Ações novas" não vão para ninguém. Restrições (LNG 297, 3412: "não pode declarar de novo", "perdeu dinheiro 2 anos seguidos") ficam na interface e não foram localizadas; a IA só declara com `0x43bc30` sob condições de 9.1.
@@ -247,7 +249,7 @@ A variável (`0x570717`, 4 bytes, 0..4) e o passo semestral estão em `cargo.md`
 
 ## Em aberto
 - Teste do arquivo anual para anos acima de 9001 (`0x2329`, marcador) e do ramo do primeiro ano.
-- Leitura exata dos dois máximos de `0x43edf0` (6.1) e o motivo de `max(NI, Rv)`.
+- Motivo de `max(NI, Rv)` em `0x43edf0` (a conta está provada, 6.1).
 - Constantes finas da votação de fusão (4 f32/f64 em `0x4015a0`) e de `0x43c760` (reputação do chairman); critério exato da liquidação por 3 anos ruins.
 - Limites da interface: emissão (preço e retorno mínimos, LNG 276/277), bancarrota (LNG 297/3412), dividendos (LNG 2370/2713) e tamanho de lote do jogador.
 - Capital inicial (controles "Player Investment" e "Outside Investment"): criação da empresa não foi analisada.
@@ -265,6 +267,12 @@ Id de empresa 0 em todos os casos (efeitos só globais), `CW = 0x27F`, empresa m
 | `trade_price_matches_original` | `0x43b410` (3.2), com o preço fundamental servido do cache | 4000 (n = 0, +-milhares, até +-todas as ações; commit sim/não; liquidez 40..250) | preço inteiro, `+0x34` e `+0x427e` iguais; tolerância de 1 dólar em no máximo 4 casos pelo `pow` da CRT (Rust usa `powf`) |
 | `fundamental_price_matches_original` | `0x43aea0` (3.1) e, por dentro, `0x43a440`, `0x43ad60` (métricas 1..4) | 3000 (idade 0..14, dia 28/dez em 1/7 dos casos, histórico de 10 anos) | bit a bit, inclusive `+0x427a` e o cache `+0x4254/+0x4250` |
 | `credit_rating_and_bond_rate_match_original` | `0x43b650` (4.2) e `0x4392e0` (4.3) | 4000 (0..6 x 500 000 de dívida extra, 0..5 títulos) | bit a bit; a escala de rating exercitada tem >= 7 notas distintas |
+| `ledger_entries_match_original` | `0x439970`, `0x4398d0` (seção 1) | 1500 (categoria/conta aleatória, valores inteiros e fracionários) | bit a bit: categorias, `+0x46fe`, contas e carimbo |
+| `annualized_totals_match_original` | `0x43a440` (seção 2) | 3000 (i = 0..15, 12/28 em 1/7) | bit a bit |
+| `max_dividend_matches_original` | `0x43edf0` (6.1) | 4000 (idade 0..14, dezembro em 1/4, caixa positivo em 70%) | bit a bit; mais de 500 tetos positivos |
+| `bankruptcy_matches_original` | `0x43bc30` (seção 9) | 1500 (caixa +/-, principais ímpares) | bit a bit: contas, ações, títulos, ano, cache do preço |
+
+O código sob teste é `rt2_sim::finance` (`crates/rt2-sim/src/finance.rs`); as tabelas `0x5504d0` e `0x550074` vêm do EXE (`FinanceTables::load`). Continuam **[S]** (não chamáveis isoladamente: dependem das listas de pessoas/empresas): o passo mensal `0x4399d0` (juros do caixa 5.4, manutenção, salários, dividendos 6), emissão e recompra de ações, emissão e quitação de títulos, desdobramento, margem e patrimônio pessoal; todos estão implementados em `rt2-sim` e marcados `[S]` nos comentários.
 
 `cargo clippy -D warnings` no crate de testes passa; o `-D warnings` do workspace falha hoje em `crates/rt2-sim/src/fp.rs:209` (`int_plus_one`, fora do escopo desta spec).
 

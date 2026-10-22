@@ -12,6 +12,7 @@ use crate::cargo::{
     RevenueTables,
 };
 use crate::exe::{Exe, ExeError};
+use crate::finance::FinanceTables;
 use crate::track::TrackTables;
 use crate::trains::{
     ENGINE_COUNT, ENGINE_RECORD_SIZE, Engine, VEHICLE_COUNT, VEHICLE_RECORD_SIZE, VehicleType,
@@ -52,6 +53,8 @@ pub struct GameData {
     pub production_econ: [f32; 5],
     /// Track cost and station tables (terrain-track.md 2.2, 3.3).
     pub track: TrackTables,
+    /// Stock economy multiplier and company-age price weights (finance.md 3.1).
+    pub finance: FinanceTables,
 }
 
 fn arr<const N: usize>(exe: &Exe, va: u32) -> Result<[f32; N], ExeError> {
@@ -115,6 +118,7 @@ impl GameData {
             },
             production_econ: arr(exe, ADDR_ECON_PRODUCTION)?,
             track: TrackTables::load(exe)?,
+            finance: FinanceTables::load(exe)?,
         })
     }
 }

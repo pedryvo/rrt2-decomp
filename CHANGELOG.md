@@ -69,3 +69,6 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Docs: docs/spec/world-tick.md specifies the world update order: sim_advance passes (animations, then trains in linked-list order), day/week/month/year hooks with every callee in order, game-RNG call sites per tick, confirmed against the original with a gdb call trace (Tutorial and Example saves).
 - RE: world tick list iteration (linked-list order, three removal-safe patterns), one minute per day without train movement, December month end also fires trigger 2 after the year end, monthly personal interest (prime - 4%)/12.
 - Feature: re/scripts/wine/trace_save.py traces call order and counts inside the original (gdb breakpoints that never stop) while advancing a save headless.
+- Feature: modulo `rt2-sim::finance` com preco fundamental e de negociacao da acao, rating de credito, taxa prime e de bonds, juros do caixa, dividendos trimestrais e teto do conselho, desdobramento, falencia e passo mensal da empresa
+- Improved: `tests/finance.rs` agora testa o codigo de `rt2-sim` contra o original e cobre lancamentos contabeis, anualizacao, teto de dividendos e falencia
+- RE: teto de dividendos `0x43edf0`, anualizacao `0x43a440`, lancamentos `0x439970`/`0x4398d0` e falencia `0x43bc30` verificados bit a bit; leitura exata dos maximos de `0x43edf0` resolvida

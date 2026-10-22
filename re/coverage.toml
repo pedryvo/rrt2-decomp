@@ -5,9 +5,9 @@
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
 # Classificadas (categoria != unknown): 1003 (34.1%)
 # Por categoria: lib=258, platform=116, render=11, audio=70, ui=247, sim=301, unknown=1942
-# Por estado:   unknown=2716, named=81, spec=119, verified=29
+# Por estado:   unknown=2712, named=81, spec=118, verified=34
 # Entradas manuais: 276
-# sim spec coverage: 42.5% (128 de 301 funcoes sim em spec/verified)
+# sim spec coverage: 43.9% (132 de 301 funcoes sim em spec/verified)
 
 [[function]]
 addr = "0x401005"
@@ -9796,8 +9796,8 @@ why = "no-evidence"
 addr = "0x4398d0"
 size = 86
 category = "sim"
-status = "unknown"
-why = "finance/stock market (docs/spec/finance.md)"
+status = "verified"
+why = "finance.md; oracle test in tests/finance.rs (company_move_account)"
 manual = true
 
 [[function]]
@@ -9812,8 +9812,8 @@ manual = true
 addr = "0x439970"
 size = 84
 category = "sim"
-status = "spec"
-why = "finance/stock market (docs/spec/finance.md)"
+status = "verified"
+why = "finance.md; oracle test in tests/finance.rs (company_ledger_credit)"
 manual = true
 
 [[function]]
@@ -9858,8 +9858,8 @@ why = "no-evidence"
 addr = "0x43a440"
 size = 530
 category = "sim"
-status = "unknown"
-why = "finance/stock market (docs/spec/finance.md)"
+status = "verified"
+why = "finance.md; oracle test in tests/finance.rs (company_annualized_total)"
 manual = true
 
 [[function]]
@@ -10008,8 +10008,8 @@ why = "no-evidence"
 addr = "0x43bc30"
 size = 341
 category = "sim"
-status = "unknown"
-why = "finance/stock market (docs/spec/finance.md)"
+status = "verified"
+why = "finance.md; oracle test in tests/finance.rs (company_bankruptcy)"
 manual = true
 
 [[function]]
@@ -10194,8 +10194,8 @@ why = "no-evidence"
 addr = "0x43edf0"
 size = 656
 category = "sim"
-status = "unknown"
-why = "finance/stock market (docs/spec/finance.md)"
+status = "verified"
+why = "finance.md; oracle test in tests/finance.rs (board_max_dividend)"
 manual = true
 
 [[function]]

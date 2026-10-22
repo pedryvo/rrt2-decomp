@@ -4,11 +4,13 @@
 //! Rust reference written in this file. The x87 control word is pinned to 53-bit precision
 //! (CW 0x27f). Skipped when the executable is absent.
 //!
-//! The reference functions are the executable documentation of the formulas; the company id is 0
-//! throughout so that `effect_multiplier` and `effect_sum` only see the global effect table (no
-//! entity lists are needed).
+//! The code under test is `rt2_sim::finance` (the test only lays the record out and wraps it); the
+//! company id is 0 throughout so that `effect_multiplier` and `effect_sum` only see the global
+//! effect table (no entity lists are needed).
 
 use rt2_oracle::Oracle;
+use rt2_sim::exe::Exe;
+use rt2_sim::finance::{self, Bond, Company, Ctx, FinanceTables};
 use unicorn_engine::RegisterX86;
 
 fn oracle() -> Option<Oracle> {
@@ -52,10 +54,6 @@ impl Xs {
     }
 }
 
-fn ftol(x: f64) -> i32 {
-    (x.trunc() as i64) as i32
-}
-
 // ---- globals and the company record ------------------------------------------------------------
 
 const GAME_TIME: u32 = 0x0057_04f4;
@@ -64,13 +62,19 @@ const ECON_STATE: u32 = 0x0057_0717; // 4 bytes
 const PRIME_RATE: u32 = 0x0057_06d1; // f32
 const STOCK_LIQUIDITY: u32 = 0x0057_06cd; // f32
 const EFFECT_GLOBAL: u32 = 0x0057_07c6; // i16[effect]
-const ECON_STOCK_MULT: [f32; 5] = [0.8, 0.9, 1.0, 1.1, 1.2];
 
 const PRIME_FOR: u32 = 0x0046_bac0; // fastcall(ECX = company id) -> ST0
 const TRADE_PRICE: u32 = 0x0043_b410; // thiscall(n, commit) -> ST0
 const FUNDAMENTAL: u32 = 0x0043_aea0; // fastcall(ECX = company) -> ST0
 const RATING: u32 = 0x0043_b650; // thiscall(X) -> ST0
 const BOND_RATE: u32 = 0x0043_92e0; // thiscall(X, _) -> ST0
+const LEDGER_CREDIT: u32 = 0x0043_9970; // thiscall(cat, f64 x), ret 0xc
+const MOVE_ACCOUNT: u32 = 0x0043_98d0; // thiscall(account, f64 x), ret 0xc
+const ANNUALIZED: u32 = 0x0043_a440; // thiscall(i) -> ST0
+const MAX_DIVIDEND: u32 = 0x0043_edf0; // thiscall() -> ST0
+const BANKRUPTCY: u32 = 0x0043_bc30; // thiscall()
+const CO_YEAR_CATS: u32 = 0x46fe;
+const CO_SHARES_AT: u32 = CO_SHARES;
 
 const CO_SIZE: u32 = 0x4e86;
 const CO_ACTIVE: u32 = 0x16e;
@@ -327,20 +331,64 @@ fn write_company(o: &mut Oracle, base: u32, c: &Co) {
     }
 }
 
-fn effect_mult(g: i16) -> f64 {
-    let v = ((f64::from(g) * 0.01) + 1.0) as f32;
-    if v >= 0.01 { f64::from(v) } else { 0.1 }
+/// Game tables read from the executable (never hard-coded in the simulation).
+fn tables() -> FinanceTables {
+    let path = std::env::var("RT2_EXE").unwrap_or_else(|_| {
+        concat!(env!("CARGO_MANIFEST_DIR"), "/../../re/bin/RT2_PLAT.EXE").to_string()
+    });
+    FinanceTables::load(&Exe::from_bytes(std::fs::read(path).expect("read exe")).expect("pe"))
+        .expect("finance tables")
 }
 
-fn econ(w: &World) -> f64 {
-    f64::from(ECON_STOCK_MULT[w.state])
+impl Co {
+    /// The same record as the simulation's [`Company`].
+    fn to_sim(&self) -> Company {
+        Company {
+            shares: self.shares,
+            dividend: self.div,
+            pressure: self.pressure,
+            init_price: self.init_price,
+            founded: self.founded,
+            bankrupt_year: self.bankrupt_year,
+            created: self.created,
+            cats: self.cats,
+            arch_cats: self.arch_cats,
+            acct: self.acct,
+            arch_metrics: self.arch,
+            bonds: self
+                .bonds
+                .iter()
+                .map(|&(principal, maturity_year, rate)| Bond {
+                    principal,
+                    maturity_year,
+                    rate,
+                })
+                .collect(),
+            ..Company::default()
+        }
+    }
+}
+
+fn ctx<'a>(w: &World, t: &'a FinanceTables) -> Ctx<'a> {
+    Ctx {
+        tables: t,
+        year: w.year,
+        month: w.month,
+        day: w.day,
+        minutes: w.minutes,
+        econ_state: w.state,
+        prime_rate: w.prime_rate,
+        liquidity: w.liquidity,
+        price_effect: rt2_sim::effects::global_modifier(w.fx_price),
+        prime_effect_pct: w.fx_prime,
+        rating_effect: w.fx_rating,
+    }
 }
 
 // ---- 1. prime rate (0x46bac0) -----------------------------------------------------------------
 
 fn prime_ref(w: &World) -> f64 {
-    let v = f64::from(w.fx_prime) * 0.01 + f64::from(w.prime_rate) + 0.001;
-    f64::from(ftol(v * 100.0)) * 0.01
+    finance::prime_rate_for(w.prime_rate, w.fx_prime)
 }
 
 #[test]
@@ -362,53 +410,12 @@ fn prime_rate_matches_original() {
 // ---- 2. trade price (0x43b410) ----------------------------------------------------------------
 
 /// `0x43b410`: returns `(price, new_pressure)`; `pf` is the fundamental price already cached.
-fn trade_price_ref(w: &World, c: &Co, pf: f64, n: i32) -> (i32, f32) {
-    let s = f64::from(c.shares);
-    let mut pf = pf;
-    if f64::from(c.init_price) < pf && w.year - c.founded <= 5 {
-        let mut m = (w.minutes - c.created) / 40320;
-        if m >= 50 {
-            m = 50;
-        }
-        pf = (f64::from(50 - m) * f64::from(c.init_price) + f64::from(50 + m) * pf) * 0.01;
-    }
-    let mut x = f64::from(n) / s;
-    if x > 0.2 {
-        x = f64::from(0.2f32);
-    }
-    if x < -0.2 {
-        x = f64::from(-0.2f32);
-    }
-    let press = if n != 0 {
-        (1.0 - x) * f64::from(c.pressure) + f64::from(n)
-    } else {
-        f64::from(c.pressure)
-    };
-    let p = rt2_sim::fp::pow(s * 5e-5, 0.33);
-    let mut r = ((p * (100.0 / f64::from(w.liquidity))) * press * 1.4 + s) / s;
-    if r < 0.6 {
-        r = (r - 0.6) * 0.5 + 0.6;
-    }
-    if r < 0.45 {
-        r = (r - 0.45) * 0.5 + 0.45;
-    }
-    if r < 0.3 {
-        r = 0.3;
-    } else {
-        if r > 1.7 {
-            r = (r - 1.7) * 0.5 + 1.7;
-        }
-        if r > 2.5 {
-            r = (r - 2.5) * 0.5 + 2.5;
-        }
-        if r > 4.0 {
-            r = (r - 4.0) * 0.5 + 4.0;
-        }
-        if r > 6.0 {
-            r = 6.0;
-        }
-    }
-    (ftol(r * pf + 0.5), press as f32)
+fn trade_price_ref(t: &FinanceTables, w: &World, c: &Co, pf: f64, n: i32) -> (i32, f32) {
+    let mut co = c.to_sim();
+    co.price_stamp = w.minutes;
+    co.price_cache = pf;
+    let price = co.trade_price(&ctx(w, t), n, true);
+    (price, co.pressure)
 }
 
 #[test]
@@ -416,6 +423,7 @@ fn trade_price_matches_original() {
     let Some(mut o) = oracle() else { return };
     set_fpcw(&mut o, 0x27f);
     let base = o.alloc(CO_SIZE).unwrap();
+    let t = tables();
     let mut xs = Xs(0x0bad_cafe);
     for case in 0..4000 {
         let w = rand_world(&mut xs);
@@ -433,7 +441,7 @@ fn trade_price_matches_original() {
             _ => xs.range(-(c.shares), c.shares),
         };
         let commit = xs.chance(50);
-        let (want, press) = trade_price_ref(&w, &c, pf, n);
+        let (want, press) = trade_price_ref(&t, &w, &c, pf, n);
         o.call_thiscall(TRADE_PRICE, base, &[n as u32, u32::from(commit)])
             .unwrap();
         let got = o.st0().unwrap();
@@ -455,154 +463,12 @@ fn trade_price_matches_original() {
 
 // ---- 3. fundamental price (0x43aea0) ----------------------------------------------------------
 
-/// Annualized current-year total (0x43a440), `i` = 13 (profit) or 14 (revenue).
-fn annualized(w: &World, c: &Co, i: usize) -> f64 {
-    let sum = |cats: &[f64; 13]| -> f64 {
-        let n = if i == 13 { 13 } else { 5 };
-        cats.iter().take(n).fold(0.0, |a, b| a + b)
-    };
-    let raw = sum(&c.cats);
-    if w.month == 12 && w.day == 28 {
-        return raw;
-    }
-    let mut f = (f64::from(w.day + 28 * w.month - 28) * 0.002_976_190_476_190_476_4) as f32;
-    if f64::from(f) < 0.05 {
-        f = 0.05f32;
-    }
-    if f64::from(f) > 0.95 {
-        f = 0.95f32;
-    }
-    let f = f64::from(f);
-    if w.year <= c.founded {
-        return raw / f;
-    }
-    let last = &c.arch_cats[0];
-    let raw = raw + f * last[3];
-    f * raw + (1.0 - f) * sum(last)
-}
-
-/// Live metrics 1..4 (0x43ad60).
-fn live_metric(w: &World, c: &Co, m: usize) -> f64 {
-    let s = f64::from(c.shares);
-    match m {
-        1 => -c.acct[7] / s,
-        2 => annualized(w, c, 14) / s,
-        3 => annualized(w, c, 13) / s,
-        _ => f64::from(c.div),
-    }
-}
-
-fn fundamental_ref(w: &World, c: &Co) -> (f64, f32) {
-    const BASE_W: [f64; 4] = [40.0, 10.0, 20.0, 30.0];
-    const AGE_W: [[f64; 4]; 5] = [
-        [0.0, 0.0, 0.0, 100.0],
-        [25.0, 25.0, 35.0, 100.0],
-        [50.0, 50.0, 65.0, 100.0],
-        [75.0, 75.0, 85.0, 100.0],
-        [100.0, 100.0, 100.0, 100.0],
-    ];
-    let metric = |k: usize, m: usize| -> f64 {
-        if k == 0 {
-            live_metric(w, c, m)
-        } else {
-            c.arch[k][m]
-        }
-    };
-    let (mut wsum, mut acc_e, mut acc_r) = (0i32, 0.0f64, 0.0f64);
-    for i in 0..5usize {
-        if w.year - i as i32 >= c.founded {
-            let wi = if i == 0 {
-                w.month * 5 - 5
-            } else {
-                (5 - i as i32) * 12
-            };
-            wsum += wi;
-            acc_e += f64::from(wi) * metric(i, 3);
-            acc_r += f64::from(wi) * metric(i, 2);
-        }
-    }
-    let (mut vsum, mut cont, mut dsum) = (0i32, 0.0f64, 0.0f64);
-    for i in 1..10usize {
-        if w.year - i as i32 >= c.founded {
-            let v = 10 - i as i32;
-            vsum += v;
-            dsum += f64::from(v) * c.arch[i][4];
-            if w.year - i as i32 > c.founded {
-                cont += f64::from(v);
-            }
-        }
-    }
-    let mut crit = [0.0f64; 4];
-    if wsum != 0 {
-        crit[0] = (acc_e / f64::from(wsum)) * 10.0;
-        crit[1] = acc_r / f64::from(wsum);
-    }
-    if vsum != 0 {
-        let mut d = (dsum / f64::from(vsum)) as f32;
-        let t = ((c.arch[1][4] + c.arch[1][4]) + f64::from(d)) * f64::from(0.333_333_34f32);
-        if f64::from(d) >= t {
-            d = t as f32;
-        }
-        crit[2] = (((cont / f64::from(vsum)) * 0.5) + 0.6) * f64::from(d) * 30.0;
-    }
-    crit[3] = live_metric(w, c, 1);
-    let mut m = 1.0f64;
-    for (k, v) in crit.iter().enumerate() {
-        if k != 2 && *v >= m {
-            m = *v;
-        }
-    }
-    let m = m * 1.13;
-    if crit[2] >= m {
-        crit[2] = m;
-    }
-    for v in &mut crit {
-        if *v < 0.0 {
-            *v = 0.0;
-        }
-    }
-    let mut wt = BASE_W;
-    let age = w.year - c.founded;
-    if age < 5 {
-        for j in 0..4 {
-            wt[j] *= AGE_W[age as usize][j];
-        }
-    }
-    let (mut imax, mut imin) = (0usize, 0usize);
-    for k in 0..4 {
-        if crit[k] > crit[imax] {
-            imax = k;
-        }
-        if crit[k] < crit[imin] {
-            imin = k;
-        }
-    }
-    wt[imax] *= 1.25;
-    wt[imin] *= 0.8;
-    let (mut x, mut wx, mut y, mut wy) = (0.0f64, 0.0f64, 0.0f64, 0.0f64);
-    for k in 0..4 {
-        let t = crit[k] * wt[k];
-        x += t;
-        wx += wt[k];
-        if k != 2 {
-            y += t;
-            wy += wt[k];
-        }
-    }
-    let e = econ(w);
-    let mut nodiv = ((y / wy) * (e + 1.0) * 0.5) as f32;
-    if f64::from(nodiv) < 0.5 {
-        nodiv = 0.5;
-    }
-    let mut p = effect_mult(w.fx_price) * ((x / wx) * e);
-    let a2 = w.year - c.bankrupt_year;
-    if a2 < 10 {
-        p *= f64::from(a2) * 0.025 + 0.75;
-    }
-    if p < 1.0 {
-        p = 1.0;
-    }
-    (p, nodiv)
+fn fundamental_ref(t: &FinanceTables, w: &World, c: &Co) -> (f64, f32) {
+    let mut co = c.to_sim();
+    let p = co.fundamental_price(&ctx(w, t));
+    assert_eq!(co.price_stamp, w.minutes);
+    assert_eq!(co.price_cache, p);
+    (p, co.no_div_price)
 }
 
 #[test]
@@ -610,6 +476,7 @@ fn fundamental_price_matches_original() {
     let Some(mut o) = oracle() else { return };
     set_fpcw(&mut o, 0x27f);
     let base = o.alloc(CO_SIZE).unwrap();
+    let t = tables();
     let mut xs = Xs(0x5eed_f00d);
     for case in 0..3000 {
         let mut w = rand_world(&mut xs);
@@ -621,7 +488,7 @@ fn fundamental_price_matches_original() {
         write_world(&mut o, &w);
         let c = rand_company(&mut xs, &w);
         write_company(&mut o, base, &c);
-        let (want, nodiv) = fundamental_ref(&w, &c);
+        let (want, nodiv) = fundamental_ref(&t, &w, &c);
         o.call_fastcall(FUNDAMENTAL, base, 0, &[]).unwrap();
         let got = o.st0().unwrap();
         assert_eq!(
@@ -643,90 +510,8 @@ fn fundamental_price_matches_original() {
 
 // ---- 4. credit rating (0x43b650) and bond rate (0x4392e0) --------------------------------------
 
-fn rating_ref(w: &World, c: &Co, x: i32) -> f64 {
-    // Weighted average of (profit - interest) over the last four years.
-    let (mut acc, mut ebx) = (0.0f64, 0i32);
-    for i in 1..=4i32 {
-        ebx += 5 - i;
-        if w.year - i >= c.founded {
-            let cats = &c.arch_cats[(i - 1) as usize];
-            let ni = cats.iter().fold(0.0, |a, b| a + b);
-            acc += (ni - cats[9]) * f64::from(5 - i);
-        }
-    }
-    let a = acc / f64::from(ebx);
-    let avg_rate = if c.bonds.is_empty() {
-        0.0
-    } else {
-        let mut sum = 0.0f64;
-        let mut tot = 0i32;
-        for (p, _, r) in &c.bonds {
-            tot += p;
-            sum += f64::from(*p) * f64::from(*r);
-        }
-        sum / f64::from(tot)
-    };
-    let mut est = (c.acct[6] + f64::from(x)) * avg_rate;
-    let cash = c.acct[0];
-    if cash < 0.0 {
-        est += (prime_ref(w) + 0.03) * cash;
-    }
-    let cov = if est == 0.0 { 10.0 } else { a / (-est) };
-    let mut s1 = if cov >= 5.0 {
-        10.0
-    } else if cov > 2.0 {
-        10.0 - (5.0 - cov)
-    } else if cov > 1.0 {
-        10.0 - ((2.0 - cov) * 2.0 + 3.0)
-    } else if cov > 0.0 {
-        10.0 - ((1.0 - cov) * 4.0 + 5.0)
-    } else {
-        0.0
-    };
-    let age = w.year - c.founded;
-    if age < 5 {
-        s1 += f64::from(5 - age) * 0.1 * (10.0 - s1);
-    }
-    let total = ftol(c.acct.iter().take(6).fold(0.0, |a, b| a + b));
-    let ratio = if total > 0 {
-        (-c.acct[6] + f64::from(x)) / f64::from(total)
-    } else {
-        1.0
-    };
-    let s2 = if ratio <= 0.1 {
-        10.0
-    } else if ratio < 0.25 {
-        10.0 - ratio * 4.0
-    } else if ratio < 0.5 {
-        10.0 - ((ratio - 0.25) * 8.0 + 1.0)
-    } else if ratio < 0.75 {
-        10.0 - ((ratio - 0.5) * 12.0 + 3.0)
-    } else if ratio < 1.0 {
-        10.0 - ((ratio - 0.75) * 16.0 + 6.0)
-    } else {
-        0.0
-    };
-    let p = (s1 * s2 * 0.1) * 2.0;
-    let q = p + (s2 + s1) * 0.5;
-    let mut r = q * 0.333_333_333_333_333_3 * econ(w);
-    let eq = -c.acct[7];
-    if eq < 1_000_000.0 {
-        r -= 10.0 - eq * f64::from(f32::from_bits(0x3727_c5ac));
-    }
-    if age < 5 {
-        let a = age.max(1);
-        r -= f64::from(5 - a) * 0.5;
-        let cap = f64::from(a + 5);
-        if r >= cap {
-            r = cap;
-        }
-    }
-    let ba = w.year - c.bankrupt_year;
-    if ba < 15 {
-        r = f64::from(ba) * r * 0.0666;
-    }
-    let v = f64::from(ftol(r + 0.5)) + f64::from(w.fx_rating);
-    v.clamp(0.0, 10.0)
+fn rating_ref(t: &FinanceTables, w: &World, c: &Co, x: i32) -> f64 {
+    c.to_sim().credit_rating(&ctx(w, t), x)
 }
 
 #[test]
@@ -734,6 +519,7 @@ fn credit_rating_and_bond_rate_match_original() {
     let Some(mut o) = oracle() else { return };
     set_fpcw(&mut o, 0x27f);
     let base = o.alloc(CO_SIZE).unwrap();
+    let t = tables();
     let mut xs = Xs(0xdead_beef);
     let mut seen = [0u32; 11];
     for case in 0..4000 {
@@ -746,11 +532,11 @@ fn credit_rating_and_bond_rate_match_original() {
         } else {
             500_000 * xs.range(1, 6)
         };
-        let want = rating_ref(&w, &c, x);
+        let want = rating_ref(&t, &w, &c, x);
         o.call_thiscall(RATING, base, &[x as u32]).unwrap();
         assert_eq!(o.st0().unwrap(), want, "rating case {case} x {x}");
         seen[want as usize] += 1;
-        let bond = prime_ref(&w) + (10.0 - want) * 0.01;
+        let bond = c.to_sim().bond_rate(&ctx(&w, &t), x);
         o.call_thiscall(BOND_RATE, base, &[x as u32, 0]).unwrap();
         assert_eq!(o.st0().unwrap(), bond, "bond rate case {case}");
     }
@@ -759,4 +545,188 @@ fn credit_rating_and_bond_rate_match_original() {
         seen.iter().filter(|n| **n > 0).count() >= 7,
         "ratings seen: {seen:?}"
     );
+}
+
+// ---- 5. ledger entries (0x439970, 0x4398d0) ----------------------------------------------------
+
+fn read_f64s<const N: usize>(o: &Oracle, a: u32) -> [f64; N] {
+    let mut v = [0.0; N];
+    for (i, x) in v.iter_mut().enumerate() {
+        *x = rf64(o, a + 8 * i as u32);
+    }
+    v
+}
+
+fn f64_args(x: f64) -> [u32; 2] {
+    let b = x.to_bits();
+    [b as u32, (b >> 32) as u32]
+}
+
+#[test]
+fn ledger_entries_match_original() {
+    let Some(mut o) = oracle() else { return };
+    set_fpcw(&mut o, 0x27f);
+    let base = o.alloc(CO_SIZE).unwrap();
+    let mut xs = Xs(0x1ed9_e121);
+    for case in 0..1500 {
+        let w = rand_world(&mut xs);
+        let c = rand_company(&mut xs, &w);
+        let mut want = c.to_sim();
+        want.year_cats = [0.0; 13];
+        write_company(&mut o, base, &c);
+        for (i, v) in want.year_cats.iter().enumerate() {
+            wf64(
+                &mut o,
+                base + CO_YEAR_CATS + 8 * i as u32,
+                *v + 0.25 * i as f64,
+            );
+        }
+        for (i, v) in want.year_cats.iter_mut().enumerate() {
+            *v += 0.25 * i as f64;
+        }
+        w32(&mut o, base + CO_STAMP, 777);
+        want.price_stamp = 777;
+        let x = match xs.below(3) {
+            0 => xs.real(-1.0e6, 1.0e6).floor(),
+            1 => xs.real(-1.0e6, 1.0e6),
+            _ => xs.real(-50.0, 50.0) + 0.1,
+        };
+        let k = xs.below(13) as usize;
+        let [lo, hi] = f64_args(x);
+        if xs.chance(50) {
+            o.call_thiscall(LEDGER_CREDIT, base, &[k as u32, lo, hi])
+                .unwrap();
+            want.credit(k, x);
+        } else {
+            let acct = xs.below(8) as usize;
+            o.call_thiscall(MOVE_ACCOUNT, base, &[acct as u32, lo, hi])
+                .unwrap();
+            want.move_account(acct, x);
+        }
+        assert_eq!(o.read_u32(base + CO_STAMP).unwrap(), 0, "stamp {case}");
+        assert_eq!(want.price_stamp, 0);
+        assert_eq!(
+            read_f64s::<13>(&o, base + CO_CATS),
+            want.cats,
+            "cats {case}"
+        );
+        assert_eq!(
+            read_f64s::<13>(&o, base + CO_YEAR_CATS),
+            want.year_cats,
+            "year {case}"
+        );
+        assert_eq!(read_f64s::<8>(&o, base + CO_ACCT), want.acct, "acct {case}");
+    }
+}
+
+// ---- 6. annualized totals (0x43a440) -------------------------------------------------------------
+
+#[test]
+fn annualized_totals_match_original() {
+    let Some(mut o) = oracle() else { return };
+    set_fpcw(&mut o, 0x27f);
+    let base = o.alloc(CO_SIZE).unwrap();
+    let t = tables();
+    let mut xs = Xs(0xa22a_11ed);
+    for case in 0..3000 {
+        let mut w = rand_world(&mut xs);
+        if case % 7 == 0 {
+            w.month = 12;
+            w.day = 28;
+        }
+        write_world(&mut o, &w);
+        let c = rand_company(&mut xs, &w);
+        write_company(&mut o, base, &c);
+        let i = xs.below(16);
+        o.call_thiscall(ANNUALIZED, base, &[i]).unwrap();
+        let want = c.to_sim().annualized(&ctx(&w, &t), i as usize);
+        assert_eq!(o.st0().unwrap(), want, "case {case} i {i}");
+    }
+}
+
+// ---- 7. board dividend cap (0x43edf0) ------------------------------------------------------------
+
+#[test]
+fn max_dividend_matches_original() {
+    let Some(mut o) = oracle() else { return };
+    set_fpcw(&mut o, 0x27f);
+    let base = o.alloc(CO_SIZE).unwrap();
+    let t = tables();
+    let mut xs = Xs(0xd1d1_d1d1);
+    let mut positive = 0;
+    for case in 0..4000 {
+        let mut w = rand_world(&mut xs);
+        if case % 4 == 0 {
+            w.month = 12;
+            w.day = 28;
+        }
+        write_world(&mut o, &w);
+        let mut c = rand_company(&mut xs, &w);
+        // Mostly healthy companies so that the cap is positive and the branches differ.
+        if xs.chance(70) {
+            c.acct[0] = xs.real(0.0, 6.0e6).floor();
+        }
+        write_company(&mut o, base, &c);
+        o.call_thiscall(MAX_DIVIDEND, base, &[]).unwrap();
+        let want = c.to_sim().max_dividend(&ctx(&w, &t));
+        assert_eq!(
+            o.st0().unwrap(),
+            want,
+            "case {case} age {} month {}",
+            w.year - c.founded,
+            w.month
+        );
+        if want > 0.0 {
+            positive += 1;
+        }
+    }
+    assert!(positive > 500, "too few positive caps: {positive}");
+}
+
+// ---- 8. bankruptcy (0x43bc30) ----------------------------------------------------------------------
+
+#[test]
+fn bankruptcy_matches_original() {
+    let Some(mut o) = oracle() else { return };
+    set_fpcw(&mut o, 0x27f);
+    let base = o.alloc(CO_SIZE).unwrap();
+    let t = tables();
+    let mut xs = Xs(0xba4c_0ff5);
+    for case in 0..1500 {
+        let w = rand_world(&mut xs);
+        write_world(&mut o, &w);
+        let mut c = rand_company(&mut xs, &w);
+        if xs.chance(30) {
+            c.acct[0] = -xs.real(0.0, 2.0e6);
+        }
+        // Odd principals exercise the truncating halves.
+        for b in &mut c.bonds {
+            b.0 += xs.range(0, 3) * 1001;
+        }
+        write_company(&mut o, base, &c);
+        let mut want = c.to_sim();
+        want.declare_bankruptcy(&ctx(&w, &t));
+        o.call_thiscall(BANKRUPTCY, base, &[]).unwrap();
+        assert_eq!(read_f64s::<8>(&o, base + CO_ACCT), want.acct, "acct {case}");
+        assert_eq!(o.read_u32(base + CO_SHARES_AT).unwrap() as i32, want.shares);
+        assert_eq!(
+            o.read_u32(base + CO_BANKRUPT_YEAR).unwrap() as i32,
+            want.bankrupt_year
+        );
+        for (i, b) in want.bonds.iter().enumerate() {
+            let a = base + CO_BONDS + 12 * i as u32;
+            assert_eq!(o.read_u32(a).unwrap() as i32, b.principal, "bond {case}");
+        }
+        // The closing quote refreshes the fundamental-price cache.
+        assert_eq!(
+            o.read_u32(base + CO_STAMP).unwrap() as i32,
+            want.price_stamp,
+            "stamp {case}"
+        );
+        assert_eq!(
+            rf64(&o, base + CO_PRICE_CACHE),
+            want.price_cache,
+            "cache {case}"
+        );
+    }
 }
