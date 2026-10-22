@@ -10,3 +10,5 @@ Regras do projeto: leia /home/pedryvo/Decomp/railroad/CLAUDE.md. A pasta do jogo
 - Abra o binário e aplique re/symbols.toml antes de começar.
 - Nomeie só o que for óbvio. Quando houver dúvida, não nomeie: liste o endereço em "candidatos" no resumo final.
 - Grave os resultados em re/symbols.toml.
+
+Formatação: use `cargo fmt -p <crate>` ou `rustfmt --edition 2024 <arquivo>` (nunca `rustfmt` sem a edition, nem `cargo fmt --all` com outros agentes trabalhando). O coordenador valida com `scripts/verify-head.sh`.

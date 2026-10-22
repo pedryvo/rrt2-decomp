@@ -10,3 +10,5 @@ Regras do projeto: leia /home/pedryvo/Decomp/railroad/CLAUDE.md. A pasta do jogo
 Fidelidade (docs/PLAN.md, seção 11): o executável é a fonte da verdade. docs/reference/manual-rules.md serve só como pista. Quando o código diverge do manual, vale o código, e a divergência é anotada na spec. Constantes e tabelas saem do .data ou dos PK2, nunca do manual. Não pule funções da simulação: cada função tocada entra em re/coverage.toml com categoria e estado.
 
 Prefer re/db/decomp (rg) for exploration; use REA for confirmation, xrefs and annotations. (Regenerate com re/scripts/export_decomp.sh; ver docs/re-workflow.md.)
+
+Formatação: use `cargo fmt -p <crate>` ou `rustfmt --edition 2024 <arquivo>` (nunca `rustfmt` sem a edition, nem `cargo fmt --all` com outros agentes trabalhando). O coordenador valida com `scripts/verify-head.sh`.
