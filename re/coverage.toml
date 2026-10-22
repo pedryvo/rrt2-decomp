@@ -3,11 +3,11 @@
 # Ver docs/re-workflow.md.
 #
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
-# Classificadas (categoria != unknown): 759 (25.8%)
-# Por categoria: lib=258, platform=100, render=9, audio=74, ui=233, sim=85, unknown=2186
-# Por estado:   unknown=2859, named=22, spec=47, verified=17
-# Entradas manuais: 70
-# sim spec coverage: 68.2% (58 de 85 funcoes sim em spec/verified)
+# Classificadas (categoria != unknown): 833 (28.3%)
+# Por categoria: lib=258, platform=113, render=9, audio=70, ui=233, sim=150, unknown=2112
+# Por estado:   unknown=2819, named=36, spec=68, verified=22
+# Entradas manuais: 133
+# sim spec coverage: 54.0% (81 de 150 funcoes sim em spec/verified)
 
 [[function]]
 addr = "0x401005"
@@ -348,9 +348,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x40114a"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4d0ce0"
 
 [[function]]
 addr = "0x40114f"
@@ -516,9 +516,9 @@ why = "thunk->0x485230"
 [[function]]
 addr = "0x401203"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4cdd50"
 
 [[function]]
 addr = "0x40120d"
@@ -586,9 +586,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x401253"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4cdf80"
 
 [[function]]
 addr = "0x401258"
@@ -649,9 +649,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x401285"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4ca4e0"
 
 [[function]]
 addr = "0x40128a"
@@ -873,7 +873,7 @@ why = "no-evidence"
 [[function]]
 addr = "0x40135c"
 size = 5
-category = "sim"
+category = "platform"
 status = "unknown"
 why = "thunk->0x477a60"
 
@@ -1083,9 +1083,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x40143d"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "high: thunk->0x4a5cb0"
+manual = true
 
 [[function]]
 addr = "0x401442"
@@ -1160,9 +1161,10 @@ why = "thunk->0x4bebf0"
 [[function]]
 addr = "0x40147e"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "high: thunk->0x4a5270"
+manual = true
 
 [[function]]
 addr = "0x401483"
@@ -1349,9 +1351,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x401537"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4d00c0"
 
 [[function]]
 addr = "0x40153c"
@@ -1510,9 +1512,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x4015e6"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4d5370"
 
 [[function]]
 addr = "0x4015eb"
@@ -1552,9 +1554,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x401609"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4cf390"
 
 [[function]]
 addr = "0x40160e"
@@ -1811,9 +1813,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x401712"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "high: thunk->0x4a4a30"
+manual = true
 
 [[function]]
 addr = "0x40171c"
@@ -2007,9 +2010,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x40180c"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "high: thunk->0x4a4d00"
+manual = true
 
 [[function]]
 addr = "0x401816"
@@ -2224,9 +2228,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4018fc"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "high: thunk->0x457fe0"
+manual = true
 
 [[function]]
 addr = "0x401901"
@@ -2343,9 +2348,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x40196f"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4284e0"
 
 [[function]]
 addr = "0x401979"
@@ -2364,9 +2369,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x40198d"
 size = 5
-category = "unknown"
+category = "platform"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x477540"
 
 [[function]]
 addr = "0x401992"
@@ -3897,9 +3902,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x401fbe"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "high: thunk->0x4a4950"
+manual = true
 
 [[function]]
 addr = "0x401fcd"
@@ -3925,9 +3931,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x401fe6"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4cfd40"
 
 [[function]]
 addr = "0x401feb"
@@ -3939,9 +3945,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x401ff0"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "high: thunk->0x4a58f0"
+manual = true
 
 [[function]]
 addr = "0x401ff5"
@@ -4100,9 +4107,9 @@ why = "thunk->0x4c5550"
 [[function]]
 addr = "0x40207c"
 size = 5
-category = "unknown"
+category = "platform"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x45da70"
 
 [[function]]
 addr = "0x402086"
@@ -4121,9 +4128,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x402095"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "high: thunk->0x49e0b0"
+manual = true
 
 [[function]]
 addr = "0x40209f"
@@ -4219,9 +4227,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4020ea"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "high: thunk->0x474280"
+manual = true
 
 [[function]]
 addr = "0x4020ef"
@@ -4233,9 +4242,10 @@ why = "thunk->0x4e76c0"
 [[function]]
 addr = "0x4020f9"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "high: thunk->0x4afee0"
+manual = true
 
 [[function]]
 addr = "0x4020fe"
@@ -4674,9 +4684,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x4022c0"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4d4390"
 
 [[function]]
 addr = "0x4022c5"
@@ -4716,9 +4726,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4022f2"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "high: thunk->0x46ae50"
+manual = true
 
 [[function]]
 addr = "0x4022f7"
@@ -4772,9 +4783,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x402324"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4cdd50"
 
 [[function]]
 addr = "0x402329"
@@ -4884,9 +4895,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x402388"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "high: thunk->0x49d920"
+manual = true
 
 [[function]]
 addr = "0x402392"
@@ -5871,9 +5883,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4027c0"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "high: thunk->0x4af2d0"
+manual = true
 
 [[function]]
 addr = "0x4027cf"
@@ -5892,9 +5905,10 @@ why = "thunk->0x464e40"
 [[function]]
 addr = "0x4027d9"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "high: thunk->0x4a8800"
+manual = true
 
 [[function]]
 addr = "0x4027de"
@@ -5913,9 +5927,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x4027e8"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4cf030"
 
 [[function]]
 addr = "0x4027f2"
@@ -6424,9 +6438,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4029dc"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "high: thunk->0x4b69b0"
+manual = true
 
 [[function]]
 addr = "0x4029e1"
@@ -6543,9 +6558,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x402a63"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "high: thunk->0x4af3d0"
+manual = true
 
 [[function]]
 addr = "0x402a68"
@@ -6802,9 +6818,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x402b7b"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "high: thunk->0x4a5320"
+manual = true
 
 [[function]]
 addr = "0x402b85"
@@ -6830,9 +6847,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x402ba3"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4d0400"
 
 [[function]]
 addr = "0x402ba8"
@@ -7103,9 +7120,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x402cb1"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "high: thunk->0x46c650"
+manual = true
 
 [[function]]
 addr = "0x402cb6"
@@ -7180,7 +7198,7 @@ why = "thunk->0x4a1590"
 [[function]]
 addr = "0x402cfc"
 size = 5
-category = "audio"
+category = "sim"
 status = "unknown"
 why = "thunk->0x4ce4c0"
 
@@ -7236,7 +7254,7 @@ why = "no-evidence"
 [[function]]
 addr = "0x402d2e"
 size = 5
-category = "audio"
+category = "sim"
 status = "unknown"
 why = "thunk->0x4ce730"
 
@@ -7285,9 +7303,10 @@ why = "thunk->0x432670"
 [[function]]
 addr = "0x402d5b"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "high: thunk->0x46c680"
+manual = true
 
 [[function]]
 addr = "0x402d60"
@@ -7383,9 +7402,10 @@ why = "thunk->0x4ceaa0"
 [[function]]
 addr = "0x402dba"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "high: thunk->0x4a4990"
+manual = true
 
 [[function]]
 addr = "0x402dbf"
@@ -8420,16 +8440,18 @@ why = "string:cr%s%s.imb"
 [[function]]
 addr = "0x414460"
 size = 64
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "peso do veiculo; exercitado por train_accel_step_matches_original"
+manual = true
 
 [[function]]
 addr = "0x4144a0"
 size = 49
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "rampa sob o veiculo; exercitada por train_accel_step_matches_original"
+manual = true
 
 [[function]]
 addr = "0x4144e0"
@@ -8457,9 +8479,10 @@ why = "string:cr%s%s.imb"
 [[function]]
 addr = "0x4147e0"
 size = 1175
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "avanco de veiculo seguidor; detalhes em aberto"
+manual = true
 
 [[function]]
 addr = "0x414c80"
@@ -8478,9 +8501,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x415040"
 size = 1011
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "avanco do veiculo da frente; detalhes em aberto (trains.md)"
+manual = true
 
 [[function]]
 addr = "0x415f80"
@@ -8996,9 +9020,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4284e0"
 size = 223
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "rampa do trecho; tests/trains.rs track_grade_matches_original"
+manual = true
 
 [[function]]
 addr = "0x4285c0"
@@ -10672,16 +10697,18 @@ why = "no-evidence"
 [[function]]
 addr = "0x457b00"
 size = 370
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "rule_write"
+manual = true
 
 [[function]]
 addr = "0x457c90"
 size = 562
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "rule_read, formato em map-gam.md"
+manual = true
 
 [[function]]
 addr = "0x457ee0"
@@ -10890,9 +10917,10 @@ why = "api:KERNEL32!FindClose,KERNEL32!FindFirstFileA,KERNEL32!FindNextFileA"
 [[function]]
 addr = "0x45da70"
 size = 321
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "named"
+why = "game_file_exists"
+manual = true
 
 [[function]]
 addr = "0x45dbc0"
@@ -11568,9 +11596,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4683a0"
 size = 141
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "disponibilidade de motor; docs/spec/trains.md 2.4"
+manual = true
 
 [[function]]
 addr = "0x468470"
@@ -11937,7 +11966,7 @@ addr = "0x46b480"
 size = 327
 category = "sim"
 status = "verified"
-why = "oracle: cargo.md 5"
+why = "fator de modificador; caminho global exercitado pelos testes de trens"
 manual = true
 
 [[function]]
@@ -12234,9 +12263,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x474280"
 size = 658
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "high: direct:sim_,rng_"
+manual = true
 
 [[function]]
 addr = "0x474520"
@@ -12416,16 +12446,18 @@ why = "no-evidence"
 [[function]]
 addr = "0x477540"
 size = 1301
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "save: ordem de blocos igual a do carregador, versao 0x2348"
+manual = true
 
 [[function]]
 addr = "0x477a60"
 size = 7222
 category = "sim"
-status = "unknown"
-why = "string:CompanyIndustryProfitsLastYear>=1000000"
+status = "spec"
+why = "load: serializacao completa decodificada em docs/formats/map-gam.md"
+manual = true
 
 [[function]]
 addr = "0x4796a0"
@@ -12437,9 +12469,10 @@ why = "string:games\\"
 [[function]]
 addr = "0x479710"
 size = 579
-category = "platform"
-status = "unknown"
-why = "string:games\\"
+category = "sim"
+status = "spec"
+why = "carga por nome"
+manual = true
 
 [[function]]
 addr = "0x479960"
@@ -13891,9 +13924,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4a8800"
 size = 744
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "high: direct:date_,event_"
+manual = true
 
 [[function]]
 addr = "0x4a8af0"
@@ -14958,9 +14992,10 @@ why = "string:%s.lng"
 [[function]]
 addr = "0x4ca4e0"
 size = 103
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "comprimento do trecho; docs/spec/trains.md 3"
+manual = true
 
 [[function]]
 addr = "0x4ca550"
@@ -15028,9 +15063,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4cdd50"
 size = 426
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "remocao de trem"
+manual = true
 
 [[function]]
 addr = "0x4cdf00"
@@ -15042,23 +15078,26 @@ why = "no-evidence"
 [[function]]
 addr = "0x4cdf80"
 size = 1250
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "criacao do trem e preco; docs/spec/trains.md 1.1, 6.1"
+manual = true
 
 [[function]]
 addr = "0x4ce4c0"
 size = 618
-category = "audio"
-status = "unknown"
-why = "string:ENBRE61m.raw"
+category = "sim"
+status = "spec"
+why = "quebra (classificado audio pelo som); docs/spec/trains.md 5.3"
+manual = true
 
 [[function]]
 addr = "0x4ce730"
 size = 724
-category = "audio"
-status = "unknown"
-why = "string:ENCRA61m.raw"
+category = "sim"
+status = "spec"
+why = "acidente (classificado audio pelo som); docs/spec/trains.md 5.3"
+manual = true
 
 [[function]]
 addr = "0x4cea50"
@@ -15077,16 +15116,18 @@ why = "string:ENROB61m.raw"
 [[function]]
 addr = "0x4cf030"
 size = 863
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "probabilidade de quebra; tests/trains.rs breakdown_chance_matches_original"
+manual = true
 
 [[function]]
 addr = "0x4cf390"
 size = 1247
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "sorteio de quebra/acidente/roubo; docs/spec/trains.md 5.1, 6.4"
+manual = true
 
 [[function]]
 addr = "0x4cf870"
@@ -15112,37 +15153,42 @@ why = "no-evidence"
 [[function]]
 addr = "0x4cfc40"
 size = 255
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "recalculo do peso do trem; docs/spec/trains.md 2.3"
+manual = true
 
 [[function]]
 addr = "0x4cfd40"
 size = 168
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "rampa media do trem; docs/spec/trains.md 4.1"
+manual = true
 
 [[function]]
 addr = "0x4cfea0"
 size = 544
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "curva de velocidade; tests/trains.rs engine_speed_curve_matches_original + tabela A-1"
+manual = true
 
 [[function]]
 addr = "0x4d00c0"
 size = 824
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "velocidade alvo; coberta por train_accel_step_matches_original (tiles sem estruturas)"
+manual = true
 
 [[function]]
 addr = "0x4d0400"
 size = 1129
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "passo de aceleracao (ramo em movimento); tests/trains.rs train_accel_step_matches_original"
+manual = true
 
 [[function]]
 addr = "0x4d0870"
@@ -15175,9 +15221,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4d0ce0"
 size = 702
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "passo do trem; docs/spec/trains.md 4.5"
+manual = true
 
 [[function]]
 addr = "0x4d0fa0"
@@ -15247,7 +15294,7 @@ addr = "0x4d2360"
 size = 351
 category = "sim"
 status = "spec"
-why = "cargo.md 6.4"
+why = "chegada/estacao; crt_rand_range(0,3) so para som (resultado descartado), trains.md 5.4"
 manual = true
 
 [[function]]
@@ -15274,9 +15321,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4d29e0"
 size = 558
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "chegada/estacao; crt_rand_range(0,3) escolhe variante de som, trains.md 5.4"
+manual = true
 
 [[function]]
 addr = "0x4d2c10"
@@ -15375,15 +15423,16 @@ addr = "0x4d4200"
 size = 272
 category = "sim"
 status = "spec"
-why = "cargo.md 6"
+why = "lancamento de custo do trem; docs/spec/trains.md 6.2"
 manual = true
 
 [[function]]
 addr = "0x4d4390"
 size = 654
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "custos mensais; docs/spec/trains.md 6.2"
+manual = true
 
 [[function]]
 addr = "0x4d4620"
@@ -15458,9 +15507,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4d5370"
 size = 496
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "entrada em tile: contadores e desgaste descritos; contagem por empresa nao detalhada"
+manual = true
 
 [[function]]
 addr = "0x4d5560"
@@ -15500,9 +15550,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x4d59a0"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4cdd50"
 
 [[function]]
 addr = "0x4d59b0"
@@ -15549,9 +15599,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4d6030"
 size = 78
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "velocidade de referencia do combustivel; docs/spec/trains.md 6.3"
+manual = true
 
 [[function]]
 addr = "0x4d6080"
@@ -15598,9 +15649,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4d86f0"
 size = 235
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "escolha de motor pela IA (rng 80..120)"
+manual = true
 
 [[function]]
 addr = "0x4d87e0"
@@ -15858,8 +15910,9 @@ why = "no-evidence"
 addr = "0x4e3f90"
 size = 5462
 category = "ui"
-status = "unknown"
-why = "string:{[HJL]%s:}{[HJR]%s}\n"
+status = "spec"
+why = "janela de compra de trem; estimativas em docs/spec/trains.md 6.3"
+manual = true
 
 [[function]]
 addr = "0x4e54f0"
@@ -16581,9 +16634,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4f14c0"
 size = 398
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "named"
+why = "pool_grow"
+manual = true
 
 [[function]]
 addr = "0x4f1650"
@@ -16595,9 +16649,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4f1690"
 size = 335
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "named"
+why = "pool_alloc"
+manual = true
 
 [[function]]
 addr = "0x4f17e0"
@@ -16611,7 +16666,7 @@ addr = "0x4f18b0"
 size = 25
 category = "sim"
 status = "spec"
-why = "cargo.md 2; list accessor"
+why = "acesso generico a colecao (base + id*passo)"
 manual = true
 
 [[function]]
@@ -16666,23 +16721,26 @@ why = "no-evidence"
 [[function]]
 addr = "0x4f19e0"
 size = 93
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "named"
+why = "pool nth list order"
+manual = true
 
 [[function]]
 addr = "0x4f1a40"
 size = 382
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "pool_write"
+manual = true
 
 [[function]]
 addr = "0x4f1bc0"
 size = 530
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "pool_read, formato em map-gam.md"
+manual = true
 
 [[function]]
 addr = "0x4f1de0"
@@ -16694,9 +16752,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4f1e30"
 size = 118
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "named"
+why = "pool nth live"
+manual = true
 
 [[function]]
 addr = "0x4f1eb0"
@@ -17329,30 +17388,34 @@ why = "no-evidence"
 [[function]]
 addr = "0x4f9ab0"
 size = 301
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "named"
+why = "gstream_close"
+manual = true
 
 [[function]]
 addr = "0x4f9be0"
 size = 710
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "named"
+why = "gstream_open"
+manual = true
 
 [[function]]
 addr = "0x4f9eb0"
 size = 263
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "named"
+why = "gstream_write"
+manual = true
 
 [[function]]
 addr = "0x4f9fc0"
 size = 115
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "named"
+why = "gstream_read"
+manual = true
 
 [[function]]
 addr = "0x4fa040"

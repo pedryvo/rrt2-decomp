@@ -1037,3 +1037,408 @@ name = "list_territories"
 kind = "global"
 comment = "list of territories (effect levels at +0x58)"
 spec = "docs/spec/cargo.md"
+
+[[symbol]]
+addr = "0x477a60"
+name = "game_load_file"
+kind = "function"
+comment = "carrega um .GAM/.MAP (versoes <= 0x2348, upconvert das antigas): le blocos globais, tiles, elevacao, 15 pools, extras de trens, regras; ver docs/formats/map-gam.md"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x477540"
+name = "game_save_file"
+kind = "function"
+comment = "grava um .GAM na versao 0x2348: mesmos blocos do carregador, checksum em +0x86f7 do buffer"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x479710"
+name = "game_load_by_name"
+kind = "function"
+comment = "monta games/<nome>.GAM (ou .MP2/.MAP), chama game_load_file e reatribui jogadores/empresas"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x45da70"
+name = "game_file_exists"
+kind = "function"
+comment = "testa se um arquivo de jogo/mapa existe (abre e fecha); param_2 escolhe a pasta"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x4f9be0"
+name = "gstream_open"
+kind = "function"
+comment = "abre fluxo de arquivo (modo 1/5 leitura, 2/3 mem, 4 grava) e devolve o indice na tabela 0x57bc80 (stride 0x24)"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x4f9fc0"
+name = "gstream_read"
+kind = "function"
+comment = "le N bytes do fluxo (arquivo ou memoria)"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x4f9eb0"
+name = "gstream_write"
+kind = "function"
+comment = "grava N bytes no fluxo"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x4f9ab0"
+name = "gstream_close"
+kind = "function"
+comment = "fecha o fluxo"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x4f1bc0"
+name = "pool_read"
+kind = "function"
+comment = "le um pool de slots do arquivo: n, tam_registro, flag_lista, +0,+4,+0xc,+0x14 (contagem),+0x18 (tipo), u16 head, u16 tail, bitmap de livres ((n+8)>>3), so os registros vivos, e se lista os arrays next/prev u16[n]"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x4f1a40"
+name = "pool_write"
+kind = "function"
+comment = "grava um pool de slots (formato de pool_read)"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x4f14c0"
+name = "pool_grow"
+kind = "function"
+comment = "aumenta a capacidade do pool (registros, bitmap de livres, arrays next/prev)"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x4f1690"
+name = "pool_alloc"
+kind = "function"
+comment = "aloca um slot livre do pool (copia opcional do registro) e o liga ao fim da lista"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x4f1e30"
+name = "pool_nth_live_slot_order"
+kind = "function"
+comment = "registro vivo de indice N na ordem dos slots"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x4f19e0"
+name = "pool_nth_list_order"
+kind = "function"
+comment = "registro de indice N na ordem da lista ligada (head->next, ou tail->prev se N > contagem/2)"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x457c90"
+name = "rule_read"
+kind = "function"
+comment = "le uma regra de cenario/vitoria: 0x2c8 bytes fixos (v<0x2341: converte), condicao (texto), 2 arrays i32[+4], 4 textos (mensagem, 2 extras, titulo)"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x457b00"
+name = "rule_write"
+kind = "function"
+comment = "grava uma regra (formato de rule_read)"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x574c54"
+name = "structure_pool"
+kind = "global"
+comment = "pool de estruturas (7 bytes), indexado por struct_id do tile"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x574c78"
+name = "pool_78"
+kind = "global"
+comment = "pool de registros de 0x23 bytes (desconhecido)"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x574c80"
+name = "pool_80"
+kind = "global"
+comment = "pool de registros de 5 bytes (desconhecido)"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x574c84"
+name = "track_piece_pool"
+kind = "global"
+comment = "pool de pecas de trilho pre-construidas (0x24), indexado por track_id do tile"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x574c88"
+name = "pool_88"
+kind = "global"
+comment = "pool de registros de 7 bytes (deslocamentos i8 x,y + 3 bytes)"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x574c9c"
+name = "rule_pool"
+kind = "global"
+comment = "pool de regras de cenario/vitoria (serializado como contagem + rule_read)"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x574c24"
+name = "tile_array"
+kind = "global"
+comment = "w*h tiles de 15 bytes na memoria (10 bytes no arquivo + 5 de estado em execucao)"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x567b38"
+name = "save_header_block"
+kind = "global"
+comment = "bloco de cabecalho do arquivo (versao u32 + 0x878f/0x898a bytes): nome, tamanho do mapa em 0x567d69, preview"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x4d0ce0"
+name = "train_step"
+kind = "function"
+comment = "thiscall(trem, dt, flag): passo do trem: apaga acidentado vencido, atualiza velocidade, avanca dist = f32(vel*0.000625*dt), verifica quebra"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4d0400"
+name = "train_update_speed"
+kind = "function"
+comment = "thiscall(trem, agora): vel += ftol(min(dt,tau)/tau*(alvo-vel)), tau = acel*1440*0.75/mods (/2 ou /16 freando); logica de estacao quando parado"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4d00c0"
+name = "train_target_speed"
+kind = "function"
+comment = "thiscall(trem, &restrito): engine_max_speed com rampa media dos 2 primeiros veiculos, curva, idade; *acel/85, estruturas 0.7/0.45, sem agua 0.5"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4cfea0"
+name = "engine_max_speed"
+kind = "function"
+comment = "fastcall(motor, toneladas; rampa f32, curva, idade, empresa, jogador): mph 16.16 = 0.98^(peso_efetivo/(potencia*0.92)) * vmax, minimo 1 mph"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4284e0"
+name = "track_segment_grade"
+kind = "function"
+comment = "fastcall(ptr altura, dir entrada; dir saida) -> ST0: (h_saida-h_entrada)*0.005, *0.7092 diagonal, *0.85 misto"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4144a0"
+name = "vehicle_grade"
+kind = "function"
+comment = "rampa do trecho sob o veiculo (track_segment_grade com o tile e as direcoes do veiculo)"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x414460"
+name = "vehicle_weight"
+kind = "function"
+comment = "peso do veiculo: cheio (+0x1a do tipo) se tem carga ou flag 0x570236, senao vazio (+0x18)"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4cf390"
+name = "train_breakdown_check"
+kind = "function"
+comment = "a cada 10 celulas: p = train_breakdown_chance (metade para IA); p > rng(0,1e6)*1e-6 -> acidente se rng(0,100) < 20/17/14, senao quebra; senao teste de roubo"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4cf030"
+name = "train_breakdown_chance"
+kind = "function"
+comment = "thiscall(trem, celulas, checa_idade) -> ST0: celulas*taxa_conf * acelerador * (e+150)*0.005 * idade * oleo * 0.7, caboose 0.75, epoca, nowreck 1e-4"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4ce4c0"
+name = "train_breakdown"
+kind = "function"
+comment = "quebra: +0xed=1 por rng(60,120) dias; penalidade 2000/(n^0.66+4) na empresa e no territorio"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4ce730"
+name = "train_crash"
+kind = "function"
+comment = "acidente: +0xf2=1 por rng(30,45) dias e depois o trem e apagado; penalidade 8000/(n^0.66+4); velocidade de jogo > 4 cai para 4"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4cdd50"
+name = "train_delete"
+kind = "function"
+comment = "remove o trem (id): limpa referencias de UI, som e libera veiculos"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4cdf80"
+name = "train_create"
+kind = "function"
+comment = "inicializa trem: areia/oleo/agua 100, acelerador 85, ano de compra, cria locomotiva e tender, cobra mod(0x1a)*mod(0x1b+t)*preco"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4d4390"
+name = "train_monthly_costs"
+kind = "function"
+comment = "mensal: combustivel (ton-celulas+200/celula)*cons*0.005*0.35*(1+0.01i)^2, manutencao base/12*(1+0.04i)^2 (x3 sem oleo), 200 por vagao"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4d6030"
+name = "engine_fuel_speed"
+kind = "function"
+comment = "fastcall(motor, empresa; acelerador): ftol((engine_max_speed(motor, +0x2e+120, 0.0002)>>16)*acel/85*1.8), base da estimativa de combustivel"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4cfc40"
+name = "train_recalc_weight"
+kind = "function"
+comment = "+0xaf = soma dos pesos de todos os veiculos, +0xb3 = so os vagoes de carga"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4cfd40"
+name = "train_grade"
+kind = "function"
+comment = "rampa media ponderada pelo peso dos dois primeiros veiculos nos trilhos (0 fora dos trilhos)"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4ca4e0"
+name = "track_segment_length"
+kind = "function"
+comment = "fastcall(dir entrada, dir saida; tipo): comprimento do trecho: reta 64 (0x40), diagonal 90, curvas 80/69/91"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x415040"
+name = "vehicle_advance_head"
+kind = "function"
+comment = "thiscall(veiculo, dist, &out): avanca o veiculo da frente pelos trechos; devolve a distancia realmente percorrida"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4147e0"
+name = "vehicle_advance"
+kind = "function"
+comment = "thiscall(veiculo, dist): avanca um veiculo seguidor"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4d5370"
+name = "train_enter_tile"
+kind = "function"
+comment = "trem entra num tile: +0xa0 e +0xe1 += 1, desgaste do trilho += peso, contagem de trechos de outras empresas"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4683a0"
+name = "engine_available"
+kind = "function"
+comment = "fastcall(motor, empresa): modificador forca/proibe; senao habilitado, engine_allowed e data (junho do primeiro ano ate o ultimo)"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4e3f90"
+name = "ui_train_purchase_info"
+kind = "function"
+comment = "janela de compra: preco, manutencao, combustivel anual estimado, classes de aceleracao e confiabilidade"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4d86f0"
+name = "ai_pick_engine"
+kind = "function"
+comment = "escolhe um motor disponivel com nota sorteada rng(80,120) (IA)"
+
+[[symbol]]
+addr = "0x53cec0"
+name = "engine_table"
+kind = "table"
+comment = "66 motores x 0x3a: anos, regioes A/E/W, conf., preco, manut., mph, potencia, acel., t livres, consumo, tipo; +0x2b..+0x31 preenchidos em runtime"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x53ddb8"
+name = "vehicle_type_table"
+kind = "table"
+comment = "175 tipos de veiculo x 0x39: nome, peso vazio/cheio, anos, especie (0 loco, 1 tender, 2 vagao), motor, carga"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x5534f4"
+name = "engine_name_ids"
+kind = "table"
+comment = "u16 por motor: id da string do nome no .lng"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x55c52c"
+name = "reliability_rate"
+kind = "table"
+comment = "f32[11]: quebras por celula por classe (1/400 .. 1/24000)"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x570667"
+name = "engine_allowed"
+kind = "table"
+comment = "u8 por motor: permitido no mapa (1 por padrao; o editor copia a coluna A, E ou W)"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x574c28"
+name = "vertex_heights"
+kind = "global"
+comment = "ponteiro: altura i16 por vertice a cada 3 bytes (largura em 0x5609ac)"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x580fd8"
+name = "tile_corner_offsets"
+kind = "table"
+comment = "i32[4]: deslocamento (em vertices) dos 4 cantos de um tile"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x574b74"
+name = "cheat_nowreck"
+kind = "global"
+comment = "parametro /nowreck ou trapaca: chance de quebra x0.0001"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x552ae8"
+name = "fuel_price_level"
+kind = "table"
+comment = "f32[3] {1.15, 1.0, 0.85} indexado por 0x567d6d[tipo]"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x552af4"
+name = "maint_price_level"
+kind = "table"
+comment = "f32[3] {1.05, 1.0, 0.95} indexado por 0x567d6d[tipo]"
+spec = "docs/spec/trains.md"

@@ -43,8 +43,8 @@ O **rrt2-decomp** estuda o executável original de _Railroad Tycoon II Platinum_
 | Sprites (LAD) e paletas | ✅ | Sprites decodificam com as cores certas, 1990/1990 bancos · [spec](docs/formats/lad.md) |
 | Layouts de interface (`.imb` `.win`) | 🔍 | Identificados, ainda não decodificados |
 | Áudio (`.raw` `.wav`) | 🔍 | A maioria parece PCM mono de 16 bits |
-| Mapas e saves (`.MAP` `.GAM`) | 🟡 | Grade de terreno, elevação, água e territórios decodificados nos 31 mapas · [spec](docs/formats/map-gam.md) |
-| Specs de simulação (trens, carga, economia…) | 🟡 | Tempo, calendário, laço principal, RNGs e a economia de carga (tabela de cargas, receita de entrega, produção, demanda, estado econômico) especificados e em boa parte verificados contra o original · [tempo](docs/spec/time.md) · [rng](docs/spec/rng.md) · [carga](docs/spec/cargo.md) |
+| Mapas e saves (`.MAP` `.GAM`) | 🟡 | Os 33 arquivos são lidos até o último byte: terreno, data, semente, lugares, empresas e regras; estações e trens parciais · [spec](docs/formats/map-gam.md) |
+| Specs de simulação (trens, carga, economia…) | 🟡 | Tempo, calendário, laço principal, RNGs, economia de carga e movimento, quebras e custos dos trens, em boa parte verificados bit a bit contra o original · [tempo](docs/spec/time.md) · [rng](docs/spec/rng.md) · [carga](docs/spec/cargo.md) · [trens](docs/spec/trains.md) |
 | Harness de teste diferencial (Unicorn) | ✅ | Roda funções do original num emulador para comparação bit a bit · [docs](docs/oracle.md) |
 | Motor gráfico (wgpu) | 🟡 | Visualizador de terreno: `cargo run --release -p rt2-viewer -- <mapa>` |
 | Simulação jogável | ⏳ | |
@@ -53,7 +53,7 @@ O **rrt2-decomp** estuda o executável original de _Railroad Tycoon II Platinum_
 
 <sub>✅ pronto · 🟡 parcial · 🔍 em análise · ⏳ planejado</sub>
 
-**Engenharia reversa:** 2945 funções no executável (1837 sem os thunks do linker) · 148 símbolos em [`re/symbols.toml`](re/symbols.toml) · 759 classificadas (26%), 2186 ainda sem classificação · 64 funções especificadas (58 delas de simulação), 17 verificadas bit a bit contra o original ([`re/coverage.toml`](re/coverage.toml)). O percentual de cobertura da simulação será publicado quando a classificação estiver completa.
+**Engenharia reversa:** 2945 funções no executável (1837 sem os thunks do linker) · 206 símbolos em [`re/symbols.toml`](re/symbols.toml) · 833 classificadas (28%), 2112 ainda sem classificação · 90 funções especificadas (81 delas de simulação), 22 verificadas bit a bit contra o original ([`re/coverage.toml`](re/coverage.toml)). O percentual de cobertura da simulação será publicado quando a classificação estiver completa.
 
 ## 🧭 Roteiro
 
