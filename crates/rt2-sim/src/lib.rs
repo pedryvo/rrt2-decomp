@@ -43,6 +43,7 @@ pub mod scenario;
 pub mod tick;
 pub mod track;
 pub mod trains;
+pub mod view;
 pub mod world;
 
 pub use command::{Command, SpeedChange};

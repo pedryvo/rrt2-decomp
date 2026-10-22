@@ -1,0 +1,27 @@
+[package]
+name = "rt2-game"
+description = "The playable Railroad Tycoon II clone: menu, map view and simulation (binary `rrt2`)"
+edition.workspace = true
+version.workspace = true
+
+[[bin]]
+name = "rrt2"
+path = "src/main.rs"
+
+[dependencies]
+rt2-formats.workspace = true
+rt2-sim.workspace = true
+rt2-render = { path = "../rt2-render" }
+rt2-ui = { path = "../rt2-ui" }
+winit = "0.30"
+wgpu = "30"
+pollster = "1"
+anyhow.workspace = true
+clap.workspace = true
+png.workspace = true
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+dirs = "6"
+
+[lints]
+workspace = true
