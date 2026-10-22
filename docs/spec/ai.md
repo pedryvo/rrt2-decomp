@@ -394,11 +394,33 @@ Local = endereço de retorno da chamada a `rng_range` (`0x4f0660`). Tudo dentro 
 - `ai_extend_network` não confere o resultado da construção real e ainda devolve 1.
 - `ai_pick_engine` devolve 0 (Stephenson Rocket) quando não há motor.
 
+## 14. Detalhes do port e verificação por snapshots (`crates/rt2-sim/src/ai/`) [V]
+
+Implementação: `rt2_sim::ai` (`monthly_turn`, `company_turn`, `apply_command`), sobre a visão de registros crus do passo de trens (`trainstep::Ts`). Ligado em `tick/year.rs` (`SimState::ai_monthly_turn`). Lido no disassembly, com estes detalhes que a seção 5 não trazia:
+
+- **Globais de trilho durante o turno.** `build_preview_suspend` (`0x46b150`) põe `track_single` `0x5534b0 = 0` (via **dupla**), `track_bridge_type` `0x53ce18 = 1` (madeira), `track_electric` `0x566fcc = 0`, `0x566a50 = 0`, `0x566a60 = [0x5534c0]` (6000), `0x566a64 = 2000`; `track_lay_route` (`0x4cc060`) os sobrescreve com seus argumentos. Ou seja, as **simulações** de custo da IA (`track_pathfind` modo 1) cobram via dupla, sem eletrificação, pontes de madeira, enquanto nenhuma construção real tiver rodado no turno.
+- **A\* de construção (`0x460850`, `param_7 = 1`).** Caixa de busca = retângulo dos dois pontos alargado por `min(int_dist/2 + 3, 8)`, limitado a 3 tiles da borda quando os dois pontos estão a mais de 6 da borda; limite de custo `ftol((sqrt(dx² + dy²) + 5) * 240)` (com `dy²` somado como inteiro); `0x566a60/64` recalculados com o efeito 0xb/9 do território do tile de origem. Penalidade de rumo `0x566a08[d]`: `v = ftol(90 - atan(dy/(dx+0.01))*57.3)` (`270 - ...` se `x2 < x1`), `t = (360 + 45d - v) % 360`, dobrado em `360 - t` se > 180, `t*2` se > 150, `ftol(t*1.5)` se > 100, `t = t/2 + 20`, `ftol(t*1.41)` nas diagonais. Custo do passo (`0x463b30`): `rumo + 10` (sem trilho ou aresta ausente em trilho próprio) ou `+30` (trilho alheio), mais o mesmo para o tile seguinte, `+15` se muda de direção e, com `0x5746ec != 0` (o turno da IA incrementa esse contador), `custo = dh²·custo >> 6` quando o desnível dos cantos `|dh| > 8`. Entradas obsoletas da fila são **descartadas** no modo 1 (no modo 0 são expandidas de novo). As curvas só saem de nós com modo de ponte e vão 0 e passam ao vizinho o **vão do último passo reto** (variável de pilha não reinicializada: quirk reproduzido). O custo devolvido é a soma de `track_tile_cost` do caminho (`d_in` = aresta de entrada, sem saída no primeiro nó e sem entrada no último).
+- **Estações.** O tipo de prédio da estação é `orientação + tamanho*8` (os "8 estilos" de `terrain-track.md` 3.1 são as 8 orientações); `ai_find_station_site` testa cada tile a até 4 (Manhattan) do centro e devolve a orientação `(dir±2)&7` aceita por `0x408630`; a pontuação usa `rng_hash_range(game_time_minutes, 0, 7)` (constante no turno). Na simulação a estação custa o preço **cru** do tipo (`0x5457ef + tipo*0x154`, sem efeito 8) e marca também o tile à frente da estação.
+- `ai_pick_stop` é chamado por `ai_replan_train` com modo = byte baixo do id do trem (`+0x3d`): trens com `id & 3 == 1` aceitam estações alheias com peso 0,4. A soma de potencial por estação fica no registrador x87 (dupla precisão) e só é arredondada a f32 no fim; o limiar `0,2` de 7 é f32 (`0.2000000029...`) e a quantidade `(simples + 2·duplas)/5` é divisão inteira.
+- `ai_industry_investment`: limiar com chairman `(300 - x) * 0.0007999999821186066` (constante f32 guardada como double).
+- `ai_town_value` com empresa: as estações perto da cidade são contadas com distância em ponto flutuante `< 9.0` e testadas da última para a primeira.
+
+**Snapshots** (`crates/rt2-sim/tests/ai_snapshots.rs`, arquivos em `$RT2_FIDELITY_DIR/snaps_ai/`, gerados com o `snap_gdb.py` parando em `ai_company_turn(5)` do Example, semente 1234; save + RNG antes/depois, comparação campo a campo):
+
+| Caso | O que exercita | Resultado |
+|---|---|---|
+| `dec_c5` (dez/1875) | `ai_pick_engine` (4 sorteios), `ai_manage_trains` sem compra (potenciais, razão), `company_ai_finance` com a revisão de dividendo de dezembro (1,0 -> 1,2) | **idêntico** (save e RNG) |
+| `jan_c5` (jan/1876) | turno sem gestão de trens nem dividendo | **idêntico** |
+| `dl0_c5` (dez/1875, `+0x17e = 0`) | prazo vencido: `rng(180,360)`, `ai_extend_network` com 635 sorteios, `ai_town_value` com empresa, `ai_connect_town` simulado -> `ai_build_town_station` -> `ai_find_station_site` -> A\* de construção com custo; nenhuma opção viável -> `+0x166 = 1` e prazo + 60 dias | **idêntico** |
+| `dl0_rich_c5` (idem com caixa + 5 000 000) | duas opções viáveis (28 buscas A\*), construção real em `ai_connect_town(13)`: `track_lay_route`, `station_build` (`0x409a30`, 4 sorteios em `0x40bc34`), `ai_station_upgrades`, 19 `track_route_exists` de `station_networks_rebuild`, depois `ai_buy_train` com 2 `ai_pick_stop` (11 sorteios) sem compra | parcial: tudo até a construção real confere em RNG; a construção não está portada |
+
+Não portado (cada um é um `todo_hook` contado): a construção real (`track_lay_route` `0x4cc060` com terraplenagem e razão, `building_create` `0x409010` da estação, `ai_station_upgrades`, notícias), `train_buy`/`train_create` e a reescrita de paradas (`ai_buy_train`, `ai_replan_train`, `train_replace_engine`), `ai_review_manager`/`ai_manager_value` (anos ímpares), `company_create` e `company_name_from_towns`, `ai_person_trade_stocks`. A compra de indústria (comando 0x2d) é executada logo após o turno (o original executa no passo de comandos do quadro seguinte).
+
 ## Em aberto
 - Nomes de interface das permissões `0x5706aa..0x5706c4` (seção 1); papel de `+0x555` da pessoa e de `0x5706c4`.
 - Campos do lugar `+0x12`, `+0x3a` (f32) e `+0x48` (u8) usados em 5.1; campos da estação `+0x61`, `+0xb9`, `+0x34d`, `+0x3fd`, `+0x4b1` (oferta/demanda e serviço) e do trem `+0xe9`, `+0xdf`, `+0xa7`, `+0x9d`.
-- Semântica de `0x566a40`/`0x566a44` (saídas de `track_pathfind` usadas no filtro de 7.1).
-- `ai_find_station_site` (`0x430fd0`), `ai_station_upgrades` (`0x434850`), `train_replace_engine` (`0x4d4e90`), `building_buy_request` (`0x43ea30`) e `company_create` (`0x4383f0`/`0x438a10`) só descritos em linhas gerais.
-- Números de RNG da construção real (C4d) não foram observados (a expansão forçada não achou opção viável).
+- (Resolvido) `0x566a44` = tiles do caminho encontrado por `track_route_exists` com `0x566a5c = empresa`, `0x566a40` = os que não são trilho dessa empresa (seção 7.1).
+- `ai_find_station_site` (`0x430fd0`) resolvido (seção 14); `ai_station_upgrades` (`0x434850`), `train_replace_engine` (`0x4d4e90`), `building_buy_request` (`0x43ea30`) e `company_create` (`0x4383f0`/`0x438a10`) só descritos em linhas gerais.
+- Números de RNG da construção real (C4d): observados 4 sorteios em `0x40bc34` (dentro de `station_build` `0x409a30`) no caso `dl0_rich_c5` (seção 14); o trilho em si não sorteou. Falta portar a construção.
 - `0x48cc00` (3 sorteios) aparece na árvore de chamadas só através de rotinas de interface; não é chamado pela IA diretamente.
 - O teste de `ai_town_value` cobre só empresa 0 (sem listas de estações e territórios).

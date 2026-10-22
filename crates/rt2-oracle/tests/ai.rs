@@ -254,3 +254,23 @@ fn ai_town_value_company0_matches_original() {
         );
     }
 }
+
+/// `distance_int` (`0x4f0cd0`, fastcall(x1, y1, x2, y2)): the distance every AI rule uses
+/// (`rt2_sim::ai::Ai::dist`): `ftol(sqrt(dx*dx + dy*dy))` on the integer sum of squares.
+#[test]
+fn ai_int_dist_matches_original() {
+    let Some(mut o) = oracle() else { return };
+    let mut xs = Xs(0x0d15_7a11);
+    for case in 0..20_000 {
+        let r = |xs: &mut Xs| (xs.next() % 2049) as i32 - 1024;
+        let (x1, y1, x2, y2) = (r(&mut xs), r(&mut xs), r(&mut xs), r(&mut xs));
+        let got = o
+            .call_fastcall(0x004f_0cd0, x1 as u32, y1 as u32, &[x2 as u32, y2 as u32])
+            .unwrap() as i32;
+        assert_eq!(
+            rt2_sim::ai::Ai::dist(x1, y1, x2, y2),
+            got,
+            "case {case}: ({x1},{y1})-({x2},{y2})"
+        );
+    }
+}

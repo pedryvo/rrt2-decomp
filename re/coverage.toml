@@ -3,11 +3,11 @@
 # Ver docs/re-workflow.md.
 #
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
-# Classificadas (categoria != unknown): 1178 (40.0%)
-# Por categoria: lib=258, platform=115, render=11, audio=68, ui=251, sim=475, unknown=1767
-# Por estado:   unknown=2514, named=111, spec=194, verified=126
-# Entradas manuais: 423
-# sim spec coverage: 61.7% (293 de 475 funcoes sim em spec/verified)
+# Classificadas (categoria != unknown): 1186 (40.3%)
+# Por categoria: lib=258, platform=115, render=11, audio=68, ui=251, sim=483, unknown=1759
+# Por estado:   unknown=2506, named=106, spec=183, verified=150
+# Entradas manuais: 430
+# sim spec coverage: 63.4% (306 de 483 funcoes sim em spec/verified)
 
 [[function]]
 addr = "0x401005"
@@ -1640,9 +1640,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x401677"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4629f0"
 
 [[function]]
 addr = "0x40167c"
@@ -2005,9 +2005,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x401802"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4bf1b0"
 
 [[function]]
 addr = "0x40180c"
@@ -7916,23 +7916,25 @@ why = "no-evidence"
 [[function]]
 addr = "0x4085e0"
 size = 78
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/ai.md 14: crates/rt2-sim/src/ai, snapshot ai_company_turn (tests/ai_snapshots.rs)"
+manual = true
 
 [[function]]
 addr = "0x408630"
 size = 363
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/ai.md 14: crates/rt2-sim/src/ai, snapshot ai_company_turn (tests/ai_snapshots.rs)"
+manual = true
 
 [[function]]
 addr = "0x4087a0"
 size = 1738
 category = "sim"
-status = "spec"
-why = "terrain-track.md"
+status = "verified"
+why = "docs/spec/ai.md 14: crates/rt2-sim/src/ai, snapshot ai_company_turn (tests/ai_snapshots.rs)"
 manual = true
 
 [[function]]
@@ -7959,9 +7961,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x408fd0"
 size = 57
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/ai.md: portado em crates/rt2-sim/src/ai (sem snapshot proprio)"
+manual = true
 
 [[function]]
 addr = "0x409010"
@@ -8173,7 +8176,7 @@ addr = "0x40bae0"
 size = 88
 category = "sim"
 status = "verified"
-why = "docs/spec/terrain-track.md 2.4; tests/stations.rs (efeito 0xd, predio da empresa)"
+why = "docs/spec/ai.md: portado em crates/rt2-sim/src/ai (sem snapshot proprio)"
 manual = true
 
 [[function]]
@@ -9446,24 +9449,24 @@ manual = true
 addr = "0x430fd0"
 size = 685
 category = "sim"
-status = "named"
-why = "docs/spec/ai.md"
+status = "verified"
+why = "docs/spec/ai.md 14: crates/rt2-sim/src/ai, snapshot ai_company_turn (tests/ai_snapshots.rs)"
 manual = true
 
 [[function]]
 addr = "0x431280"
 size = 175
 category = "sim"
-status = "spec"
-why = "docs/spec/ai.md"
+status = "verified"
+why = "docs/spec/ai.md 14: crates/rt2-sim/src/ai, snapshot ai_company_turn (tests/ai_snapshots.rs)"
 manual = true
 
 [[function]]
 addr = "0x431330"
 size = 191
 category = "sim"
-status = "spec"
-why = "docs/spec/ai.md"
+status = "verified"
+why = "docs/spec/ai.md 14: crates/rt2-sim/src/ai, snapshot ai_company_turn (tests/ai_snapshots.rs)"
 manual = true
 
 [[function]]
@@ -9471,7 +9474,7 @@ addr = "0x4313f0"
 size = 613
 category = "sim"
 status = "verified"
-why = "ai.md 5.1; tests/ai.rs ai_town_value_company0_matches_original"
+why = "docs/spec/ai.md 14: crates/rt2-sim/src/ai, snapshot ai_company_turn (tests/ai_snapshots.rs)"
 manual = true
 
 [[function]]
@@ -9559,39 +9562,39 @@ addr = "0x434940"
 size = 244
 category = "sim"
 status = "spec"
-why = "docs/spec/ai.md"
+why = "docs/spec/ai.md: portado em crates/rt2-sim/src/ai (sem snapshot proprio)"
 manual = true
 
 [[function]]
 addr = "0x434a40"
 size = 1199
 category = "sim"
-status = "spec"
-why = "docs/spec/ai.md"
+status = "verified"
+why = "docs/spec/ai.md 14: crates/rt2-sim/src/ai, snapshot ai_company_turn (tests/ai_snapshots.rs)"
 manual = true
 
 [[function]]
 addr = "0x434ef0"
 size = 360
 category = "sim"
-status = "spec"
-why = "docs/spec/ai.md"
+status = "verified"
+why = "docs/spec/ai.md 14: crates/rt2-sim/src/ai, snapshot ai_company_turn (tests/ai_snapshots.rs)"
 manual = true
 
 [[function]]
 addr = "0x435060"
 size = 608
 category = "sim"
-status = "spec"
-why = "docs/spec/ai.md"
+status = "verified"
+why = "docs/spec/ai.md 14: crates/rt2-sim/src/ai, snapshot ai_company_turn (tests/ai_snapshots.rs)"
 manual = true
 
 [[function]]
 addr = "0x435320"
 size = 1124
 category = "sim"
-status = "spec"
-why = "docs/spec/ai.md"
+status = "verified"
+why = "docs/spec/ai.md 14: crates/rt2-sim/src/ai, snapshot ai_company_turn (tests/ai_snapshots.rs)"
 manual = true
 
 [[function]]
@@ -9599,7 +9602,7 @@ addr = "0x435790"
 size = 1153
 category = "sim"
 status = "spec"
-why = "docs/spec/ai.md"
+why = "docs/spec/ai.md: portado em crates/rt2-sim/src/ai (sem snapshot proprio)"
 manual = true
 
 [[function]]
@@ -9607,7 +9610,7 @@ addr = "0x435c20"
 size = 1438
 category = "sim"
 status = "spec"
-why = "docs/spec/ai.md"
+why = "docs/spec/ai.md: portado em crates/rt2-sim/src/ai (sem snapshot proprio)"
 manual = true
 
 [[function]]
@@ -9615,7 +9618,7 @@ addr = "0x4361c0"
 size = 67
 category = "sim"
 status = "spec"
-why = "docs/spec/ai.md"
+why = "docs/spec/ai.md: portado em crates/rt2-sim/src/ai (sem snapshot proprio)"
 manual = true
 
 [[function]]
@@ -9639,15 +9642,15 @@ addr = "0x436950"
 size = 469
 category = "sim"
 status = "spec"
-why = "docs/spec/ai.md"
+why = "docs/spec/ai.md: portado em crates/rt2-sim/src/ai (sem snapshot proprio)"
 manual = true
 
 [[function]]
 addr = "0x436b30"
 size = 547
 category = "sim"
-status = "spec"
-why = "docs/spec/ai.md"
+status = "verified"
+why = "docs/spec/ai.md 14: crates/rt2-sim/src/ai, snapshot ai_company_turn (tests/ai_snapshots.rs)"
 manual = true
 
 [[function]]
@@ -9655,7 +9658,7 @@ addr = "0x436d60"
 size = 304
 category = "sim"
 status = "spec"
-why = "docs/spec/ai.md"
+why = "docs/spec/ai.md: portado em crates/rt2-sim/src/ai (sem snapshot proprio)"
 manual = true
 
 [[function]]
@@ -9953,8 +9956,8 @@ manual = true
 addr = "0x43a7d0"
 size = 366
 category = "sim"
-status = "unknown"
-why = "finance/stock market (docs/spec/finance.md)"
+status = "verified"
+why = "docs/spec/ai.md 14: crates/rt2-sim/src/ai, snapshot ai_company_turn (tests/ai_snapshots.rs)"
 manual = true
 
 [[function]]
@@ -10064,8 +10067,8 @@ why = "no-evidence"
 addr = "0x43bbc0"
 size = 103
 category = "sim"
-status = "spec"
-why = "docs/spec/ai.md"
+status = "verified"
+why = "docs/spec/ai.md 14: crates/rt2-sim/src/ai, snapshot ai_company_turn (tests/ai_snapshots.rs)"
 manual = true
 
 [[function]]
@@ -10080,8 +10083,8 @@ manual = true
 addr = "0x43bd90"
 size = 73
 category = "sim"
-status = "unknown"
-why = "finance/stock market (docs/spec/finance.md)"
+status = "verified"
+why = "docs/spec/ai.md 14: crates/rt2-sim/src/ai, snapshot ai_company_turn (tests/ai_snapshots.rs)"
 manual = true
 
 [[function]]
@@ -10204,8 +10207,8 @@ manual = true
 addr = "0x43e580"
 size = 110
 category = "sim"
-status = "unknown"
-why = "finance/stock market (docs/spec/finance.md)"
+status = "verified"
+why = "docs/spec/ai.md 14: crates/rt2-sim/src/ai, snapshot ai_company_turn (tests/ai_snapshots.rs)"
 manual = true
 
 [[function]]
@@ -10234,7 +10237,7 @@ addr = "0x43ea30"
 size = 231
 category = "sim"
 status = "spec"
-why = "docs/spec/ai.md"
+why = "docs/spec/ai.md: portado em crates/rt2-sim/src/ai (sem snapshot proprio)"
 manual = true
 
 [[function]]
@@ -10250,7 +10253,7 @@ addr = "0x43eb60"
 size = 309
 category = "sim"
 status = "verified"
-why = "docs/spec/terrain-track.md 2.4; tests/stations.rs industry_purchase_and_sale_match_original (1500)"
+why = "docs/spec/ai.md: portado em crates/rt2-sim/src/ai (sem snapshot proprio)"
 manual = true
 
 [[function]]
@@ -11135,8 +11138,8 @@ why = "no-evidence"
 addr = "0x45fbf0"
 size = 1523
 category = "sim"
-status = "spec"
-why = "docs/spec/ai.md"
+status = "verified"
+why = "docs/spec/ai.md 14: crates/rt2-sim/src/ai, snapshot ai_company_turn (tests/ai_snapshots.rs)"
 manual = true
 
 [[function]]
@@ -11144,31 +11147,31 @@ addr = "0x460370"
 size = 48
 category = "sim"
 status = "spec"
-why = "docs/spec/ai.md"
+why = "docs/spec/ai.md: portado em crates/rt2-sim/src/ai (sem snapshot proprio)"
 manual = true
 
 [[function]]
 addr = "0x4603a0"
-name = "track_company_may_build_at"
 size = 375
 category = "sim"
-status = "named"
-why = "symbol:track_company_may_build_at"
+status = "spec"
+why = "docs/spec/ai.md: portado em crates/rt2-sim/src/ai (sem snapshot proprio)"
+manual = true
 
 [[function]]
 addr = "0x460520"
 size = 276
 category = "sim"
-status = "named"
-why = "terrain-track.md"
+status = "verified"
+why = "docs/spec/ai.md 14: crates/rt2-sim/src/ai, snapshot ai_company_turn (tests/ai_snapshots.rs)"
 manual = true
 
 [[function]]
 addr = "0x460640"
 size = 397
 category = "sim"
-status = "named"
-why = "terrain-track.md"
+status = "verified"
+why = "docs/spec/ai.md 14: crates/rt2-sim/src/ai, snapshot ai_company_turn (tests/ai_snapshots.rs)"
 manual = true
 
 [[function]]
@@ -11176,7 +11179,7 @@ addr = "0x460850"
 size = 7730
 category = "sim"
 status = "verified"
-why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
+why = "docs/spec/ai.md 14: crates/rt2-sim/src/ai, snapshot ai_company_turn (tests/ai_snapshots.rs)"
 manual = true
 
 [[function]]
@@ -11184,7 +11187,7 @@ addr = "0x462690"
 size = 345
 category = "sim"
 status = "verified"
-why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
+why = "docs/spec/ai.md 14: crates/rt2-sim/src/ai, snapshot ai_company_turn (tests/ai_snapshots.rs)"
 manual = true
 
 [[function]]
@@ -11218,24 +11221,25 @@ why = "no-evidence"
 [[function]]
 addr = "0x4629f0"
 size = 121
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/ai.md 14: crates/rt2-sim/src/ai, snapshot ai_company_turn (tests/ai_snapshots.rs)"
+manual = true
 
 [[function]]
 addr = "0x462a70"
-name = "tile_river_neighbors"
 size = 268
-category = "unknown"
-status = "named"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/ai.md 14: crates/rt2-sim/src/ai, snapshot ai_company_turn (tests/ai_snapshots.rs)"
+manual = true
 
 [[function]]
 addr = "0x462b80"
 size = 2464
 category = "sim"
-status = "spec"
-why = "terrain-track.md"
+status = "verified"
+why = "docs/spec/ai.md 14: crates/rt2-sim/src/ai, snapshot ai_company_turn (tests/ai_snapshots.rs)"
 manual = true
 
 [[function]]
@@ -11259,7 +11263,7 @@ addr = "0x463b30"
 size = 479
 category = "sim"
 status = "verified"
-why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
+why = "docs/spec/ai.md 14: crates/rt2-sim/src/ai, snapshot ai_company_turn (tests/ai_snapshots.rs)"
 manual = true
 
 [[function]]
@@ -14147,7 +14151,7 @@ addr = "0x4a8800"
 size = 744
 category = "sim"
 status = "spec"
-why = "docs/spec/ai.md"
+why = "docs/spec/ai.md: portado em crates/rt2-sim/src/ai (sem snapshot proprio)"
 manual = true
 
 [[function]]
@@ -14791,9 +14795,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4bf1b0"
 size = 30
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/ai.md: portado em crates/rt2-sim/src/ai (sem snapshot proprio)"
+manual = true
 
 [[function]]
 addr = "0x4bf1d0"
@@ -14853,8 +14858,8 @@ why = "no-evidence"
 addr = "0x4c01b0"
 size = 48
 category = "sim"
-status = "spec"
-why = "docs/spec/ai.md"
+status = "verified"
+why = "docs/spec/ai.md 14: crates/rt2-sim/src/ai, snapshot ai_company_turn (tests/ai_snapshots.rs)"
 manual = true
 
 [[function]]
@@ -15915,7 +15920,7 @@ addr = "0x4d86f0"
 size = 235
 category = "sim"
 status = "verified"
-why = "ai.md 4; tests/ai.rs ai_pick_engine_matches_original"
+why = "docs/spec/ai.md 14: crates/rt2-sim/src/ai, snapshot ai_company_turn (tests/ai_snapshots.rs)"
 manual = true
 
 [[function]]
@@ -15923,7 +15928,7 @@ addr = "0x4d87e0"
 size = 1488
 category = "sim"
 status = "spec"
-why = "docs/spec/ai.md"
+why = "docs/spec/ai.md: portado em crates/rt2-sim/src/ai (sem snapshot proprio)"
 manual = true
 
 [[function]]
@@ -15939,7 +15944,7 @@ addr = "0x4d8f40"
 size = 421
 category = "sim"
 status = "spec"
-why = "docs/spec/ai.md"
+why = "docs/spec/ai.md: portado em crates/rt2-sim/src/ai (sem snapshot proprio)"
 manual = true
 
 [[function]]
@@ -15947,15 +15952,15 @@ addr = "0x4d90f0"
 size = 282
 category = "sim"
 status = "spec"
-why = "docs/spec/ai.md"
+why = "docs/spec/ai.md: portado em crates/rt2-sim/src/ai (sem snapshot proprio)"
 manual = true
 
 [[function]]
 addr = "0x4d9210"
 size = 1120
 category = "sim"
-status = "spec"
-why = "docs/spec/ai.md"
+status = "verified"
+why = "docs/spec/ai.md 14: crates/rt2-sim/src/ai, snapshot ai_company_turn (tests/ai_snapshots.rs)"
 manual = true
 
 [[function]]
@@ -16776,8 +16781,8 @@ manual = true
 addr = "0x4f0cd0"
 size = 42
 category = "sim"
-status = "spec"
-why = "docs/spec/trains.md 10"
+status = "verified"
+why = "docs/spec/ai.md 14: crates/rt2-sim/src/ai, snapshot ai_company_turn (tests/ai_snapshots.rs)"
 manual = true
 
 [[function]]

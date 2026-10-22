@@ -137,3 +137,5 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Feature: Spanish translation of all 2807 game strings and a Spanish README.
 - Feature: Russian translation of all 2807 game strings and a Russian README.
 - Feature: German translation of all 2807 game strings and a German README.
+- Feature: computer opponents' monthly turn in the simulation (crates/rt2-sim/src/ai): engine pick, expansion timer, network extension scoring, build-mode A* track pathfinder with cost, station site search, train management and stop/consist choice, industry purchase, AI finances; wired into sim_month_end
+- RE: AI turn verified against the original with function snapshots (Example: December, January and forced expansion with 635 draws and a priced A* path all byte-identical); during the AI turn the planner prices double track with wooden bridges (build_preview_suspend globals)

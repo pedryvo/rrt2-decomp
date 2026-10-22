@@ -4428,3 +4428,38 @@ comment = "chamado por industry_year_reset (0x40b7c0) na estacao ligada: zera +0
 addr = "0x4c8540"
 name = "territory_set_rights"
 comment = "(territorio, mascara, permitir, empresa, 0): liga/desliga bits de direitos do bloco da empresa (+0x479 + t*0x1ed); ao negar o ultimo direito de um territorio t >= 4 zera o byte empresa+0x4229+t (inferido, Alaska regras 47/51)"
+
+[[symbol]]
+addr = "0x4629f0"
+name = "track_edge_valid_for_company"
+kind = "function"
+comment = "fastcall(empresa,x,y,d,d_volta,ponte,sem_mascara2,modo,vao): prepara 0x566a50/54/58 (direito de construir +0x422d) e chama track_edge_valid; [V via snapshot ai]"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x408630"
+name = "ai_station_site_valid"
+kind = "function"
+comment = "fastcall(x,y,tamanho,empresa,orient,dir): arestas da estacao validas e station_placement_valid do tipo orient+tamanho*8; [V via snapshot ai]"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x4085e0"
+name = "building_anchor_tile"
+kind = "function"
+comment = "fastcall(tipo,x,y,&ax,&ay): tile da celula ancora (flag 0x10) da pegada; [V via snapshot ai]"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x408fd0"
+name = "building_at_tile"
+kind = "function"
+comment = "fastcall(x,y): predio (estrutura tipo 3) do tile em list_industries; [S]"
+spec = "docs/spec/ai.md"
+
+[[symbol]]
+addr = "0x4bf1b0"
+name = "station_of_building_at"
+kind = "function"
+comment = "fastcall(x,y): estacao do predio do tile se for estacao (+7 == 0); [S]"
+spec = "docs/spec/ai.md"

@@ -94,10 +94,10 @@ impl SimState {
         if best < 1 { 0 } else { best }
     }
 
-    /// `ai_monthly_turn` (`0x436d60`, world-tick.md 3.5, ai.md 1): the AI turn itself is not
-    /// implemented here (it lives in the AI module); what this keeps is the RNG it consumes in a
-    /// month without expansion: `ai_company_turn` draws `ai_pick_engine(1)` once per active
-    /// company whose chairman is absent or an AI person (ai.md 2.1, C2).
+    /// `ai_monthly_turn` (`0x436d60`, world-tick.md 3.5, ai.md 1): the port in
+    /// [`crate::ai::monthly_turn`]. The commands it queues (industry purchases, command 0x2d)
+    /// are executed right away here; the original runs them at the command step of the next
+    /// frame, after the rest of `sim_month_end` (ai.md 8).
     pub(super) fn ai_monthly_turn(&mut self, w: &mut World) {
         if !self.v2348() {
             todo_hook!(
@@ -108,30 +108,11 @@ impl SimState {
             );
             return;
         }
-        for slot in pool::list_order(&self.save.companies) {
-            let Some(r) = pool::record(&self.save.companies, slot) else {
-                continue;
-            };
-            if i32_at(&r.data, CO_ACTIVE) == 0 {
-                continue;
+        self.with_trainstep(w, |ts| {
+            for cmd in crate::ai::monthly_turn(ts) {
+                crate::ai::apply_command(ts, cmd);
             }
-            let chair = i32_at(&r.data, CO_CHAIRMAN);
-            if chair == 0 || !self.person_is_human(chair) {
-                self.pick_engine(w, 1);
-                todo_hook!(
-                    self.log,
-                    "ai_company_turn",
-                    "ai_company_turn 0x436b30 beyond the engine pick (expansion, trains, finance)",
-                    "ai.md 2"
-                );
-            }
-        }
-        todo_hook!(
-            self.log,
-            "ai_monthly_turn",
-            "ai_person_turn 0x4a8800 and the rest of ai_monthly_turn 0x436d60",
-            "world-tick.md 3.5; ai.md 9"
-        );
+        });
     }
 
     /// `sim_year_end` items 1 and 2: the mean of metric 11 and the engine reference speed
@@ -505,7 +486,9 @@ impl SimState {
         if station != 0
             && let Some(s) = pool::record_mut(&mut self.save.stations, station)
         {
-            // `0x4beae0`: the yearly counters of the station (finance.md 13.4).
+            // `0x4beae0`: two dwords at `+0x59`/`+0x5d` (8 bytes) and the yearly counters of the
+            // station (finance.md 13.4).
+            s.data[0x59..0x61].fill(0);
             for o in [0x4b5usize, 0x4b7, 0x4b9] {
                 put_u16(&mut s.data, o, 0);
             }
