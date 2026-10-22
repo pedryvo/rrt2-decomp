@@ -3,11 +3,11 @@
 # Ver docs/re-workflow.md.
 #
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
-# Classificadas (categoria != unknown): 1003 (34.1%)
-# Por categoria: lib=258, platform=116, render=11, audio=70, ui=247, sim=301, unknown=1942
-# Por estado:   unknown=2712, named=81, spec=118, verified=34
-# Entradas manuais: 276
-# sim spec coverage: 43.9% (132 de 301 funcoes sim em spec/verified)
+# Classificadas (categoria != unknown): 1025 (34.8%)
+# Por categoria: lib=258, platform=116, render=11, audio=70, ui=247, sim=323, unknown=1920
+# Por estado:   unknown=2691, named=75, spec=134, verified=45
+# Entradas manuais: 298
+# sim spec coverage: 49.2% (159 de 323 funcoes sim em spec/verified)
 
 [[function]]
 addr = "0x401005"
@@ -7961,11 +7961,11 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x409010"
-name = "building_create"
 size = 77
-category = "unknown"
-status = "named"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "growth/building_create (4.4)"
+manual = true
 
 [[function]]
 addr = "0x409120"
@@ -8021,7 +8021,7 @@ addr = "0x409a30"
 size = 2859
 category = "sim"
 status = "spec"
-why = "terrain-track.md"
+why = "growth/building_construct (4.4, texturas de campos em aberto)"
 manual = true
 
 [[function]]
@@ -8080,9 +8080,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x40adb0"
 size = 930
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "growth/building_destroy (3.6)"
+manual = true
 
 [[function]]
 addr = "0x40b1b0"
@@ -8104,24 +8105,25 @@ manual = true
 addr = "0x40b450"
 size = 876
 category = "sim"
-status = "named"
-why = "world-tick.md 3.4 (resumo)"
+status = "verified"
+why = "growth/industry_year_step (5.1, pr\u00e9dios sem dono)"
 manual = true
 
 [[function]]
 addr = "0x40b7c0"
 size = 83
 category = "sim"
-status = "named"
-why = "world-tick.md 3.4 (resumo)"
+status = "spec"
+why = "growth/industry_year_reset (5.1)"
 manual = true
 
 [[function]]
 addr = "0x40b820"
 size = 86
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "growth/building_reset_for_start (4.4)"
+manual = true
 
 [[function]]
 addr = "0x40b880"
@@ -8147,9 +8149,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x40ba00"
 size = 153
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "growth/building_shape_pick (4.2)"
+manual = true
 
 [[function]]
 addr = "0x40bad0"
@@ -8161,16 +8164,18 @@ why = "no-evidence"
 [[function]]
 addr = "0x40bae0"
 size = 88
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "growth/building_price (5.3)"
+manual = true
 
 [[function]]
 addr = "0x40bb40"
 size = 311
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "growth/building_init_slot_clocks (4.4)"
+manual = true
 
 [[function]]
 addr = "0x40cb00"
@@ -9316,90 +9321,99 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x42fa30"
-name = "nearest_town_id"
 size = 217
-category = "unknown"
-status = "named"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "growth/nearest_town_id (4.4)"
+manual = true
 
 [[function]]
 addr = "0x42fb10"
 size = 413
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "growth/site_classes (4.3)"
+manual = true
 
 [[function]]
 addr = "0x42fcb0"
 size = 779
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "growth/town_place_building (4.2)"
+manual = true
 
 [[function]]
 addr = "0x42ffc0"
 size = 764
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "growth/town_add_building (4.1)"
+manual = true
 
 [[function]]
 addr = "0x4302c0"
 size = 196
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "growth/town_remove_worst_building (3.6)"
+manual = true
 
 [[function]]
 addr = "0x430400"
 size = 311
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "growth/town_building_stats (3.4)"
+manual = true
 
 [[function]]
 addr = "0x430540"
 size = 1271
 category = "sim"
-status = "named"
-why = "world-tick.md 4"
+status = "verified"
+why = "growth/town_update (world-growth.md 3.3)"
 manual = true
 
 [[function]]
 addr = "0x430a40"
 size = 475
 category = "sim"
-status = "named"
-why = "world-tick.md 3.4 (resumo)"
+status = "spec"
+why = "growth/town_year_step (docs/spec/world-growth.md 3.1)"
 manual = true
 
 [[function]]
 addr = "0x430c20"
 size = 342
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "growth/place_at (3.8)"
+manual = true
 
 [[function]]
 addr = "0x430d80"
 size = 22
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "growth/town_building_link (2.1)"
+manual = true
 
 [[function]]
 addr = "0x430da0"
 size = 106
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "growth/town_building_unlink (3.6)"
+manual = true
 
 [[function]]
 addr = "0x430e70"
 size = 350
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "growth/towns_recompute_extent (3.8)"
+manual = true
 
 [[function]]
 addr = "0x430fd0"
@@ -9433,16 +9447,17 @@ why = "no-evidence"
 addr = "0x431660"
 size = 394
 category = "sim"
-status = "spec"
-why = "world-tick.md 3.6"
+status = "verified"
+why = "growth/town_bonus_offer (6.2)"
 manual = true
 
 [[function]]
 addr = "0x4317f0"
 size = 39
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "growth/town_reset (3.7)"
+manual = true
 
 [[function]]
 addr = "0x4320b0"
@@ -9580,9 +9595,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x436950"
 size = 469
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "growth/ai_industry_investment (5.4)"
+manual = true
 
 [[function]]
 addr = "0x436b30"
@@ -10164,23 +10180,25 @@ why = "no-evidence"
 [[function]]
 addr = "0x43ea30"
 size = 231
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "growth/building_buy_request (5.3)"
+manual = true
 
 [[function]]
 addr = "0x43eb20"
 size = 62
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "growth/building_sell_request (5.3)"
+manual = true
 
 [[function]]
 addr = "0x43eb60"
 size = 309
 category = "sim"
-status = "unknown"
-why = "finance/stock market (docs/spec/finance.md)"
+status = "spec"
+why = "growth/company_industry_trade (5.3)"
 manual = true
 
 [[function]]
@@ -11862,8 +11880,8 @@ manual = true
 addr = "0x46a370"
 size = 1133
 category = "sim"
-status = "named"
-why = "world-tick.md 3.3 (resumo)"
+status = "spec"
+why = "growth/station_networks_rebuild: pagamento do b\u00f4nus (6.2)"
 manual = true
 
 [[function]]
@@ -15060,9 +15078,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4c8970"
 size = 189
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "growth/territories_recount_land"
+manual = true
 
 [[function]]
 addr = "0x4c8a30"
@@ -16003,9 +16022,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4e2330"
 size = 210
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "growth/slot_valid (5.2)"
+manual = true
 
 [[function]]
 addr = "0x4e3620"

@@ -277,3 +277,5 @@ O código sob teste é `rt2_sim::finance` (`crates/rt2-sim/src/finance.rs`); as 
 `cargo clippy -D warnings` no crate de testes passa; o `-D warnings` do workspace falha hoje em `crates/rt2-sim/src/fp.rs:209` (`int_plus_one`, fora do escopo desta spec).
 
 > **Resolvido:** o teste do preço de negociação usa `rt2_sim::fp::pow` (a emulação fiel do `_CIpow` do EXE) e exige igualdade exata: 0 diferenças em 4000 casos.
+
+> **Correção pendente (de world-growth.md):** os rótulos das contas 4 e 5 parecem trocados nesta spec. `train_create` (`0x4cdf80`) lança na conta 4, e a compra de indústria (`0x43eb60`) lança na conta 5. Conferir e corrigir.

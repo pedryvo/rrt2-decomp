@@ -2688,3 +2688,262 @@ name = "person_generate"
 kind = "function"
 comment = "thiscall: gera uma pessoa/candidato: rng (25,180), (1000,12000), (0,39) em laco"
 spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x430400"
+name = "town_building_stats"
+kind = "function"
+comment = "thiscall(town, &casas, &outros, &soma_tamanho) ret 0xc: percorre a lista do lugar; casas (tipo 0x12 no conjunto 0), outros, soma dos tamanhos 0x535c42; soma taxas primarias em +0x12/+0x3a; +0x48 = min(casas,255); [V]"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x42ffc0"
+name = "town_add_building"
+kind = "function"
+comment = "thiscall(town, _, casa) ret 8: escolhe o tipo do predio novo (pesos +0x4a x escassez x ano, ate 5000 iteracoes, limite 1024/256/64/16/4) e chama town_place_building; [V]"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x42fcb0"
+name = "town_place_building"
+kind = "function"
+comment = "thiscall(town, tipo) ret 4: ate 300 (900/10500/x3 regiao) tentativas de local; cidade: dx=sqrt(rng*rng) com sinal; regiao: caixa; valida place_at/site_classes/classe de terreno/building_can_place e cria; [V]"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x42fb10"
+name = "site_classes"
+kind = "function"
+comment = "fastcall(x, y, &floresta, &declive) ret 8: classes 0..2 de floresta e declive em 9 pontos em cruz (pesos 32/24/16); [V]"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x40ba00"
+name = "building_shape_pick"
+kind = "function"
+comment = "fastcall(tipo, sorteia): forma (indice em 0x5457ef) do predio novo; rng(1,24) para alguns tipos; [V]"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x4302c0"
+name = "town_remove_worst_building"
+kind = "function"
+comment = "thiscall(town, casa) ret 4: demole o predio elegivel de menor rng(0x58,0x70)*rating(+0x4b) via building_destroy; [V]"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x40adb0"
+name = "building_destroy"
+kind = "function"
+comment = "thiscall(predio, destruir_estacao): demolicao de predio/industria (lista do lugar, lotes, estacao ligada, tiles, +0x4f=1, 0x570713 -= 1); [S]"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x40bb40"
+name = "building_init_slot_clocks"
+kind = "function"
+comment = "fastcall(predio): relogios +0x53[4]: agora (ou 1o ano do slot) menos rng(0,100)% de um periodo x {1.1,1.25,1.42}, so se +0x2e == 0 (4 rng); [V]"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x430c20"
+name = "place_at"
+kind = "function"
+comment = "fastcall(x, y, qualquer) ret 4: id do lugar dono do tile (cidade mais proxima dentro de 0x550408[classe] e da caixa, senao regiao mais proxima); [S]"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x430e70"
+name = "towns_recompute_extent"
+kind = "function"
+comment = "recalcula caixa (+8..+0xe) e tiles de terra (+0x32) de cada lugar varrendo o mapa com place_at(qualquer=1); chamada em 0x474280 e 0x479a30; [S]"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x4317f0"
+name = "town_reset"
+kind = "function"
+comment = "fastcall(lugar): +0x36=0, +0x3e/+0x40=0, +0x2e=100, 0x57070f=0, +0x42=agora+0x1d8800 (4 anos sem demolicao); chamada por game_set_date; [S]"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x4e2330"
+name = "slot_valid"
+kind = "function"
+comment = "fastcall(slot): o slot de saida e valido no ano (saida/entrada != 0x7f, anos, cargas habilitadas, entradas de bonus opcionais, sandbox); [V]"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x40bae0"
+name = "building_price"
+kind = "function"
+comment = "fastcall(predio, empresa): preco de compra = +0x99 se tem dono, senao ftol(effect_multiplier(0xd,...) * preco_base_da_forma); [S]"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x43ea30"
+name = "building_buy_request"
+kind = "function"
+comment = "thiscall(empresa, predio): exige direito de compra do territorio (byte +0x479+terr*0x1ed & 2) e caixa >= preco; enfileira o comando 0x2d (compra); [S]"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x43eb20"
+name = "building_sell_request"
+kind = "function"
+comment = "thiscall(empresa, predio): enfileira o comando 0x2d com flag 0 (venda); [S]"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x436950"
+name = "ai_industry_investment"
+kind = "function"
+comment = "a IA escolhe a industria de maior retorno (lucro/preco) acima do limiar (300-T)*0.0008 e a compra (modelo expert, caixa >= 200000); [S]"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x430d80"
+name = "town_building_link"
+kind = "function"
+comment = "thiscall(lugar, predio): predio.+4 = lugar.+2; lugar.+2 = predio.id (entra na cabeca da lista); [S]"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x430da0"
+name = "town_building_unlink"
+kind = "function"
+comment = "thiscall(lugar, predio): remove o predio da lista encadeada do lugar; [S]"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x40b820"
+name = "building_reset_for_start"
+kind = "function"
+comment = "fastcall(predio): zera +0x63/+0x67, building_init_slot_clocks, recontagem, +0x3c=ano, atualiza a estacao ligada; chamada por game_set_date; [S]"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x4c8970"
+name = "territories_recount_land"
+kind = "function"
+comment = "conta tiles que nao sao agua por territorio e grava em territorio.+0x48; [S]"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x5705d1"
+name = "town_growth_factor"
+kind = "global"
+comment = "f32 g: (1+0x57022b)^(ano-ano_inicial+1) * 0x570223 * 0.01, recalculado em sim_year_end; game_set_date grava 0x570223*0.01"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x570223"
+name = "growth_level_percent"
+kind = "global"
+comment = "i32: nivel economico inicial em % (padrao 100); editor 'Annual Growth Rate'"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x57022b"
+name = "growth_rate"
+kind = "global"
+comment = "f32: taxa anual composta do crescimento das cidades (padrao 0.005)"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x570713"
+name = "industry_count"
+kind = "global"
+comment = "i32: nº de predios industriais do mundo (tipo != 0, +0x2e == 0); +1 em building_construct, -1 em building_destroy"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x5706dd"
+name = "growth_last_time"
+kind = "global"
+comment = "u32: minuto do ultimo passo anual de crescimento (dt = agora - isto)"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x570508"
+name = "game_start_date"
+kind = "global"
+comment = "u32 data de inicio do jogo (16 bits baixos = ano); referencia da rampa de 12 anos e do expoente de g"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x5702cb"
+name = "industry_type_flags"
+kind = "table"
+comment = "53 registros de 9 bytes: +0 u8 tipo desativado pelo cenario, +1 i32 peso de escassez em % (recalculado por town_year_step), +5 i32 (padrao 2)"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x570603"
+name = "building_type_seen"
+kind = "table"
+comment = "u8[53]: o tipo ja foi visto (ano inicial passado ou ja construido); dispara a manchete do primeiro predio do tipo e as de fim de ano"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x535c38"
+name = "building_type_table"
+kind = "table"
+comment = "53 registros de 0x27 bytes: +1 comprável pela IA, +2 peso base, +0xa tamanho, +0xc primeiro ano, +0x10..0x13 faixas de floresta/declive, +0x14 u8[19] classes de terreno aceitas"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x5457ef"
+name = "building_shape_table"
+kind = "table"
+comment = "0x7a registros de 0x154 bytes: +0 preco base, +9 tipo, +0xc..0xf tamanho/canto, +0x10..0xd7 mascara de pegada 10x10"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x53a464"
+name = "tbl_town_target"
+kind = "table"
+comment = "f32[10]: alvo base por classe de tamanho e passo (classe*2+passo): casas 4,7,12,17,28; tamanho de industrias 2,4,6,8,12"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x53a48c"
+name = "tbl_region_trend"
+kind = "table"
+comment = "f32[9]: fator da tendencia de regiao -2..6: 0.5 0.75 1 1.5 2 4 7 10 13"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x5503f4"
+name = "tbl_town_radius_cap"
+kind = "table"
+comment = "i32[5]: raio maximo de colocacao por classe de tamanho: 4 6 7 9 11"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x550408"
+name = "tbl_town_dist2"
+kind = "table"
+comment = "i32[5]: raio^2 de captacao do lugar por classe: 16 36 49 81 121"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x53a4b0"
+name = "tbl_town_bounty"
+kind = "table"
+comment = "i32[5]: bonus de conexao por classe de tamanho: 100000 .. 500000"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x570237"
+name = "world_sim_off"
+kind = "global"
+comment = "u8: != 0 desliga crescimento anual, estado economico e financas de empresa (uso em sim_year_end, economy_state_step); significado exato [S]"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x5794f0"
+name = "networks_dirty"
+kind = "global"
+comment = "u8: armada por 0x4caaa0/0x4cc060 (mudanca de trilho/estacao); o passo mensal chama station_networks_rebuild e zera"
+spec = "docs/spec/world-growth.md"
