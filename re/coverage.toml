@@ -3,11 +3,11 @@
 # Ver docs/re-workflow.md.
 #
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
-# Classificadas (categoria != unknown): 1077 (36.6%)
-# Por categoria: lib=258, platform=117, render=11, audio=68, ui=250, sim=373, unknown=1868
-# Por estado:   unknown=2605, named=118, spec=168, verified=54
-# Entradas manuais: 344
-# sim spec coverage: 53.6% (200 de 373 funcoes sim em spec/verified)
+# Classificadas (categoria != unknown): 1103 (37.5%)
+# Por categoria: lib=258, platform=117, render=11, audio=68, ui=254, sim=395, unknown=1842
+# Por estado:   unknown=2582, named=117, spec=188, verified=58
+# Entradas manuais: 365
+# sim spec coverage: 55.4% (219 de 395 funcoes sim em spec/verified)
 
 [[function]]
 addr = "0x401005"
@@ -250,9 +250,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4010fa"
 size = 5
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "docs/spec/terrain-track.md 3.4 (botao Buy -> comando 0x18)"
+manual = true
 
 [[function]]
 addr = "0x4010ff"
@@ -1576,9 +1577,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x401627"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x468310"
 
 [[function]]
 addr = "0x40162c"
@@ -1899,9 +1900,9 @@ why = "thunk->0x49e870"
 [[function]]
 addr = "0x40177b"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4286a0"
 
 [[function]]
 addr = "0x401780"
@@ -2482,9 +2483,9 @@ why = "thunk->0x468470"
 [[function]]
 addr = "0x401a14"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4d59b0"
 
 [[function]]
 addr = "0x401a23"
@@ -3560,9 +3561,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x401e56"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4d5560"
 
 [[function]]
 addr = "0x401e5b"
@@ -5289,9 +5290,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x402527"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4bf4e0"
 
 [[function]]
 addr = "0x402536"
@@ -5604,9 +5605,9 @@ why = "thunk->0x462b80"
 [[function]]
 addr = "0x402662"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4be840"
 
 [[function]]
 addr = "0x40266c"
@@ -7607,9 +7608,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x402e6e"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x46aef0"
 
 [[function]]
 addr = "0x402e7d"
@@ -7879,15 +7880,17 @@ why = "no-evidence"
 addr = "0x407e10"
 size = 97
 category = "ui"
-status = "unknown"
-why = "string:bm%s.imb"
+status = "named"
+why = "janela de melhorias: descricao do item"
+manual = true
 
 [[function]]
 addr = "0x407e80"
 size = 641
 category = "ui"
-status = "unknown"
-why = "string:buildbuy.win"
+status = "spec"
+why = "docs/spec/terrain-track.md 3.4"
+manual = true
 
 [[function]]
 addr = "0x408450"
@@ -8022,7 +8025,7 @@ addr = "0x409a30"
 size = 2859
 category = "sim"
 status = "spec"
-why = "growth/building_construct (4.4, texturas de campos em aberto)"
+why = "docs/spec/terrain-track.md 3.1/3.4 (valor pago em predio+0x99)"
 manual = true
 
 [[function]]
@@ -8083,7 +8086,7 @@ addr = "0x40adb0"
 size = 930
 category = "sim"
 status = "spec"
-why = "growth/building_destroy (3.6)"
+why = "docs/spec/terrain-track.md 2.4"
 manual = true
 
 [[function]]
@@ -8167,8 +8170,8 @@ why = "no-evidence"
 addr = "0x40bae0"
 size = 88
 category = "sim"
-status = "spec"
-why = "growth/building_price (5.3)"
+status = "verified"
+why = "docs/spec/terrain-track.md 2.4; tests/stations.rs (efeito 0xd, predio da empresa)"
 manual = true
 
 [[function]]
@@ -8413,9 +8416,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x412ff0"
 size = 1296
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/terrain-track.md 3.4 (servico de areia/agua/oleo)"
+manual = true
 
 [[function]]
 addr = "0x413500"
@@ -8538,16 +8542,18 @@ why = "no-evidence"
 [[function]]
 addr = "0x415ff0"
 size = 95
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/terrain-track.md 5 (wrapper do 0x416050)"
+manual = true
 
 [[function]]
 addr = "0x416050"
 size = 435
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/terrain-track.md 5; tests/stations.rs tile_conflict_priority_matches_original (20000) com 0x4d3c80 gravado"
+manual = true
 
 [[function]]
 addr = "0x416210"
@@ -8562,7 +8568,7 @@ addr = "0x4162b0"
 size = 354
 category = "sim"
 status = "spec"
-why = "terrain-track.md"
+why = "docs/spec/terrain-track.md 2.4 (valor de livro peca+0x15*8)"
 manual = true
 
 [[function]]
@@ -9069,16 +9075,18 @@ why = "no-evidence"
 [[function]]
 addr = "0x4286a0"
 size = 649
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/terrain-track.md 2.4"
+manual = true
 
 [[function]]
 addr = "0x428930"
 size = 1545
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/terrain-track.md 2.4"
+manual = true
 
 [[function]]
 addr = "0x428fe0"
@@ -9534,7 +9542,7 @@ addr = "0x434850"
 size = 230
 category = "sim"
 status = "spec"
-why = "docs/spec/ai.md"
+why = "docs/spec/terrain-track.md 3.4 (compras da IA)"
 manual = true
 
 [[function]]
@@ -9694,9 +9702,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x437f50"
 size = 329
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/terrain-track.md 3.4 (liquidacao)"
+manual = true
 
 [[function]]
 addr = "0x4380a0"
@@ -9848,8 +9857,8 @@ manual = true
 addr = "0x439930"
 size = 62
 category = "sim"
-status = "unknown"
-why = "finance/stock market (docs/spec/finance.md)"
+status = "spec"
+why = "docs/spec/terrain-track.md 2.4 (baixa de trem sem caixa)"
 manual = true
 
 [[function]]
@@ -10227,8 +10236,8 @@ manual = true
 addr = "0x43eb60"
 size = 309
 category = "sim"
-status = "spec"
-why = "growth/company_industry_trade (5.3)"
+status = "verified"
+why = "docs/spec/terrain-track.md 2.4; tests/stations.rs industry_purchase_and_sale_match_original (1500)"
 manual = true
 
 [[function]]
@@ -11743,9 +11752,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x468310"
 size = 108
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/terrain-track.md 3.4; crates/rt2-oracle/tests/stations.rs improvement_availability_matches_original (6000)"
+manual = true
 
 [[function]]
 addr = "0x4683a0"
@@ -12060,9 +12070,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x46aef0"
 size = 607
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/terrain-track.md 3.4; ramo sem troca de tamanho verificado em tests/stations.rs (1500); troca de tamanho so lida"
+manual = true
 
 [[function]]
 addr = "0x46b150"
@@ -14676,9 +14687,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4be840"
 size = 668
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/terrain-track.md 3.4"
+manual = true
 
 [[function]]
 addr = "0x4beae0"
@@ -14785,9 +14797,10 @@ manual = true
 [[function]]
 addr = "0x4bf4e0"
 size = 632
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/terrain-track.md 3.4; razao e contador verificados em tests/stations.rs (800) com 0x406f60/0x42e410/0x46a370 em ret"
+manual = true
 
 [[function]]
 addr = "0x4bf760"
@@ -14830,9 +14843,10 @@ manual = true
 [[function]]
 addr = "0x4c0a50"
 size = 427
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "docs/spec/terrain-track.md 3.4 (bits derivados do editor)"
+manual = true
 
 [[function]]
 addr = "0x4c0c00"
@@ -14844,16 +14858,18 @@ why = "string:SD%s%s.imb"
 [[function]]
 addr = "0x4c0df0"
 size = 106
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "docs/spec/terrain-track.md 3.4"
+manual = true
 
 [[function]]
 addr = "0x4c0e60"
 size = 106
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "docs/spec/terrain-track.md 3.4"
+manual = true
 
 [[function]]
 addr = "0x4c0ed0"
@@ -15258,8 +15274,8 @@ manual = true
 addr = "0x4cdd50"
 size = 426
 category = "sim"
-status = "named"
-why = "remocao de trem"
+status = "spec"
+why = "docs/spec/terrain-track.md 2.4 (train_delete sem reembolso)"
 manual = true
 
 [[function]]
@@ -15474,9 +15490,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4d18b0"
 size = 767
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/terrain-track.md 3.4 (tempo de parada, telefone/telegrafo)"
+manual = true
 
 [[function]]
 addr = "0x4d1bb0"
@@ -15496,9 +15513,10 @@ manual = true
 [[function]]
 addr = "0x4d2590"
 size = 218
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/cargo.md em aberto resolvido"
+manual = true
 
 [[function]]
 addr = "0x4d2670"
@@ -15510,16 +15528,17 @@ why = "no-evidence"
 [[function]]
 addr = "0x4d2720"
 size = 697
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/cargo.md em aberto resolvido (descrito em linhas gerais)"
+manual = true
 
 [[function]]
 addr = "0x4d29e0"
 size = 558
 category = "sim"
-status = "unknown"
-why = "chegada/estacao; crt_rand_range(0,3) escolhe variante de som, trains.md 5.4"
+status = "spec"
+why = "docs/spec/terrain-track.md 3.4 (alfandega)"
 manual = true
 
 [[function]]
@@ -15527,7 +15546,7 @@ addr = "0x4d2c10"
 size = 2533
 category = "sim"
 status = "spec"
-why = "cargo.md 6"
+why = "docs/spec/terrain-track.md 6 (partilha e taxas)"
 manual = true
 
 [[function]]
@@ -15706,16 +15725,17 @@ why = "no-evidence"
 addr = "0x4d5370"
 size = 496
 category = "sim"
-status = "named"
-why = "entrada em tile: contadores e desgaste descritos; contagem por empresa nao detalhada"
+status = "spec"
+why = "docs/spec/terrain-track.md 6 (contagem por dono) e 5 (prioridade +0xa8)"
 manual = true
 
 [[function]]
 addr = "0x4d5560"
 size = 103
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/terrain-track.md 6"
+manual = true
 
 [[function]]
 addr = "0x4d55d0"
@@ -15755,9 +15775,10 @@ why = "thunk->0x4cdd50"
 [[function]]
 addr = "0x4d59b0"
 size = 379
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "docs/spec/terrain-track.md 5 (classe e prioridade)"
+manual = true
 
 [[function]]
 addr = "0x4d5b30"

@@ -3815,3 +3815,178 @@ name = "tile_bank_table"
 kind = "data"
 comment = "ponteiros dos bancos de textura por indice de banco do no de overlay: 0 ground, 1 territor, 2 river, 3 road, 4 tracks, 5 trackd, 6 groceana, 7 grbeacha"
 spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x468310"
+name = "station_improvement_available"
+kind = "function"
+comment = "fastcall(ECX=linha): melhoria comprável agora? ano>primeiro ou (ano==primeiro e mes>=9), ano<=ultimo (ou opcao de cenario +0x60), flag da linha != 0; expansao so deixa 0..4,10,11,0x15; [V]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x46aef0"
+name = "station_buy_improvements"
+kind = "function"
+comment = "fastcall(ECX=estacao, EDX=mascara): compra melhorias; preco = ftol acumulado por bit de effect(8)*custo; razao conta 1 += preco - custo cru do tamanho antigo, categoria 4 += -custo antigo; predio+0x99 += o mesmo; +0x49 |= mascara; troca de tamanho muda o tipo do predio (+8/+0x10); [V sem tamanho, S tamanho]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x4bf4e0"
+name = "station_remove"
+kind = "function"
+comment = "fastcall(estacao): remove estacao; sem fantasma e com dono: empresa+0x172 -= 1, conta 1 -= predio+0x99, categoria 5 += -predio+0x99 (nenhum reembolso); tira elos, paradas das rotas, estacao principal; [V razao]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x428930"
+name = "bulldoze_area"
+kind = "function"
+comment = "fastcall(empresa, x, y, raio, so_custo, &custo, &motivo, msg, silencioso): escavadeira em 2 passadas; 1000/tile de trilho, 1000/arvore, predio 0.1x (proprio) ou 0.75x (neutro) do preco x effect(0x130); trilho baixa valor de livro sem reembolso; [S]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x4286a0"
+name = "track_bulldoze_tile"
+kind = "function"
+comment = "fastcall(x, y; empresa, &motivo, so_custo) ret 0xc: remove (ou ensaia com &motivo) a peca de trilho do tile e as ligadas por ponte/vao via 0x4caaa0; [S]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x4d59b0"
+name = "train_set_class"
+kind = "function"
+comment = "thiscall(trem, classe): +0xa7 = classe 0 Halted,1 Slow,2 Normal,3 Express (so se nao quebrado/acidentado); recalcula +0xa8 (0 se acelerador<=65, classe, +4 em trilho proprio); cmd 0x21; [S]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x4d5560"
+name = "train_reset_leg_counters"
+kind = "function"
+comment = "fastcall(trem): zera +0x7d/+0x7f/+0x81 (milhagem do trecho) e recontra o tile atual; [S]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x4d2590"
+name = "car_keep_undemanded"
+kind = "function"
+comment = "thiscall(trem, indice do vagao): modo de descarga 1 e estacao nao demanda a carga do vagao -> a carga fica no trem; [S]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x407e80"
+name = "ui_station_improvements_dialog"
+kind = "function"
+comment = "fastcall(estacao): abre buildbuy.win com as melhorias disponiveis (0x468310, nao possuidas, nao excluidas); [S]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x407540"
+name = "ui_station_improvements_event"
+kind = "function"
+comment = "thiscall(evento): selecao de melhorias, soma o preco ftol acumulado, exige preco <= caixa (conta 0) salvo 0x5748fc, valida espaco da troca de tamanho (0x4087a0); [S]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x407910"
+name = "ui_station_improvements_price_text"
+kind = "function"
+comment = "monta o texto de preco (arredondado ao milhar mais proximo) e descricao da melhoria; [S]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x4be840"
+name = "station_init"
+kind = "function"
+comment = "thiscall: preenche o registro da estacao nova (posicao, dono, +0x49 = 1<<tamanho, territorio, empresa+0x176); [S]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x437f50"
+name = "company_stations_release"
+kind = "function"
+comment = "fastcall(empresa, territorio, destruir): na liquidacao solta as estacoes (dono 0) ou as destroi por building_destroy(1); [S]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x4c0a50"
+name = "editor_station_derive_bits"
+kind = "function"
+comment = "so editor: recalcula os bits derivados 12, 25, 26, 27 de estacao+0x49 e normaliza (apaga o bit menor quando o maior existe); [S]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x4c0e60"
+name = "editor_station_improvement_on"
+kind = "function"
+comment = "so editor: liga a linha i (<26) de estacao+0x49 sem custo; [S]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x4c0df0"
+name = "editor_station_improvement_off"
+kind = "function"
+comment = "so editor: desliga a linha i (<26) de estacao+0x49 sem custo; [S]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x5500c8"
+name = "improvement_table"
+kind = "table"
+comment = "30 linhas de 0x1b bytes: +0 chave[7], +7 custo i32, +0xb ano inicial, +0xf ano final, +0x13 flag comprável, +0x17 mascara de exclusao; a linha i e o bit i de estacao+0x49 (tamanhos 0..2, telefone 3, telegrafo 4, restaurantes 5/6, saloon 7, correio 8, alfandega 9, areia 10, agua 11, hoteis 15/16, armazens 17..20, roundhouse 21)"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x5537e0"
+name = "improvement_name_ids"
+kind = "table"
+comment = "u16[30]: ids LNG dos nomes das melhorias (1043 + i)"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x55381c"
+name = "improvement_desc_ids"
+kind = "table"
+comment = "u16[30]: ids LNG das descricoes das melhorias (1076 + i)"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x553858"
+name = "train_class_text_ids"
+kind = "table"
+comment = "u16[4]: ids LNG das classes de trem (Halted 1109, Slow 1112, Normal 1110, Express 1111)"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x553868"
+name = "bulldoze_reason_text_ids"
+kind = "table"
+comment = "u16[9]: ids LNG dos motivos de falha da escavadeira (1120..1128)"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x564f24"
+name = "ui_improvement_selected"
+kind = "table"
+comment = "dword[30]: selecao da janela de melhorias"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x564f9c"
+name = "ui_improvement_mask"
+kind = "global"
+comment = "mascara de melhorias escolhida (enviada no comando 0x18)"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x567684"
+name = "bulldoze_book_value"
+kind = "global"
+comment = "soma de peca+0x15*8 das pecas removidas (valor de livro baixado em 0x428930)"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x570239"
+name = "customs_ignore_region"
+kind = "global"
+comment = "opcao: desliga o teste de regiao da alfandega (0x4d29e0); o teste do Port continua"
+spec = "docs/spec/terrain-track.md"
