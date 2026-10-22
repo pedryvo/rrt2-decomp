@@ -52,3 +52,6 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Feature: UI layout parser (`rt2_formats::ui`) and the `rt2-ui` tool that draws a window's geometry with its sprites
 - Docs: `docs/formats/font.md` and `docs/formats/ui.md`
 - RE: advance_save.py avança um save N dias no original (Wine+gdb, sem GUI) via carga do menu 0x479710, sim_advance 0x4a5cb0 e gravador 0x477540; determinístico byte a byte com a mesma semente (docs/dynamic-analysis.md seção 5)
+- RE: especificacao de trilho, pontes, terraplenagem e estacoes em `docs/spec/terrain-track.md`: custo por tile (`0x463520`), formas de aresta validas (`0x5365e8`), pontes por tipo (`0x53ce60`), custo de estacao e captacao (`0x407030`, raios 2/4/8)
+- RE: oraculo `tests/track.rs`: custo de trilho por tile (30 000 casos) e teste de captacao de estacao (20 000 casos) identicos ao original
+- Docs: divergencias do manual no custo de trilho (base 2x2000 por tile, terreno por classe, ponte por tile, vao 120 000) anotadas em `docs/spec/terrain-track.md`

@@ -1610,3 +1610,325 @@ name = "pk2_read_bytes"
 kind = "function"
 comment = "fastcall(buf, n): le n bytes do arquivo de pack corrente; erro 0xb77 se curto"
 spec = "docs/formats/ui.md"
+
+[[symbol]]
+addr = "0x463520"
+name = "track_tile_cost"
+kind = "function"
+comment = "fastcall(x, y; dir_in, dir_out, modo, vao, &custo, &custo2) ret 0x18: custo de construcao de UM tile: arestas (base x1,5 se dupla, x1,4 diagonal), eletrificacao, arvores, x multiplicador do terreno, x estado economico; pontes por tile; [V]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x463a20"
+name = "track_tile_cost_with_state"
+kind = "function"
+comment = "wrapper de track_tile_cost: grava empresa/single/eletrica/tipo de ponte e recalcula 0x566a60 (6000*mod 0xb) e 0x566a64 (2000*mod 9)"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x463b30"
+name = "track_path_heuristic"
+kind = "function"
+comment = "custo de passo do A* de trilho (curva +15, tile alheio +30, ocupado +10, penalidade por desnivel > 8)"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x460850"
+name = "track_pathfind"
+kind = "function"
+comment = "A* generico: modo 1 planeja trilho novo (custo por 0x463520), modo 0 roteia trem sobre trilho existente"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x4cc060"
+name = "track_lay_route"
+kind = "function"
+comment = "fastcall: acha o caminho (0x460850), grava/previsualiza pecas (0x4164f0/0x416720), terraplana, cobra ledger 3; terraplenagem 600*mod(0xa)*soma|dh|"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x4cbf60"
+name = "track_lay_command"
+kind = "function"
+comment = "preview local ou comando de rede 0x16/0x1a para construir trilho"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x4164f0"
+name = "tile_track_add"
+kind = "function"
+comment = "thiscall(tile, mascara_arestas, modo_ponte, flag3, empresa, contar): cria/atualiza a peca de trilho do tile; contadores da empresa 0x182/0x186/0x18e"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x416720"
+name = "tile_track_preview_add"
+kind = "function"
+comment = "versao de previsao (bit 0x20 da peca = fantasma, tile+6 bit 0x40)"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x416420"
+name = "tile_track_preview_clear"
+kind = "function"
+comment = "thiscall(tile, mascara): limpa a previsao ou remove a peca vazia"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x416210"
+name = "tile_track_set_double"
+kind = "function"
+comment = "thiscall(tile, dupla): bit0 de peca+0x23 (nao em ponte de madeira nem vao); contadores 0x186/0x18a"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x4162b0"
+name = "tile_track_remove"
+kind = "function"
+comment = "thiscall(tile, mascara_restante, empresa, contar): remove arestas; libera a peca se vazia; decrementa contadores"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x4ca920"
+name = "track_demolish_edges"
+kind = "function"
+comment = "fastcall(x, y, mascara, empresa, &motivo): demole arestas; recusa por estacao no tile (1), trem (3) ou dono diferente (2); sem reembolso visto"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x462b80"
+name = "track_edge_valid"
+kind = "function"
+comment = "valida uma aresta nova (limites do mapa, tabelas de forma 0x5365e8/0x5367e8, agua, permissao do territorio)"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x460640"
+name = "track_bridge_mode"
+kind = "function"
+comment = "modo de ponte (0,1,2,4,6,7) de um passo conforme bit0 de tile[0] (rio)"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x460520"
+name = "track_water_ahead"
+kind = "function"
+comment = "0/1/2/3: agua (classe 0x12) no tile, a frente ou 2 a frente"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x462a70"
+name = "tile_river_neighbors"
+kind = "function"
+comment = "mascara dos vizinhos com rio"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x4603a0"
+name = "track_company_may_build_at"
+kind = "function"
+comment = "limite de territorio/adjacencia para a empresa"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x4087a0"
+name = "station_placement_valid"
+kind = "function"
+comment = "fastcall(x, y, tipo, empresa, ...): valida pegada 10x10 da estacao e arestas do trilho em frente"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x409a30"
+name = "building_construct"
+kind = "function"
+comment = "thiscall: constroi predio/estacao: custo = ftol(mod(8)*custo_do_tipo) -> ledger 1, trilho sob a estacao -> ledger 3"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x409010"
+name = "building_create"
+kind = "function"
+comment = "aloca em list_industries e chama building_construct"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x407030"
+name = "station_catchment_test"
+kind = "function"
+comment = "fastcall(predio, obj_estacao, &dist): 1 se alguma celula da pegada do predio esta a ftol(dist euclidiana) <= raio (2/4/8); [V]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x4071b0"
+name = "station_rebuild_links"
+kind = "function"
+comment = "para cada predio dentro da captacao cria elo em list_links"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x42e8f0"
+name = "tile_struct_find"
+kind = "function"
+comment = "fastcall(tile, tipo): procura na cadeia structure_pool do tile (3 = predio, 4 = estacao)"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x42e850"
+name = "tile_struct_add"
+kind = "function"
+comment = "fastcall(tile, tipo, id): insere na cadeia ordenada por tipo"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x427ff0"
+name = "track_level_edge"
+kind = "function"
+comment = "terraplena os vertices de uma aresta (media dos 3 vertices, limites -255..510)"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x4274b0"
+name = "track_level_ortho"
+kind = "function"
+comment = "helper de terraplenagem ortogonal"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x4278f0"
+name = "track_level_diag"
+kind = "function"
+comment = "helper de terraplenagem diagonal"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x469ef0"
+name = "max_bridge_type"
+kind = "function"
+comment = "tipo maximo de ponte: opcao do cenario, ou 1 (<1840), 2 (<1880), 3"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x416860"
+name = "tile_tree_count"
+kind = "function"
+comment = "fastcall(tile): arvores a cortar: 0, tile[3]&0x1f (classes 1,2,4,5,7,8,9) ou 1"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x466800"
+name = "track_piece_ptr"
+kind = "function"
+comment = "list_record(track_piece_pool, id)"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x537b48"
+name = "dir_dx"
+kind = "table"
+comment = "i32[8]: dx das 8 direcoes (0=N, horario)"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x537b68"
+name = "dir_dy"
+kind = "table"
+comment = "i32[8]: dy das 8 direcoes"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x5365e8"
+name = "edge_shape_table"
+kind = "table"
+comment = "256 x (u8 forma, u8 aux): 'c'(99) = combinacao de arestas invalida; 50 validas"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x5367e8"
+name = "edge_shape_table_bridge"
+kind = "table"
+comment = "idem para pontes (42 validas, sem entroncamentos em T)"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x53ce60"
+name = "bridge_cost_table"
+kind = "table"
+comment = "i32[tipo*2 + simples]: preco por tile de ponte (tipo 1..4)"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x540aa0"
+name = "terrain_class_table"
+kind = "table"
+comment = "19 registros de 0xc0 bytes; f32 +0 = multiplicador de custo do terreno"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x581090"
+name = "terrain_class_of_id"
+kind = "table"
+comment = "i32[1024] (BSS, preenchida em 0x471b10): id de terreno (tile u16 >> 6) -> classe 0..18; 18 = agua"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x5457f8"
+name = "building_type_table"
+kind = "table"
+comment = "registros de 0x154 bytes: tipo/tamanho/estilo, pegada 10x10 em +0xcd, nome +0x144, custo u32 +0x14b"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x54fd9c"
+name = "station_radius"
+kind = "table"
+comment = "u32[3] = {2,4,8}: raio de captacao por tamanho"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x5534b0"
+name = "track_single"
+kind = "global"
+comment = "1 = construir via simples, 0 = dupla"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x53ce18"
+name = "track_bridge_type"
+kind = "global"
+comment = "tipo de ponte escolhido (1 madeira, 2 pedra, 3 aco, 4)"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x566fcc"
+name = "track_electric"
+kind = "global"
+comment = "1 = construir eletrificado"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x566a50"
+name = "track_company"
+kind = "global"
+comment = "empresa que constroi (0 = nenhuma)"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x566a60"
+name = "track_elec_base"
+kind = "global"
+comment = "custo de eletrificacao por tile = ftol(6000*mod(0xb))"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x566a64"
+name = "track_edge_base"
+kind = "global"
+comment = "custo base por meia aresta = ftol(2000*mod(9))"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x5534c0"
+name = "track_elec_base_default"
+kind = "global"
+comment = "6000"
+spec = "docs/spec/terrain-track.md"

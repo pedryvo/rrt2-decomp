@@ -3,11 +3,11 @@
 # Ver docs/re-workflow.md.
 #
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
-# Classificadas (categoria != unknown): 855 (29.0%)
-# Por categoria: lib=258, platform=116, render=11, audio=70, ui=250, sim=150, unknown=2090
-# Por estado:   unknown=2795, named=49, spec=79, verified=22
-# Entradas manuais: 157
-# sim spec coverage: 54.0% (81 de 150 funcoes sim em spec/verified)
+# Classificadas (categoria != unknown): 899 (30.5%)
+# Por categoria: lib=258, platform=116, render=11, audio=70, ui=248, sim=196, unknown=2046
+# Por estado:   unknown=2765, named=63, spec=93, verified=24
+# Entradas manuais: 180
+# sim spec coverage: 49.5% (97 de 196 funcoes sim em spec/verified)
 
 [[function]]
 addr = "0x401005"
@@ -376,9 +376,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x40115e"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x463520"
 
 [[function]]
 addr = "0x401163"
@@ -628,9 +628,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x401276"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x463a20"
 
 [[function]]
 addr = "0x40127b"
@@ -2074,9 +2074,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x401861"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4071b0"
 
 [[function]]
 addr = "0x401866"
@@ -2257,9 +2257,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x40191f"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4ca920"
 
 [[function]]
 addr = "0x401924"
@@ -2439,7 +2439,7 @@ why = "no-evidence"
 [[function]]
 addr = "0x4019e2"
 size = 5
-category = "ui"
+category = "sim"
 status = "unknown"
 why = "thunk->0x4cc060"
 
@@ -2985,9 +2985,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x401c08"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x463b30"
 
 [[function]]
 addr = "0x401c0d"
@@ -3083,9 +3083,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x401c67"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x460850"
 
 [[function]]
 addr = "0x401c6c"
@@ -3342,9 +3342,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x401d70"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x460640"
 
 [[function]]
 addr = "0x401d75"
@@ -3629,9 +3629,9 @@ why = "thunk->0x44ec10"
 [[function]]
 addr = "0x401e9c"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x427ff0"
 
 [[function]]
 addr = "0x401ea1"
@@ -3657,9 +3657,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x401ece"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4cbf60"
 
 [[function]]
 addr = "0x401ed3"
@@ -4058,9 +4058,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x40204a"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4087a0"
 
 [[function]]
 addr = "0x40204f"
@@ -4748,9 +4748,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x402301"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x460520"
 
 [[function]]
 addr = "0x402306"
@@ -4776,9 +4776,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x40231f"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4274b0"
 
 [[function]]
 addr = "0x402324"
@@ -5596,9 +5596,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x40264e"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x462b80"
 
 [[function]]
 addr = "0x402662"
@@ -5708,9 +5708,9 @@ why = "thunk->0x44e170"
 [[function]]
 addr = "0x4026e9"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4278f0"
 
 [[function]]
 addr = "0x4026ee"
@@ -5848,9 +5848,9 @@ why = "thunk->0x4496e0"
 [[function]]
 addr = "0x40279d"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x466800"
 
 [[function]]
 addr = "0x4027a7"
@@ -7085,9 +7085,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x402c93"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x407030"
 
 [[function]]
 addr = "0x402c98"
@@ -7205,9 +7205,9 @@ why = "thunk->0x4ce4c0"
 [[function]]
 addr = "0x402d01"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4603a0"
 
 [[function]]
 addr = "0x402d06"
@@ -7853,16 +7853,18 @@ why = "no-evidence"
 [[function]]
 addr = "0x407030"
 size = 381
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "terrain-track.md"
+manual = true
 
 [[function]]
 addr = "0x4071b0"
 size = 263
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "terrain-track.md"
+manual = true
 
 [[function]]
 addr = "0x4072c0"
@@ -7923,9 +7925,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4087a0"
 size = 1738
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "terrain-track.md"
+manual = true
 
 [[function]]
 addr = "0x408e70"
@@ -7957,9 +7960,10 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x409010"
+name = "building_create"
 size = 77
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -8014,9 +8018,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x409a30"
 size = 2859
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "terrain-track.md"
+manual = true
 
 [[function]]
 addr = "0x40a5c0"
@@ -8537,44 +8542,50 @@ why = "no-evidence"
 [[function]]
 addr = "0x416210"
 size = 157
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "terrain-track.md"
+manual = true
 
 [[function]]
 addr = "0x4162b0"
 size = 354
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "terrain-track.md"
+manual = true
 
 [[function]]
 addr = "0x416420"
 size = 197
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "terrain-track.md"
+manual = true
 
 [[function]]
 addr = "0x4164f0"
 size = 557
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "terrain-track.md"
+manual = true
 
 [[function]]
 addr = "0x416720"
 size = 320
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "terrain-track.md"
+manual = true
 
 [[function]]
 addr = "0x416860"
 size = 46
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "terrain-track.md"
+manual = true
 
 [[function]]
 addr = "0x416b00"
@@ -8984,17 +8995,19 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x4274b0"
+name = "track_level_ortho"
 size = 1076
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "symbol:track_level_ortho"
 
 [[function]]
 addr = "0x4278f0"
+name = "track_level_diag"
 size = 685
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "symbol:track_level_diag"
 
 [[function]]
 addr = "0x427ba0"
@@ -9006,9 +9019,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x427ff0"
 size = 1005
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "terrain-track.md"
+manual = true
 
 [[function]]
 addr = "0x4283e0"
@@ -9203,16 +9217,18 @@ why = "no-evidence"
 [[function]]
 addr = "0x42e850"
 size = 158
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "terrain-track.md"
+manual = true
 
 [[function]]
 addr = "0x42e8f0"
 size = 70
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "terrain-track.md"
+manual = true
 
 [[function]]
 addr = "0x42eb00"
@@ -10994,31 +11010,35 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x4603a0"
+name = "track_company_may_build_at"
 size = 375
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "symbol:track_company_may_build_at"
 
 [[function]]
 addr = "0x460520"
 size = 276
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "terrain-track.md"
+manual = true
 
 [[function]]
 addr = "0x460640"
 size = 397
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "terrain-track.md"
+manual = true
 
 [[function]]
 addr = "0x460850"
 size = 7730
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "terrain-track.md"
+manual = true
 
 [[function]]
 addr = "0x462690"
@@ -11064,38 +11084,43 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x462a70"
+name = "tile_river_neighbors"
 size = 268
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
 addr = "0x462b80"
 size = 2464
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "terrain-track.md"
+manual = true
 
 [[function]]
 addr = "0x463520"
 size = 1272
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "terrain-track.md"
+manual = true
 
 [[function]]
 addr = "0x463a20"
 size = 260
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "terrain-track.md"
+manual = true
 
 [[function]]
 addr = "0x463b30"
 size = 479
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "terrain-track.md"
+manual = true
 
 [[function]]
 addr = "0x464bb0"
@@ -11200,10 +11225,11 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x466800"
+name = "track_piece_ptr"
 size = 13
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "symbol:track_piece_ptr"
 
 [[function]]
 addr = "0x466810"
@@ -11731,9 +11757,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x469ef0"
 size = 53
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "terrain-track.md"
+manual = true
 
 [[function]]
 addr = "0x469f30"
@@ -15008,9 +15035,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4ca920"
 size = 382
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "terrain-track.md"
+manual = true
 
 [[function]]
 addr = "0x4caaa0"
@@ -15035,17 +15063,19 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x4cbf60"
+name = "track_lay_command"
 size = 245
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "named"
+why = "symbol:track_lay_command"
 
 [[function]]
 addr = "0x4cc060"
 size = 3661
-category = "ui"
-status = "unknown"
-why = "string:%s %s"
+category = "sim"
+status = "spec"
+why = "terrain-track.md"
+manual = true
 
 [[function]]
 addr = "0x4ccec0"
