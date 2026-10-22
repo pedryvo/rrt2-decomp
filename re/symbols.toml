@@ -9,3 +9,100 @@
 # kind = "function"          # function | global | table | string
 # comment = "..."            # opcional: o que faz, em uma linha
 # spec = "docs/formats/pk2.md"  # opcional: onde está documentado
+
+[[symbol]]
+addr = "0x4f0d70"
+name = "pk2_fold_char"
+kind = "function"
+comment = "maiúscula: c-0x20 se a-z ou c>0xEF (fastcall, AL)"
+spec = "docs/formats/pk2.md"
+
+[[symbol]]
+addr = "0x4f43c0"
+name = "pk2_load_all"
+kind = "function"
+comment = "enumera .\\data\\*.pk2 em ordem alfabética decrescente e chama pk2_read_directory"
+spec = "docs/formats/pk2.md"
+
+[[symbol]]
+addr = "0x4f4c20"
+name = "pk2_read_directory"
+kind = "function"
+comment = "abre um pack e lê o diretório (PK2: u32 count; .PAK: u16 count); fastcall, ECX=caminho"
+spec = "docs/formats/pk2.md"
+
+[[symbol]]
+addr = "0x4f4e60"
+name = "pk2_has_file"
+kind = "function"
+comment = "hash do nome e busca em todos os packs; 1 se existe (fastcall, ECX=nome)"
+spec = "docs/formats/pk2.md"
+
+[[symbol]]
+addr = "0x4f5070"
+name = "pk2_seek_file"
+kind = "function"
+comment = "primeiro pack com o hash vence; seek no conteúdo (offset+4+12N para PK2)"
+spec = "docs/formats/pk2.md"
+
+[[symbol]]
+addr = "0x4f48e0"
+name = "pk2_get_item"
+kind = "function"
+comment = "cache de itens de pack (11 bytes/slot) e criação do objeto por tipo 0/1/2"
+spec = "docs/formats/pk2.md"
+
+[[symbol]]
+addr = "0x4f4600"
+name = "pk2_shutdown"
+kind = "function"
+comment = "reporta 'Pack Item leaked', fecha packs"
+spec = "docs/formats/pk2.md"
+
+[[symbol]]
+addr = "0x465050"
+name = "game_init_paths"
+kind = "function"
+comment = "inicialização; testa .\\DATA\\rt2.PK2 e procura rt2.PAK/CD"
+
+[[symbol]]
+addr = "0x51c53d"
+name = "crt_open_file"
+kind = "function"
+comment = "open de arquivo solto (retorna -1 em falha); nome inferido dos usos"
+
+[[symbol]]
+addr = "0x57b92c"
+name = "pk2_dir_tables"
+kind = "table"
+comment = "ponteiros para as tabelas de diretório {hash,offset,size}[count], um por pack"
+
+[[symbol]]
+addr = "0x57b954"
+name = "pk2_dir_counts"
+kind = "table"
+comment = "nº de entradas por pack"
+
+[[symbol]]
+addr = "0x57b904"
+name = "pk2_handles"
+kind = "table"
+comment = "handles de arquivo por pack"
+
+[[symbol]]
+addr = "0x57b97c"
+name = "pk2_is_pak"
+kind = "table"
+comment = "1 se o pack é .PAK (último char 'K'), 0 se PK2"
+
+[[symbol]]
+addr = "0x57b9ac"
+name = "pk2_pack_count"
+kind = "global"
+comment = "número de packs carregados"
+
+[[symbol]]
+addr = "0x57b9a4"
+name = "pk2_item_cache"
+kind = "global"
+comment = "cache de itens, DAT_0057b9a8 slots de 11 bytes"
