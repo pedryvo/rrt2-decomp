@@ -99,6 +99,16 @@ impl SimState {
             self.save.state[0x3845 + e] = u8::from(v);
         }
         self.save.header[0x86FC] = u8::from(o.campaign);
+        // The first redraw of the map (`0x417c40`, seen once at the end of the campaign start).
+        self.redraw_map();
+    }
+
+    /// `0x417c40`: the deferred redraw of the map's dirty rectangle. The flat bit (`0x417880`)
+    /// is already kept up to date where the elevation changes; this is the light pass.
+    pub(crate) fn redraw_map(&mut self) {
+        if let Some([x0, y0, x1, y1]) = self.dirty.0.take() {
+            crate::tilemark::recompute_light(&mut self.save, x0, y0, x1, y1);
+        }
     }
 
     /// `0x473590` (single player): the player records of the map take the slots of the option
@@ -158,6 +168,64 @@ impl SimState {
         for r in &mut self.save.stations.records {
             r.data[0x4bb] = 0;
         }
+    }
+
+    /// `0x40b820` for every building in list order: a live one (`+0x4f == 0`) clears `+0x63` and
+    /// `+0x67`, restarts its production clocks (`0x40bb40`: `rng(0, 100)` per slot unless
+    /// decorative, `+0x2e`), recounts its piles (`0x40a610(b, 0)`), takes the year in `+0x3c`
+    /// and clears the yearly counters of its station (`0x4beb00`).
+    fn buildings_set_date(&mut self, w: &mut World, year: i32, minutes: i32) {
+        use crate::industry;
+        for slot in pool::list_order(&self.save.objects) {
+            let Some(rec) = pool::record(&self.save.objects, slot) else {
+                continue;
+            };
+            if rec.data[industry::OFF_INACTIVE] != 0 {
+                continue;
+            }
+            let mut data = rec.data.clone();
+            data[0x63..0x6b].fill(0);
+            let ty = usize::from(data[industry::OFF_TYPE]);
+            let decorative = data[0x2e] != 0;
+            let clocks = crate::growth::initial_slot_clocks(
+                &mut w.rng,
+                &self.types[ty],
+                year,
+                minutes as u32,
+                decorative,
+            );
+            for (k, c) in clocks.iter().enumerate() {
+                put_u32(&mut data, industry::OFF_CLOCKS + 4 * k, *c);
+            }
+            let types = std::mem::take(&mut self.types);
+            let effects = self.effect_table();
+            let env = industry::Env {
+                types: &types,
+                now: minutes,
+                year,
+                basic_model: self.save.state[super::ST_BASIC_MODEL] != 0,
+                sandbox: self.sandbox(),
+                overtime: false,
+                econ_factor: 1.0,
+                effects: &effects,
+            };
+            industry::recount_piles(&mut data, &self.save.pool_7c, &env);
+            self.types = types;
+            data[0x3c..0x3e].copy_from_slice(&(year as u16).to_le_bytes());
+            let station = usize::from(u16::from_le_bytes([data[8], data[9]]));
+            if let Some(r) = pool::record_mut(&mut self.save.objects, slot) {
+                r.data = data;
+            }
+            if station != 0
+                && let Some(s) = pool::record_mut(&mut self.save.stations, station)
+            {
+                s.data[0x59..0x61].fill(0);
+                for o in [0x4b5usize, 0x4b7, 0x4b9] {
+                    s.data[o..o + 2].fill(0);
+                }
+            }
+        }
+        self.log.ran("building_set_date");
     }
 
     /// `0x474280`: the world start of a new game.
@@ -457,14 +525,7 @@ impl SimState {
             put_u32(x, 0x6d, minutes as u32);
             put_u32(x, 0xc7, minutes as u32);
         }
-        if self.save.objects.records.iter().any(|r| r.data[0x4f] == 0) {
-            crate::todo_hook!(
-                self.log,
-                "building_set_date",
-                "0x40b820 per live building (0x40bb40 clocks, 0x40a610 recount, 0x4beb00)",
-                "world-tick.md 10"
-            );
-        }
+        self.buildings_set_date(w, year, minutes);
         for p in pool::list_order(&self.save.places) {
             if let Some(r) = pool::record_mut(&mut self.save.places, p) {
                 let x = &mut r.data;

@@ -69,6 +69,17 @@ pub struct SimState {
     ts_globals: crate::trainstep::Globals,
     /// The decoded scenario rule pool, built on the first trigger.
     scenario: Option<crate::scenario::Scenario>,
+    /// Slot count of the building pool when the save was read: the slots past it live in memory
+    /// the pool grew into (`pool_grow`), which Wine's debug heap fills with `0xBAADF00D`; the
+    /// bytes `building_construct` never writes (`+0x38..+0x3c`) keep that fill.
+    objects_loaded_slots: usize,
+    /// The map's redraw rectangle (`0x417770`), painted by `0x417c40` (light pass).
+    pub(crate) dirty: crate::tilemark::DirtyRect,
+    /// Per tile: its overlay list holds ground blends (runtime state of the loader's terrain
+    /// passes and of `0x42a7d0`; [`crate::fields::FieldCtx::ground`]). Built on first use.
+    pub(crate) ground_layer: Option<Vec<bool>>,
+    /// The drawn track of the whole map while `town_year_step` runs (it builds no track).
+    pub(crate) track_cache: Option<crate::fields::TrackMask>,
 }
 
 impl PartialEq for SimState {
@@ -128,6 +139,17 @@ impl World {
             log: HookLog::default(),
             ts_globals: Default::default(),
             scenario: None,
+            objects_loaded_slots: save.objects.slots,
+            // The loader's ground pass (`0x42a7d0(0, 0, W - 1, H - 1)`) leaves
+            // `0x417770(0, 0, W - 2, H - 2)`.
+            dirty: crate::tilemark::DirtyRect(Some([
+                0,
+                0,
+                save.map.width as i32 - 2,
+                save.map.height as i32 - 2,
+            ])),
+            ground_layer: None,
+            track_cache: None,
         };
         sim.rebuild_types(i32::from(save.date.year));
         w.sim = Some(Box::new(sim));

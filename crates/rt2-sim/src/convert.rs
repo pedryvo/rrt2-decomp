@@ -299,7 +299,7 @@ impl SimState {
     /// `< 0x2348`), the track tile rebuild of the whole map (`0x4cb090`) and the terrain passes
     /// (`0x4294d0` rivers, `0x428fe0` roads, `0x42a7d0` ground), which see the track overlays.
     pub(crate) fn load_passes(&mut self, w: &mut World, version: u32) {
-        self.with_trainstep(w, |ts| {
+        let ground = self.with_trainstep(w, |ts| {
             if version < MAGIC_2348 {
                 let mut t = ts.first_id(P::Train);
                 while t != 0 {
@@ -320,7 +320,7 @@ impl SimState {
                 }
             }
             let ts = &mut *ai.ts;
-            terrain_passes(ts, &track);
+            let ground = terrain_passes(ts, &track);
             late_fixups(ts);
             if version < 0x2344 {
                 // Every live station in slot order (`0x4f1e30`), by the id in its record.
@@ -335,7 +335,9 @@ impl SimState {
                     ai.station_rebuild_links(st);
                 }
             }
+            ground
         });
+        self.ground_layer = Some(ground);
     }
 }
 
@@ -388,8 +390,9 @@ fn station_unlink(ts: &mut crate::trainstep::Ts<'_>, st: i32) {
 
 /// The terrain passes of the loader on the save's tiles, with the track overlays of `0x4cb090`
 /// present on the tiles marked in `track`.
-fn terrain_passes(ts: &mut crate::trainstep::Ts<'_>, track: &[bool]) {
+fn terrain_passes(ts: &mut crate::trainstep::Ts<'_>, track: &[bool]) -> Vec<bool> {
     let (mw, mh) = (ts.s.map.width, ts.s.map.height);
+    let ground;
     {
         {
             let tiles = &ts.s.map.tiles;
@@ -420,6 +423,7 @@ fn terrain_passes(ts: &mut crate::trainstep::Ts<'_>, track: &[bool]) {
             let mut rng = GameRng(ts.rng.state());
             g.build_overlays(&mut rng);
             *ts.rng = crate::rng::GameRng::new(rng.0);
+            ground = crate::fields::ground_layer_of(&g);
             // The Load Game wrapper then redraws the territory borders (`0x495700` ->
             // `0x42bf90`).
             let region: Vec<u8> = ts.s.map.tiles.iter().map(|t| t.region).collect();
@@ -436,6 +440,7 @@ fn terrain_passes(ts: &mut crate::trainstep::Ts<'_>, track: &[bool]) {
             }
         }
     }
+    ground
 }
 
 /// The fields the saver (`0x477540`) recomputes before writing, with the editor flag

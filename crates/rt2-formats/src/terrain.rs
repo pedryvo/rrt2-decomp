@@ -200,6 +200,22 @@ pub fn tables() -> &'static Tables {
     T.get_or_init(Tables::build)
 }
 
+/// The ids `0x42a3e0` draws a tile of `class` at `(x, y)` from: the class's common group, or its
+/// rare group (`0x540aa8`, `0x540b08`) on the tiles where `(y * 0x41c64e6d - x * 0x39b19300) % 40
+/// == 1`. Inclusive bounds.
+pub fn variant_range(class: usize, x: i32, y: i32) -> (i32, i32) {
+    let n = OWN_GROUPS[class].map(i32::from);
+    let s = tables().start[class];
+    let pick = y
+        .wrapping_mul(0x41c6_4e6d)
+        .wrapping_sub(x.wrapping_mul(0x39b1_9300));
+    if n[1] != 0 && pick % 0x28 == 1 {
+        (s[1], s[1] + n[1] - 1)
+    } else {
+        (s[0], s[0] + n[0] - 1)
+    }
+}
+
 /// The game's linear congruential generator (`rng_range` `0x4f0660`, state at `0x55d2c0`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct GameRng(pub u32);
@@ -395,16 +411,7 @@ impl TerrainGrid {
         let tb = tables();
         let c = self.cell_mut(x, y);
         let class = usize::from(tb.class_of_id(c.id()));
-        let n = OWN_GROUPS[class].map(i32::from);
-        let s = tb.start[class];
-        let pick = (y as i32)
-            .wrapping_mul(0x41c6_4e6d)
-            .wrapping_sub((x as i32).wrapping_mul(0x39b1_9300));
-        let (lo, hi) = if n[1] != 0 && pick % 0x28 == 1 {
-            (s[1], s[1] + n[1] - 1)
-        } else {
-            (s[0], s[0] + n[0] - 1)
-        };
+        let (lo, hi) = variant_range(class, x as i32, y as i32);
         let id = rng.range(lo, hi);
         c.v = (id as u16) << 6 | (c.v & 0x3f);
         if c.v & 0x30 != 0 {
@@ -862,9 +869,24 @@ impl TerrainGrid {
     /// Load Game wrapper after the loader (`0x479710` -> `0x495d10` -> `0x495700`).
     pub fn build_territory_borders(&mut self, region: &[u8], shown: impl Fn(u8) -> bool) {
         let (w, h) = (self.width as i32, self.height as i32);
+        self.build_territory_borders_rect(0, 0, w - 1, h - 1, region, shown);
+    }
+
+    /// `0x42bf90(x0, y0, x1, y1)`: [`TerrainGrid::build_territory_borders`] for the tiles of an
+    /// inclusive rectangle (clamped to the map).
+    pub fn build_territory_borders_rect(
+        &mut self,
+        x0: i32,
+        y0: i32,
+        x1: i32,
+        y1: i32,
+        region: &[u8],
+        shown: impl Fn(u8) -> bool,
+    ) {
+        let (w, h) = (self.width as i32, self.height as i32);
         let mut no_rng = GameRng(0);
-        for y in 0..h {
-            for x in 0..w {
+        for y in y0.max(0)..=y1.min(h - 1) {
+            for x in x0.max(0)..=x1.min(w - 1) {
                 let (ux, uy) = (x as usize, y as usize);
                 // Layer 1 removals never draw from the RNG (only layer 0 re-picks a variant).
                 self.clear_layer(ux, uy, LAYER_TERRITORY, false, &mut no_rng);

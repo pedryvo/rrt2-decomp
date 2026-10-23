@@ -172,7 +172,7 @@ impl TownEnv for TownWorld<'_> {
             })
             .collect();
         if let Some(i) = pick_worst_building(rng, &list, house, self.set1) {
-            self.s.building_destroy(chain[i]);
+            self.s.building_destroy(rng, chain[i]);
         }
     }
 }
@@ -191,20 +191,57 @@ impl SiteWorld<'_> {
     /// 4.5): structure chain of the footprint tiles (`0x409770`), terrain levelling (`0x409580`),
     /// station links (`0x4072c0`), terrain flags around the anchor (`0x424c10`) and the flat
     /// bit of the redrawn tiles.
-    fn mark_terrain(&mut self, slot: usize, shape: usize, geo: &tilemark::Geometry) {
+    fn mark_terrain(
+        &mut self,
+        rng: &mut GameRng,
+        slot: usize,
+        shape: usize,
+        geo: &tilemark::Geometry,
+    ) {
         let (cx, cy) = (i32::from(geo.origin.0), i32::from(geo.origin.1));
         {
             let st = &mut *self.s;
             let img = &st.data.image;
             tilemark::mark_building(&mut st.save, img, shape, slot as u16, cx, cy);
             tilemark::level_terrain(&mut st.save, img, shape, cx, cy);
+            let b = geo.bbox.map(i32::from);
+            st.dirty.add(b[0] - 1, b[1] - 1, b[2] + 1, b[3] + 1);
             if tilemark::cells().any(|(l, c)| tilemark::shape_cell(img, shape, l, c) & 0x40 != 0) {
-                todo_hook!(
-                    st.log,
-                    "building_create_field_textures",
-                    "0x409120 saved tile data and 0x429fc0/0x42a3e0/0x42a7d0 field textures (RNG per tile)",
-                    "world-growth.md 4.5"
+                let ty = tilemark::shape_type(img, shape);
+                let head =
+                    pool::record(&st.save.objects, slot).map_or(0, |r| u16_at(&r.data, 0x50));
+                let cached = st.track_cache.take();
+                let local;
+                let track = match &cached {
+                    Some(t) => t,
+                    None => {
+                        local = st.track_mask(cx - 12, cy - 12, cx + 5, cy + 5);
+                        &local
+                    }
+                };
+                let mut ground = st.take_ground_layer();
+                let img = &st.data.image;
+                let mut ctx = crate::fields::FieldCtx {
+                    dirty: &mut st.dirty,
+                    ground: &mut ground,
+                    track,
+                };
+                let head = crate::fields::paint_fields(
+                    &mut st.save,
+                    &mut ctx,
+                    img,
+                    rng,
+                    shape,
+                    ty,
+                    (cx, cy),
+                    head,
                 );
+                st.ground_layer = Some(ground);
+                st.track_cache = cached;
+                if let Some(r) = pool::record_mut(&mut st.save.objects, slot) {
+                    put_u16(&mut r.data, 0x50, head);
+                }
+                st.log.ran("building_create_field_textures");
             }
         }
         self.s.link_building(slot);
@@ -287,7 +324,16 @@ impl SiteEnv for SiteWorld<'_> {
     /// `building_can_place` (`0x4087a0`, world-growth.md 4.6), checked against the original by
     /// `crates/rt2-oracle/tests/placement.rs`.
     fn can_place(&mut self, x: i32, y: i32, shape: usize, early: bool) -> bool {
-        tilemark::can_place(&self.s.save, &self.s.data.image, x, y, shape, early)
+        match &self.s.track_cache {
+            Some(track) => {
+                let view = tilemark::PlaceView {
+                    save: &self.s.save,
+                    track,
+                };
+                tilemark::can_place(&view, &self.s.data.image, x, y, shape, early)
+            }
+            None => tilemark::can_place(&self.s.save, &self.s.data.image, x, y, shape, early),
+        }
     }
 
     /// `building_create` (`0x409010` -> `0x409a30`, world-growth.md 4.4).
@@ -342,8 +388,18 @@ impl SiteEnv for SiteWorld<'_> {
         let Ok(slot) = pool::alloc(&mut self.s.save.objects, d) else {
             return;
         };
+        let rs = self.s.save.objects.record_size;
+        let grown = slot >= self.s.objects_loaded_slots;
         if let Some(r) = pool::record_mut(&mut self.s.save.objects, slot) {
             put_u16(&mut r.data, 0, slot as u16);
+            if grown {
+                // Never written by `0x409a30`: the heap fill of the grown pool (byte `i` of the
+                // pool's block is `[0x0d, 0xf0, 0xad, 0xba][i % 4]`).
+                const PAT: [u8; 4] = [0x0d, 0xf0, 0xad, 0xba];
+                for o in 0x38..0x3c {
+                    r.data[o] = PAT[(slot * rs + o) % 4];
+                }
+            }
         }
         if let Some(r) = pool::record_mut(&mut self.s.save.places, self.place) {
             put_u16(&mut r.data, PL_FIRST, slot as u16);
@@ -364,12 +420,74 @@ impl SiteEnv for SiteWorld<'_> {
                     place: self.place as i32,
                 });
         }
-        self.mark_terrain(slot, shape, &geo);
+        self.mark_terrain(rng, slot, shape, &geo);
         self.s.log.ran("building_create");
     }
 }
 
 impl SimState {
+    /// The drawn track of a rectangle of tiles (`build::Ai::track_overlay`, the layers 4/5 of
+    /// `0x4cb090`).
+    pub(crate) fn track_mask(
+        &mut self,
+        x0: i32,
+        y0: i32,
+        x1: i32,
+        y1: i32,
+    ) -> crate::fields::TrackMask {
+        let (w, h) = (x1 - x0 + 1, y1 - y0 + 1);
+        let mut m = crate::fields::TrackMask {
+            x0,
+            y0,
+            w,
+            h,
+            bits: vec![false; (w.max(0) * h.max(0)) as usize],
+        };
+        if self.save.track_pieces.records.is_empty() || w <= 0 || h <= 0 {
+            return m;
+        }
+        let (mw, mh) = (self.save.map.width as i32, self.save.map.height as i32);
+        let mut rng = GameRng::new(0);
+        let mut crt = crate::rng::CrtRng::new(0);
+        let mut ts = crate::trainstep::Ts {
+            s: &mut self.save,
+            img: &self.data.image,
+            anim_frames: &self.data.anim_frames,
+            types: &self.types,
+            cargo: &self.data.cargo,
+            revenue: &self.data.revenue,
+            now: 0,
+            year: 0,
+            rng: &mut rng,
+            crt: &mut crt,
+            log: &mut self.log,
+            g: std::mem::take(&mut self.ts_globals),
+            flag_570229: 0,
+            flag_570236: 0,
+        };
+        {
+            let ai = crate::ai::Ai::new(&mut ts);
+            for y in y0.max(0)..=y1.min(mh - 1) {
+                for x in x0.max(0)..=x1.min(mw - 1) {
+                    m.bits[((y - y0) * w + x - x0) as usize] = ai.track_overlay(x, y);
+                }
+            }
+        }
+        self.ts_globals = ts.g;
+        m
+    }
+
+    /// The ground-layer state of the tiles ([`SimState::ground_layer`]), built from the loader's
+    /// passes when the world was read from a save already in the 0x2348 layout.
+    pub(crate) fn take_ground_layer(&mut self) -> Vec<bool> {
+        if let Some(g) = self.ground_layer.take() {
+            return g;
+        }
+        let (mw, mh) = (self.save.map.width as i32, self.save.map.height as i32);
+        let track = self.track_mask(0, 0, mw - 1, mh - 1);
+        crate::fields::loader_ground_layer(&self.save, &track, 0)
+    }
+
     /// `0x4072c0(building)`: links a new building to every station whose catchment reaches it
     /// (`station_catchment_test` `0x407030`): one `pool_58` record per station, chained from
     /// the building (`+0x2f`) and from the station (`+0x3d`).
@@ -436,7 +554,7 @@ impl SimState {
     }
 
     /// `building_destroy(b, 1)` (`0x40adb0`, world-growth.md 3.6).
-    fn building_destroy(&mut self, slot: usize) {
+    fn building_destroy(&mut self, rng: &mut GameRng, slot: usize) {
         let Some(rec) = pool::record(&self.save.objects, slot) else {
             return;
         };
@@ -546,12 +664,26 @@ impl SimState {
             tilemark::restore_saved_tiles(&mut self.save, saved, origin.0, origin.1);
         }
         if matches!(shape_ty, 0xb | 0x10 | 0x21) {
-            todo_hook!(
-                self.log,
-                "building_destroy_field_textures",
-                "0x4091f0 repaints the transitions around a field (0x42a7d0)",
-                "world-growth.md 4.5"
-            );
+            let b = bbox.map(i32::from);
+            let cached = self.track_cache.take();
+            let local;
+            let track = match &cached {
+                Some(t) => t,
+                None => {
+                    local = self.track_mask(b[0] - 5, b[1] - 5, b[2] + 5, b[3] + 5);
+                    &local
+                }
+            };
+            let mut ground = self.take_ground_layer();
+            let mut ctx = crate::fields::FieldCtx {
+                dirty: &mut self.dirty,
+                ground: &mut ground,
+                track,
+            };
+            crate::fields::repaint_after_demolition(&mut self.save, &mut ctx, rng, bbox);
+            self.ground_layer = Some(ground);
+            self.track_cache = cached;
+            self.log.ran("building_destroy_field_textures");
         }
         let b = bbox.map(i32::from);
         tilemark::recompute_flags(&mut self.save, b[0] - 1, b[1] - 1, b[2] + 1, b[3] + 1);
@@ -578,6 +710,10 @@ impl SimState {
             );
             return;
         }
+        // Town growth builds no track: the drawn track of the whole map is computed once for
+        // the placement tests and the field passes.
+        let (mw, mh) = (self.save.map.width as i32, self.save.map.height as i32);
+        self.track_cache = Some(self.track_mask(0, 0, mw - 1, mh - 1));
         let now = w.minutes;
         let date = date_of(now);
         let last = u32_at(&self.save.state, ST_LAST_YEAR_STEP);
@@ -658,6 +794,7 @@ impl SimState {
         }
         let d = decay_counter(gw.deliveries_total);
         put_u32(&mut self.save.state, ST_DELIVERIES, d as u32);
+        self.track_cache = None;
         self.log.ran("town_year_step");
     }
 }

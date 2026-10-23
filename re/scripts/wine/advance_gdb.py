@@ -95,6 +95,9 @@ if newgame:
             except Exception: w = -1
             log("TRACE %#x ecx=%#x edx=%#x [ecx]=%d rng=%#x" % (a, e, reg("edx"), w, rd32(0x55D2C0)))
         hooks[a] = tr
+    # ADV_HOOKPY=<arquivo.py>: executado aqui; pode registrar mais breakpoints em `hooks`
+    if env.get("ADV_HOOKPY"):
+        exec(open(env["ADV_HOOKPY"]).read())
     fcall(0x410DE0, 0, 0, hooks=hooks)
     wr32(0x574C04, 1)                     # 0x479b20 liberou o porteiro no fim
     log("NEWGAME set=%d idx=%d game_seed=%#x rng_seed=%#x" % (cset, cidx, gseed, rseed))

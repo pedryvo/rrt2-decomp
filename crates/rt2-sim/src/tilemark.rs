@@ -422,6 +422,84 @@ pub fn recompute_flat(s: &mut Save, x0: i32, y0: i32, x1: i32, y1: i32) {
     }
 }
 
+/// The redraw rectangle of the map (`0x417770`: the union of the rectangles passed since the
+/// last redraw `0x417c40`, kept unclamped). Runtime state, not saved.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct DirtyRect(pub Option<[i32; 4]>);
+
+impl DirtyRect {
+    /// `0x417770(x0, y0, x1, y1)`.
+    pub fn add(&mut self, x0: i32, y0: i32, x1: i32, y1: i32) {
+        self.0 = Some(match self.0 {
+            None => [x0, y0, x1, y1],
+            Some([a, b, c, d]) => [a.min(x0), b.min(y0), c.max(x1), d.max(y1)],
+        });
+    }
+}
+
+/// `0x416bf0`: the shade of a tile (runtime byte `tile+0xe`, 0..=31) from the slopes of its
+/// corners ([`crate::build::tiles::tile_shade_from`]).
+pub fn tile_light(s: &Save, x: i32, y: i32) -> u8 {
+    let stride = s.map.width as i32 + 1;
+    let e = |ex: i32, ey: i32| i32::from(s.map.elevation[(ey * stride + ex) as usize]);
+    crate::build::tiles::tile_shade_from([e(x, y), e(x + 1, y), e(x + 1, y + 1), e(x, y + 1)]) as u8
+}
+
+/// The light pass of the deferred redraw (`0x417c40`) over an inclusive rectangle (clamped,
+/// `0x425850`): the tiles' shades (`0x416bf0`), then per tile (`0x416d40`) the shade of its
+/// four corners (mean of the up to four tiles around each corner) and `tile+6 & 0x20` = the
+/// tile's shade equals all four. Shades outside the rectangle are taken from the current
+/// elevation (the original keeps them from their last redraw).
+pub fn recompute_light(s: &mut Save, x0: i32, y0: i32, x1: i32, y1: i32) {
+    let (w, h) = (s.map.width as i32, s.map.height as i32);
+    let (x0, y0) = (x0.max(0), y0.max(0));
+    let (x1, y1) = (x1.min(w - 1), y1.min(h - 1));
+    if x0 > x1 || y0 > y1 {
+        return;
+    }
+    let (lx0, ly0, lx1, ly1) = (
+        (x0 - 1).max(0),
+        (y0 - 1).max(0),
+        (x1 + 1).min(w - 1),
+        (y1 + 1).min(h - 1),
+    );
+    let lw = lx1 - lx0 + 1;
+    let mut light = vec![0u8; (lw * (ly1 - ly0 + 1)) as usize];
+    for y in ly0..=ly1 {
+        for x in lx0..=lx1 {
+            light[((y - ly0) * lw + x - lx0) as usize] = tile_light(s, x, y);
+        }
+    }
+    let at = |x: i32, y: i32| i32::from(light[((y - ly0) * lw + x - lx0) as usize]);
+    for y in y0..=y1 {
+        for x in x0..=x1 {
+            let own = at(x, y);
+            let mut same = true;
+            for (cx, cy) in [(x - 1, y - 1), (x, y - 1), (x, y), (x - 1, y)] {
+                let (mut n, mut sum) = (0, 0);
+                for ty in cy..=cy + 1 {
+                    for tx in cx..=cx + 1 {
+                        if tx >= 0 && tx < w && ty >= 0 && ty < h {
+                            n += 1;
+                            sum += at(tx, ty);
+                        }
+                    }
+                }
+                // The interior case of `0x416d40` is `>> 2` of four, the edge case `sum / n`.
+                if (sum / n) as u8 != own as u8 {
+                    same = false;
+                }
+            }
+            let t = tile_at_mut(s, x, y);
+            if same {
+                t.flags6 |= 0x20;
+            } else {
+                t.flags6 &= 0xdf;
+            }
+        }
+    }
+}
+
 /// Start of `building_destroy`'s tile pass: removes the building's kind-3 structure from every
 /// tile of its bounding box (`+0x26..+0x2c`, `x` outer, `y` inner).
 pub fn unmark_building(s: &mut Save, id: u16, bbox: [i16; 4]) {
@@ -538,6 +616,29 @@ pub fn can_place(
         }
     }
     true
+}
+
+/// The save with the drawn track of `0x4cb090` ([`crate::fields::TrackMask`]): the overlay
+/// test of `building_can_place` (`0x415f80`) also sees the pieces a neighbour's track draws
+/// into the tile.
+pub struct PlaceView<'a> {
+    pub save: &'a Save,
+    pub track: &'a crate::fields::TrackMask,
+}
+
+impl PlaceMap for PlaceView<'_> {
+    fn size(&self) -> (i32, i32) {
+        self.save.size()
+    }
+    fn tile(&self, x: i32, y: i32) -> TileFacts {
+        TileFacts {
+            track_overlay: self.track.get(x, y),
+            ..self.save.tile(x, y)
+        }
+    }
+    fn class_of(&self, id: u16) -> i32 {
+        self.save.class_of(id)
+    }
 }
 
 impl PlaceMap for Save {

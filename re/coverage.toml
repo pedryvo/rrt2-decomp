@@ -3,11 +3,11 @@
 # Ver docs/re-workflow.md.
 #
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
-# Classificadas (categoria != unknown): 1283 (43.6%)
-# Por categoria: lib=258, platform=114, render=11, audio=56, ui=273, sim=571, unknown=1662
-# Por estado:   unknown=2398, named=126, spec=189, verified=232
-# Entradas manuais: 529
-# sim spec coverage: 66.9% (382 de 571 funcoes sim em spec/verified)
+# Classificadas (categoria != unknown): 1287 (43.7%)
+# Por categoria: lib=258, platform=114, render=11, audio=56, ui=273, sim=575, unknown=1658
+# Por estado:   unknown=2397, named=122, spec=187, verified=239
+# Entradas manuais: 533
+# sim spec coverage: 67.3% (387 de 575 funcoes sim em spec/verified)
 
 [[function]]
 addr = "0x401005"
@@ -7982,17 +7982,17 @@ manual = true
 addr = "0x409120"
 size = 203
 category = "sim"
-status = "spec"
-why = "world-tick.md 10: tile salvo em pool_88 (gap do New Game)"
+status = "verified"
+why = "world-growth.md 4.5.1: fields::save_tile (registro de 7 bytes em pool_88, cadeia +0x50); placar New Game B&O/#02/#04/#07 com 0 campos"
 manual = true
 
 [[function]]
 addr = "0x4091f0"
-name = "building_restore_tiles"
 size = 243
-category = "unknown"
-status = "named"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "world-growth.md 4.5: tilemark::restore_saved_tiles + fields::repaint_after_demolition (0x42a7d0 tipos 0xb/0x10/0x21); sem caso no placar"
+manual = true
 
 [[function]]
 addr = "0x409320"
@@ -8139,8 +8139,8 @@ manual = true
 addr = "0x40b820"
 size = 86
 category = "sim"
-status = "spec"
-why = "growth/building_reset_for_start (4.4)"
+status = "verified"
+why = "world-tick.md 10: SimState::buildings_set_date (+0x63/+0x67, 0x40bb40, 0x40a610, +0x3c, 0x4beb00); RNG do New Game B&O alinhado com o original"
 manual = true
 
 [[function]]
@@ -8921,8 +8921,8 @@ manual = true
 addr = "0x4259e0"
 size = 262
 category = "sim"
-status = "named"
-why = "world-tick.md 4"
+status = "verified"
+why = "map-gam.md 3.2: TerrainGrid::clear_layer (0x4258e0 so quando algo foi removido e 0x57b3f0 == 0; ramo de variante nova sem 0x4258e0); world-growth.md 4.5.1"
 manual = true
 
 [[function]]
@@ -9185,17 +9185,17 @@ why = "no-evidence"
 addr = "0x429fc0"
 size = 1049
 category = "sim"
-status = "spec"
-why = "world-tick.md 10: campos de building_construct (gap do New Game)"
+status = "verified"
+why = "world-growth.md 4.5.1: fields::paint_vegetation (raio 0, forca 1: rng(0,100), rng(0,8) ate sair de 3..6, 0x424c10); 175/51/76 predios de campo em #02/#04/#07 New Game, 0 campos"
 manual = true
 
 [[function]]
 addr = "0x42a3e0"
-name = "terrain_randomize_variant"
 size = 596
-category = "unknown"
-status = "named"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "world-growth.md 4.5.1: fields::force_ground (classe forcada, terrain::variant_range) e o caminho do carregador (TerrainGrid::from_old_ids); placar New Game"
+manual = true
 
 [[function]]
 addr = "0x42a640"
@@ -9207,11 +9207,11 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x42a7d0"
-name = "terrain_build_ground_overlays"
 size = 2326
-category = "unknown"
-status = "named"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "map-gam.md 3.2 / world-growth.md 4.5.1: TerrainGrid::build_ground_rect + fields::ground_rect (listas de sobreposicao, 0x42bf90 e 0x424c10 do final); placar New Game"
+manual = true
 
 [[function]]
 addr = "0x42b120"
@@ -14819,9 +14819,10 @@ manual = true
 [[function]]
 addr = "0x4beb00"
 size = 30
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "world-tick.md 10: zera +0x59/+0x5d e os u16 +0x4b5/+0x4b7/+0x4b9 da estacao (buildings_set_date, industry_year_reset)"
+manual = true
 
 [[function]]
 addr = "0x4beb20"

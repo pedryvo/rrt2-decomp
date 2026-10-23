@@ -38,6 +38,7 @@ pub mod convert;
 pub mod data;
 pub mod effects;
 pub mod exe;
+pub mod fields;
 pub mod finance;
 pub mod found;
 pub mod fp;

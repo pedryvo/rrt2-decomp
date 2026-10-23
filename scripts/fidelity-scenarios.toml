@@ -93,3 +93,33 @@ preseed = 1234
 new_game = "0:0:4321:777"
 campaign_name = "#01B&o~1"
 desc = "#01 B&O iniciado pela campanha (0x410de0), game_seed 4321, RNG 777"
+
+[[scenario]]
+name = "Hannibal New Game"
+save = "maps/#02Han~1.MAP"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+new_game = "0:1:4321:777"
+campaign_name = "#02HAN~1"
+desc = "#02 Hannibal iniciado pela campanha (0x410de0), game_seed 4321, RNG 777"
+
+[[scenario]]
+name = "Silver New Game"
+save = "maps/#04Sil~1.MAP"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+new_game = "0:3:4321:777"
+campaign_name = "#04SIL~1"
+desc = "#04 Silver iniciado pela campanha (0x410de0), game_seed 4321, RNG 777"
+
+[[scenario]]
+name = "Birmingham New Game"
+save = "maps/#07Bir~1.MAP"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+new_game = "0:6:4321:777"
+campaign_name = "#07BIR~1"
+desc = "#07 Birmingham iniciado pela campanha (0x410de0), game_seed 4321, RNG 777"
