@@ -152,6 +152,19 @@ def run_call(addr, ecx):
             continue
         if e == snap_func: continue
         log("ERRO parada inesperada eip=%#x" % e); raise RuntimeError("stop")
+# Janela das caixas de mensagem (0x46aa90): uma mensagem de prioridade menor que a anterior e
+# descartada enquanto clock_ms() <= [0x574d24] (prazo de 9 s apos uma quebra, 0x46adb0); a caixa
+# aceita guarda a mensagem em 0x574430, de onde 0x46abf0 tira o valor da entrega que decide o som
+# da caixa registradora (0x47d100, um crt_rand_range(0, 2)). Sem jogo em tempo real o prazo
+# depende da velocidade da maquina; aqui a janela fica sempre aberta ([0x574d20] = 0 na entrada),
+# para o oraculo nao depender do relogio de parede (docs/fidelity-status.md, longo prazo).
+class MsgWindowOpen(gdb.Breakpoint):
+    def __init__(self):
+        super().__init__("*0x46aa90", internal=True)
+    def stop(self):
+        wr32(0x574D20, 0)
+        return False
+MSGBP = MsgWindowOpen()
 remaining = 1440 * days
 while remaining > 0 and not done[0]:
     d = min(step, remaining)

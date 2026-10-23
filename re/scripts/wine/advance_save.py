@@ -103,7 +103,12 @@ def main():
                          " 1 = #ENNcamp.MP2) por 0x410de0 com game_seed GSEED e RNG RSEED; <in> e ignorado"
                          " (use o .MAP correspondente so como nome)")
     ap.add_argument("--no-warmup", action="store_true", help="nao estabiliza o sandbox antes (ver ensure_warm)")
+    ap.add_argument("--skip-choices", action="store_true",
+                    help="responde o botao 0 nas escolhas modais de regras de cenario (0x455ef7); so"
+                         " quando o mapa tem escolhas: o breakpoint muda o tempo dos passos")
     a = ap.parse_args()
+    if a.skip_choices:
+        os.environ["ADV_SKIP_CHOICES"] = "1"
     sb = os.path.realpath(a.sandbox)
     outp = os.path.realpath(a.outfile)
     for p in (sb, outp):

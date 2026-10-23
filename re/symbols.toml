@@ -5394,3 +5394,38 @@ name = "territory_flood"
 kind = "function"
 comment = "thiscall(territorio, quantidade): acha o tile do territorio com menor soma dos 4 cantos e chama 0x490490(x, y, 0x12, 3, 0, soma/4 + quantidade) (inunda com agua); efeito de cenario 233; [S, nao portado]"
 spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x46aa90"
+name = "message_box_post"
+kind = "function"
+comment = "fastcall(tipo, tamanho, dados, prioridade, prazo_ms): fila das caixas de mensagem; descarta se prioridade < [0x574d20] e clock_ms <= [0x574d24]; tipo 0 copia 0x85 bytes para 0x574430 e abre a vista 6, tipo 1 copia para 0x567788 e abre o trem (0x466230(2, id)); [S]"
+spec = "docs/fidelity-status.md"
+
+[[symbol]]
+addr = "0x466230"
+name = "ui_open_view"
+kind = "function"
+comment = "fastcall(tipo, id, a, b): abre uma vista de detalhe; grava o tipo em 0x570516 e o objeto em 0x57051a (estado +0x2e/+0x32, gravados no save; mascarados no rt2-savediff); [S]"
+spec = "docs/fidelity-status.md"
+
+[[symbol]]
+addr = "0x475da0"
+name = "format_money"
+kind = "function"
+comment = "fastcall(buf, modo, valor, digitos): modo 2 = '%s$%s' com '-' se negativo e format_number(|v|, 1, digitos - neg - 1); (TRIGGER_MONEY) usa digitos 11; [V Lenin/#E01 texto de status]"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x475980"
+name = "format_number"
+kind = "function"
+comment = "fastcall(buf, modo, x, limite, troca): modo 1 '%d' / '%d,%03d' / '%d,%03d,%03d' abaixo de 1e9, milhares + ',000' abaixo de 1e12, senao 'Error'; mais longo que o limite vira modo 8 (milhares + 'K') e 9 (milhoes + 'M'); com 0x57b430 troca ',' e '.'; [S]"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x406080"
+name = "ui_calendar_tick"
+kind = "function"
+comment = "porteiro da interface: motores novos (0x469320 tipo 5), noticias pendentes (0x4a34d0), viradas de mes (setembro: eventos historicos com janela modal 0x4510a0; fevereiro de 1920/1958/1840/1880: noticias) e 0x5704fe..0x570504 = data atual; fora do sim_advance; [S]"
+spec = "docs/fidelity-status.md"

@@ -182,7 +182,7 @@ rule_collect_status(rec+0x56)              ; só texto, sem efeitos
 ```
 O clone: `rt2_sim::tick::history` (`crates/rt2-sim/src/tick/history.rs`), ligado ao item 7. Verificado: o Example em 30 dias (a virada de 1875 para 1876) deixa de ter diferenças em `state` (de 1099 campos para 0).
 
-Suposições fora do save: `[0x574414]` e `[0x566ca4]` (empresa e pessoa da interface) não estão no arquivo; o clone usa a primeira pessoa humana (`+0x122`) e a empresa em que ela é chairman (`+0x263`), que dá `4` no Example (igual ao original). Sem pessoa humana o registro fica sem a parte da empresa. Texto de regras 7: o original copia a string vazia `0x5667f0` e roda as regras do gatilho 7 em modo de coleta; o clone só conta o gancho quando existe uma regra 7 (`history_status_text`).
+Suposições fora do save: `[0x574414]` e `[0x566ca4]` (empresa e pessoa da interface) não estão no arquivo; o clone usa a primeira pessoa humana (`+0x122`) e a empresa em que ela é chairman (`+0x263`), que dá `4` no Example (igual ao original). Sem pessoa humana o registro fica sem a parte da empresa. Texto de regras 7: o original copia a string vazia `0x5667f0` e roda as regras do gatilho 7 em modo de coleta (`0x455f30` com o buffer `[0x5665e0]`: cada texto é anexado, precedido do LNG 2 `"\n\n"` quando o buffer já tem mais de 2 caracteres, antes do teste de fim de jogo; a varredura para se o estado de fim de jogo muda); o clone faz o mesmo com `event_fire_trigger(7)` e o buffer `SimState::status_buf` (Lenin.MP2 e #E01, `docs/fidelity-status.md`, "Longo prazo").
 
 ### 3.5 Turno mensal da IA (`ai_monthly_turn` `0x436d60`) [S, D]
 Se `0x5748fc == 0` e `0x570229 == 0`:

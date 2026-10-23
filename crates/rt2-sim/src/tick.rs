@@ -37,6 +37,8 @@ mod history;
 mod newgame;
 pub use newgame::NewGameOptions;
 mod review;
+pub(crate) use history::co as history_co;
+pub(crate) use review::{PickIn, pick_manager};
 mod town;
 mod year;
 
@@ -52,6 +54,8 @@ const ST_BASIC_MODEL: usize = 0x388F; // 0x573d77
 // Header offsets (VA - 0x567b38).
 const HDR_SANDBOX: usize = 0x86EF; // 0x570227
 const HDR_NO_ECONOMY: usize = 0x86FF; // 0x570237
+const HDR_570238: usize = 0x8700; // 0x570238 (no economy headline as news)
+const HDR_57023A: usize = 0x8702; // 0x57023a (idem)
 const HDR_FLAG_570229: usize = 0x86F1; // 0x570229
 const HDR_FLAG_570236: usize = 0x86FE; // 0x570236
 
@@ -81,6 +85,9 @@ pub struct SimState {
     pub(crate) ground_layer: Option<Vec<bool>>,
     /// The drawn track of the whole map while `town_year_step` runs (it builds no track).
     pub(crate) track_cache: Option<crate::fields::TrackMask>,
+    /// The status buffer `[0x5665e0]` while `rule_collect_status` (`0x458210`) runs: the
+    /// trigger 7 messages are appended to it instead of being shown.
+    pub(crate) status_buf: Option<Vec<u8>>,
 }
 
 impl PartialEq for SimState {
@@ -107,15 +114,23 @@ impl World {
     /// consumes RNG; the world keeps the RNG state the conversion left (the original's load does
     /// not restore it either, `docs/dynamic-analysis.md` 5.1).
     pub fn from_save_seeded(save: &Save, data: &GameData, rng_seed: u32) -> World {
-        if save.layout.version >= MAGIC_2348 {
-            return World::from_loaded(save, data, rng_seed, rng_seed);
+        let mut w = if save.layout.version >= MAGIC_2348 {
+            World::from_loaded(save, data, rng_seed, rng_seed)
+        } else {
+            let mut rng = rt2_formats::terrain::GameRng(rng_seed);
+            let converted = crate::convert::upgrade(save, &mut rng);
+            let mut w = World::from_loaded(&converted, data, rng.0, rng_seed);
+            let mut sim = w.sim.take().expect("from_loaded builds the sim");
+            sim.load_passes(&mut w, save.layout.version);
+            w.sim = Some(sim);
+            w
+        };
+        // The Load Game wrapper paints the map once the load is done (`0x421550` ->
+        // `0x417c40`): the loader's union is lit and cleared, so a later redraw (the save's
+        // preview, see `to_save`) only covers what changed since.
+        if let Some(sim) = w.sim.as_mut() {
+            sim.redraw_map();
         }
-        let mut rng = rt2_formats::terrain::GameRng(rng_seed);
-        let converted = crate::convert::upgrade(save, &mut rng);
-        let mut w = World::from_loaded(&converted, data, rng.0, rng_seed);
-        let mut sim = w.sim.take().expect("from_loaded builds the sim");
-        sim.load_passes(&mut w, save.layout.version);
-        w.sim = Some(sim);
         w
     }
 
@@ -151,6 +166,7 @@ impl World {
             ])),
             ground_layer: None,
             track_cache: None,
+            status_buf: None,
         };
         sim.rebuild_types(i32::from(save.date.year));
         w.sim = Some(Box::new(sim));
@@ -175,6 +191,13 @@ impl World {
         s.game_seed = self.game_seed;
         s.sync_scalars();
         crate::convert::saver_refresh(&mut s);
+        // The saver draws the preview from the map view (`0x477540` -> `0x477040`), which runs
+        // the pending light pass (`0x417c40`) over the redraw union accumulated since the last
+        // paint (`0x417770`; `advance_save.py` paints nothing in between). Seen in
+        // NewJapan.MP2 after the 1995 year end (`tile+6 & 0x20` around the levelled lots).
+        if let Some([x0, y0, x1, y1]) = sim.dirty.0 {
+            crate::tilemark::recompute_light(&mut s, x0, y0, x1, y1);
+        }
         s
     }
 
@@ -315,6 +338,19 @@ impl SimState {
         };
         self.save.hour = d.hour;
         self.save.minute = d.minute;
+        // The clock globals live in the state block (`0x5704f4` minutes, `0x5704f8` date,
+        // `0x5704fc` time): code reading the raw state (the scenario functions `GameYear`,
+        // `GameMonth`...) must see the live date, not the one of the load (found at the 1933
+        // year start of #E01: `GameYear>1932` stayed false).
+        let st = &mut self.save.state;
+        if st.len() >= 0x16 {
+            st[0x0c..0x10].copy_from_slice(&minutes.to_le_bytes());
+            st[0x10..0x12].copy_from_slice(&d.year.to_le_bytes());
+            st[0x12] = d.month;
+            st[0x13] = d.day;
+            st[0x14] = d.hour;
+            st[0x15] = d.minute;
+        }
     }
 
     // ---- sim_advance (world-tick.md 2) ---------------------------------------------------
@@ -700,6 +736,14 @@ impl SimState {
                 });
             put_f32(st, ST_PRIME_RATE, prime_rate_for_state(new_state as usize));
             put_u32(st, ST_ECON_STATE, new_state as u32);
+            // The headline itself (`0x46a010`): outside the editor (`0x573d7a`) and with the
+            // header bytes `0x570238`/`0x57023a` clear, a local game posts it as news
+            // (`news_post` `0x4a42f0`: one CRT draw, news flag and counter); otherwise a message
+            // box (`0x46aa90`, nothing saved but the interface view). Seen in NewJapan.MP2 at
+            // 1995-09-01 (day 224 of the long-horizon scoreboard).
+            if self.hdr(HDR_570238) == 0 && self.hdr(HDR_57023A) == 0 {
+                self.fc_news_post(w);
+            }
             // Every company of the set quotes again (`0x43b410(0, 1)`, cargo.md 9, finance.md
             // 3.3).
             for slot in self.company_set() {

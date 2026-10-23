@@ -20,7 +20,7 @@ const ST_PLAYER_SET_COUNT: usize = 0x28D;
 const ST_PLAYER_SET_IDS: usize = 0x291;
 
 /// Company-side helpers on a raw record (`0x43a660`, `0x43a7d0`).
-mod co {
+pub(crate) mod co {
     use super::*;
 
     /// `0x43a660(co, i)`: totals of the current year (0..12 the category, 13 the sum of 13, 14 the
@@ -62,7 +62,7 @@ mod co {
 impl SimState {
     /// The person the interface plays (`0x566ca4`) and its company (`0x574414`): the clone takes
     /// the first human person and its chairman company (as `is_ui_company`).
-    fn local_player(&self) -> (usize, usize) {
+    pub(super) fn local_player(&self) -> (usize, usize) {
         for p in pool::list_order(&self.save.persons) {
             if let Some(r) = pool::record(&self.save.persons, p)
                 && i32_at(&r.data, PE_HUMAN) != 0
@@ -261,21 +261,17 @@ impl SimState {
                 used[best_i] = true;
             }
         }
-        // 0x458210: the status lines of the trigger 7 rules go to +0x56 (no rule uses it in the
-        // saves checked; only the empty prefix string is copied).
-        if self
-            .save
-            .rules
-            .iter()
-            .any(|r| r.fixed.len() > 0x38 && u32_at(&r.fixed, 0x34) == 7)
-        {
-            todo_hook!(
-                self.log,
-                "history_status_text",
-                "rule_collect_status 0x458210 evaluates trigger 7 rules into the record text",
-                "world-tick.md 3.4 item 7"
-            );
-        }
+        // `rule_collect_status(rec + 0x56)` (`0x458210`): the empty string `0x5667f0`, then the
+        // trigger 7 rules evaluated in pool order (`0x455f30` with the local flag: CRT draws, no
+        // effects) append their texts; the scan stops when the game-over state changes. Same
+        // walk as `event_fire_trigger(7)`. Seen in Lenin (English).MP2 at the first year end.
+        self.status_buf = Some(Vec::new());
+        self.event_trigger(w, 7);
+        let text = self.status_buf.take().unwrap_or_default();
+        let room = 0x105b - 0x56 - 1;
+        let n = text.len().min(room);
+        rec[0x56..0x56 + n].copy_from_slice(&text[..n]);
+        rec[0x56 + n] = 0;
         self.save.state[HIST_BASE..HIST_BASE + HIST_SIZE].copy_from_slice(&rec);
         self.log.ran("history_snapshot");
     }

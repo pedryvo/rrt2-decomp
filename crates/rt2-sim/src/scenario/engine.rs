@@ -127,9 +127,14 @@ pub trait ScenarioWorld: ScenarioEnv {
     fn stations_visited(&self) -> i32;
     /// `(TRIGGER_MONEY)` formatting.
     fn format_money(&self, value: i32) -> String {
-        format!("${value}")
+        money_text(value)
     }
 
+    /// `[0x5665e0] != 0`: `rule_collect_status` is collecting the texts (then
+    /// [`ScenarioWorld::show_message`] appends instead of showing, before the game-over check).
+    fn status_buffer_active(&self) -> bool {
+        false
+    }
     /// Shows the message; returns the pressed button (0 or 1) for [`MessageKind::Choice`].
     /// Trigger 7 messages are appended to the status buffer `[0x5665e0]` by the world.
     fn show_message(&mut self, message: &Message) -> usize;
@@ -409,6 +414,10 @@ fn show_message<W: ScenarioWorld>(
         company: combo.company,
         territory: combo.territory,
     };
+    if world.status_buffer_active() {
+        world.show_message(&msg);
+        return 0;
+    }
     if rule.has_game_over_effect() {
         if game_over.state == 0 {
             game_over.text = msg.text;
@@ -457,7 +466,8 @@ pub fn substitute<W: ScenarioWorld>(world: &W, text: &str, c: Combo, t2t: i32) -
     rep("(TRIGGER_MONEY)", world.format_money(c.value));
     rep(
         "(TRIGGER_TF)",
-        if c.value != 0 { "true" } else { "false" }.to_string(),
+        // LNG 3317 / 3318 (`0xcf5`/`0xcf6`): "True" / "False" in default2.lng.
+        if c.value != 0 { "True" } else { "False" }.to_string(),
     );
     s
 }
@@ -660,4 +670,40 @@ fn undo_rule<W: ScenarioWorld>(
         effects: [neg, vec![0; N_EFFECTS]],
         ..Rule::default()
     }
+}
+
+/// `0x475da0(buf, 2, value, 11)`, the `(TRIGGER_MONEY)` text with the English separators
+/// (`0x57b430 == 0`): `"-"` when negative, `"$"`, then `0x475980(|value|, 1, 10 - neg)`.
+pub fn money_text(value: i32) -> String {
+    let neg = value < 0;
+    let limit = 11 - usize::from(neg) - 1;
+    let digits = number_text(f64::from(value).abs(), limit);
+    format!("{}${digits}", if neg { "-" } else { "" })
+}
+
+/// `0x475980(x, mode 1, limit)` (`x >= 0`): `%d`, `%d,%03d`, `%d,%03d,%03d` below 1e9, the
+/// thousands plus `",000"` below 1e12, `"Error"` beyond; longer than `limit` characters it
+/// becomes mode 8 (thousands and `"K"`), then mode 9 (millions and `"M"`).
+fn number_text(x: f64, limit: usize) -> String {
+    let v = crate::fp::ftol(x);
+    let s = if x < 1000.0 {
+        format!("{v}")
+    } else if x < 1_000_000.0 {
+        format!("{},{:03}", v / 1000, v.unsigned_abs() % 1000)
+    } else if x < 1_000_000_000.0 {
+        let a = v.unsigned_abs();
+        format!("{},{:03},{:03}", v / 1_000_000, a / 1000 % 1000, a % 1000)
+    } else if x < 1e12 {
+        number_text(x * 0.001, 999) + ",000"
+    } else {
+        "Error".to_string()
+    };
+    if s.len() <= limit {
+        return s;
+    }
+    let k = number_text(x * 0.001, 999) + "K";
+    if k.len() <= limit {
+        return k;
+    }
+    number_text(x * 1e-6, 999) + "M"
 }

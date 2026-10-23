@@ -3,10 +3,10 @@
 # Ver docs/re-workflow.md.
 #
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
-# Classificadas (categoria != unknown): 1298 (44.1%)
-# Por categoria: lib=258, platform=114, render=11, audio=56, ui=271, sim=588, unknown=1647
-# Por estado:   unknown=2364, named=123, spec=183, verified=275
-# Entradas manuais: 546
+# Classificadas (categoria != unknown): 1301 (44.2%)
+# Por categoria: lib=258, platform=114, render=11, audio=56, ui=274, sim=588, unknown=1644
+# Por estado:   unknown=2359, named=124, spec=180, verified=282
+# Entradas manuais: 552
 # sim spec coverage: 71.4% (420 de 588 funcoes sim em spec/verified)
 
 [[function]]
@@ -7807,8 +7807,9 @@ why = "no-evidence"
 addr = "0x406080"
 size = 969
 category = "ui"
-status = "unknown"
-why = "string:[C1]"
+status = "named"
+why = "porteiro da interface (nao roda no sim_advance); eventos historicos de setembro sao janelas modais"
+manual = true
 
 [[function]]
 addr = "0x406450"
@@ -8131,8 +8132,8 @@ manual = true
 addr = "0x40b7c0"
 size = 83
 category = "sim"
-status = "spec"
-why = "growth/industry_year_reset (5.1)"
+status = "verified"
+why = "industry_year_reset recontagem (0x40a610) tambem para predio de tipo 0 (lucratividade 100); Example 730 dias, predio 403"
 manual = true
 
 [[function]]
@@ -8473,7 +8474,7 @@ addr = "0x414220"
 size = 562
 category = "sim"
 status = "verified"
-why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs"
+why = "vehicle_init: vagao acrescentado atras de outro passa por vehicle_place (0x413550) na hora; reaproveita os bytes do vagao liberado no mesmo slot; Example 163 e 510 dias"
 manual = true
 
 [[function]]
@@ -8707,7 +8708,7 @@ addr = "0x417c40"
 size = 169
 category = "sim"
 status = "verified"
-why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs e ai_snapshots dl0_rich_c5"
+why = "passada de luz: na carga (pintura do Load Game) sobre a uniao do carregador e no gravador (previa) sobre a uniao acumulada; NewJapan 1995/96 igual"
 manual = true
 
 [[function]]
@@ -9662,16 +9663,16 @@ manual = true
 addr = "0x436210"
 size = 1459
 category = "sim"
-status = "spec"
-why = "docs/spec/ai.md"
+status = "verified"
+why = "ai_manager_value portado com a tabela de saltos e as constantes do .data (asm 0x436210..0x4367c3); Lenin.MP2 730 dias igual"
 manual = true
 
 [[function]]
 addr = "0x436880"
 size = 208
 category = "sim"
-status = "spec"
-why = "docs/spec/ai.md"
+status = "verified"
+why = "ai_review_manager portado (crates/rt2-sim/src/ai/engine.rs); Lenin.MP2 730 dias igual (gerente de fev/1919)"
 manual = true
 
 [[function]]
@@ -9804,7 +9805,7 @@ addr = "0x438780"
 size = 371
 category = "sim"
 status = "verified"
-why = "company_set_manager [V via snapshots fincmd mgr4/mgr5]"
+why = "company_set_manager(g, 0) tambem no turno da IA (Ai::set_manager); Lenin.MP2 730 dias igual"
 manual = true
 
 [[function]]
@@ -10206,7 +10207,7 @@ addr = "0x43d800"
 size = 1170
 category = "sim"
 status = "verified"
-why = "company_year_end: desdobramento zera +0x4250 e recota com commit (0x43b410(0,1)) depois de dividir o arquivo; Example 30 dias igual ao original"
+why = "company_year_end: zera tambem o u16 +0x572 de cada territorio e posta o desdobramento como noticia para a empresa da interface (0x5706ab); Example 365 e NewJapan 365 iguais"
 manual = true
 
 [[function]]
@@ -10892,7 +10893,7 @@ addr = "0x455f30"
 size = 6432
 category = "sim"
 status = "verified"
-why = "scenarios 2.3/4.2/4.4/5; rt2-sim scenario::evaluate_rule, tests/scenario_engine.rs"
+why = "ramo do buffer [0x5665e0] (anexa antes do teste de fim de jogo); (TRIGGER_TF) = LNG 3317/3318 'True'/'False'; jogador/empresa locais = primeira pessoa humana"
 manual = true
 
 [[function]]
@@ -10947,8 +10948,8 @@ manual = true
 addr = "0x458210"
 size = 160
 category = "sim"
-status = "spec"
-why = "scenarios 2.2; fire_trigger(7) with the world appending to the status buffer"
+status = "verified"
+why = "rule_collect_status: regras de gatilho 7 anexam o texto ao buffer do registro historico (+0x56) com o separador LNG 2; Lenin.MP2 365/730 e #E01 365 iguais"
 manual = true
 
 [[function]]
@@ -11381,8 +11382,9 @@ why = "no-evidence"
 addr = "0x466230"
 size = 1285
 category = "ui"
-status = "unknown"
-why = "string:brlogo%s%s.imb"
+status = "named"
+why = "abre vista; grava 0x570516/0x57051a no estado (mascarado por rt2-savediff BIT_MASKS)"
+manual = true
 
 [[function]]
 addr = "0x466780"
@@ -12013,8 +12015,8 @@ manual = true
 addr = "0x46a010"
 size = 853
 category = "sim"
-status = "spec"
-why = "cargo.md 9"
+status = "verified"
+why = "economy_state_step: manchete como news_post (CRT, flag e contador) fora do editor e com 0x570238/0x57023a zerados; NewJapan.MP2 1995-09 igual"
 manual = true
 
 [[function]]
@@ -12117,16 +12119,17 @@ why = "no-evidence"
 [[function]]
 addr = "0x46aa90"
 size = 339
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "janela de prioridade por clock_ms; advance_save.py a mantem aberta ([0x574d20] = 0) para o oraculo nao depender do relogio de parede"
+manual = true
 
 [[function]]
 addr = "0x46abf0"
 size = 436
 category = "sim"
 status = "spec"
-why = "docs/spec/trains.md 10"
+why = "delivery_message: so o sorteio do som da caixa registradora (crt_rand_range(0,2) via 0x47d100 se v > 0) portado; caixa de mensagem e aviso de recorde ficam na interface"
 manual = true
 
 [[function]]
@@ -12633,16 +12636,18 @@ why = "string:%s %d"
 [[function]]
 addr = "0x475980"
 size = 1020
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "verified"
+why = "format_number modo 1/8/9 portado (scenario::engine::number_text)"
+manual = true
 
 [[function]]
 addr = "0x475da0"
 size = 489
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "verified"
+why = "format_money modo 2 portado (scenario::engine::money_text); texto de status do #E01 igual"
+manual = true
 
 [[function]]
 addr = "0x475fa0"
@@ -12825,11 +12830,11 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x47d100"
-name = "play_chimes"
 size = 102
 category = "audio"
-status = "named"
-why = "string:chin161m.raw"
+status = "spec"
+why = "play_chimes: crt_rand_range(0, 2) para a variante, n toques; o sorteio e portado em trainstep/arrive.rs"
+manual = true
 
 [[function]]
 addr = "0x47d280"
@@ -15543,7 +15548,7 @@ addr = "0x4d0400"
 size = 1129
 category = "sim"
 status = "verified"
-why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
+why = "restricted nao escrito por 0x4d00c0 (trem quebrado) le o lixo da pilha deixado por 0x412900 (esi salvo, ponteiro): tratado como verdadeiro; medido 0x02f3f10b no trem 9 do Example, 730 dias"
 manual = true
 
 [[function]]

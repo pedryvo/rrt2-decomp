@@ -121,12 +121,38 @@ start_min = rd32(0x5704F4)
 # 4. RNG: a carga nao restaura a sequencia; fixa a semente do jogo (0x55d2c0) e a do CRT (0x5609f0)
 wr32(0x55D2C0, seed); wr32(0x5609F0, seed)
 
-# 5. avanca: sim_advance(ECX = minutos) em passos fixos, sem o porteiro
+# 5. avanca: sim_advance(ECX = minutos) em passos fixos, sem o porteiro.
+#    ADV_SKIP_CHOICES=1 (advance_save.py --skip-choices): a escolha de regra de cenario
+#    (rule_show_message 0x455e70 -> 0x4510a0, janela MODAL que esperaria um clique) e pulada na
+#    chamada 0x455ef7: devolve o primeiro botao (EAX = 0, nao 0x67), como o clone fora do modo
+#    interativo (scenarios.md 2.4.1). 9 argumentos, ret 0x24. So quando pedido (o breakpoint
+#    deixa cada passo mais lento; antes da janela de mensagens fixa abaixo isso mudava o som da
+#    caixa registradora e o rand do CRT em runs longos).
+CHOICE_CALL = 0x455EF7
+if env.get("ADV_SKIP_CHOICES"):
+    gdb.Breakpoint("*0x%x" % CHOICE_CALL, internal=True)
+def skip_choice():
+    setreg("eax", 0); setreg("esp", reg("esp") + 0x24); setreg("eip", CHOICE_CALL + 5)
+    log("CHOICE pulada (botao 0) minutes=%d" % rd32(0x5704F4))
+adv_hooks = {CHOICE_CALL: skip_choice}
+# Janela das caixas de mensagem (0x46aa90): uma mensagem de prioridade menor que a anterior e
+# descartada enquanto clock_ms() <= [0x574d24] (prazo de 9 s apos uma quebra, 0x46adb0); a caixa
+# aceita guarda a mensagem em 0x574430, de onde 0x46abf0 tira o valor da entrega que decide o som
+# da caixa registradora (0x47d100, um crt_rand_range(0, 2)). Sem jogo em tempo real o prazo
+# depende da velocidade da maquina; aqui a janela fica sempre aberta ([0x574d20] = 0 na entrada),
+# para o oraculo nao depender do relogio de parede (docs/fidelity-status.md, longo prazo).
+class MsgWindowOpen(gdb.Breakpoint):
+    def __init__(self):
+        super().__init__("*0x46aa90", internal=True)
+    def stop(self):
+        wr32(0x574D20, 0)
+        return False
+MSGBP = MsgWindowOpen()
 remaining = 1440 * days
 t1 = time.time()
 while remaining > 0:
     d = min(step, remaining)
-    fcall(0x4A5CB0, d)
+    fcall(0x4A5CB0, d, hooks=adv_hooks)
     remaining -= d
 snap("ADVANCED")
 log("advance_seconds=%.2f" % (time.time() - t1))

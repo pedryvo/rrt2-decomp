@@ -573,10 +573,18 @@ impl Ai<'_, '_> {
 
 impl Ts<'_> {
     /// `vehicle_init(car, id, train, type, -1, 0xffff, 0)` (`0x414220`) for a car that is not
-    /// placed on the track: appended to the train's car list.
+    /// first in its train: appended to the car list and, behind another car, placed on the route.
     pub(crate) fn vehicle_init(&mut self, t: i32, vt: u8) {
         let size = self.record_size(P::Car);
         let c = self.alloc(P::Car, vec![0u8; size]);
+        // The slot's memory keeps the bytes of the car freed there before (`pool_free` does not
+        // clear it); the fields set below overwrite most of them.
+        if let Some(old) = self.g.freed_cars.remove(&c) {
+            let mut rec = self.record(P::Car, c);
+            let n = rec.len().min(old.len());
+            rec[..n].copy_from_slice(&old[..n]);
+            self.set_record(P::Car, c, &rec);
+        }
         let kind = self.vt8(vt, 0x2e);
         let set8 = |ai: &mut Ts<'_>, o: usize, v: u8| ai.set8(P::Car, c, o, v);
         let set16 = |ai: &mut Ts<'_>, o: usize, v: u16| ai.set16(P::Car, c, o, v);
@@ -611,6 +619,13 @@ impl Ts<'_> {
             self.set16(P::Car, last, 2, c as u16);
         }
         self.seti32(P::Train, t, 4, c);
+        // A car appended behind others goes through `vehicle_place` (`0x413550`, non-head
+        // branch) right away: on a train standing on the track it is put on the route behind the
+        // car ahead (first seen at day 163 of the Example: a consist change at a stop). The
+        // first car of an empty train is skipped (`param_4 == -1`).
+        if last != 0 {
+            self.place_trailing_car(c);
+        }
     }
 
     /// `0x4d0fa0(train, car)` + `0x466df0`: unlinks and frees a car (off its tile first).

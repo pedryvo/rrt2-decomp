@@ -178,8 +178,13 @@ impl Ts<'_> {
         let head = self.first_car(t);
         let eng = self.vt_engine(self.u8(P::Car, head, 8));
         let (target, restricted) = self.target_speed(t);
-        let restricted = restricted.unwrap_or(self.g.stale_restricted);
-        self.g.stale_restricted = restricted;
+        // Untouched output (broken down or crashed): `0x4d0400` reads its stack slot
+        // `[esp+0x18]`, which the previous callee of `train_step` at the same depth left there:
+        // normally the car smoke step `0x412900` of the train stepped before, whose prologue
+        // saves `train_step`'s `esi` (a record pointer) right at that address. Nonzero, so the
+        // slow-down is the restricted one (`tau >> 4`). Measured in the original: 0x02f3f10b on
+        // every call of the Example's train 9 broken down at 1878-01-17 (day 707).
+        let restricted = restricted.unwrap_or(true);
         let mut tau = self.en32(eng, 0x1c).wrapping_mul(1440);
         if self.i32(P::Train, t, 0x69) > target {
             tau >>= if restricted { 4 } else { 1 };
@@ -1631,7 +1636,7 @@ impl Ts<'_> {
 
     /// `vehicle_place` (`0x413550`) for a car that is not the head: puts an off-track car on the
     /// route one coupling length behind the car ahead, when the route there is free.
-    fn place_trailing_car(&mut self, car: i32) {
+    pub(crate) fn place_trailing_car(&mut self, car: i32) {
         let t = self.car_train(car);
         if car == self.first_car(t) {
             self.place_head_car(t);

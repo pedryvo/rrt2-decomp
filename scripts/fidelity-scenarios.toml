@@ -16,7 +16,7 @@ desc = "Tutorial (sem trens, sem estações)"
 [[scenario]]
 name = "Example"
 save = "games/Example save game.GAM"
-days = [1, 7, 30]
+days = [1, 7, 30, 90, 180, 365, 730]
 seed = 1234
 desc = "Example save game (9 trens, 11 estações)"
 
@@ -47,6 +47,21 @@ save = "maps/Atlantis.MP2"
 days = [1, 7, 30]
 seed = 1234
 desc = "Mapa Atlantis.MP2"
+
+[[scenario]]
+name = "Lenin"
+save = "maps/Lenin (English).MP2"
+days = [30, 365, 730]
+seed = 1234
+skip_choices = true
+desc = "Mapa Lenin (English).MP2 (7 empresas, 2 trens, 94 estações)"
+
+[[scenario]]
+name = "NewJapan"
+save = "maps/NewJapan.MP2"
+days = [30, 365, 730]
+seed = 1234
+desc = "Mapa NewJapan.MP2 (2 empresas, 5 trens, 14 estações)"
 
 [[scenario]]
 name = "Tutorial (conversao)"
@@ -87,7 +102,7 @@ desc = "Britain.MAP carregado como save e convertido pelo clone"
 [[scenario]]
 name = "B&O New Game"
 save = "maps/#01B&O~1.MAP"
-days = [0, 7]
+days = [0, 7, 365, 730]
 seed = 1234
 preseed = 1234
 new_game = "0:0:4321:777"
@@ -267,7 +282,7 @@ desc = "#18 iniciado pela campanha (0x410de0), game_seed 4321, RNG 777"
 [[scenario]]
 name = "#E01 New Game"
 save = "maps/#e01camp.MP2"
-days = [0, 7]
+days = [0, 7, 365, 730]
 seed = 1234
 preseed = 1234
 new_game = "1:0:4321:777"

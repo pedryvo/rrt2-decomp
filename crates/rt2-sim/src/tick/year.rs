@@ -164,7 +164,7 @@ impl SimState {
     }
 
     /// `company_year_end` (`0x43d800`, finance.md 8 and 16) for the company at `slot`.
-    pub(super) fn company_year_end(&mut self, w: &World, slot: usize) {
+    pub(super) fn company_year_end(&mut self, w: &mut World, slot: usize) {
         if !self.v2348() {
             todo_hook!(
                 self.log,
@@ -251,6 +251,10 @@ impl SimState {
         for t in 0..32usize {
             let b = 0x479 + t * 0x1ed;
             put_u16(&mut raw, b + 5, 0);
+            // The u16 right after the first 44-entry array is cleared too (`0x43d800`:
+            // `*(u16 *)(p + 0x58) = 0` with `p = rec + 0x51a + t * 0x1ed`; seen at the first
+            // year end of the Example, territory 1 of companies 4 and 5).
+            put_u16(&mut raw, b + 0xf9, 0);
             for i in 0..44 {
                 put_u16(&mut raw, b + 0xa1 + 2 * i, 0);
                 put_u16(&mut raw, b + 0x195 + 2 * i, 0);
@@ -321,6 +325,17 @@ impl SimState {
                 }
             }
             self.log.ran("company_split_message");
+            // The split headline (`0x43d800`): outside the editor, with the header byte
+            // `0x570238` clear and the option `0x5706ab` (state `+0x1c3`) on, the company the
+            // interface shows gets it as news (`news_post` `0x4a42f0`: CRT draw, news flag and
+            // counter; any other company gets a message box, `0x46adb0`, nothing saved). Seen
+            // in NewJapan.MP2 at the 1995 year end.
+            if self.save.header.get(0x8700).copied().unwrap_or(0) == 0
+                && self.save.state.get(0x1c3).copied().unwrap_or(0) != 0
+                && self.local_player().1 == slot
+            {
+                self.fc_news_post(w);
+            }
             self.ts_globals
                 .news
                 .push(crate::message::GameMessage::StockSplit {
@@ -482,7 +497,11 @@ impl SimState {
         put_u16(&mut data, 0x34, 0);
         data[0x63..0x67].fill(0);
         data[0x67..0x6b].fill(0);
-        if ty != 0 {
+        // `0x40b7c0` recounts every active building, type 0 included (its rating becomes
+        // `ftol(+0x93 * 100 + 50)`: a lot built during the run gets 100 at its first year end;
+        // seen in the Example at the 1877 year end, building 403).
+        let _ = ty;
+        {
             let types = std::mem::take(&mut self.types);
             let effects = self.effect_table();
             let env = Env {

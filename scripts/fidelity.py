@@ -10,7 +10,8 @@ Opcoes por cenario: `preseed = K` (RNG do jogo e do CRT = K antes da carga, `adv
 <save> --preseed K`, em vez de partir da conversao do original; testa rt2_sim::convert), e
 `new_game = "SET:IDX:GSEED:RSEED"` (o original inicia o cenario da campanha por 0x410de0; o clone
 roda `World::new_game` com as opcoes lidas da saida de 0 dias do original; `campaign_name` = nome
-da tabela 0x552430).
+da tabela 0x552430); `skip_choices = true` (advance_save.py --skip-choices) para mapas com escolhas
+modais de regras de cenario.
   4. rt2-savediff --json orig_N clone  ->  iguais / N campos / principais grupos
 e reescreve a tabela de docs/fidelity-status.md entre <!-- fidelity:begin --> e <!-- fidelity:end -->.
 Sai com 1 se algum caso que estava IGUAL no placar anterior regrediu.
@@ -174,6 +175,9 @@ def main():
         if "preseed" in sc:
             extra += ["--preseed", str(sc["preseed"])]
             tag += "__p%d" % sc["preseed"]
+        if sc.get("skip_choices"):
+            extra += ["--skip-choices"]  # escolhas modais respondidas com o botao 0
+            tag += "__sc"
         if sc.get("new_game"):
             extra += ["--new-game", sc["new_game"]]
             tag += "__ng" + re.sub(r"\W+", "_", sc["new_game"])

@@ -489,7 +489,7 @@ Gravadas em `k = 1` por `company_year_end` antes de zerar categorias e contadore
 | 12 | `+0x46a`, reputação do chairman | alimenta o aviso de demissão (13.7) |
 | 13 | `+0x134`, salário do chairman | |
 | outro | -1.0 | |
-`+0x192/+0x196/+0x19a` e os contadores anuais por território (`+0x47e`, `+0x51a[44]`, `+0x60e[44]`) são zerados no fim do ano; `+0x182..+0x18e` (trilho) e `+0x19e` (cargas, vida) não.
+`+0x192/+0x196/+0x19a` e os contadores anuais por território (`+0x47e`, `+0x51a[44]`, o u16 logo depois em `+0x572`, e `+0x60e[44]`; o `+0x572` faltava no port e apareceu no fim de ano do Example em 365 dias) são zerados no fim do ano; `+0x182..+0x18e` (trilho) e `+0x19e` (cargas, vida) não.
 
 `0x43abc0` (retorno ponderado de 5 anos), `f_0 = mês/12`, `f_i = 1` para `i >= 1` (0 se a empresa não existe):
 ```

@@ -231,3 +231,14 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Feature: release packaging: `.github/workflows/release.yml` builds `rrt2` for Linux, Windows and macOS (Apple Silicon and Intel) on every push to main (workflow artifacts) and on `v*` tags (GitHub Release with the CHANGELOG section as notes); `scripts/package-release.sh` stages the archive.
 - Feature: `rrt2 --version` prints the crate version and git commit, and the main menu footer shows it.
 - Docs: `scripts/cut-release.sh <version>` turns "Unreleased" into a dated `## v<version>` section and bumps the workspace version; "Installing" section in the six READMEs.
+- Feature: fidelity scoreboard extended to long horizons (Example 90/180/365/730 days, Lenin and NewJapan maps 365/730, campaign and Second Century New Games 365/730)
+- Fix: a car appended to a standing train is placed on the track at once (vehicle_init -> vehicle_place), and a reused car slot keeps the bytes of the car freed there
+- Fix: year end clears the per-territory u16 +0x572 of every company and recounts type-0 buildings (rating 100)
+- Fix: economy state changes and stock splits of the player's company post their news (CRT draw, news flag and counter)
+- Fix: the light pass runs when a game is loaded and when it is saved, as the original's map paint does
+- Fix: trigger-7 scenario rules write their status text into the yearly history record; (TRIGGER_TF) reads True/False and (TRIGGER_MONEY) has thousands separators
+- Fix: the scenario functions see the live date (GameYear stayed at the load year), and local-player rules use the human player
+- Fix: AI companies review their manager in odd years (ai_review_manager / ai_manager_value ported)
+- Fix: a broken-down train decelerates with the restricted rate (the original reads stack garbage there)
+- Fix: the cash register sound of the player's deliveries draws the CRT rand
+- RE: the original's message-box window depends on the host clock; advance_save.py now keeps it open and choice skipping is opt-in (--skip-choices); rt2-savediff masks the interface view and train sound handle bits

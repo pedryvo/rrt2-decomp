@@ -225,7 +225,7 @@ fn company_loop_cash_and_message_visibility() {
     let mut w = world(vec![r]);
     fire_trigger(trigger::MONTH_END, &mut w, &mut GameRng::new(1));
     assert_eq!(w.messages.len(), 1);
-    assert_eq!(w.messages[0].text, "C1 earned true");
+    assert_eq!(w.messages[0].text, "C1 earned True");
 }
 
 #[test]

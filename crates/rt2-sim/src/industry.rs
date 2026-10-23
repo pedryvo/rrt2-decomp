@@ -112,7 +112,7 @@ pub fn recount_piles(rec: &mut [u8], lots: &Pool, env: &Env) {
     if rec[OFF_INACTIVE] != 0 {
         return;
     }
-    let ty = &env.types[usize::from(rec[OFF_TYPE])];
+    let ty = env.types.get(usize::from(rec[OFF_TYPE]));
     rec[OFF_PILE_COUNT..OFF_PILE_COUNT + 8].fill(0);
     let mut cur = usize::from(u16_at(rec, OFF_PILE));
     let mut guard = 0usize;
@@ -120,6 +120,7 @@ pub fn recount_piles(rec: &mut [u8], lots: &Pool, env: &Env) {
         guard += 1;
         let Some(lot) = record(lots, cur) else { break };
         if u16_at(&lot.data, LOT_STATION) == 0
+            && let Some(ty) = ty
             && let Some(i) = slot_of_cargo(ty, lot.data[LOT_CARGO])
         {
             let o = OFF_PILE_COUNT + 2 * i;

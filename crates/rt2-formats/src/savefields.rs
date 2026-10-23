@@ -436,6 +436,83 @@ pub const MASKS: &[Mask] = &[
     },
 ];
 
+/// Bits of single bytes that the original writes from the user interface or the audio system
+/// (wall-clock windows, sound handles), so a comparison ignores a raw chunk whose only
+/// differences fall inside them. Unlike [`MASKS`], the rest of the chunk is still compared.
+pub struct BitMask {
+    /// Save versions the mask applies to.
+    pub versions: &'static [u32],
+    /// Path of the record (`*` matches a run of digits).
+    pub path: &'static str,
+    /// Byte offset inside the record and the bits of that byte to ignore.
+    pub bits: &'static [(usize, u8)],
+    /// Why the bits are volatile.
+    pub why: &'static str,
+}
+
+/// All known volatile bits (docs/fidelity-status.md, long-horizon list).
+pub const BIT_MASKS: &[BitMask] = &[
+    // 0x4ce4c0 (breakdown) and 0x4d0870 start a looping sound for a train of the company shown in
+    // the interface: the handle returned by the audio system (0x4eeeb0) goes to +0xab and bit
+    // 0x10 of +0xbb marks it. Only the sound code reads them.
+    BitMask {
+        versions: &[0x233C, 0x2348],
+        path: "trains[*]",
+        bits: &[
+            (0xab, 0xff),
+            (0xac, 0xff),
+            (0xad, 0xff),
+            (0xae, 0xff),
+            (0xbb, 0x10),
+        ],
+        why: "sound handle of the viewed company's train (0x4d0870) and its flag bit; audio state",
+    },
+    // 0x466230 (open a detail view; called by the message box 0x46aa90, whose display window
+    // depends on clock_ms) writes the view kind to 0x570516 and its subject to 0x57051a.
+    BitMask {
+        versions: &[0x233C, 0x2348],
+        path: "state",
+        bits: &[
+            (0x2e, 0xff),
+            (0x2f, 0xff),
+            (0x30, 0xff),
+            (0x31, 0xff),
+            (0x32, 0xff),
+            (0x33, 0xff),
+            (0x34, 0xff),
+            (0x35, 0xff),
+        ],
+        why: "interface view kind and subject (0x570516/0x57051a) set by message boxes timed by clock_ms",
+    },
+];
+
+/// The [`BIT_MASKS`] entry that hides every difference of a raw chunk, if one does.
+pub fn bit_mask_for(
+    version: u32,
+    path: &str,
+    a: &FieldValue,
+    b: &FieldValue,
+) -> Option<&'static BitMask> {
+    let (base, lo, _) = split_raw(path)?;
+    let (FieldValue::Bytes(x), FieldValue::Bytes(y)) = (a, b) else {
+        return None;
+    };
+    if x.len() != y.len() {
+        return None;
+    }
+    BIT_MASKS.iter().find(|m| {
+        m.versions.contains(&version)
+            && glob(m.path, base)
+            && x.iter().zip(y).enumerate().all(|(i, (p, q))| {
+                let d = p ^ q;
+                d == 0
+                    || m.bits
+                        .iter()
+                        .any(|&(off, bits)| off == lo + i && d & !bits == 0)
+            })
+    })
+}
+
 fn glob(pat: &str, text: &str) -> bool {
     let (p, t) = (pat.as_bytes(), text.as_bytes());
     let (mut i, mut j) = (0, 0);
@@ -511,7 +588,13 @@ pub fn diff(a: &Save, b: &Save) -> Vec<Difference> {
     let mut push = |path: &str, va: Option<&Field>, vb: Option<&Field>| {
         let masked = mask_for(a.layout.version, path)
             .or_else(|| mask_for(b.layout.version, path))
-            .map(|m| m.why);
+            .map(|m| m.why)
+            .or_else(|| match (va, vb) {
+                (Some(x), Some(y)) if a.layout.version == b.layout.version => {
+                    bit_mask_for(a.layout.version, path, &x.value, &y.value).map(|m| m.why)
+                }
+                _ => None,
+            });
         out.push(Difference {
             path: path.to_string(),
             a: va.map(|f| f.value.clone()),

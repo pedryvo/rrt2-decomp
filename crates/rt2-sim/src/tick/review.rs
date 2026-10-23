@@ -53,22 +53,22 @@ fn cdiv(a: i32, b: i32) -> i32 {
 }
 
 /// Inputs of `pick_ref` (`0x438450`).
-pub(super) struct PickIn<'a> {
-    pub(super) year: i32,
-    pub(super) month: i32,
-    pub(super) founded: i32,
-    pub(super) cats: &'a [f64; 13],
-    pub(super) arch: &'a [[f64; 13]; 10],
-    pub(super) c140: i32,
-    pub(super) c144: i32,
-    pub(super) uses: [u8; 40],
-    pub(super) avail: [u8; 40],
-    pub(super) sal: [i32; 40],
+pub(crate) struct PickIn<'a> {
+    pub(crate) year: i32,
+    pub(crate) month: i32,
+    pub(crate) founded: i32,
+    pub(crate) cats: &'a [f64; 13],
+    pub(crate) arch: &'a [[f64; 13]; 10],
+    pub(crate) c140: i32,
+    pub(crate) c144: i32,
+    pub(crate) uses: [u8; 40],
+    pub(crate) avail: [u8; 40],
+    pub(crate) sal: [i32; 40],
 }
 
 /// `manager_pick_candidate(-1)` (`0x438450`): the index of a manager, drawing the game RNG.
 /// The network-lock branch (`0x5748f8 != 0`) never happens in a local game.
-pub(super) fn pick_manager(p: &PickIn, rng: &mut GameRng) -> i32 {
+pub(crate) fn pick_manager(p: &PickIn, rng: &mut GameRng) -> i32 {
     let y = p.year - i32::from(p.month != 12);
     let mut acc = 0.0f64;
     let mut cnt = 0i32;

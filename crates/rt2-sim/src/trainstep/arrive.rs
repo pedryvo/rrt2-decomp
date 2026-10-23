@@ -690,10 +690,20 @@ impl Ts<'_> {
             &cargos,
         );
         if self.is_ui_company(company) {
+            // `0x46abf0`: the cash register sound (`0x47d100`, `chin161m.raw`) plays
+            // `clamp(v / 25000, 1, 10)` times when the delivery earned `v = ftol(gross * own
+            // share - station fees) > 0`, and draws its variant with `crt_rand_range(0, 2)`
+            // (seen in the Example at day 529). Assumes the sound option `[0x574bc8]+0x224 != 2`
+            // and that the message box accepted the message (otherwise `v` comes from the last
+            // accepted one, `0x574430`).
+            let v = ftol(f64::from(gross) * f64::from(own) - f64::from(deducted));
+            if v > 0 {
+                self.crt.range(0, 2);
+            }
             todo_hook!(
                 self.log,
                 "delivery_message",
-                "0x46abf0 (delivery message and records of the viewed company)",
+                "0x46abf0 (message box, speed record prompt of the viewed company)",
                 "cargo.md 6"
             );
         } else {

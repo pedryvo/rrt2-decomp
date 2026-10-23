@@ -54,10 +54,11 @@ pub struct Globals {
     /// `0x56506c`: the serial given to the next vehicle (`vehicle_init` `0x414220` stores it in
     /// `car+0x2b` and counts up; starts at 0 in every run, it is not in the save).
     pub vehicle_serial: u32,
-    /// The `restricted` output of `0x4d00c0` is left untouched when the train is stopped by a
-    /// breakdown or a crash: `0x4d0400` then reads whatever its stack slot held, which is the
-    /// value of the previous call in practice (approximation, trains.md 10.4).
-    pub stale_restricted: bool,
+    /// The bytes of the car records freed during the run, by slot: `pool_free` does not clear
+    /// the memory and `vehicle_init` (`0x414220`) leaves some fields untouched (`+0x13` segment
+    /// length, `+0x38` rod frame...), so a car allocated in a reused slot starts from them (seen
+    /// in the Example at day 510: cars 75 and 76, slots of cars of the save removed earlier).
+    pub freed_cars: std::collections::BTreeMap<i32, Vec<u8>>,
     /// `0x5794f0`: a track change with 20 stations or more deferred `station_networks_rebuild`
     /// to the next `sim_month_end` (step 1).
     pub networks_dirty: bool,
@@ -204,8 +205,13 @@ impl Ts<'_> {
         pool::alloc(pool_of_mut(self.s, p), data).expect("pool grows") as i32
     }
 
-    /// `pool_free` (`0x4f17e0`).
+    /// `pool_free` (`0x4f17e0`). The memory of the record is left as it was: a car freed here
+    /// keeps its bytes for the next `vehicle_init` in the same slot ([`Globals::freed_cars`]).
     pub fn free(&mut self, p: P, id: i32) {
+        if p == P::Car && self.exists(P::Car, id) {
+            let old = self.record(P::Car, id);
+            self.g.freed_cars.insert(id, old);
+        }
         pool::free(pool_of_mut(self.s, p), id as usize);
     }
 

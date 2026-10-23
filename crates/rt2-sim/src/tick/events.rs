@@ -568,11 +568,13 @@ impl ScenarioWorld for ScWorld<'_> {
     fn is_human_person(&self, person: i32) -> bool {
         self.s.person_is_human(person)
     }
+    // `[0x574414]` / `[0x566ca4]`: the company and person the interface plays; the clone takes
+    // the first human person and its chairman company (`SimState::local_player`).
     fn local_company(&self) -> i32 {
-        0
+        self.s.local_player().1 as i32
     }
     fn local_person(&self) -> i32 {
-        0
+        self.s.local_player().0 as i32
     }
     fn is_campaign(&self) -> bool {
         self.s.hdr(HDR_CAMPAIGN) != 0
@@ -595,7 +597,20 @@ impl ScenarioWorld for ScWorld<'_> {
     fn stations_visited(&self) -> i32 {
         0
     }
+    fn status_buffer_active(&self) -> bool {
+        self.s.status_buf.is_some()
+    }
     fn show_message(&mut self, message: &Message) -> usize {
+        // `rule_collect_status` (`0x458210`): with the buffer `[0x5665e0]` set, the text goes
+        // to it (`0x455f30`): the separator LNG 2 (`"\n\n"` in every LNG) when the buffer
+        // already holds more than 2 characters, then the substituted text (Latin-1).
+        if let Some(buf) = self.s.status_buf.as_mut() {
+            if buf.len() > 2 {
+                buf.extend_from_slice(b"\n\n");
+            }
+            buf.extend(message.text.chars().map(|c| c as u32 as u8));
+            return 0;
+        }
         // A choice takes the player's button in interactive mode (`crate::choice`), button 0
         // otherwise; the other kinds only go to the output queue (message.rs). A newspaper
         // (`+0x60 == 1`) goes through `news_post` (`0x4a42f0`): one CRT draw, the news flag
