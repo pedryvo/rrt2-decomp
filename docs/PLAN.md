@@ -240,3 +240,31 @@ O manual e o guia de estratégia (`docs/reference/manual-rules.md`) servem para 
 - Bugs do original são replicados no modo fiel e corrigidos só atrás de flags (seção 10, item 10).
 
 **Meta realista:** fórmulas, regras e RNG idênticos, provados pelos níveis 1 e 2. Uma partida inteira idêntica bit a bit por décadas é a meta máxima, mas a IA e a ordem das atualizações podem tornar isso difícil. Por isso a regra é que nenhuma divergência fica sem explicação.
+
+## 12. Escopo da versão 1.0 (decidido em 2026-10-23)
+
+O usuário decidiu que todos os itens abaixo entram na 1.0. O multiplayer continua pós-1.0. Cada item marcado `[x]` precisa estar implementado, testado (inclusive pelo caminho real de entrada, quando for interface) e documentado.
+
+**Jogo completo**
+- [ ] Todas as telas do inventário (`docs/reference/screens.md`) prontas, menos as exclusivas do multiplayer
+- [ ] Vídeos de introdução (Smacker)
+- [ ] Opções para corrigir bugs do original, com o modo fiel como padrão; cada correção tem nome e o save/replay guarda o conjunto de regras usado
+- [ ] Caso de fidelidade de 10 anos (ou mais) idêntico ao original
+
+**Jogabilidade moderna** (sem alterar o balanceamento padrão)
+- [ ] Desfazer a última construção
+- [ ] Overlays de mapa: as camadas originais, mais oferta e demanda por carga, lucro por trecho e congestionamento
+- [ ] Gerenciador de frota: modelos de composição e troca de locomotiva em massa
+- [ ] Gráficos e relatórios financeiros mais completos
+- [ ] Notificações configuráveis e histórico de eventos
+
+**Plataforma**
+- [ ] Controle (gamepad) e Steam Deck
+- [ ] Mods: dados de jogo (locomotivas, cargas, indústrias, construções, efeitos) exportáveis do EXE para TOML e carregáveis de pacotes de mod, com o EXE como padrão
+- [ ] Acessibilidade: paletas para daltonismo, tamanho de fonte independente da escala da UI, legendas para avisos sonoros
+- [ ] Empacotamento: AppImage e Flatpak no Linux, além dos tarballs e do zip do Windows
+- [ ] Guia do jogador (instalação, primeiros passos, diferenças em relação ao original, recursos modernos) nos seis idiomas
+
+**Qualidade**
+- [ ] Rodada de testes de jogo do usuário com campanhas de ponta a ponta, e os bugs encontrados corrigidos
+- [ ] Desempenho: 60 fps em 4K nos maiores mapas, carga de saves em menos de 1 s
