@@ -217,3 +217,116 @@ fn refusals_are_shown_not_sent() {
     );
     assert!(game(&s).build.message.as_ref().is_some_and(|m| !m.1));
 }
+
+/// Tiles of the player's stations (owner = the human company).
+fn player_stations(s: &AppState) -> Vec<(i32, i32)> {
+    let save = game(s).world.save_ref().unwrap();
+    let co = bt::human_company(save).unwrap();
+    bt::company_stations(save, co)
+        .into_iter()
+        .filter_map(|id| bt::station_tile(save, id))
+        .collect()
+}
+
+/// Screen position of a tile's centre with the current camera.
+fn tile_px(s: &AppState, t: (i32, i32)) -> (f32, f32) {
+    let g = game(s);
+    let save = g.world.save_ref().unwrap();
+    crate::pick::tile_to_screen(
+        &g.camera,
+        s.viewport,
+        &save.map,
+        t.0 as f32 + 0.5,
+        t.1 as f32 + 0.5,
+    )
+}
+
+#[test]
+fn dragging_track_between_two_stations_with_the_mouse() {
+    let Some(mut s) = state() else {
+        eprintln!("install or converted save missing; skipping");
+        return;
+    };
+    let st = player_stations(&s);
+    assert!(st.len() >= 2, "the save has two stations of the player");
+    // Two stations not already linked, the closest pair.
+    let mut best = None;
+    for (i, a) in st.iter().enumerate() {
+        for b in &st[i + 1..] {
+            let d = (a.0 - b.0).abs() + (a.1 - b.1).abs();
+            if d > 2 && best.is_none_or(|(bd, _, _)| d < bd) {
+                best = Some((d, *a, *b));
+            }
+        }
+    }
+    let (_, a, b) = best.unwrap();
+    // Frame both stations.
+    if let Screen::Game(g) = &mut s.screen {
+        g.camera.target = rt2_render::camera::Vec2::new(
+            (a.0 + b.0) as f32 / 2.0 + 0.5,
+            (a.1 + b.1) as f32 / 2.0 + 0.5,
+        );
+        g.camera.zoom = 24.0;
+    }
+    s.select_tool(super::build_ui::ToolKind::Track);
+    assert!(s.tool_active());
+    let (pa, pb) = (tile_px(&s, a), tile_px(&s, b));
+    let target0 = game(&s).camera.target;
+    let cash0 = cash(&s);
+    // The press lands on the building the player sees, a tile beside the station's own.
+    let near = tile_px(&s, (a.0, a.1 + 1));
+    s.cursor_moved(near.0, near.1);
+    s.mouse_button(true, true);
+    assert_eq!(
+        game(&s).build.from,
+        Some(a),
+        "the press on the station starts the drag"
+    );
+    // Move in steps; the preview follows and the camera stays.
+    for k in 1..=8 {
+        let f = k as f32 / 8.0;
+        s.cursor_moved(pa.0 + (pb.0 - pa.0) * f, pa.1 + (pb.1 - pa.1) * f);
+    }
+    assert_eq!(
+        game(&s).camera.target,
+        target0,
+        "the left drag does not pan"
+    );
+    let plan = game(&s).build.plan.clone().expect("a live preview");
+    assert!(plan.error.is_none(), "{:?}", plan.error);
+    assert!(!plan.tiles.is_empty());
+    s.mouse_button(true, false);
+    assert!(cash(&s) < cash0, "released: the track is laid and paid");
+    assert!(game(&s).build.from.is_none());
+    // Both stations' tiles are connected by track now: the path exists.
+    let save = game(&s).world.save_ref().unwrap();
+    let built = |t: (i32, i32)| save.map.tile(t.0 as usize, t.1 as usize).track_id != 0;
+    assert!(built(a) && built(b));
+}
+
+#[test]
+fn escape_cancels_the_drag_then_the_tool_and_the_right_button_pans() {
+    let Some(mut s) = state() else {
+        eprintln!("install or converted save missing; skipping");
+        return;
+    };
+    let a = player_stations(&s)[0];
+    s.select_tool(super::build_ui::ToolKind::Track);
+    let p = tile_px(&s, a);
+    s.cursor_moved(p.0, p.1);
+    s.mouse_button(true, true);
+    assert!(game(&s).build.from.is_some());
+    s.key(KeyCode::Escape, true, false, None);
+    assert!(game(&s).build.from.is_none() && game(&s).build.tool.is_some());
+    s.mouse_button(true, false);
+    // The right button drags the camera while the tool stays selected.
+    let t0 = game(&s).camera.target;
+    s.cursor_moved(300.0, 300.0);
+    s.mouse_button(false, true);
+    s.cursor_moved(380.0, 340.0);
+    s.mouse_button(false, false);
+    assert_ne!(game(&s).camera.target, t0);
+    assert!(game(&s).build.tool.is_some());
+    s.key(KeyCode::Escape, true, false, None);
+    assert!(game(&s).build.tool.is_none());
+}

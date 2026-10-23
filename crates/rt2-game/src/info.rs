@@ -737,7 +737,7 @@ impl<'a> Info<'a> {
 
     // ---- trains ---------------------------------------------------------------------------
 
-    fn station_name(&self, slot: u32) -> String {
+    pub fn station_name(&self, slot: u32) -> String {
         rec(&self.save.stations, slot)
             .map(|r| r.text(26, 0x39))
             .filter(|s| !s.is_empty())

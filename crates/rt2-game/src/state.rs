@@ -36,6 +36,7 @@ mod editor_modals;
 mod editor_ui;
 mod info_ui;
 mod mainwin;
+mod maplabels;
 mod menus;
 mod options_ui;
 mod saves_ui;
@@ -231,6 +232,8 @@ pub struct AppState {
     ctrl: bool,
     shift: bool,
     drag: bool,
+    /// Camera, scene and UI scale the map names were laid out for (they move with the view).
+    labels_key: Option<(f32, f32, f32, u8, u64, u32)>,
     cursor: Option<(f32, f32)>,
     menu_handles: MenuHandles,
     /// Audio triggers, drained by the window loop (one way: the state never reads audio).
@@ -325,6 +328,7 @@ impl AppState {
             ctrl: false,
             shift: false,
             drag: false,
+            labels_key: None,
             cursor: None,
             menu_handles: MenuHandles::default(),
             cues: Vec::new(),
@@ -940,7 +944,8 @@ impl AppState {
             g.last_year = year;
             self.offer_year_end(i32::from(year) - 1);
         }
-        if overlay_stale {
+        let labels_stale = self.map_labels_stale();
+        if overlay_stale || labels_stale {
             self.rebuild_ui();
         }
         self.mainwin_refresh();
@@ -1303,6 +1308,7 @@ impl AppState {
             Screen::Menu(_) => self.build_menu(&mut ui),
             Screen::Game(_) if self.editor_active() => self.build_editor(&mut ui),
             Screen::Game(_) => {
+                self.build_map_labels(&mut ui);
                 self.build_overlay(&mut ui);
                 self.build_mainwin(&mut ui);
                 self.build_info(&mut ui);

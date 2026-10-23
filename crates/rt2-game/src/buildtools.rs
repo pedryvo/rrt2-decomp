@@ -613,6 +613,33 @@ pub fn company_stations(save: &Save, company: i32) -> Vec<i32> {
         .collect()
 }
 
+/// Where a track drag that starts or ends on tile `(x, y)` really starts or ends. A station is
+/// drawn as a building that stands up from the ground, so a press on what the player sees as the
+/// station lands on a tile around its footprint box (objects `+0x26..+0x2d`, `Info::pick`); that
+/// press means the station's own tile, where its track is (the manual: "click at one endpoint
+/// of your track", Manual.html, Lay Track). Other tiles stay as they are.
+pub fn snap_to_station(save: &Save, x: i32, y: i32) -> (i32, i32) {
+    for o in save.objects.ordered() {
+        let b = Rec(&o.data);
+        if b.u8(7) != 0 {
+            continue;
+        }
+        let (x0, y0, x1, y1) = (
+            i32::from(b.i16(0x26)) - 1,
+            i32::from(b.i16(0x28)) - 1,
+            i32::from(b.i16(0x2a)) + 1,
+            i32::from(b.i16(0x2c)) + 1,
+        );
+        if x < x0 || x > x1 || y < y0 || y > y1 {
+            continue;
+        }
+        if let Some(t) = station_tile(save, i32::from(b.u16(8))) {
+            return t;
+        }
+    }
+    (x, y)
+}
+
 /// A station's tile.
 pub fn station_tile(save: &Save, station: i32) -> Option<(i32, i32)> {
     rec(&save.stations, station).map(|s| (s.i32(0xa), s.i32(0xe)))

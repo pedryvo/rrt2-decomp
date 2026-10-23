@@ -3,6 +3,8 @@
 Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Docs or RE (reverse-engineering finding). Append `(original bug)` to fixes of bugs present in the original game.
 
 ## Unreleased
+- Fix: Lay Track drag now starts and ends on a station when pressed on its building (snap to the station's tile), so dragging from one station to another works as in the original
+- Feature: city names and free map labels (seas) are written above the map, station names when zoomed in; vector text, hidden when too far out, overlap-free
 
 ## v0.2.0 — 2026-10-23
 - Feature: map and scenario editor (main menu Editor): new/open/save .MP2 maps, height, paint, fill, trees, territories, add buildings/industries/cities/rivers/roads, bulldozer, undo, Map Options and a scenario rules editor with live condition validation

@@ -314,6 +314,14 @@ impl AppState {
         self.rebuild_ui();
     }
 
+    /// The tile under the cursor as the Lay Track tool takes it: a press on a station building
+    /// means the station's tile (`buildtools::snap_to_station`).
+    fn track_tile_under(&self, pos: (f32, f32)) -> Option<(i32, i32)> {
+        let (x, y) = self.tile_under(pos)?;
+        let save = self.game()?.world.save_ref()?;
+        Some(bt::snap_to_station(save, x, y))
+    }
+
     fn tile_under(&self, pos: (f32, f32)) -> Option<(i32, i32)> {
         let g = self.game()?;
         let save = g.world.save_ref()?;
@@ -377,7 +385,14 @@ impl AppState {
             return;
         }
         let over_ui = self.ui.over_ui();
-        let tile = if over_ui { None } else { self.tile_under(pos) };
+        let track = self.tool_kind() == Some(ToolKind::Track);
+        let tile = if over_ui {
+            None
+        } else if track {
+            self.track_tile_under(pos)
+        } else {
+            self.tile_under(pos)
+        };
         let Screen::Game(g) = &mut self.screen else {
             return;
         };
@@ -501,9 +516,13 @@ impl AppState {
         let Some(pos) = self.cursor else {
             return;
         };
-        let tile = self.tile_under(pos);
         let Some(kind) = self.tool_kind() else {
             return;
+        };
+        let tile = if kind == ToolKind::Track {
+            self.track_tile_under(pos)
+        } else {
+            self.tile_under(pos)
         };
         let Screen::Game(g) = &mut self.screen else {
             return;
@@ -530,7 +549,7 @@ impl AppState {
         let Some(pos) = self.cursor else {
             return;
         };
-        let tile = self.tile_under(pos);
+        let tile = self.track_tile_under(pos);
         if let Screen::Game(g) = &mut self.screen {
             g.build.hover = tile;
         }
