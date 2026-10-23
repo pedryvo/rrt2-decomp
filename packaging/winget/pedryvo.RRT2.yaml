@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.version.1.6.0.schema.json
+# Template: scripts/fill-winget.sh replaces __VERSION__ (docs/packaging.md, section 6).
+PackageIdentifier: pedryvo.RRT2
+PackageVersion: __VERSION__
+DefaultLocale: en-US
+ManifestType: version
+ManifestVersion: 1.6.0

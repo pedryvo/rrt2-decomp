@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.6.0.schema.json
+# Template: scripts/fill-winget.sh replaces __VERSION__ (docs/packaging.md, section 6).
+PackageIdentifier: pedryvo.RRT2
+PackageVersion: __VERSION__
+PackageLocale: en-US
+Publisher: Pedro Ivo Rocha
+PublisherUrl: https://github.com/pedryvo
+PublisherSupportUrl: https://github.com/pedryvo/rrt2-decomp/issues
+Author: Pedro Ivo Rocha
+PackageName: RRT2
+PackageUrl: https://github.com/pedryvo/rrt2-decomp
+License: GPL-3.0-or-later
+LicenseUrl: https://github.com/pedryvo/rrt2-decomp/blob/main/LICENSE
+ShortDescription: Open-source clone of Railroad Tycoon II (needs your own copy of the original game)
+Description: |-
+  RRT2 is an open-source reimplementation of Railroad Tycoon II Platinum written in Rust.
+  It contains no assets from the original game: it reads the data from your own legitimate
+  install (GOG, Steam or CD), which it never modifies.
+Moniker: rrt2
+Tags:
+  - game
+  - railroad
+  - simulation
+  - strategy
+  - tycoon
+ReleaseNotesUrl: https://github.com/pedryvo/rrt2-decomp/releases/tag/v__VERSION__
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0

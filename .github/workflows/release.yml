@@ -56,6 +56,22 @@ jobs:
       - name: Package
         shell: bash
         run: scripts/package-release.sh "${{ matrix.platform }}" "$LABEL" "target/${{ matrix.target }}/release" dist
+      # Windows installer (Inno Setup, packaging/windows/rrt2.iss) from the folder staged for the
+      # zip; on tags also the filled winget manifests (packaging/winget, docs/packaging.md).
+      - name: Windows installer
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          scripts/package-windows-installer.sh "$LABEL" dist
+          if [[ "$GITHUB_REF" == refs/tags/v* && "$LABEL" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            scripts/fill-winget.sh "$LABEL" "dist/rrt2-$LABEL-windows-x86_64-setup.exe" "dist/winget/$LABEL"
+            (cd dist/winget && 7z a -tzip -bso0 "../rrt2-$LABEL-winget-manifests.zip" .)
+          fi
+      # macOS: RRT2.app (icon from the logo, ad-hoc signed, not notarized) inside a .dmg.
+      - name: macOS app and dmg
+        if: runner.os == 'macOS'
+        shell: bash
+        run: scripts/package-macos-app.sh "${{ matrix.platform }}" "$LABEL" "target/${{ matrix.target }}/release" dist
       # AppImage (docs/packaging.md): same binary, appimagetool and runtime pinned by sha256.
       - name: AppImage
         if: runner.os == 'Linux'
@@ -72,6 +88,8 @@ jobs:
             dist/*.tar.gz
             dist/*.zip
             dist/*.AppImage
+            dist/*.exe
+            dist/*.dmg
           if-no-files-found: error
 
   # Flatpak bundle built from source in the freedesktop SDK (packaging/flatpak, docs/packaging.md).

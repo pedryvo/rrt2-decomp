@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Template: scripts/package-macos-app.sh replaces __VERSION__, __LABEL__ and __MIN_MACOS__
+     (docs/packaging.md, section 7). -->
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleDisplayName</key>
+	<string>RRT2</string>
+	<key>CFBundleExecutable</key>
+	<string>rrt2</string>
+	<key>CFBundleGetInfoString</key>
+	<string>RRT2 __LABEL__, open-source clone of Railroad Tycoon II</string>
+	<key>CFBundleIconFile</key>
+	<string>rrt2</string>
+	<key>CFBundleIdentifier</key>
+	<string>io.github.pedryvo.rrt2</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>RRT2</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>__VERSION__</string>
+	<key>CFBundleVersion</key>
+	<string>__VERSION__</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.strategy-games</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>__MIN_MACOS__</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSHumanReadableCopyright</key>
+	<string>GPL-3.0-or-later, https://github.com/pedryvo/rrt2-decomp</string>
+</dict>
+</plist>

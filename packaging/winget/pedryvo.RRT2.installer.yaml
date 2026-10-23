@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.6.0.schema.json
+# Template: scripts/fill-winget.sh replaces __VERSION__, __INSTALLER_SHA256__ and
+# __RELEASE_DATE__ (docs/packaging.md, section 6). The installer is packaging/windows/rrt2.iss.
+PackageIdentifier: pedryvo.RRT2
+PackageVersion: __VERSION__
+InstallerLocale: en-US
+InstallerType: inno
+UpgradeBehavior: install
+ReleaseDate: __RELEASE_DATE__
+MinimumOSVersion: 10.0.0.0
+# AppId of rrt2.iss plus the "_is1" suffix Inno Setup adds to the uninstall key.
+ProductCode: '{C5E014EA-B253-4B7C-A586-DFDF3BDBFCEE}_is1'
+Installers:
+  - Architecture: x64
+    Scope: user
+    InstallerUrl: https://github.com/pedryvo/rrt2-decomp/releases/download/v__VERSION__/rrt2-__VERSION__-windows-x86_64-setup.exe
+    InstallerSha256: __INSTALLER_SHA256__
+    InstallerSwitches:
+      Custom: /CURRENTUSER
+  - Architecture: x64
+    Scope: machine
+    InstallerUrl: https://github.com/pedryvo/rrt2-decomp/releases/download/v__VERSION__/rrt2-__VERSION__-windows-x86_64-setup.exe
+    InstallerSha256: __INSTALLER_SHA256__
+    ElevationRequirement: elevatesSelf
+    InstallerSwitches:
+      Custom: /ALLUSERS
+ManifestType: installer
+ManifestVersion: 1.6.0

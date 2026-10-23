@@ -31,7 +31,43 @@ fn git_commit() -> String {
     }
 }
 
+/// Embeds the project logo (`packaging/windows/rrt2.ico`, made from `docs/assets/logo.svg`) and
+/// the version metadata in `rrt2.exe`. Only on a Windows host building for Windows.
+#[cfg(windows)]
+fn windows_resources() {
+    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() != Ok("windows") {
+        return;
+    }
+    // Absolute: rc.exe does not resolve paths relative to the crate.
+    let icon = PathBuf::from(std::env::var_os("CARGO_MANIFEST_DIR").expect("cargo sets it"))
+        .join("..")
+        .join("..")
+        .join("packaging")
+        .join("windows")
+        .join("rrt2.ico");
+    println!("cargo:rerun-if-changed={}", icon.display());
+    let mut res = winresource::WindowsResource::new();
+    res.set_icon(&icon.to_string_lossy())
+        .set("ProductName", "RRT2")
+        .set(
+            "FileDescription",
+            "RRT2 - open-source clone of Railroad Tycoon II",
+        )
+        .set("InternalName", "rrt2")
+        .set("OriginalFilename", "rrt2.exe")
+        .set(
+            "LegalCopyright",
+            "GPL-3.0-or-later, https://github.com/pedryvo/rrt2-decomp",
+        );
+    res.compile()
+        .expect("compile the Windows resources (icon, version info)");
+}
+
+#[cfg(not(windows))]
+fn windows_resources() {}
+
 fn main() {
+    windows_resources();
     println!("cargo:rerun-if-env-changed=RRT2_GIT_COMMIT");
     println!("cargo:rerun-if-changed=../../.git/HEAD");
     println!("cargo:rerun-if-changed=../../.git/refs/heads");
