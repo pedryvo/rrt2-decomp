@@ -3,6 +3,8 @@
 Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Docs or RE (reverse-engineering finding). Append `(original bug)` to fixes of bugs present in the original game.
 
 ## Unreleased
+
+## v0.2.0 — 2026-10-23
 - Feature: map and scenario editor (main menu Editor): new/open/save .MP2 maps, height, paint, fill, trees, territories, add buildings/industries/cities/rivers/roads, bulldozer, undo, Map Options and a scenario rules editor with live condition validation
 - RE: editor tool routines ported from the executable (elevation brushes 0x426480, trees 0x429fc0, fill 0x490490, mixed paint 0x48cc00, rivers 0x429ea0, places 0x42f630, territories 0x4c8470) and the saver's map overview 0x477040, byte-identical to the original's .MP2 files
 - Docs: editor screens L1..L13 and the editor chapter of the UI notes

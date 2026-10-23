@@ -6,7 +6,7 @@ members = ["crates/*"]
 license = "GPL-3.0-or-later"
 repository = "https://github.com/pedryvo/rrt2-decomp"
 edition = "2024"
-version = "0.1.0"
+version = "0.2.0"
 
 [workspace.dependencies]
 rt2-formats = { path = "crates/rt2-formats" }

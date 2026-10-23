@@ -2145,7 +2145,7 @@ checksum = "6c20b6793b5c2fa6553b250154b78d6d0db37e72700ae35fad9387a46f487c97"
 
 [[package]]
 name = "rt2-audio"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "kira",
  "rt2-formats",
@@ -2154,7 +2154,7 @@ dependencies = [
 
 [[package]]
 name = "rt2-formats"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "thiserror 2.0.21",
  "toml",
@@ -2162,7 +2162,7 @@ dependencies = [
 
 [[package]]
 name = "rt2-game"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -2182,7 +2182,7 @@ dependencies = [
 
 [[package]]
 name = "rt2-oracle"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "rt2-formats",
  "rt2-sim",
@@ -2192,7 +2192,7 @@ dependencies = [
 
 [[package]]
 name = "rt2-render"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "bytemuck",
  "glam 0.30.10",
@@ -2205,7 +2205,7 @@ dependencies = [
 
 [[package]]
 name = "rt2-sim"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "rt2-formats",
  "thiserror 2.0.21",
@@ -2213,7 +2213,7 @@ dependencies = [
 
 [[package]]
 name = "rt2-tools"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -2225,7 +2225,7 @@ dependencies = [
 
 [[package]]
 name = "rt2-ui"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "bytemuck",
  "glyphon",
@@ -2235,7 +2235,7 @@ dependencies = [
 
 [[package]]
 name = "rt2-viewer"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "clap",
