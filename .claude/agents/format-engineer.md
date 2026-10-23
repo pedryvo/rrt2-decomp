@@ -12,3 +12,5 @@ Regras do projeto: leia /home/pedryvo/Decomp/railroad/CLAUDE.md. A pasta do jogo
 - Atualize docs/formats/<formato>.md se descobrir algo novo.
 
 Arquivos grandes (sandboxes do Wine, extrações, screenshots em lote): use `~/.cache/rrt2/`, não o `/tmp` (disco em RAM pequeno).
+
+Recursos: rode cargo sempre com `nice -n 15` e só nos crates que você alterou; não rode a suíte completa do workspace (o coordenador faz isso).

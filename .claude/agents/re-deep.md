@@ -14,3 +14,5 @@ Prefer re/db/decomp (rg) for exploration; use REA for confirmation, xrefs and an
 Formatação: use `cargo fmt -p <crate>` ou `rustfmt --edition 2024 <arquivo>` (nunca `rustfmt` sem a edition, nem `cargo fmt --all` com outros agentes trabalhando). O coordenador valida com `scripts/verify-head.sh`.
 
 Arquivos grandes (sandboxes do Wine, extrações, screenshots em lote): use `~/.cache/rrt2/`, não o `/tmp` (disco em RAM pequeno).
+
+Recursos: rode cargo sempre com `nice -n 15` e só nos crates que você alterou; não rode a suíte completa do workspace (o coordenador faz isso).

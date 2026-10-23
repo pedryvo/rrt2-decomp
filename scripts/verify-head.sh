@@ -11,10 +11,10 @@ if [[ -f "$repo/re/bin/RT2_PLAT.EXE" ]]; then
     mkdir -p "$wt/re/bin" && cp "$repo/re/bin/RT2_PLAT.EXE" "$wt/re/bin/"
 fi
 cd "$wt"
-nice -n 10 cargo fmt --all --check >/dev/null || { cargo fmt --all --check | head -20; echo "verify-head: fmt FAILED" >&2; exit 1; }
-CARGO_TARGET_DIR="$repo/target" nice -n 10 cargo clippy --workspace --all-targets -q -- -D warnings
+nice -n 15 cargo fmt --all --check >/dev/null || { cargo fmt --all --check | head -20; echo "verify-head: fmt FAILED" >&2; exit 1; }
+CARGO_TARGET_DIR="$repo/target" nice -n 15 cargo clippy --workspace --all-targets -q -- -D warnings
 log="$wt/.nextest.log"
-if ! CARGO_TARGET_DIR="$repo/target" nice -n 10 cargo nextest run --workspace >"$log" 2>&1; then
+if ! CARGO_TARGET_DIR="$repo/target" nice -n 15 cargo nextest run --workspace >"$log" 2>&1; then
     tail -40 "$log"
     echo "verify-head: tests FAILED" >&2
     exit 1

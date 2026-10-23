@@ -12,3 +12,5 @@ Formatação: use `cargo fmt -p <crate>` ou `rustfmt --edition 2024 <arquivo>` (
 Arquivos grandes (sandboxes do Wine, extrações, screenshots em lote): use `~/.cache/rrt2/`, não o `/tmp` (disco em RAM pequeno).
 
 Testes de UI: cubra o caminho real de entrada (eventos sintéticos de mouse e teclado), não só os comandos que a UI emite.
+
+Recursos: rode cargo sempre com `nice -n 15` e só nos crates que você alterou; não rode a suíte completa do workspace (o coordenador faz isso).

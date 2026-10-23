@@ -1,7 +1,8 @@
 [build]
-# Keep the machine responsive while several agents build in parallel (16 cores, 13 GB RAM).
-jobs = 6
+# Keep the workstation responsive while agents build in parallel (16 cores, 13 GB RAM):
+# at most 4 rustc jobs, and mold limited to 2 threads.
+jobs = 4
 
 [target.x86_64-unknown-linux-gnu]
 linker = "clang"
-rustflags = ["-C", "link-arg=-fuse-ld=mold"]
+rustflags = ["-C", "link-arg=-fuse-ld=mold", "-C", "link-arg=-Wl,--thread-count=2"]
