@@ -19,6 +19,8 @@
 
 use rt2_ui::{Align, Anchor, Color, Fill, Fit, FontStyle, Kind, Layout, NodeId, Ui, game_font};
 
+pub(super) mod fin;
+
 use super::info_ui;
 use super::{AppState, Screen};
 use rt2_sim::build::cmd::CmdError;
@@ -137,6 +139,8 @@ pub(super) enum Dialog {
         medal: Medal,
         text: String,
     },
+    /// A financial action of the player (`fin.rs`).
+    Fin(fin::FinDlg),
 }
 
 fn at(x: f32, y: f32, w: f32, h: f32) -> Layout {
@@ -200,7 +204,9 @@ impl AppState {
     }
 
     /// Screenshots: opens a dialog by name (`dismiss[-N]` closes the top ones; `goals`, `founding`, `year-end[-1..-3]`, `news`,
-    /// `dialog`, `win-gold`, `win-silver`, `win-bronze`, `lose`, `file`, `tool-0..7`); false for
+    /// `dialog`, `win-gold`, `win-silver`, `win-bronze`, `lose`, `file`, `tool-0..7`, `fin-bond`, `fin-stock`, `fin-buyback`,
+    /// `fin-dividend`, `fin-merger`, `fin-bankrupt`, `fin-repay`, `fin-manager`, `fin-resign`, `fin-trade`, `fin-assume`,
+    /// `fin-election`, `fin-vote`); false for
     /// an unknown name.
     pub fn show_dialog(&mut self, name: &str) -> bool {
         let Screen::Game(g) = &self.screen else {
@@ -293,6 +299,7 @@ impl AppState {
                 let i = n["tool-".len()..].parse::<usize>().unwrap_or(0).min(7);
                 Dialog::Tool(i)
             }
+            n if n.starts_with("fin-") => return self.show_fin_dialog(n),
             n => return self.show_build_screen(n),
         };
         self.push_dialog(d);
@@ -429,6 +436,14 @@ impl AppState {
             GameMessage::CompanyStarted { .. }
             | GameMessage::CompanyConnected { .. }
             | GameMessage::StockSplit { .. } => None,
+            GameMessage::MergerResult { .. }
+            | GameMessage::ChairmanVote { .. }
+            | GameMessage::ChairmanChanged { .. }
+            | GameMessage::MergerDone { .. }
+            | GameMessage::MarginWarning { .. }
+            | GameMessage::MarginTrade { .. }
+            | GameMessage::DividendSuspended { .. }
+            | GameMessage::DividendCut { .. } => self.fin_message_dialog(m),
         }
     }
 
@@ -484,6 +499,14 @@ impl AppState {
                 &t.get(169, "The stock of %1 has split %2 for 1!"),
                 &[co(*company), ratio.to_string()],
             ),
+            GameMessage::MergerResult { .. }
+            | GameMessage::ChairmanVote { .. }
+            | GameMessage::ChairmanChanged { .. }
+            | GameMessage::MergerDone { .. }
+            | GameMessage::MarginWarning { .. }
+            | GameMessage::MarginTrade { .. }
+            | GameMessage::DividendSuspended { .. }
+            | GameMessage::DividendCut { .. } => self.fin_message_line(m),
         }
     }
 
@@ -497,6 +520,10 @@ impl AppState {
             return false;
         };
         let msgs = g.world.take_messages();
+        self.poll_votes();
+        let Screen::Game(g) = &mut self.screen else {
+            return false;
+        };
         let outcome = if g.over_shown {
             None
         } else {
@@ -574,6 +601,9 @@ impl AppState {
                     *tab = (a - A_YEAR_TAB) as usize;
                 }
                 self.rebuild_ui();
+            }
+            a if (fin::A_FIN_OK..=fin::A_FIN_SHORT).contains(&a) => {
+                self.fin_activated(a);
             }
             A_FILE_LOAD => self.file_load(),
             A_FILE_SAVE => {
@@ -815,6 +845,7 @@ impl AppState {
                 body,
             } => self.build_newspaper(ui, &headline, &sub, &body),
             Dialog::GameOver { medal, text } => self.build_game_over(ui, medal, &text),
+            Dialog::Fin(d) => self.build_fin(ui, &d),
         }
     }
 

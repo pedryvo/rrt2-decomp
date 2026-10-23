@@ -224,7 +224,7 @@ Descrição por id (a coluna "lê" é o que o ramo de `0x454ae0` calcula; `ftol`
 | 34 | `0x22` | `CompanySingleTrackCells` | 0 | 1 | C | `empresa+0x186` (simples) |
 | 35 | `0x23` | `CompanyDoubleTrackCells` | 0 | 1 | C | `empresa+0x18a` (duplo) |
 | 36 | `0x24` | `CompanyElectricTrackCells` | 0 | 1 | C | `empresa+0x18e` (elétrico) |
-| 37 | `0x25` | `CompanyGoodwill` | 0 | 1 | C | `0x43eca0(emp) / 100` (goodwill 0..100: soma sobre os territórios de `trilho/16 + cargas no ano + cargas vida/N` (campos `+3`, `+5`, `+7` do bloco) vezes `effect_multiplier(0x28)`, teto 10000; [S]) |
+| 37 | `0x25` | `CompanyGoodwill` | 0 | 1 | C | `0x43eca0(emp, 0) / 100` [V: #17]: sobre os blocos dos territórios `1..n`, `v = vida/N + (trilho >> 4) + ano` (i16 `+7`, `+3`, `+5` do bloco; `N = max(1, ftol((fundação - ano) * 1,5))`, ou seja 1); com `Σv > 0` (só `v > 0`), `g = ftol((Σ posição*v / Σv + empresa.+0x4229) * 0,5)`, senão `g = +0x4229`; com território (ignorado se há um só), `g = (posição do território + g) / 2`; resultado `ftol(effect_multiplier(0x28) * max(g, 0))` em `0..10000` |
 | 38 | `0x26` | `CompanyId` | 0 | 1 | C | id da empresa do contexto |
 | 39 | `0x27` | `CompanyVariable1` | 0 | 1 | C | `empresa+0x417d+4*39` = `+0x4219`, variável 1 da empresa (efeitos `0xf9`/`0xfd`) |
 | 40 | `0x28` | `CompanyVariable2` | 0 | 1 | C | `empresa+0x421d`, variável 2 |
@@ -232,7 +232,7 @@ Descrição por id (a coluna "lê" é o que o ramo de `0x454ae0` calcula; `ftol`
 | 42 | `0x2a` | `CompanyVariable4` | 0 | 1 | C | `empresa+0x4225`, variável 4 |
 | 43 | `0x2b` | `CompanyTerritoryConnectedToTerritory` | 0 | 1 | PCT | `0x46b9a0`: 1 se alguma rede de estações (`estação+0x57 < 0x100`) da empresa tem estação no território do contexto (`estação+0x4ad`) e outra no território `n`; exige `n` válido no pool `0x574ca8` |
 | 44 | `0x2c` | `CompanyTerritoryConnectedToCity` | 0 | 1 | PCT | idem com a cidade `n` (`estação+0x53`, pool de cidades `0x574c5c`) |
-| 45 | `0x2d` | `CompanyTerritoryGoodwill` | 0 | 1 | CT | `0x43eca0(emp)/100` (a mesma conta de `CompanyGoodwill`; exige território != 0) |
+| 45 | `0x2d` | `CompanyTerritoryGoodwill` | 0 | 1 | CT | `0x43eca0(emp, território)/100`: a conta de `CompanyGoodwill` com a média final com a posição do território (exige território != 0) |
 | 46 | `0x2e` | `CompanyTerritoryHasTrainAccess` | 0 | 1 | CT | bit 0 de `empresa+0x479+território*0x1ed` (acesso a trens) |
 | 47 | `0x2f` | `CompanyTerritoryHasTrackAccess` | 0 | 1 | CT | bit 1 (acesso a construir trilho) |
 | 48 | `0x30` | `CompanyTerritoryHasStationAccess` | 0 | 1 | CT | bit 3 (acesso a construir estação) |
@@ -543,7 +543,7 @@ Depois de qualquer mudança de `[0x573d70]`, `event_fire_trigger` encerra a varr
 - `!=` está listado como comparador, mas o divisor de palavras o parte em `!` e `=`: inutilizável pelo texto (3.1). `> =` também falha.
 - "Test Against Multiple ... it will stop after the first true evaluation" (uma vez só): o código **continua avaliando** (e sorteando o RNG) e só pula mensagem e efeitos (2.3).
 - Ordem dos laços: jogadores (fora), empresas, territórios (dentro) (2.3); o manual só diz "ordem das listas".
-- Funções: o manual cita "over 70" e 84 entradas (Apêndice A); o exe tem 101 funções e 350 linhas de efeitos (manual: "approximately 250", 167 entradas). Funções do TSC (`EDITOR2.TXT`) `CompanyTerritoryLoadsHauledFromThisYear/Lifetime` existem na tabela mas **valem 0** no código; `CompanyIndustryProfitsThisYear` devolve o lucro do ano anterior (igual a `...LastYear`); `PlayerId` devolve o id da empresa do contexto; `CompanyDebt` é negativo; `CompanyTerritoryGoodwill` é o mesmo valor de `CompanyGoodwill`.
+- Funções: o manual cita "over 70" e 84 entradas (Apêndice A); o exe tem 101 funções e 350 linhas de efeitos (manual: "approximately 250", 167 entradas). Funções do TSC (`EDITOR2.TXT`) `CompanyTerritoryLoadsHauledFromThisYear/Lifetime` existem na tabela mas **valem 0** no código; `CompanyIndustryProfitsThisYear` devolve o lucro do ano anterior (igual a `...LastYear`); `PlayerId` devolve o id da empresa do contexto; `CompanyDebt` é negativo; `CompanyTerritoryGoodwill` passa o território a `0x43eca0` (média com a posição dele), não é o mesmo valor de `CompanyGoodwill` (o argumento de pilha não aparecia na decompilação).
 - Rótulos de vitória: o manual diz bronze/prata/ouro (E3) ou último/segundo/primeiro lugar (AG); o código guarda 1/2/3 como medalha da campanha e no placar usa `estado - 1`; vitória de outro jogador vira derrota local.
 - Efeitos de nível são cumulativos a cada avaliação verdadeira (4.2); `Variable` com -100 usa o valor do gatilho.
 
@@ -554,7 +554,7 @@ Depois de qualquer mudança de `[0x573d70]`, `event_fire_trigger` encerra a varr
 3. Quem lê os níveis de disponibilidade (127..188, 193..232, 305..308) e `[0x574784]`.
 4. Nomes finais dos campos `+0x32a`, `+0x32e`, `+0x34f/+0x350` (a avaliação "local" não aplica efeitos: provavelmente para não dessincronizar a rede) e de `[0x5665f0]`, `[0x5748fc]`.
 5. Mensagens: janelas (`0x469320`, `0x4a42f0`, `0x4510a0`) e a ordem de exibição em rede (escolha sempre 0 com 2 ou mais jogadores).
-6. A função `0x4c0240` e a leitura de `empresa+0x16e` ("ativa") em `GameExistsCompanyId`; `CompanyTerritoryGoodwill` igual a `CompanyGoodwill` pode ser bug do original ou esconder uma conta por território.
+6. A função `0x4c0240` e a leitura de `empresa+0x16e` ("ativa") em `GameExistsCompanyId` (resolvido: `CompanyTerritoryGoodwill` passa o território a `0x43eca0`, seção 3.5).
 7. Progressão da campanha: seleção do próximo cenário (UI `0xc`), tabela `0x552430` campo a campo, conjuntos 2 e 3 (3 e 6 cenários), `[0x564fe8]`.
 8. Avaliação de teste do editor (`0x457a30`, `execute = 0`) sorteia o RNG; só é relevante se o editor for portado.
 9. Uso dos 15 ids de função que nenhum arquivo do jogo usa (lista na seção 6): só implementados por leitura do código.

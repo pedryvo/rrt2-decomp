@@ -28,6 +28,9 @@ pub struct NewGameOptions {
     pub campaign: bool,
     /// CRT `rand` state when `0x479b20` starts.
     pub crt_seed: u32,
+    /// `default2.lng`, where `0x473590` takes the name and biography of each player's persona
+    /// (ids at `0x551ea7`/`0x551ea9 + 0x23 * persona`). Without it the map's texts stay.
+    pub lng: Option<std::sync::Arc<rt2_formats::lng::Lng>>,
 }
 
 impl NewGameOptions {
@@ -41,7 +44,16 @@ impl NewGameOptions {
             name: name.to_string(),
             campaign,
             crt_seed,
+            lng: None,
         }
+    }
+}
+
+/// `_strncpy(dst, text, dst.len())`: the LNG text as Latin-1 bytes, the rest zero-filled.
+fn strncpy(dst: &mut [u8], text: &str) {
+    dst.fill(0);
+    for (d, c) in dst.iter_mut().zip(text.chars()) {
+        *d = c as u32 as u8;
     }
 }
 
@@ -61,7 +73,9 @@ impl World {
         let mut save = if map.layout.version < MAGIC_2348 {
             crate::convert::upgrade(map, &mut rng)
         } else {
-            map.clone()
+            let mut s = map.clone();
+            crate::convert::every_load(&mut s);
+            s
         };
         // The setup's option block replaces the map's after the loader (`0x479b20`).
         save.trailer = options.trailer.clone();
@@ -77,7 +91,7 @@ impl World {
 
 impl SimState {
     fn new_game_start(&mut self, w: &mut World, o: &NewGameOptions) {
-        self.players_setup(o);
+        self.players_setup(o, w.minutes);
         // `0x479b20`: the campaign block comes back after the load.
         let b = self.save.layout.header_len;
         self.save.header[b..b + 0x86].copy_from_slice(&o.block86);
@@ -114,7 +128,7 @@ impl SimState {
     /// `0x473590` (single player): the player records of the map take the slots of the option
     /// block; each company resets its territory standing (`0x43ddb0`) and four counters; the
     /// territories and stations lose their per-game counters.
-    fn players_setup(&mut self, _o: &NewGameOptions) {
+    fn players_setup(&mut self, o: &NewGameOptions, minutes: i32) {
         let st = &self.save.state;
         let n = i32_at(st, 0x28d).max(0) as usize;
         let ids: Vec<usize> = (0..n)
@@ -137,14 +151,29 @@ impl SimState {
                 let t = 0x0055_1e89 + 0x23 * i32::from(ch) as u32;
                 r.data[0x132] = img.u8(t);
                 r.data[0x52f] = ch as u8;
+                // Name (`+8`, 30 bytes) and biography (`+0x27`, 250 bytes) of the persona from
+                // the LNG (`_strncpy`: zero-filled), each followed by a terminator.
+                if let Some(lng) = &o.lng {
+                    let name = img.u16(0x0055_1ea7 + 0x23 * i32::from(ch) as u32);
+                    let bio = img.u16(0x0055_1ea9 + 0x23 * i32::from(ch) as u32);
+                    strncpy(&mut r.data[8..0x26], lng.get(u32::from(name)).unwrap_or(""));
+                    r.data[0x26] = 0;
+                    strncpy(
+                        &mut r.data[0x27..0x121],
+                        lng.get(u32::from(bio)).unwrap_or(""),
+                    );
+                    r.data[0x121] = 0;
+                } else {
+                    crate::todo_hook!(
+                        self.log,
+                        "player_persona_texts",
+                        "0x473590: persona name and biography from default2.lng (no LNG given)",
+                        "world-tick.md 10"
+                    );
+                }
                 put_u32(&mut r.data, 0x555, 0);
             } else {
-                crate::todo_hook!(
-                    self.log,
-                    "player_remove",
-                    "0x4a6a00: remove a player slot the setup left unused",
-                    "world-tick.md 10"
-                );
+                self.player_remove(minutes, p);
             }
             if let Some(r) = pool::record_mut(&mut self.save.persons, p) {
                 r.data[0x534..0x544].fill(0);
@@ -156,6 +185,7 @@ impl SimState {
             .map(|k| u16::from_le_bytes([st[0x245 + 2 * k], st[0x246 + 2 * k]]) as usize)
             .collect();
         for c in cos {
+            self.company_reset_territories(c);
             if let Some(r) = pool::record_mut(&mut self.save.companies, c) {
                 r.data[0x4219..0x4229].fill(0);
             }
@@ -168,6 +198,64 @@ impl SimState {
         for r in &mut self.save.stations.records {
             r.data[0x4bb] = 0;
         }
+    }
+
+    /// `0x43ddb0`: the company's block of each territory (list order, `+0x479 + id * 0x1ed`):
+    /// standing `+0x47a` = 5000, or `2 * territory.+0x4e - 5000` when that is set; the rights
+    /// `+0x479` = all four (editor, or a territory without per-right flags `+0x43` whose
+    /// `+0x26` is set) or bit `i` per right flag `+0x26 + i`; the rest (`+0x47e`, 0x1e8 bytes)
+    /// zeroed. Then `+0x4229 = 5000` and the two "every territory" bytes `+0x422d` (right 1 in
+    /// all) and `+0x422e` (right 0 in all).
+    fn company_reset_territories(&mut self, company: usize) {
+        let editor = self.save.state[0x3892] != 0;
+        let terr: Vec<(usize, i16, u8, [u8; 4])> = pool::list_order(&self.save.territories)
+            .into_iter()
+            .filter_map(|t| pool::record(&self.save.territories, t))
+            .map(|r| {
+                let d = &r.data;
+                let id = i32_at(d, 0).max(0) as usize;
+                (
+                    id,
+                    i16_at(d, 0x4e),
+                    d[0x43],
+                    [d[0x26], d[0x27], d[0x28], d[0x29]],
+                )
+            })
+            .collect();
+        let Some(r) = pool::record_mut(&mut self.save.companies, company) else {
+            return;
+        };
+        let d = &mut r.data;
+        for &(id, v, per_right, flags) in &terr {
+            let b = 0x479 + id * 0x1ed;
+            if b + 0x1ed > d.len() {
+                continue;
+            }
+            let standing = if v == 0 {
+                5000
+            } else {
+                v.wrapping_mul(2).wrapping_sub(5000)
+            };
+            d[b + 1..b + 3].copy_from_slice(&standing.to_le_bytes());
+            d[b + 5..b + 5 + 0x1e8].fill(0);
+            d[b] = if editor {
+                0xf
+            } else if per_right == 0 {
+                if flags[0] != 0 { 0xf } else { 0 }
+            } else {
+                (0..4)
+                    .filter(|&i| flags[i] != 0)
+                    .fold(0, |a, i| a | (1 << i))
+            };
+        }
+        put_u32(d, 0x4229, 5000);
+        let all = |bit: u8| {
+            terr.iter()
+                .all(|&(id, ..)| d.get(0x479 + id * 0x1ed).is_some_and(|f| f & bit != 0))
+        };
+        let (r1, r0) = (all(2), all(1));
+        d[0x422d] = u8::from(r1);
+        d[0x422e] = u8::from(r0);
     }
 
     /// `0x40b820` for every building in list order: a live one (`+0x4f == 0`) clears `+0x63` and

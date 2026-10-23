@@ -1304,4 +1304,6 @@ mod tests {
 #[cfg(test)]
 mod build_tests;
 #[cfg(test)]
+mod fin_tests;
+#[cfg(test)]
 mod play_tests;

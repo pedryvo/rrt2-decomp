@@ -11,7 +11,7 @@ use super::*;
 use crate::company_record::{CO_ACCT, CO_ACTIVE, CO_CATS, CO_CHAIRMAN, CO_EFFECTS, CO_YEAR_CATS};
 use crate::finance::Company;
 use crate::fp::ftol as ftol_;
-use crate::rng::CrtRng;
+use crate::rng::{CrtRng, GameRng};
 use crate::scenario::{
     Confiscate, Message, Scenario, ScenarioEnv, ScenarioWorld, Scope, fire_trigger,
 };
@@ -96,6 +96,11 @@ impl SimState {
         let Some(rec) = pool::record(&self.save.companies, slot) else {
             return 0;
         };
+        // `0x43b410` returns 0.0 (`0x53500c`) for a company that does not exist (`+0x16e == 0`)
+        // without touching the cache or `+0x427e` (the inactive company of #03 at the start).
+        if i32_at(&rec.data, CO_ACTIVE) == 0 {
+            return 0;
+        }
         let mut co = Company::from_record(&rec.data);
         let price = {
             let ctx = self.fin_ctx(minutes, slot);
@@ -180,6 +185,45 @@ impl ScWorld<'_> {
         total
     }
 
+    /// `company_goodwill(territory)` (`0x43eca0`, scenarios.md 3.5): over the blocks of the
+    /// territories `1..=count`, `v = loads_life/N + (track >> 4) + loads_year` (`i16` at block
+    /// `+7`, `+3`, `+5`; `N = max(1, ftol((founded - year) * 1.5))`, so 1 for a company already
+    /// founded); the standing `+0x4229` becomes `ftol((Σ standing*v / Σ v + standing) * 0.5)`
+    /// when `Σ v > 0` (positive `v` only); with a territory (ignored when there is a single
+    /// one) it is averaged with that territory's standing; times `effect(0x28)`, in `0..=10000`.
+    fn goodwill(&self, company: i32, territory: i32) -> i32 {
+        let Some(c) = self.co(company) else {
+            return 0;
+        };
+        let n_terr = self.s.save.territories.count;
+        let territory = if n_terr == 1 { 0 } else { territory };
+        let mut g = i32_at(c, 0x4229);
+        let year = i32::from(date_of(self.minutes).year);
+        let n = ftol_(f64::from(i32_at(c, 0x148).wrapping_sub(year)) * 1.5).max(1);
+        let (mut sum_v, mut sum_sv) = (0.0f64, 0.0f64);
+        for t in 1..=n_terr {
+            let b = Self::block_off(t as i32);
+            if b + 9 > c.len() {
+                break;
+            }
+            let v = i32::from(i16_at(c, b + 7)) / n
+                + (i32::from(i16_at(c, b + 3)) >> 4)
+                + i32::from(i16_at(c, b + 5));
+            if v > 0 {
+                sum_sv += f64::from(i32::from(i16_at(c, b + 1)).wrapping_mul(v));
+                sum_v += f64::from(v);
+            }
+        }
+        if sum_v > 0.0 {
+            g = ftol_((sum_sv / sum_v + f64::from(g)) * 0.5);
+        }
+        if territory != 0 {
+            g = (i32::from(i16_at(c, Self::block_off(territory) + 1)) + g) / 2;
+        }
+        let m = f64::from(self.s.effect_mult(0x28, company as usize));
+        ftol_(m * f64::from(g.max(0))).clamp(0, 10_000)
+    }
+
     /// `0x46b9a0`: some station network (`+0x57 < 0x100`) of `company` (0 = any owner) has a
     /// station in territory `terr` and another that satisfies `other`.
     fn connected(&self, company: i32, terr: i32, other: impl Fn(&[u8]) -> bool) -> bool {
@@ -260,13 +304,11 @@ impl ScenarioEnv for ScWorld<'_> {
             33..=36 => self
                 .co(company)
                 .map_or(0, |c| i32_at(c, 0x182 + 4 * (id - 33))),
-            37 | 45 => {
-                self.skip(
-                    "scenario_fn_goodwill",
-                    "CompanyGoodwill 0x43eca0 (divisor N not specified)",
-                );
-                0
-            }
+            // `CompanyGoodwill` = `0x43eca0(company, 0) / 100`; `CompanyTerritoryGoodwill`
+            // passes the territory (needs both).
+            37 if company != 0 => self.goodwill(company, 0) / 100,
+            45 if company != 0 && territory != 0 => self.goodwill(company, territory) / 100,
+            37 | 45 => 0,
             38 => company,
             39..=42 => self
                 .co(company)
@@ -571,22 +613,22 @@ impl ScenarioWorld for ScWorld<'_> {
     fn credit_person(&mut self, person: i32, amount: i32) {
         self.s.person_add_cash(person as usize, f64::from(amount));
     }
-    fn set_territory_rights(&mut self, territory: i32, company: i32, mask: u8, allow: bool) {
-        if let Some(r) = pool::record_mut(&mut self.s.save.companies, company as usize) {
-            let o = Self::block_off(territory);
-            if allow {
-                r.data[o] |= mask;
-            } else {
-                r.data[o] &= !mask;
-            }
-            // Observed in the original (Alaska, rules 47 and 51: effect 50 "deny" on territories 4
-            // and 5): `0x4c8540` also clears the bytes `+0x422d` and `+0x422e`, which were 1.
-            // Inferred rule: when the last right of territory `t` goes, byte `+0x4229 + t` is
-            // cleared (only seen for `t >= 4`; lower `t` would hit `+0x4229`, the overall standing).
-            if r.data[o] == 0 && territory >= 4 {
-                r.data[0x4229 + territory as usize] = 0;
-            }
-        }
+    fn set_territory_rights(
+        &mut self,
+        territory: i32,
+        company: i32,
+        mask: u8,
+        allow: bool,
+        rng: &mut GameRng,
+    ) {
+        // `territory_set_rights` (`0x4c8540`, `build::rights`): the sub-territories, the
+        // territory's own flags without a company, each company's block and `0x43df20`
+        // (`+0x422d` / `+0x422e`: the right in every territory).
+        let minutes = self.minutes;
+        let crt = &mut *self.crt;
+        self.s.with_trainstep_parts(minutes, rng, crt, |ts| {
+            crate::ai::Ai::new(ts).territory_set_rights(territory, mask, allow, company, false);
+        });
     }
     fn confiscate(&mut self, _company: i32, _territory: i32, _what: Confiscate, _destroy: bool) {
         self.skip(
@@ -597,8 +639,9 @@ impl ScenarioWorld for ScWorld<'_> {
     fn deactivate_company(&mut self, _company: i32) {
         self.skip("scenario_deactivate_company", "company_liquidate 0x438170");
     }
-    fn eliminate_player(&mut self, _person: i32) {
-        self.skip("scenario_eliminate_player", "0x4a6a00");
+    fn eliminate_player(&mut self, person: i32) {
+        let minutes = self.minutes;
+        self.s.player_remove(minutes, person as usize);
     }
     fn human_takes_player(&mut self, _person: i32) {
         self.skip("scenario_human_takes_player", "0x467bd0");
@@ -609,8 +652,15 @@ impl ScenarioWorld for ScWorld<'_> {
     fn flood_territory(&mut self, _territory: i32, _amount: i32) {
         self.skip("scenario_flood", "0x4c8a30");
     }
-    fn retire_train(&mut self, _id: i32) {
-        self.skip("scenario_retire_train", "0x4cdd50");
+    fn retire_train(&mut self, id: i32, rng: &mut GameRng) {
+        // `0x4cdd50` only when the train is in the pool (`0x574c64`).
+        let minutes = self.minutes;
+        let crt = &mut *self.crt;
+        self.s.with_trainstep_parts(minutes, rng, crt, |ts| {
+            if ts.live(crate::trainstep::P::Train, id) {
+                crate::ai::Ai::new(ts).train_delete(id);
+            }
+        });
     }
     fn set_territory_buyable(&mut self, territory: i32, which: &[usize], on: bool) {
         if let Some(r) = pool::record_mut(&mut self.s.save.territories, territory as usize) {
@@ -687,7 +737,11 @@ impl ScenarioWorld for ScWorld<'_> {
             "0x574784: engine availability changed (consumer not traced)",
         );
     }
-    fn manager_effect(&mut self, _company: i32, _manager: usize) {
-        self.skip("scenario_manager_effect", "company_set_manager 0x438780");
+    fn manager_effect(&mut self, company: i32, manager: usize, rng: &mut GameRng) {
+        if company > 0 {
+            let minutes = self.minutes;
+            self.s
+                .company_set_manager(rng, minutes, company as usize, manager, false);
+        }
     }
 }

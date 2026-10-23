@@ -5261,3 +5261,73 @@ name = "terrain_paint_brush"
 kind = "function"
 comment = "fastcall(x,y,raio,forca,flags): pincel de terreno (campos 0x53a0a4) com RNG por tile; usado por building_construct; [S]"
 spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x4a6a00"
+name = "player_remove"
+kind = "function"
+comment = "fastcall(pessoa): pessoa ativa sai da presidencia (0x438900(empresa, 0)), zera as 36 posicoes (+0x1d3), +4 = 0 e sai da lista de jogadores (0x46a940); vaga livre em 0x473590 e efeito de cenario 190; [V via New Game das campanhas]"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x46a940"
+name = "player_list_remove"
+kind = "function"
+comment = "fastcall(id): tira o id da lista de jogadores 0x570779 (u16, contagem 0x570775) deslocando as seguintes; a ultima entrada fica; [S]"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x437ab0"
+name = "company_release_track"
+kind = "function"
+comment = "thiscall(empresa, dono_filtro, apagar): percorre os tiles do mapa e tira o dono (+2 da peca de trilho 0x574c24+7) das pecas da empresa; usada por company_remove; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x4a42f0"
+name = "news_post"
+kind = "function"
+comment = "fastcall(texto, titulo, cor): acrescenta um item a lista de noticias 0x574c98 (max 50): id = crt_rand_range(0,10000), contador 0x5707be++, bandeira 0x5707bd = 1; so o contador, a bandeira e o sorteio do CRT sao estado; [V via snapshots fincmd]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x467fd0"
+name = "set_local_company"
+kind = "function"
+comment = "fastcall(id): grava a empresa local 0x574414 (copia salva no cabecalho 0x570574); 0 limpa tambem 0x570512; chamada por company_set_chairman e company_remove; [V via snapshots fincmd]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x4a75e0"
+name = "person_player_index"
+kind = "function"
+comment = "fastcall(pessoa): posicao da pessoa no conjunto de jogadores 0x570775 (indice dos votos das propostas); -1 se ausente; [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x469ed0"
+name = "person_stake_ratio"
+kind = "function"
+comment = "fastcall(empresa, pessoa): acoes da pessoa / acoes da empresa (float); >0.5 oferece Assume chairmanship, >=0.1 oferece a eleicao especial (0x443ab0); [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x449300"
+name = "ui_dividend_dialog"
+kind = "function"
+comment = "fastcall(, evento): botoes + (0x693) e - (0x694) do dialogo do dividendo: passo = max(5, ftol((d*100/6+2.5)*0.2)*5) centesimos, teto 0x43edf0 (ou o proprio dividendo), recusa LNG 2370; [V rt2_sim::fincmd::dividend_click]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x48a880"
+name = "ui_merger_dialog_event"
+kind = "function"
+comment = "fastcall(, evento): OK (0x66) do dialogo de fusao: recusa LNG 386 se total > caixa da compradora; confirma o alvo (0x402e41); [S]"
+spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x48abc0"
+name = "ui_merger_dialog_open"
+kind = "function"
+comment = "fastcall(x, y): monta o dialogo de fusao: lista de empresas ativas (alvo, LNG 529), preco por acao (LNG 530, inicio = cotacao + 1), ações, total e fundos (LNG 159..163); faixa do controle de preco nao decodificada; [S]"
+spec = "docs/spec/finance.md"

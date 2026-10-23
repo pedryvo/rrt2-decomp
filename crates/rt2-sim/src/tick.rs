@@ -31,6 +31,7 @@ use crate::world::World;
 
 mod company;
 mod events;
+mod fincmd;
 mod found;
 mod history;
 mod newgame;
@@ -344,7 +345,19 @@ impl SimState {
         w: &mut World,
         f: impl FnOnce(&mut crate::trainstep::Ts<'_>) -> R,
     ) -> R {
-        let date = date_of(w.minutes);
+        self.with_trainstep_parts(w.minutes, &mut w.rng, &mut w.crt, f)
+    }
+
+    /// [`SimState::with_trainstep`] from the clock and the two generators (for callers that
+    /// hold them apart from the [`World`], like the scenario effects).
+    pub(crate) fn with_trainstep_parts<R>(
+        &mut self,
+        minutes: i32,
+        rng: &mut crate::rng::GameRng,
+        crt: &mut crate::rng::CrtRng,
+        f: impl FnOnce(&mut crate::trainstep::Ts<'_>) -> R,
+    ) -> R {
+        let date = date_of(minutes);
         let flag_570229 = self.hdr(HDR_FLAG_570229);
         let flag_570236 = self.hdr(HDR_FLAG_570236);
         let mut ts = crate::trainstep::Ts {
@@ -354,10 +367,10 @@ impl SimState {
             types: &self.types,
             cargo: &self.data.cargo,
             revenue: &self.data.revenue,
-            now: w.minutes as u32,
+            now: minutes as u32,
             year: date.year,
-            rng: &mut w.rng,
-            crt: &mut w.crt,
+            rng,
+            crt,
             log: &mut self.log,
             g: std::mem::take(&mut self.ts_globals),
             flag_570229,
@@ -584,7 +597,7 @@ impl SimState {
                 self.log.ran("station_recompute_supply_demand");
             }
         }
-        self.margin_check_all();
+        self.margin_check_all(w);
         // 13. `report_due_flag` is a UI flag.
         if date.month == 12 {
             self.year_end(w);

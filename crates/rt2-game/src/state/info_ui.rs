@@ -14,6 +14,7 @@ use winit::keyboard::KeyCode;
 
 use rt2_ui::{Align, Anchor, Color, Fill, FontStyle, Kind, Layout, NodeId, Ui, game_font};
 
+use super::dialogs::fin::A_FINACT;
 use super::{AppState, Screen};
 use crate::info::{Block, Info, ListPage, Page, Pick, TOTAL, Table};
 use crate::text::id as lng;
@@ -605,6 +606,13 @@ impl AppState {
             A_BACK => self.info_back(screen),
             A_PREV_CO => self.cycle_company(-1),
             A_NEXT_CO => self.cycle_company(1),
+            a if (A_FINACT..A_FINACT + 12).contains(&a) => {
+                let company = match screen {
+                    InfoScreen::Finance(c) => self.resolved_company(c),
+                    _ => 0,
+                };
+                return self.fin_book_activated(a, company);
+            }
             A_ROW => {
                 // Enter on the selected row of a list.
                 if let Some(row) = self.ui.focused().and_then(|f| self.ui.selected(f)) {
@@ -791,7 +799,59 @@ impl AppState {
         );
 
         let body_y = 90.0;
-        let bottom = ph - 34.0;
+        let mut bottom = ph - 34.0;
+        // The finance buttons of the company book (issue, buy back, dividend, ...).
+        let acts = match screen {
+            InfoScreen::Finance(c) => self.fin_buttons(self.resolved_company(c)),
+            _ => Vec::new(),
+        };
+        if !acts.is_empty() {
+            let bw = ((inner_w - 6.0 * (acts.len() as f32 - 1.0)) / acts.len() as f32).min(170.0);
+            let per_row = ((inner_w + 6.0) / (bw + 6.0)).floor().max(1.0) as usize;
+            let bw = if acts.len() <= per_row {
+                bw
+            } else {
+                ((inner_w - 6.0 * (per_row as f32 - 1.0)) / per_row as f32).min(170.0)
+            };
+            let rows = acts.len().div_ceil(per_row);
+            bottom -= rows as f32 * 34.0 + 4.0;
+            for (i, (text, action)) in acts.iter().enumerate() {
+                let (c, r) = ((i % per_row) as f32, (i / per_row) as f32);
+                ui.add(
+                    panel,
+                    Kind::Button {
+                        text: text.clone(),
+                        font: font(
+                            (bw / (text.chars().count().max(1) as f32 * 0.78)).clamp(9.0, 12.5),
+                        ),
+                        action: *action,
+                        enabled: true,
+                        hotkey: None,
+                    },
+                    at(
+                        PAD + c * (bw + 6.0),
+                        ph - 30.0 - (rows as f32 - r) * 34.0,
+                        bw,
+                        30.0,
+                    ),
+                );
+            }
+        }
+        let personal = if matches!(screen, InfoScreen::Stock) {
+            self.personal_lines()
+        } else {
+            Vec::new()
+        };
+        if !personal.is_empty() {
+            bottom -= personal.len() as f32 * 20.0 + 6.0;
+            for (i, l) in personal.iter().enumerate() {
+                ui.add(
+                    panel,
+                    label(l, font(14.0), TEXT, Align::Left),
+                    at(PAD, bottom + 6.0 + i as f32 * 20.0, inner_w, 20.0),
+                );
+            }
+        }
         let Some(content) = content else {
             ui.add(
                 panel,

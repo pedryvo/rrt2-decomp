@@ -298,6 +298,14 @@ impl SimState {
             co.trade_price(&ctx, 0, true)
         };
         let split = co.split_if_needed(price);
+        if split.is_some() {
+            // `+0x4250 = 0` and a second committed quote at the new share count (0x43d800,
+            // after the archive columns are divided): the cache, the "no dividend" price and
+            // `+0x427e` are recomputed before the persons' net worth archive reads them.
+            co.price_stamp = 0;
+            let ctx = self.fin_ctx(w.minutes, slot);
+            co.trade_price(&ctx, 0, true);
+        }
 
         // Write back: the struct fields over the raw copy with the accounts archived.
         let mut out = raw;
@@ -508,7 +516,7 @@ impl SimState {
 }
 
 /// `0x43abc0`: the weighted 5-year return (finance.md 16.2).
-fn weighted_return(co: &Company, ctx: &crate::finance::Ctx, price: f64) -> f64 {
+pub(super) fn weighted_return(co: &Company, ctx: &crate::finance::Ctx, price: f64) -> f64 {
     let (mut num, mut den) = (0.0f64, 0.0f64);
     for i in 0..5i32 {
         if ctx.year - i < co.founded {

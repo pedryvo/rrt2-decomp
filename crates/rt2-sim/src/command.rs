@@ -41,6 +41,10 @@ pub enum Command {
     /// [`World::apply_found`] for the result and [`crate::found::founding_preview`] for the
     /// numbers of the dialog.
     StartCompany(crate::found::FoundCompany),
+    /// A financial command of `cmd_execute` (stock trades, bonds, stock issue, dividend,
+    /// manager, mergers, chairmanship; docs/spec/commands.md 2.1). `World::apply` runs the
+    /// checks of the original's windows first, see [`World::apply_fin`].
+    Finance(crate::fincmd::FinCmd),
 }
 
 impl World {
@@ -70,6 +74,9 @@ impl World {
             }
             Command::StartCompany(c) => {
                 let _ = self.apply_found(c);
+            }
+            Command::Finance(c) => {
+                let _ = self.apply_fin(c);
             }
         }
     }
@@ -105,6 +112,60 @@ impl World {
         let r = sim.found_company(self, cmd);
         self.sim = Some(sim);
         r
+    }
+}
+
+impl World {
+    /// Runs a financial command as the player's window does: the checks of the window
+    /// ([`World::check_fin`]) and then the executor of `cmd_execute`. Without save pools every
+    /// command fails with `NoSuchObject`.
+    pub fn apply_fin(
+        &mut self,
+        cmd: crate::fincmd::FinCmd,
+    ) -> Result<crate::fincmd::FinOutcome, crate::fincmd::FinError> {
+        self.check_fin(&cmd)?;
+        self.apply_fin_unchecked(cmd)
+    }
+
+    /// The executor alone: what a packet from a peer or a replay does (`cmd_execute` validates
+    /// only that the ids are live).
+    pub fn apply_fin_unchecked(
+        &mut self,
+        cmd: crate::fincmd::FinCmd,
+    ) -> Result<crate::fincmd::FinOutcome, crate::fincmd::FinError> {
+        let Some(mut sim) = self.sim.take() else {
+            return Err(crate::fincmd::FinError::NoSuchObject);
+        };
+        let r = sim.fin_execute(self, cmd);
+        self.sim = Some(sim);
+        r
+    }
+
+    /// The refusal the window of the original would show for `cmd`, `Ok` when it would send
+    /// the packet.
+    pub fn check_fin(&self, cmd: &crate::fincmd::FinCmd) -> Result<(), crate::fincmd::FinError> {
+        match self.sim.as_ref() {
+            Some(sim) => sim.fin_check(self.minutes, cmd),
+            None => Err(crate::fincmd::FinError::NoSuchObject),
+        }
+    }
+
+    /// `margin_check_all` (`0x46bb10`): the broker's routine for every person of the player set.
+    /// The original runs it after each stock trade and every month; this is the entry point for a
+    /// check at any other time (a replay, a test).
+    pub fn margin_check(&mut self) {
+        let Some(mut sim) = self.sim.take() else {
+            return;
+        };
+        sim.margin_check_all(self);
+        self.sim = Some(sim);
+    }
+
+    /// The merger and chairmanship votes that wait for a human shareholder.
+    pub fn pending_votes(&self) -> Vec<crate::fincmd::PendingVote> {
+        self.sim
+            .as_ref()
+            .map_or_else(Vec::new, |s| s.fc_pending_votes(self))
     }
 }
 

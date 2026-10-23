@@ -117,7 +117,7 @@ impl ScenarioWorld for Mock {
         self.cash.push((company, amount));
     }
     fn credit_person(&mut self, _p: i32, _a: i32) {}
-    fn set_territory_rights(&mut self, _t: i32, _c: i32, _m: u8, _a: bool) {}
+    fn set_territory_rights(&mut self, _t: i32, _c: i32, _m: u8, _a: bool, _r: &mut GameRng) {}
     fn confiscate(&mut self, _c: i32, _t: i32, _w: Confiscate, _d: bool) {}
     fn deactivate_company(&mut self, _c: i32) {}
     fn eliminate_player(&mut self, p: i32) {
@@ -126,7 +126,7 @@ impl ScenarioWorld for Mock {
     fn human_takes_player(&mut self, _p: i32) {}
     fn set_persona(&mut self, _p: i32, _i: i32) {}
     fn flood_territory(&mut self, _t: i32, _a: i32) {}
-    fn retire_train(&mut self, _id: i32) {}
+    fn retire_train(&mut self, _id: i32, _rng: &mut GameRng) {}
     fn set_territory_buyable(&mut self, _t: i32, _w: &[usize], _o: bool) {}
     fn set_variable(&mut self, scope: Scope, index: usize, value: i32, add: bool) {
         self.vars.push((scope, index, value, add));
@@ -135,7 +135,7 @@ impl ScenarioWorld for Mock {
     fn add_level(&mut self, scope: Scope, effect: usize, delta: i32) {
         self.levels.push((scope, effect, delta));
     }
-    fn manager_effect(&mut self, _c: i32, _m: usize) {}
+    fn manager_effect(&mut self, _c: i32, _m: usize, _rng: &mut GameRng) {}
 }
 
 /// All rows non-instant except 1..=7 and the variable rows.

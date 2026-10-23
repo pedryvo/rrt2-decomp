@@ -21,7 +21,8 @@ pub const V233C: u32 = 0x233C;
 
 /// Converts a save of an older version (only 0x233C exists in the install) to the 0x2348 layout as
 /// the loader `0x477a60` does, consuming the game RNG `rng` like the original. A 0x2348 save is
-/// returned unchanged (the loader's version-independent passes are not applied to it).
+/// returned unchanged (the loader's version-independent passes, [`every_load`], are not applied
+/// to it: a save the original wrote already went through them).
 pub fn upgrade(save: &Save, rng: &mut GameRng) -> Save {
     let v = save.layout.version;
     if v >= MAGIC_2348 {
@@ -39,8 +40,55 @@ pub fn upgrade(save: &Save, rng: &mut GameRng) -> Save {
     for r in &mut s.rules {
         r.fixed = upgrade_rule_fixed(&r.fixed);
     }
+    every_load(&mut s);
     s.stored_checksum = 0;
     s
+}
+
+/// The version-independent fix-ups of the loader `0x477a60` (map-gam.md 9, "todo load"), on a
+/// save already in the 0x2348 layout: header entries 49..52 get byte 0 = 1 and the four 32-byte
+/// entries at `0x570250` start with 0x7F and nine zeros; each station's `+0x4AD` = region of its
+/// tile; each train's `+0xAB` (sound handle) = 0; each map object's `+0x42` = 0 and `+0x9D` =
+/// region of its owning station (`+7 == 0`) or of its tile. A scenario start applies them to a
+/// 0x2348 map (the expansion campaign `#E01CAMP.MP2` keeps stale `+0x42` values).
+pub fn every_load(s: &mut Save) {
+    const TABLE: usize = 0x8793;
+    for k in 49..53 {
+        s.header[TABLE + k * 9] = 1;
+    }
+    for k in 0..4 {
+        let e = 0x8718 + k * 0x20;
+        s.header[e] = 0x7F;
+        s.header[e + 1..e + 11].fill(0);
+    }
+    let w = s.map.width;
+    let tiles = s.map.tiles.clone();
+    let region = |x: u32, y: u32| -> u8 {
+        tiles
+            .get(y as usize * w + x as usize)
+            .map(|t| t.region)
+            .unwrap_or(0)
+    };
+    for r in &mut s.stations.records {
+        let reg = region(u32_at(&r.data, 10), u32_at(&r.data, 0xE));
+        put_u32(&mut r.data, 0x4AD, u32::from(reg));
+    }
+    for r in &mut s.trains.records {
+        put_u32(&mut r.data, 0xAB, 0);
+    }
+    let stations = s.stations.clone();
+    for r in &mut s.objects.records {
+        put_u32(&mut r.data, 0x42, 0);
+        let reg = if r.data[7] == 0 {
+            let slot = u16::from_le_bytes([r.data[8], r.data[9]]) as usize;
+            stations.get(slot).map(|st| st.data[0x4AD]).unwrap_or(0)
+        } else {
+            let x = i16::from_le_bytes([r.data[0x22], r.data[0x23]]) as i32;
+            let y = i16::from_le_bytes([r.data[0x24], r.data[0x25]]) as i32;
+            region(x as u32, y as u32)
+        };
+        r.data[0x9D] = reg;
+    }
 }
 
 /// A fresh `_malloc` block as the oracle sees it: the original runs under a debugger there, so
@@ -84,17 +132,8 @@ fn upgrade_header(old: &[u8]) -> Vec<u8> {
         }
     }
     h[0x8979..0x898E].fill(0);
-    for k in 49..53 {
-        h[TABLE + k * 9] = 1;
-    }
     // `< 0x2340`.
     h[0x86EF..0x86F2].fill(0);
-    // Every load: four 32-byte entries at `0x570250` start with 0x7F and nine zero bytes.
-    for k in 0..4 {
-        let e = 0x8718 + k * 0x20;
-        h[e] = 0x7F;
-        h[e + 1..e + 11].fill(0);
-    }
     let mut out = h;
     out.extend_from_slice(&old[OLD_HDR..]); // 0x86 block + view (0x40)
     out
@@ -172,24 +211,13 @@ fn grow(pool: &mut Pool, size: usize, mut f: impl FnMut(&mut Vec<u8>)) {
 }
 
 fn upgrade_pools(s: &mut Save) {
-    let w = s.map.width;
-    let region = |tiles: &[rt2_formats::map::Tile], x: u32, y: u32| -> u8 {
-        tiles
-            .get(y as usize * w + x as usize)
-            .map(|t| t.region)
-            .unwrap_or(0)
-    };
     // Stations 0x39B -> 0x4C7 (`< 0x233E`): old +0x381..+0x390 move to +0x4AD, +0x61..+0x4AD are
-    // cleared; `< 0x2345` clears the u16 at +0x4BE; every load stores the region of the station's
-    // tile at +0x4AD.
-    let tiles = s.map.tiles.clone();
+    // cleared; `< 0x2345` clears the u16 at +0x4BE (the region at +0x4AD: [`every_load`]).
     grow(&mut s.stations, 0x4C7, |r| {
         let moved: Vec<u8> = r[0x381..0x390].to_vec();
         r[0x4AD..0x4BC].copy_from_slice(&moved);
         r[0x61..0x4AD].fill(0);
         r[0x4BE..0x4C0].fill(0);
-        let reg = region(&tiles, u32_at(r, 10), u32_at(r, 0xE));
-        put_u32(r, 0x4AD, u32::from(reg));
     });
     // Persons 0x4DC -> 0x576 (`< 0x2341`): +0x48D..+0x4DC move to +0x527, a zeroed gap between.
     grow(&mut s.persons, 0x576, |r| {
@@ -223,21 +251,6 @@ fn upgrade_pools(s: &mut Save) {
     // Places 0x96 -> 0xB4, territories 0x27A -> 0x314 (`< 0x2341`): zeroed tails.
     grow(&mut s.places, 0xB4, |r| r[0x96..0xB4].fill(0));
     grow(&mut s.territories, 0x314, |r| r[0x27A..0x314].fill(0));
-    // Map objects (`c74`, every load): +0x42 = 0; +0x9D = region of the owning station (+7 == 0)
-    // or of the object's tile.
-    let stations = s.stations.clone();
-    for r in &mut s.objects.records {
-        put_u32(&mut r.data, 0x42, 0);
-        let reg = if r.data[7] == 0 {
-            let slot = u16::from_le_bytes([r.data[8], r.data[9]]) as usize;
-            stations.get(slot).map(|st| st.data[0x4AD]).unwrap_or(0)
-        } else {
-            let x = i16::from_le_bytes([r.data[0x22], r.data[0x23]]) as i32;
-            let y = i16::from_le_bytes([r.data[0x24], r.data[0x25]]) as i32;
-            region(&tiles, x as u32, y as u32)
-        };
-        r.data[0x9D] = reg;
-    }
 }
 
 /// Train consists and routes: cars 10 -> 14 bytes (`< 0x2347`: byte 3 bit 3 cleared, two zeroed
@@ -245,9 +258,6 @@ fn upgrade_pools(s: &mut Save) {
 fn upgrade_train_extras(s: &mut Save) {
     for e in &mut s.train_extras {
         upgrade_extra(e);
-    }
-    for r in &mut s.trains.records {
-        put_u32(&mut r.data, 0xAB, 0);
     }
 }
 

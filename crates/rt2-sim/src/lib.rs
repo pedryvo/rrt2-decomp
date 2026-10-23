@@ -40,6 +40,7 @@ pub mod effects;
 pub mod exe;
 pub mod fields;
 pub mod finance;
+pub mod fincmd;
 pub mod found;
 pub mod fp;
 pub mod growth;

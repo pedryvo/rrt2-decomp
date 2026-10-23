@@ -97,7 +97,11 @@ fn main() -> anyhow::Result<()> {
                 .map(|s| s.to_string_lossy().into_owned())
                 .unwrap_or_default()
         });
-        let opts = NewGameOptions::from_save(&opt_save, &name, args.campaign, args.crt);
+        let mut opts = NewGameOptions::from_save(&opt_save, &name, args.campaign, args.crt);
+        opts.lng = std::fs::read(args.game_dir.join("default2.lng"))
+            .ok()
+            .and_then(|b| rt2_formats::lng::Lng::parse(&b).ok())
+            .map(std::sync::Arc::new);
         let w = World::new_game(&save, &opts, &data, args.game_rng);
         if !args.quiet {
             eprintln!(

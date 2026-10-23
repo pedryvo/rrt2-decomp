@@ -173,8 +173,8 @@ Dividendos são pagos **trimestralmente: no passo mensal de março, junho, setem
 d = +0x30 (anual, por ação);  pago = ações * d / 4
 caixa_depois = caixa - pago
 máx = 0x43edf0()           ; dividendo anual máximo suportável (6.1)
-se d > 0 e (caixa_depois < -0.2*patrimônio  ou  máx <= 0.01):  d = 0; mensagem LNG 2274 "dividendo suspenso"
-senão se máx < 0.75*d:   d = máx; mensagem LNG 2713 "conselho reduziu o dividendo para %1" (só empresa do jogador)
+se d > 0 e (caixa_depois < -0.2*patrimônio  ou  máx <= 0.01):  d = 0; +0x30 = 0; mensagem LNG 2274 "dividendo suspenso"
+senão se máx < 0.75*d:   d = máx; +0x30 = f32(máx); mensagem LNG 2713 "conselho reduziu o dividendo para %1" (só empresa do jogador)
 se d > 0:
     caixa -= ações*d/4;  conta7 += ações*d/4                 ; não passa pela demonstração de resultados
     +0x38 += d/4
@@ -204,7 +204,7 @@ Lido no desmontador e provado: os dois máximos começam em 0 (`0x535340`), `X =
 - **Compra** (`0x4a7300(pessoa, c, n, forçada)`): se não forçada exige `0x4a6f60`; `0x43b410(n, 1)`; custo `= ftol(cotação_após(0,0) * n)` e débito `ftol(custo * 1.03)` (corretagem 3% do `0x5706c9`); `ações_pessoa += n`; depois `0x46bb10` (chamadas de margem).
 - **Venda** (`0x4a73d0(pessoa, c, n, forçada)`): limita `n` às ações detidas (exceto forçada/venda a descoberto); `preço = ftol(0x43b410(-n, 1))` (cotação **durante** a venda), receita `ftol(0.97 * preço*n)`.
 - **Permissões** (`0x4a6f60`/`0x4a7190`): comprar ações de outra empresa exige `0x573d74` (modelo avançado/expert) ou ser o chairman; margem exige `0x573d72` e `0x5706c0`; venda a descoberto exige `0x573d73` e `0x5706bf`, só de empresa em que não é chairman, até o limite `0x43e340` (metade, ou um quarto com a flag, do float livre) e com cotação >= `0x535784`. A compra exige float livre `0x43e580 = ações - Σ posições longas das pessoas ativas` >= n.
-- **Lote**: `0x4a6e00` escolhe o tamanho de uma operação: arredonda para milhares, `~4% da posição + 1000`, reduzindo em 1000 até passar na verificação; mínimo 1000.
+- **Lote** (`0x4a6e00(pessoa, índice, compra)`, [V] por snapshots): pessoa de IA: 1000. Humano: `n = (ftol(|posição| * 0.04 + 1000) / 1000) * 1000` (compra usa a posição com sinal); compra: `ok1 = person_can_buy(índice, margem = 0, 1000)`, depois `n -= 1000` e `person_can_buy(índice, margem = !ok1, n)` enquanto `n > 1000` e recusado; venda: `person_can_sell(índice, curto = (posição < 1000), 0, n)` pelo mesmo laço; resultado `max(1000, ((n + 500) / 1000) * 1000)`.
 
 ### 7.3 Margem e chamadas de margem (`0x4a7a40`, chamada de `0x46bb10` após cada negócio e no passo mensal) [S]
 `poder = caixa + Σ posição_c * +0x427e_c * (0,5 se posição longa; 1,5 se vendida)`. Se `poder >= 0` o prazo `+0x544` é zerado. Senão, para o jogador humano: primeiro aviso (LNG 2270 aproximado) e prazo = `date_to_minutes(ano, mes, 28, 23, 59) + 0x9d7f` (28 dias menos 1 min depois do dia 28 às 23:59, ou seja, até 28 do mês seguinte); depois do prazo, ou imediatamente para a IA, o corretor vende (em lotes de 1000, `0x4a73d0`) ou recompra posições vendidas até `poder >= 0`, em duas passadas (a primeira poupando as ações da própria empresa do chairman), com as mensagens LNG 2271/2272. Depois, posições vendidas em empresas sem float livre (`0x43e340 < 0`) são cobertas à força (LNG 2273).
@@ -213,7 +213,7 @@ Lido no desmontador e provado: os dois máximos começam em 0 (`0x535340`), `X =
 1. Arquiva as 14 métricas, as categorias e as contas (desloca o arquivo, 10 anos), zera as categorias do ano, `+0x38`, `+0x192/+0x196/+0x19a`.
 2. **Overhead** `+0x138` (detalhado e corrigido em 16.1: divisão inteira por `100000`; a "média" é `(0 + R_Y + R_{Y-1}) / 3`, porque o ano zerado conta no divisor): `g = sqrt(max(1, r/100000))` comprimido (acima de 10, 15, 20 cada excesso pela metade); `+0x138 = max(1000, ftol(r*g*0.01))`.
 3. Títulos com `vencimento == ano+1` são quitados (4.4).
-4. **Desdobramento**: cotação com commit; se `> 100`: `n = ftol(+0x427e * 0.02)`; ações, carteiras e `+0x34` `*n`; `+0x30`, `+0x38`, `+0x3c` e as colunas de preço, patrimônio, receita, lucro, dividendo e `+0x38` do arquivo `/n`; mensagem LNG 169 ("split %2 for 1").
+4. **Desdobramento**: cotação com commit; se `> 100`: `n = ftol(+0x427e * 0.02)`; ações, carteiras e `+0x34` `*n`; `+0x30`, `+0x38`, `+0x3c` e as colunas de preço, patrimônio, receita, lucro, dividendo e `+0x38` do arquivo `/n`; depois **`+0x4250 = 0` e uma segunda cotação com commit** (`0x43b410(0, 1)`, já com as ações novas: refaz o cache `+0x4254`, o preço sem dividendo `+0x427a` e `+0x427e` antes do arquivo de patrimônio das pessoas, passo 10 de `sim_year_end`; provado no Example 30 dias, empresa 5, desdobramento 2 por 1 em 1876); mensagem LNG 169 ("split %2 for 1"). `0x43b410` devolve 0,0 (`0x53500c`) sem tocar no cache nem em `+0x427e` quando `+0x16e == 0` (empresa inexistente; a empresa 1 de #03 no início do cenário).
 5. A avaliação anual da diretoria `0x43c760` **não** é chamada daqui: `sim_year_end` a roda antes de `company_year_end` (passo 4 de `world-tick.md` 3.4, seção 13).
 
 ### 8.1 Avaliação anual da diretoria (`0x43c760`) [V]
@@ -545,7 +545,7 @@ As condições e a fórmula do capital estão em `ai.md` 9.1 (conferidas no desm
 
 ## Em aberto
 - Motivo de `max(NI, Rv)` em `0x43edf0` (a conta está provada, 6.1).
-- Limites da interface: emissão (preço e retorno mínimos, LNG 276/277), bancarrota (LNG 297/3412), dividendos (LNG 2370/2713) e tamanho de lote do jogador.
+- (Resolvido, seção 18) Limites da interface: emissão, recompra, títulos, dividendos, bancarrota, fusão, presidência e lote do jogador.
 - Papel de `0x5706d9` (=2), `0x5706d5` (5,0 = rating mínimo para bonds, confirmado) e do efeito `0x21` (liquidez, LNG 1651); nome do efeito `0x22` (preço de fusão).
 - Efeito de `f != 0` em `0x438170` (`0x40adb0`), papel de `+0x15c` (=15) na empresa nova e execução da fusão `0x43c3c0` (15.2) e de `0x43ddb0` (17.4): lidas, sem teste.
 - Fórmula do poder de compra `0x4a6d80` e a precondição `0x4bd950` (17.1) foram lidas; os sliders (17.2) estão testados.
@@ -585,3 +585,38 @@ O código sob teste é `rt2_sim::finance` (`crates/rt2-sim/src/finance.rs`); as 
 `cargo clippy -D warnings` no crate de testes passa; o `-D warnings` do workspace falha hoje em `crates/rt2-sim/src/fp.rs:209` (`int_plus_one`, fora do escopo desta spec).
 
 > **Resolvido:** o teste do preço de negociação usa `rt2_sim::fp::pow` (a emulação fiel do `_CIpow` do EXE) e exige igualdade exata: 0 diferenças em 4000 casos.
+
+
+## 18. Comandos financeiros do jogador e o que as janelas decidem [V: snapshots do original]
+
+`crates/rt2-sim/src/fincmd.rs` (tipos, pacotes, números das janelas) e `tick/fincmd.rs` (executores) portam o grupo financeiro de `cmd_execute` (`commands.md` 2.1). O executor só valida ids vivos; as janelas (`check_fin`) aplicam as regras abaixo, lidas do desmontador. Teste: `crates/rt2-sim/tests/fincmd_snapshots.rs` (25 snapshots do original chamando `cmd_execute` com um pacote sobre o save Example; `docs/dynamic-analysis.md` 6), `fincmd_flow.rs` (fluxo de ponta a ponta).
+
+**Pacote `0x0e`.** `+0xf` não é "forçada": na compra é a bandeira de **margem** (`0x4a6f60` `param_2`) e o `forçada` de `0x4a7300` é sempre 0; na venda é a bandeira de venda **a descoberto** (`0x4a73d0` `param_3`: sem limites de posição). O lote vem de `0x4a6e00` (7.2).
+
+**Compra** (`0x4a7300`): `0x43b410(n, commit)`; `custo = ftol(cotação(0,0) * n)`; débito `ftol((0.03f + 1.0) * custo)`; `0x46bb10`. **Venda** (`0x4a73d0`): se `n > posição` e não forçada `n = posição`; `preço = ftol(0x43b410(-n, commit))`; crédito `ftol((1.0 - 0.03f) * (preço * n))`; `0x46bb10`.
+
+**`person_can_buy`** (`0x4a6f60(pessoa, c, margem, n)`; `n = 0` = lote): `margem` exige `0x573d72` e `0x5706c0`; exige `0x573d74` ou ser o chairman; `posição <= -n` aceita; senão `0x5706aa`, `n <= float livre` e `cotação*n <= caixa` (e `<= caixa + soma ponderada`), ou, com margem, `cotação*n <= caixa + soma ponderada`. **`person_can_sell`** (`0x4a7190(pessoa, c, curto, cobrir, n)`): `0x5706a9`; `n <= posição`; ou venda a descoberto (`0x573d73` e `0x5706bf`, não chairman, `n < 0x43e340(cobrir)`, cotação `>= 5.0`, `cotação*n <= caixa + soma ponderada`). Soma ponderada: `Σ posição * última cotação (+0x427e) * (0,5 se > 0; 1,5 se < 0)`, em ordem `f*0.5 + f + soma`. `0x43e340(f) = ((ações - Σ longas) >> (f ? 2 : 1)) + Σ curtas` (pessoas ativas).
+
+**Corretor** (`0x46bb10` repete `0x4a7a40(pessoa)` para o conjunto de jogadores até uma passada sem venda; exige `0x573d72`): poder = caixa + soma ponderada; `>= 0`: prazo `+0x544 = 0`. Senão, se a pessoa tem posição: humano sem prazo vencido: aviso LNG 2270 (nome do mês seguinte `mês % 12`), velocidade limitada a 4, prazo `data(ano, mês, 28, 23, 59) + 0x9d7f`; IA ou prazo vencido: duas passadas (a primeira sem a empresa que a pessoa preside), vende 1000 por vez enquanto poder < 0 (LNG 2271) e recompra posições vendidas 1000 por vez com a mesma compra do 7.2 (LNG 2272); prazo zerado. Por fim, posições vendidas em empresas com `0x43e340 < 0` são recompradas à força (LNG 2273).
+
+**Emitir ações** (`0x447730`): `lote = max(1000, ações/20000*1000)`; recusas na ordem: `0x5706ad` (LNG 23), preço `ftol(0x43b410(ftol(-0.7*lote)))` < 5 fora do editor (LNG 276), última emissão (`+0x160` data, `+0x164` hora) há <= `0x761ff` min (LNG 278); confirma LNG 117..11b e envia `0x11` com `+lote`. Executor `0x439060`: preço `ftol(0x43b410(ftol(-0.7 n), commit))`, taxa `-(n*preço)*0.05` na categoria 12, `+0x160/+0x164 = data e hora`, ações `+= n`, caixa `+= n*preço`.
+
+**Recomprar** (`0x447bb0`): `0x5706ae`; `lote0 = ações/20000*1000`; `p = ftol(0x43b410(ftol(0.7*lote0), 0))`; `máx = ftol(caixa / (p * 1.2))`, se `máx < lote0` `lote = máx/1000*1000`; `lote >= 1000`; `lote <= float livre` (0: LNG 284); `lote < ações` senão LNG 2705; `(0.03f + 1)*p*lote <= caixa` (LNG 360). Executor `0x438f70`: `p = 0x43b410(ftol(0.7 n), commit)`, `prod = n*p`, `taxa = -(0.03f * prod)` na categoria 12, `caixa = (taxa + caixa) + (-prod)`, `patrimônio = (patrimônio - taxa) - (-prod)`; tudo em `f64`.
+
+**Títulos** (`0x448250`): `0x5706af`; menos de 20 títulos (LNG 289); `ftol(rating) >= 5` fora do editor (LNG 290 com as notas `0x5537bc`); o diálogo mostra a taxa `0x4392e0`, 500 000 e 2%; envia `0x14` com 500 000 e 30 anos. Quitar (`0x4480f0`): `0x5706b0`; `caixa >= principal * 1.02` (LNG 361); LNG 288 com a multa de 2%.
+
+**Dividendo** (`0xcb`, `0x449300`): botão `+` (`0x693`): `teto = 0x43edf0` (ou o dividendo atual se menor); recusa LNG 2370 se `teto <= valor + 0.0100...`; senão `valor = ftol(valor*100 + passo + 0.5) * 0.01` limitado ao teto; botão `-` (`0x694`): `ftol(valor*100 - passo + 0.5)*0.01`, mínimo 0; `passo = max(5, ftol((valor*100/6 + 2.5) * 0.2) * 5)` centésimos. OK envia `0x12` (`0x5706b1`). `rt2_sim::fincmd::dividend_click`.
+
+**Falência** (`0xa94`): `0x5706ac`; `ano - +0x158 < 5`: LNG 297; `fundação <= ano - 2` e lucro(ano-2) <= 0 e lucro(ano-1) <= 0 senão LNG 3412 (`0xd54`); confirma LNG 366; envia `0x13`.
+
+**Gerente** (`0x10`): executor `0x438780` (14.3) com taxa `ftol(efeito(0x10) * salário)/2000*1000`; recusa se `uso[g] != 0`; a janela recusa se a taxa passa do caixa (LNG 293).
+
+**Fusão** (`0x48b170`): `0x5706b4`; menos de 2 empresas: LNG 387; `+0x14c != 0` e `<= 0x761ff` min: LNG 388; diálogo (alvo LNG 529, preço LNG 530 iniciando em `ftol(cotação) + 1`, total = ações do alvo x preço; LNG 386 se maior que o caixa da compradora); envia `0x22`. Proposta (`0x48b4f0`): votam o chairman da compradora (sim) e todo acionista do alvo com posição > 0 (IA: não provisório; humano que não é chairman da compradora: pendente). Apuração (`0x4015a0`, 15.1): mensagem LNG 24/25 e duas colunas LNG 63/64 (nome e posição de cada acionista, "Other Investors" LNG 19 = `ftol(F*clamp(C))/1000*1000` de um lado e o resto do float do outro, totais). Aprovada: `0x43c3c0` (`news_post` LNG 168; trilho, trens (+1 em `+0x27` cada), estações (`+0x172`), títulos (até 20), indústrias, as 8 contas, contadores de trilho `+0x182..+0x18e`; cada acionista recebe `posição*oferta` e perde a posição; a compradora paga `ações*oferta`; `0x438170(alvo, 0)`; cotação). Reprovada: `+0x14c = agora`.
+
+**Presidência.** Botões do livro (`0x443ab0`; pessoa local): `Resign` (LNG 327, `0x5706bc`, é o chairman); com `0x573d75` e `0x5706bb`: `Assume` (LNG 329, `0x469ed0 > 0.5` = acionista de mais de metade, ou editor; envia `0x2e` depois de LNG 363) e `Call election` (LNG 331, `>= 0.1`; recusa LNG 364 se `+0x527` da pessoa foi há menos de `0x76200` min; confirma LNG 365; envia `0x24`). `0x43c050`: `news_post` LNG 27, a pessoa deixa a outra empresa e `0x438900`. `0x438900(empresa, novo)`: se `novo != atual`: o antigo recebe `+0x52b += 0x4a8100` (mínimo -99), `+0x263 = 0`, e, se é a pessoa local, `0x467fd0(0)`; humor `*0.8 + 0.2` (sem chairman ou IA) ou 0; o novo recebe `+0x263 = empresa` (e `0x467fd0(empresa)` se local); `+0x46a = +0x52b` do novo; salário 10 000; `+0x470 = ano`. `0x467fd0(id)` grava a empresa local (cópia salva no cabeçalho `0x570574`, `header[0x8a3c]`; 0 também zera `0x570512`).
+
+**`news_post`** (`0x4a42f0`): cada aviso de fusão/presidência acrescenta um item à lista de notícias (fora do save) com um sorteio `crt_rand_range(0, 10000)`, `0x5707be += 1` (`state[0x2d6]`) e `0x5707bd = 1` (`state[0x2d5]`): o único estado são o contador, a bandeira e o sorteio do CRT.
+
+**Liquidação** (`0x438170(empresa, 0)`): solta o trilho que sobrou, libera o gerente (`uso`, `+0x13c = -1`), tira a coluna de cada pessoa deslocando as seguintes (`0x1cf + n*4 = 0`), tira o chairman, zera `+0x16e`, tira do conjunto `0x570729`; se era a empresa local, `0x467fd0(0)`.
+
+**Não portado**: `0x4d14b0` (reavaliação da rota de cada trem do comprador depois da fusão, não alterou nenhum campo no snapshot); `net_min_peer_version` (jogo local: as votações exigem as duas empresas ativas); faixa do controle de preço do diálogo de fusão (`0x48abc0`, widget `0x118` com argumentos 4 e 6; o clone usa de 1 a 3 vezes a cotação).

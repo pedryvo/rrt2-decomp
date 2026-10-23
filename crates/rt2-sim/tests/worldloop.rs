@@ -177,12 +177,6 @@ fn example_seven_days_is_equal() {
     assert_eq!(w.hook_log().unwrap().skipped_steps().count(), 0);
 }
 
-/// Entity group of a diff path: `companies[5].raw[..]` -> `companies`.
-fn group(path: &str) -> &str {
-    let end = path.find(['.', '[']).unwrap_or(path.len());
-    &path[..end]
-}
-
 /// The four stock maps (`maps/<Name>.MP2`) over the 28th of a month: the monthly company step,
 /// the dividends, the interest, the scenario triggers (rules of 1967..1986 fire effects on
 /// rights, levels, variables and the economic state) and the monthly town draws equal the
@@ -214,7 +208,7 @@ fn maps_thirty_days_are_equal() {
 /// places, lots and links, the trains and the other companies; the year-end RNG draws (annual
 /// reviews, manager picks, town growth) stay in step.
 #[test]
-fn example_thirty_days_residual_is_the_documented_gap() {
+fn example_thirty_days_is_equal() {
     let Some((fid, data, _)) = setup() else {
         eprintln!("RT2_DIR / RT2_FIDELITY_DIR not set; skipping");
         return;
@@ -223,14 +217,13 @@ fn example_thirty_days_residual_is_the_documented_gap() {
         return;
     };
     let (_, s) = clone_advance(&base, &data, 30);
-    let mut groups: Vec<String> = unmasked(&fid, "orig_ex_30.GAM", &s)
-        .iter()
-        .map(|p| group(p).to_string())
-        .collect();
-    groups.sort();
-    groups.dedup();
-    let allowed = ["companies", "persons"];
-    for g in &groups {
-        assert!(allowed.contains(&g.as_str()), "unexpected group {g}");
-    }
+    // The year end (1876) splits company 5's stock 2 for 1; the second committed quote of
+    // `0x43d800` keeps its price cache and the chairman's net worth archive equal.
+    let diff = unmasked(&fid, "orig_ex_30.GAM", &s);
+    assert!(
+        diff.is_empty(),
+        "{} fields differ: {:?}",
+        diff.len(),
+        &diff[..diff.len().min(10)]
+    );
 }

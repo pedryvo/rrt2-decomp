@@ -123,3 +123,323 @@ preseed = 1234
 new_game = "0:6:4321:777"
 campaign_name = "#07BIR~1"
 desc = "#07 Birmingham iniciado pela campanha (0x410de0), game_seed 4321, RNG 777"
+
+[[scenario]]
+name = "Bridges New Game"
+save = "maps/#03Bri~1.MAP"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+new_game = "0:2:4321:777"
+campaign_name = "#03BRI~1"
+desc = "#03 Bridges iniciado pela campanha (0x410de0), game_seed 4321, RNG 777"
+
+[[scenario]]
+name = "White New Game"
+save = "maps/#05Whi~1.MAP"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+new_game = "0:4:4321:777"
+campaign_name = "#05whi~1"
+desc = "#05 White iniciado pela campanha (0x410de0), game_seed 4321, RNG 777"
+
+[[scenario]]
+name = "Cross New Game"
+save = "maps/#06Cro~1.MAP"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+new_game = "0:5:4321:777"
+campaign_name = "#06cro~1"
+desc = "#06 Cross iniciado pela campanha (0x410de0), game_seed 4321, RNG 777"
+
+[[scenario]]
+name = "Orient New Game"
+save = "maps/#08Ori~1.MAP"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+new_game = "0:7:4321:777"
+campaign_name = "#08ORI~1"
+desc = "#08 Orient iniciado pela campanha (0x410de0), game_seed 4321, RNG 777"
+
+[[scenario]]
+name = "#09 New Game"
+save = "maps/#09Kni~1.MAP"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+new_game = "0:8:4321:777"
+campaign_name = "#09kni~1"
+desc = "#09 iniciado pela campanha (0x410de0), game_seed 4321, RNG 777"
+
+[[scenario]]
+name = "#10 New Game"
+save = "maps/#1020t~1.MAP"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+new_game = "0:9:4321:777"
+campaign_name = "#1020T~1"
+desc = "#10 iniciado pela campanha (0x410de0), game_seed 4321, RNG 777"
+
+[[scenario]]
+name = "#11 New Game"
+save = "maps/#11Bre~1.MAP"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+new_game = "0:10:4321:777"
+campaign_name = "#11bre~1"
+desc = "#11 iniciado pela campanha (0x410de0), game_seed 4321, RNG 777"
+
+[[scenario]]
+name = "#12 New Game"
+save = "maps/#12Whe~1.MAP"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+new_game = "0:11:4321:777"
+campaign_name = "#12whe~1"
+desc = "#12 iniciado pela campanha (0x410de0), game_seed 4321, RNG 777"
+
+[[scenario]]
+name = "#13 New Game"
+save = "maps/#13Cro~1.MAP"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+new_game = "0:12:4321:777"
+campaign_name = "#13cro~1"
+desc = "#13 iniciado pela campanha (0x410de0), game_seed 4321, RNG 777"
+
+[[scenario]]
+name = "#14 New Game"
+save = "maps/#14Sam~1.MAP"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+new_game = "0:13:4321:777"
+campaign_name = "#14sam~1"
+desc = "#14 iniciado pela campanha (0x410de0), game_seed 4321, RNG 777"
+
+[[scenario]]
+name = "#15 New Game"
+save = "maps/#15Whi~1.MAP"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+new_game = "0:14:4321:777"
+campaign_name = "#15WHI~1"
+desc = "#15 iniciado pela campanha (0x410de0), game_seed 4321, RNG 777"
+
+[[scenario]]
+name = "#16 New Game"
+save = "maps/#16Chi~1.MAP"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+new_game = "0:15:4321:777"
+campaign_name = "#16CHI~1"
+desc = "#16 iniciado pela campanha (0x410de0), game_seed 4321, RNG 777"
+
+[[scenario]]
+name = "#17 New Game"
+save = "maps/#17Dil~1.MAP"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+new_game = "0:16:4321:777"
+campaign_name = "#17DIL~1"
+desc = "#17 iniciado pela campanha (0x410de0), game_seed 4321, RNG 777"
+
+[[scenario]]
+name = "#18 New Game"
+save = "maps/#18Cap~1.MAP"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+new_game = "0:17:4321:777"
+campaign_name = "#18CAP~1"
+desc = "#18 iniciado pela campanha (0x410de0), game_seed 4321, RNG 777"
+
+[[scenario]]
+name = "#E01 New Game"
+save = "maps/#e01camp.MP2"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+new_game = "1:0:4321:777"
+campaign_name = "#E01CAMP"
+desc = "#E01 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777"
+
+[[scenario]]
+name = "#E02 New Game"
+save = "maps/#e02camp.MP2"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+new_game = "1:1:4321:777"
+campaign_name = "#E02CAMP"
+desc = "#E02 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777"
+
+[[scenario]]
+name = "#E03 New Game"
+save = "maps/#e03camp.MP2"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+new_game = "1:2:4321:777"
+campaign_name = "#E03CAMP"
+desc = "#E03 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777"
+
+[[scenario]]
+name = "#E04 New Game"
+save = "maps/#e04camp.MP2"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+new_game = "1:3:4321:777"
+campaign_name = "#E04CAMP"
+desc = "#E04 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777"
+
+[[scenario]]
+name = "#E05 New Game"
+save = "maps/#e05camp.Mp2"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+new_game = "1:4:4321:777"
+campaign_name = "#E05CAMP"
+desc = "#E05 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777"
+
+[[scenario]]
+name = "#E06 New Game"
+save = "maps/#e06camp.MP2"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+new_game = "1:5:4321:777"
+campaign_name = "#E06CAMP"
+desc = "#E06 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777"
+
+[[scenario]]
+name = "#E07 New Game"
+save = "maps/#e07camp.MP2"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+new_game = "1:6:4321:777"
+campaign_name = "#E07CAMP"
+desc = "#E07 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777"
+
+[[scenario]]
+name = "#E08 New Game"
+save = "maps/#e08camp.MP2"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+new_game = "1:7:4321:777"
+campaign_name = "#E08CAMP"
+desc = "#E08 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777"
+
+[[scenario]]
+name = "#E09 New Game"
+save = "maps/#E09camp.Mp2"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+new_game = "1:8:4321:777"
+campaign_name = "#E09CAMP"
+desc = "#E09 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777"
+
+[[scenario]]
+name = "#E10 New Game"
+save = "maps/#e10camp.MP2"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+new_game = "1:9:4321:777"
+campaign_name = "#E10CAMP"
+desc = "#E10 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777"
+
+[[scenario]]
+name = "#E11 New Game"
+save = "maps/#e11camp.Mp2"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+new_game = "1:10:4321:777"
+campaign_name = "#E11CAMP"
+desc = "#E11 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777"
+
+[[scenario]]
+name = "#E12 New Game"
+save = "maps/#e12camp.Mp2"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+new_game = "1:11:4321:777"
+campaign_name = "#E12CAMP"
+desc = "#E12 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777"
+
+[[scenario]]
+name = "#E13 New Game"
+save = "maps/#e13camp.MP2"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+new_game = "1:12:4321:777"
+campaign_name = "#E13CAMP"
+desc = "#E13 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777"
+
+[[scenario]]
+name = "#E14 New Game"
+save = "maps/#e14camp.Mp2"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+new_game = "1:13:4321:777"
+campaign_name = "#E14CAMP"
+desc = "#E14 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777"
+
+[[scenario]]
+name = "#E15 New Game"
+save = "maps/#e15camp.Mp2"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+new_game = "1:14:4321:777"
+campaign_name = "#E15CAMP"
+desc = "#E15 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777"
+
+[[scenario]]
+name = "#E16 New Game"
+save = "maps/#e16camp.Mp2"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+new_game = "1:15:4321:777"
+campaign_name = "#E16CAMP"
+desc = "#E16 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777"
+
+[[scenario]]
+name = "#E17 New Game"
+save = "maps/#e17camp.Mp2"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+new_game = "1:16:4321:777"
+campaign_name = "#E17CAMP"
+desc = "#E17 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777"
+
+[[scenario]]
+name = "#E18 New Game"
+save = "maps/#e18camp.MP2"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+new_game = "1:17:4321:777"
+campaign_name = "#E18CAMP"
+desc = "#E18 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777"

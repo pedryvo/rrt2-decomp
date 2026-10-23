@@ -39,6 +39,84 @@ pub enum GameMessage {
     CompanyBankrupt { company: i32 },
     /// A stock split with the `ratio` shares per share (`docs/spec/finance.md` 8, LNG 169).
     StockSplit { company: i32, ratio: i32 },
+    /// A merger vote ran (`0x4015a0`, `docs/spec/finance.md` 15.1): LNG 24 "Merger Succeeds" or
+    /// 25 "Merger Fails" plus the tally (LNG 63 "Votes in favor", 64 "Votes against"); the names
+    /// are the ones at the time of the vote (the target is gone after a merger).
+    MergerResult {
+        buyer: i32,
+        target: i32,
+        buyer_name: String,
+        target_name: String,
+        offer: i32,
+        passed: bool,
+        tally: VoteTally,
+    },
+    /// A chairmanship contest ran (`0x42ee00`, finance.md 15.3): LNG 26 / 28 and the tally.
+    ChairmanVote {
+        company: i32,
+        challenger: i32,
+        company_name: String,
+        challenger_name: String,
+        passed: bool,
+        tally: VoteTally,
+    },
+    /// A person took over the chair (`0x43c050`, LNG 27 "%1 is new chairman of %2!").
+    ChairmanChanged {
+        company: i32,
+        person: i32,
+        person_name: String,
+        company_name: String,
+    },
+    /// A merger went through (`0x43c3c0`, LNG 168 "%1 takes over %2!").
+    MergerDone {
+        buyer: i32,
+        buyer_name: String,
+        target_name: String,
+    },
+    /// The broker called the margin (`0x4a7a40`): LNG 2270 (`month` 0..11 names the deadline).
+    MarginWarning { person: i32, month: u8 },
+    /// The broker sold `shares` of `company` (LNG 2271) or bought them to cover a short position
+    /// (2272), or the short squeeze of LNG 2273 forced a cover (`squeeze`).
+    MarginTrade {
+        person: i32,
+        company: i32,
+        company_name: String,
+        shares: i32,
+        kind: MarginTradeKind,
+    },
+    /// The board suspended the dividend (LNG 2274).
+    DividendSuspended { company: i32 },
+    /// The board cut the dividend to the `f32` with bits `to_bits` per share (LNG 2713).
+    DividendCut { company: i32, to_bits: u32 },
+}
+
+/// What a broker's margin trade was ([`GameMessage::MarginTrade`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MarginTradeKind {
+    /// Long position sold (LNG 2271).
+    Sold,
+    /// Short position covered (LNG 2272).
+    Covered,
+    /// Short squeeze (LNG 2273).
+    Squeeze,
+}
+
+/// One side of a vote count (`0x4015a0`, `0x42ee00`): the persons that hold shares of the target
+/// and voted that way with their positions, the "other investors" (the free float that votes by
+/// the public's mood) and the total.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct VoteSide {
+    /// `(person, shares)` in the order of the person list.
+    pub voters: Vec<(i32, i32)>,
+    pub public: i32,
+    pub total: i32,
+}
+
+/// The two columns of the vote dialog: "Votes in favor" (LNG 63) and "Votes against" (LNG 64).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct VoteTally {
+    pub yes: VoteSide,
+    pub no: VoteSide,
 }
 
 /// End of the game (`Scenario::game_over` state 1..=4, `docs/spec/scenarios.md` 3.3).

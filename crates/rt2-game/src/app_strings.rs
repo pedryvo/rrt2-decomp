@@ -221,6 +221,30 @@ pub static APP_EN: &[&str] = &[
     "There is no player who can start a company.",
     "The company could not be started.",
     "Construction needs a company: start one first (Start New Company).",
+    "Repay Bond",
+    "Trade Shares",
+    "Buy on Margin",
+    "Short Sell",
+    "Shares held",
+    "Shares for sale",
+    "Lot to buy",
+    "Lot to sell",
+    "Board's limit",
+    "%1 of %2",
+    "That manager already works for another company.",
+    "You cannot buy shares of this company now.",
+    "You cannot sell shares of this company now.",
+    "You have no bonds outstanding.",
+    "Bond issued at %1.",
+    "Issued %1 shares at %2.",
+    "Bought back %1 shares at %2.",
+    "Dividend set to %1 per share.",
+    "%1 offers %2 per share for %3.",
+    "Bond repaid.",
+    "You resigned as chairman.",
+    "Bought %1 shares of %2 at %3 (%4).",
+    "Sold %1 shares of %2 at %3 (%4).",
+    "%1: %2   %3: %4   %5: %6   %7: %8",
 ];
 
 /// The id of an English default.
@@ -244,6 +268,7 @@ mod tests {
             include_str!("state/info_ui.rs"),
             include_str!("state/build_ui.rs"),
             include_str!("state/build_dialogs.rs"),
+            include_str!("state/dialogs/fin.rs"),
             include_str!("text.rs"),
         ] {
             for call in [".a(\"", ".af(\""] {

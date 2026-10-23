@@ -25,6 +25,8 @@ pub struct World {
     pub(crate) speed: u8,
     /// `game_speed_resume` (`0x5707c2`): last non-zero speed.
     pub(crate) speed_resume: u8,
+    /// Open merger and chairmanship vote records (`0x574ca0`, `0x574ca4`); not part of a save.
+    pub(crate) votes: crate::fincmd::Votes,
 }
 
 impl World {
@@ -39,6 +41,7 @@ impl World {
             game_seed,
             speed: DEFAULT_SPEED,
             speed_resume: DEFAULT_SPEED,
+            votes: crate::fincmd::Votes::default(),
         }
     }
 

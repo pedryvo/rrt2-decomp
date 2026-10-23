@@ -3,11 +3,11 @@
 # Ver docs/re-workflow.md.
 #
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
-# Classificadas (categoria != unknown): 1287 (43.7%)
-# Por categoria: lib=258, platform=114, render=11, audio=56, ui=273, sim=575, unknown=1658
-# Por estado:   unknown=2397, named=122, spec=187, verified=239
-# Entradas manuais: 533
-# sim spec coverage: 67.3% (387 de 575 funcoes sim em spec/verified)
+# Classificadas (categoria != unknown): 1293 (43.9%)
+# Por categoria: lib=258, platform=114, render=11, audio=56, ui=272, sim=582, unknown=1652
+# Por estado:   unknown=2371, named=122, spec=180, verified=272
+# Entradas manuais: 540
+# sim spec coverage: 71.0% (413 de 582 funcoes sim em spec/verified)
 
 [[function]]
 addr = "0x401005"
@@ -1458,8 +1458,8 @@ why = "no-evidence"
 addr = "0x4015a0"
 size = 5
 category = "sim"
-status = "unknown"
-why = "finance/stock market (docs/spec/finance.md)"
+status = "verified"
+why = "merger_resolve: apuracao, mensagem, execucao ou carimbo +0x14c [V via snapshots fincmd merger_auto/merger_human]"
 manual = true
 
 [[function]]
@@ -8083,8 +8083,8 @@ manual = true
 addr = "0x40aa20"
 size = 815
 category = "sim"
-status = "spec"
-why = "cargo.md 7.3"
+status = "verified"
+why = "industry_production_tick: ramo sandbox (estoque de lotes nos 7 bits baixos de +0x9e) portado em industry::production_tick; New Game #E03/#E06 iguais"
 manual = true
 
 [[function]]
@@ -9331,8 +9331,8 @@ manual = true
 addr = "0x42ed10"
 size = 230
 category = "sim"
-status = "unknown"
-why = "finance/stock market (docs/spec/finance.md)"
+status = "verified"
+why = "chairman_election_start [V via snapshot fincmd election]"
 manual = true
 
 [[function]]
@@ -9729,9 +9729,10 @@ manual = true
 
 [[function]]
 addr = "0x437ab0"
+name = "company_release_track"
 size = 419
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -9767,8 +9768,8 @@ why = "no-evidence"
 addr = "0x438170"
 size = 631
 category = "sim"
-status = "spec"
-why = "finance.md 15.5"
+status = "verified"
+why = "company_remove (liquidacao com f = 0) [V via snapshot fincmd merger_human]"
 manual = true
 
 [[function]]
@@ -9789,26 +9790,26 @@ manual = true
 
 [[function]]
 addr = "0x438710"
-name = "company_apply_manager_effects"
 size = 107
-category = "unknown"
-status = "named"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "company_apply_manager_effects: SimState::manager_apply_effects (limite +-127); #06/#08 iguais"
+manual = true
 
 [[function]]
 addr = "0x438780"
 size = 371
 category = "sim"
-status = "spec"
-why = "finance.md 14.3"
+status = "verified"
+why = "company_set_manager [V via snapshots fincmd mgr4/mgr5]"
 manual = true
 
 [[function]]
 addr = "0x438900"
 size = 258
 category = "sim"
-status = "spec"
-why = "finance.md 15.4"
+status = "verified"
+why = "company_set_chairman: reputacao, humor dos investidores, salario, ano, empresa local [V via snapshots fincmd resign/takeover]"
 manual = true
 
 [[function]]
@@ -9823,24 +9824,24 @@ manual = true
 addr = "0x438f70"
 size = 240
 category = "sim"
-status = "unknown"
-why = "finance/stock market (docs/spec/finance.md)"
+status = "verified"
+why = "company_buy_back_stock: corretagem 0.03f * (n*preco) em f64 do x87 [V via snapshot fincmd buyback5]"
 manual = true
 
 [[function]]
 addr = "0x439060"
 size = 331
 category = "sim"
-status = "unknown"
-why = "finance/stock market (docs/spec/finance.md)"
+status = "verified"
+why = "company_issue_stock: tambem grava a data +0x160/+0x164 da emissao [V via snapshots fincmd issue4/issue5]"
 manual = true
 
 [[function]]
 addr = "0x4391b0"
 size = 297
 category = "sim"
-status = "unknown"
-why = "finance/stock market (docs/spec/finance.md)"
+status = "verified"
+why = "company_repay_bond [V via snapshot fincmd repay4]"
 manual = true
 
 [[function]]
@@ -9855,8 +9856,8 @@ manual = true
 addr = "0x439320"
 size = 439
 category = "sim"
-status = "unknown"
-why = "finance/stock market (docs/spec/finance.md)"
+status = "verified"
+why = "company_issue_bond [V via snapshots fincmd bond4/bond5]"
 manual = true
 
 [[function]]
@@ -10138,16 +10139,16 @@ manual = true
 addr = "0x43bf80"
 size = 80
 category = "sim"
-status = "unknown"
-why = "finance/stock market (docs/spec/finance.md)"
+status = "verified"
+why = "company_resign_chairman [V via snapshot fincmd resign]"
 manual = true
 
 [[function]]
 addr = "0x43bfd0"
 size = 87
 category = "sim"
-status = "unknown"
-why = "finance/stock market (docs/spec/finance.md)"
+status = "verified"
+why = "company_set_dividend [V via snapshot fincmd div4]"
 manual = true
 
 [[function]]
@@ -10160,11 +10161,11 @@ manual = true
 
 [[function]]
 addr = "0x43c050"
-name = "company_chairman_takeover"
 size = 207
-category = "unknown"
-status = "named"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "company_chairman_takeover [V via snapshot fincmd takeover]"
+manual = true
 
 [[function]]
 addr = "0x43c120"
@@ -10177,8 +10178,8 @@ why = "no-evidence"
 addr = "0x43c3c0"
 size = 873
 category = "sim"
-status = "spec"
-why = "finance.md 15.2"
+status = "verified"
+why = "company_merge_execute [V via snapshot fincmd merger_human: trilho, trens, estacoes, titulos, contas, pagamento das posicoes e liquidacao]"
 manual = true
 
 [[function]]
@@ -10201,25 +10202,25 @@ manual = true
 addr = "0x43d800"
 size = 1170
 category = "sim"
-status = "unknown"
-why = "finance/stock market (docs/spec/finance.md)"
+status = "verified"
+why = "company_year_end: desdobramento zera +0x4250 e recota com commit (0x43b410(0,1)) depois de dividir o arquivo; Example 30 dias igual ao original"
 manual = true
 
 [[function]]
 addr = "0x43dca0"
 size = 268
 category = "sim"
-status = "spec"
-why = "world-tick.md 10: em game_set_date"
+status = "verified"
+why = "company_set_date: empresa inexistente cota 0.0 (+0x3c = 0) sem tocar no cache; New Game #03 igual"
 manual = true
 
 [[function]]
 addr = "0x43ddb0"
-name = "company_init_territories"
 size = 353
-category = "unknown"
-status = "named"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "company_init_territories: SimState::company_reset_territories (tick/newgame.rs) em players_setup; New Game das campanhas iguais"
+manual = true
 
 [[function]]
 addr = "0x43df20"
@@ -10241,8 +10242,8 @@ manual = true
 addr = "0x43e340"
 size = 454
 category = "sim"
-status = "unknown"
-why = "finance/stock market (docs/spec/finance.md)"
+status = "verified"
+why = "company_short_limit [V via mc_short]"
 manual = true
 
 [[function]]
@@ -10304,8 +10305,8 @@ manual = true
 addr = "0x43eca0"
 size = 323
 category = "sim"
-status = "named"
-why = "scenarios/company_goodwill (3.5)"
+status = "verified"
+why = "company_goodwill(territorio): blocos 1..n, v = vida/N + (trilho>>4) + ano com N = max(1, ftol((fundacao-ano)*1.5)); posicao = ftol((\u03a3 pos*v / \u03a3 v + +0x4229) * 0.5); com territorio, media com a posicao dele; * efeito 0x28; 0..10000. CompanyGoodwill passa 0, CompanyTerritoryGoodwill passa o territorio (nao e o mesmo valor). #17 igual ao original"
 manual = true
 
 [[function]]
@@ -10527,10 +10528,11 @@ why = "string:eagled.imb"
 
 [[function]]
 addr = "0x449300"
+name = "ui_dividend_dialog"
 size = 833
 category = "ui"
-status = "unknown"
-why = "string:{[HJL]%s:}{[HJR]%s}"
+status = "named"
+why = "symbol:ui_dividend_dialog"
 
 [[function]]
 addr = "0x4496e0"
@@ -11787,9 +11789,10 @@ why = "string:brlogo%s%s.imb"
 [[function]]
 addr = "0x467fd0"
 size = 381
-category = "ui"
-status = "unknown"
-why = "string:brlogo%s%s.imb"
+category = "sim"
+status = "verified"
+why = "set_local_company: copia salva no cabecalho 0x570574 [V via snapshots fincmd resign/takeover]"
+manual = true
 
 [[function]]
 addr = "0x468150"
@@ -11966,9 +11969,10 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x469ed0"
+name = "person_stake_ratio"
 size = 26
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -12088,9 +12092,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x46a940"
 size = 89
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "player_list_remove: parte de SimState::player_remove"
+manual = true
 
 [[function]]
 addr = "0x46a9a0"
@@ -12267,8 +12272,8 @@ manual = true
 addr = "0x46bb10"
 size = 138
 category = "sim"
-status = "unknown"
-why = "finance/stock market (docs/spec/finance.md)"
+status = "verified"
+why = "margin_check_all: repete a rotina do corretor ate uma passada sem vendas; [V via snapshots fincmd mc_*]"
 manual = true
 
 [[function]]
@@ -12505,8 +12510,8 @@ why = "no-evidence"
 addr = "0x473590"
 size = 1001
 category = "sim"
-status = "spec"
-why = "world-tick.md 10: players_setup (sem 0x4a6a00 e nomes do LNG)"
+status = "verified"
+why = "players_setup: nomes e biografias do LNG (strncpy 0x1e/0xfa), player_remove nas vagas livres, 0x43ddb0 por empresa; New Game #01..#18 iguais em 0 e 7 dias"
 manual = true
 
 [[function]]
@@ -13060,16 +13065,16 @@ manual = true
 addr = "0x48b4b0"
 size = 56
 category = "sim"
-status = "spec"
-why = "docs/spec/commands.md 2.1 (0x23)"
+status = "verified"
+why = "cmd_merger_vote [V via snapshot fincmd merger_human]"
 manual = true
 
 [[function]]
 addr = "0x48b4f0"
 size = 214
 category = "sim"
-status = "unknown"
-why = "finance/stock market (docs/spec/finance.md)"
+status = "verified"
+why = "merger_propose [V via snapshots fincmd merger_auto/merger_human]"
 manual = true
 
 [[function]]
@@ -13932,9 +13937,10 @@ why = "string:paper.win"
 [[function]]
 addr = "0x4a42f0"
 size = 375
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "news_post: contador 0x5707be, bandeira 0x5707bd e um sorteio do CRT [V via snapshot fincmd takeover]"
+manual = true
 
 [[function]]
 addr = "0x4a4900"
@@ -14024,9 +14030,10 @@ manual = true
 [[function]]
 addr = "0x4a6a00"
 size = 87
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "player_remove: SimState::player_remove (tick/review.rs); New Game de #03..#18 iguais ao original"
+manual = true
 
 [[function]]
 addr = "0x4a6a60"
@@ -14062,40 +14069,40 @@ why = "no-evidence"
 addr = "0x4a6e00"
 size = 338
 category = "sim"
-status = "unknown"
-why = "finance/stock market (docs/spec/finance.md)"
+status = "verified"
+why = "person_trade_lot: lote = ftol(|posicao| * 0.04 + 1000) arredondado a 1000, reduzido de 1000 em 1000 ate person_can_buy/sell aceitar; IA = 1000; [V via snapshots fincmd stbuy/stsell/stshort]"
 manual = true
 
 [[function]]
 addr = "0x4a6f60"
 size = 550
 category = "sim"
-status = "unknown"
-why = "finance/stock market (docs/spec/finance.md)"
+status = "verified"
+why = "person_can_buy [V via snapshots fincmd]"
 manual = true
 
 [[function]]
 addr = "0x4a7190"
 size = 368
 category = "sim"
-status = "unknown"
-why = "finance/stock market (docs/spec/finance.md)"
+status = "verified"
+why = "person_can_sell [V via snapshots fincmd]"
 manual = true
 
 [[function]]
 addr = "0x4a7300"
 size = 203
 category = "sim"
-status = "unknown"
-why = "finance/stock market (docs/spec/finance.md)"
+status = "verified"
+why = "person_buy_stock: custo ftol(cotacao_apos*n), debito ftol((0.03f+1)*custo) [V via snapshots fincmd stbuy]"
 manual = true
 
 [[function]]
 addr = "0x4a73d0"
 size = 198
 category = "sim"
-status = "unknown"
-why = "finance/stock market (docs/spec/finance.md)"
+status = "verified"
+why = "person_sell_stock: preco ftol(cotacao durante), credito ftol((1-0.03f)*preco*n) [V via snapshots fincmd stsell/stshort/aisell]"
 manual = true
 
 [[function]]
@@ -14130,9 +14137,10 @@ manual = true
 
 [[function]]
 addr = "0x4a75e0"
+name = "person_player_index"
 size = 49
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -14194,8 +14202,8 @@ why = "no-evidence"
 addr = "0x4a7a40"
 size = 1650
 category = "sim"
-status = "unknown"
-why = "finance/stock market (docs/spec/finance.md)"
+status = "verified"
+why = "person_margin_call: aviso, prazo, vendas e coberturas do corretor, short squeeze; [V via snapshots fincmd mc_warn/mc_sell/mc_ai/mc_short]"
 manual = true
 
 [[function]]
@@ -15239,7 +15247,7 @@ addr = "0x4c8540"
 size = 501
 category = "sim"
 status = "verified"
-why = "docs/spec/terrain-track.md 10.5: build/rights.rs, snapshots rights5, aust_rights"
+why = "territory_set_rights tambem pelos efeitos de cenario 50..54 (antes regra inferida em events.rs): +0x422d/+0x422e via 0x43df20; #09/#12/#13 iguais"
 manual = true
 
 [[function]]
@@ -15404,7 +15412,7 @@ addr = "0x4cdd50"
 size = 426
 category = "sim"
 status = "verified"
-why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs e ai_snapshots dl0_rich_c5"
+why = "train_delete via efeito de cenario 235 (trens pre-colocados de #05 aposentados no inicio): igual ao original"
 manual = true
 
 [[function]]

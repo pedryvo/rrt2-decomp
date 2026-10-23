@@ -446,6 +446,8 @@ cria um lote (industry_spawn_lot) e repete
 ```
 O cálculo de `m` e `período` (até o `>>= 1` do Overtime) é verificado por `tests/cargo.rs::production_period_matches_original` (fragmento `0x40abca..0x40acb2`, 3 989 casos): `m = (e(0x5e) * e(0x5f+saída)) * tabela[estado]` com piso `0.01f32`, `prod` guardado como `f32`.
 
+**Sandbox** (`0x570227 != 0`, [V: New Game de `#E03`/`#E06`]): sem relógios; os 7 bits baixos de `prédio+0x9e` são um estoque de lotes. Para cada slot com taxa > `0x5350b8` (0,01) e estoque > 0: `i = 0; enquanto f32(i) < f32(taxa): se estoque > 0: estoque -= 1 (o bit 7 fica), cria um lote; i += 1`. A volta pelos 4 slots repete enquanto o estoque não é 0 e difere do valor na entrada da função. Quem enche `+0x9e` não foi lido aqui.
+
 Ou seja, a produção anual é `prod * m` lotes e todos os lotes devidos são criados a cada chamada (a cada semana, 48 vezes por ano de 336 dias). Em modelo avançado ou expert um conversor só produz quando recebe insumo (7.4). `industry_spawn_lot` (`0x40a770`) cria o lote (`criado = agora`) na pilha, a menos que o slot já tenha 50 lotes esperando (fora do sandbox), e recalcula as estações ligadas (`0x4bebf0`, `+0x4b5 += 1`).
 
 ### 7.4 Entrada de carga e conversão (`0x40b250`) **[S]**

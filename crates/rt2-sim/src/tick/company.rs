@@ -165,6 +165,31 @@ impl SimState {
         if let Some(r) = pool::record_mut(&mut self.save.companies, slot) {
             co.write_record(&mut r.data);
         }
+        // The board's decisions are news for the local player's company (`0x4399d0`, LNG 2274 /
+        // 2713, only without `0x570237`); a company with a human chairman stands for it.
+        if let Some(d) = rep.dividend
+            && inp.human_chairman
+            && self.save.header[HDR_NO_ECONOMY] == 0
+        {
+            match d.outcome {
+                crate::finance::DividendOutcome::Suspended => {
+                    self.ts_globals
+                        .news
+                        .push(crate::message::GameMessage::DividendSuspended {
+                            company: slot as i32,
+                        });
+                }
+                crate::finance::DividendOutcome::Reduced => {
+                    self.ts_globals
+                        .news
+                        .push(crate::message::GameMessage::DividendCut {
+                            company: slot as i32,
+                            to_bits: (d.annual as f32).to_bits(),
+                        });
+                }
+                _ => {}
+            }
+        }
         // Shareholders: every person with shares of the company is paid (finance.md 6).
         if let (Some(d), Some(i)) = (rep.dividend, idx)
             && d.annual > 0.0
@@ -183,10 +208,9 @@ impl SimState {
         self.log.ran("company_month_step");
     }
 
-    /// `margin_check_all` (`0x46bb10`, finance.md 7.3): buying power of every person; a person
-    /// whose power is not negative has the margin call deadline (`+0x544`) cleared. A negative
-    /// power starts the broker's sales, which are not implemented (counted).
-    pub(super) fn margin_check_all(&mut self) {
+    /// `margin_check_all` (`0x46bb10`, finance.md 7.3): the broker's routine for every person of
+    /// the player set (calls, forced sales and covers, see `fincmd.rs`).
+    pub(crate) fn margin_check_all(&mut self, w: &mut World) {
         if !self.v2348() {
             todo_hook!(
                 self.log,
@@ -196,37 +220,8 @@ impl SimState {
             );
             return;
         }
-        let set = self.company_set();
-        let prices: Vec<f32> = set
-            .iter()
-            .map(|&c| {
-                pool::record(&self.save.companies, c).map_or(0.0, |r| f32_at(&r.data, 0x427e))
-            })
-            .collect();
-        for p in pool::list_order(&self.save.persons) {
-            let Some(r) = pool::record(&self.save.persons, p) else {
-                continue;
-            };
-            let cash = f64_at(&r.data, PE_CASH);
-            let positions: Vec<(i32, f32)> = prices
-                .iter()
-                .enumerate()
-                .map(|(i, &pr)| (i32_at(&r.data, PE_HOLDINGS + 4 * i), pr))
-                .collect();
-            let power = crate::finance::margin_power(cash, &positions);
-            if power >= 0.0 {
-                if let Some(r) = pool::record_mut(&mut self.save.persons, p) {
-                    put_u32(&mut r.data, 0x544, 0);
-                }
-            } else {
-                todo_hook!(
-                    self.log,
-                    "margin_call",
-                    "margin call: deadline, broker sales and forced covers",
-                    "finance.md 7.3"
-                );
-            }
-        }
+        let mut guard = super::fincmd::MarginGuard::default();
+        self.fc_margin_check(w.minutes, w, &mut guard);
         self.log.ran("margin_check_all");
     }
 }

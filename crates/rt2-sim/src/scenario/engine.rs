@@ -140,7 +140,14 @@ pub trait ScenarioWorld: ScenarioEnv {
     /// Effect 6: `0x4a7570(person, amount)`.
     fn credit_person(&mut self, person: i32, amount: i32);
     /// Effects 50..54: `0x4c8540(territory, mask, allow, company, 0)`.
-    fn set_territory_rights(&mut self, territory: i32, company: i32, mask: u8, allow: bool);
+    fn set_territory_rights(
+        &mut self,
+        territory: i32,
+        company: i32,
+        mask: u8,
+        allow: bool,
+        rng: &mut GameRng,
+    );
     /// Effects 55..59 (`destroy` false) and 299..303 (`destroy` true).
     fn confiscate(&mut self, company: i32, territory: i32, what: Confiscate, destroy: bool);
     /// Effect 189: `0x438170(company, 1)`.
@@ -154,7 +161,7 @@ pub trait ScenarioWorld: ScenarioEnv {
     /// Effect 233 with `v > 0`: `0x4c8a30(territory, v)`.
     fn flood_territory(&mut self, territory: i32, amount: i32);
     /// Effect 235 with `b > 0`: retires train `id` when it exists (`0x4cdd50`).
-    fn retire_train(&mut self, id: i32);
+    fn retire_train(&mut self, id: i32, rng: &mut GameRng);
     /// Effects 236..240: sets the "rights for sale" flags `+0x44 + i` of the territory for each
     /// `i` in `which`.
     fn set_territory_buyable(&mut self, territory: i32, which: &[usize], on: bool);
@@ -166,8 +173,9 @@ pub trait ScenarioWorld: ScenarioEnv {
     fn add_level(&mut self, scope: Scope, effect: usize, delta: i32);
     /// A level effect in 127..=188 or 305..=308 ran (`[0x574784]` set).
     fn engines_changed(&mut self) {}
-    /// Level effect in 193..=232 with a company: `0x438780(company, manager, 0)`.
-    fn manager_effect(&mut self, company: i32, manager: usize);
+    /// Level effect in 193..=232 with a company: `0x438780(company, manager, 0)` (draws the game
+    /// RNG when another company had the manager as a candidate).
+    fn manager_effect(&mut self, company: i32, manager: usize, rng: &mut GameRng);
 }
 
 /// Fires every rule of trigger `kind` in pool order (`event_fire_trigger` `0x457fe0`). After each
@@ -339,7 +347,7 @@ pub fn evaluate_rule<W: ScenarioWorld>(
                     let set = show_message(world, rule, game_over, combo, t2t, &mut shown_once);
                     rule.fired = true;
                     if !no_effects {
-                        let temporary = apply_effects(world, game_over, rule, set, combo);
+                        let temporary = apply_effects(world, game_over, rule, set, combo, rng);
                         if temporary {
                             undo.push(undo_rule(world, effects, rule, set, combo));
                         }
@@ -474,6 +482,7 @@ fn apply_effects<W: ScenarioWorld>(
     rule: &Rule,
     set: usize,
     c: Combo,
+    rng: &mut GameRng,
 ) -> bool {
     let mut temporary = false;
     let bytes = &rule.effects[set];
@@ -501,7 +510,7 @@ fn apply_effects<W: ScenarioWorld>(
                     _ => &[rights::BUILDINGS],
                 };
                 for &m in masks {
-                    world.set_territory_rights(c.territory, c.company, m, b >= 0);
+                    world.set_territory_rights(c.territory, c.company, m, b >= 0, rng);
                 }
             }
             55..=59 | 299..=303 => {
@@ -527,7 +536,7 @@ fn apply_effects<W: ScenarioWorld>(
                     world.flood_territory(c.territory, v);
                 }
             }
-            235 if b > 0 => world.retire_train(bi),
+            235 if b > 0 => world.retire_train(bi, rng),
             236..=240 if c.territory != 0 => {
                 let which: &[usize] = match e {
                     236 => &[0, 1, 2, 3],
@@ -583,7 +592,7 @@ fn apply_effects<W: ScenarioWorld>(
                     world.engines_changed();
                 }
                 if (0xc1..=0xe8).contains(&e) && c.company != 0 {
-                    world.manager_effect(c.company, e - 0xc1);
+                    world.manager_effect(c.company, e - 0xc1, rng);
                 }
             }
         }

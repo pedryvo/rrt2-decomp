@@ -139,6 +139,211 @@ impl SimState {
         s
     }
 
+    /// `0x438710(g, remove)`: adds (or takes away) the four `(effect, pct)` pairs of manager `g`
+    /// (table `0x54fdb1`) to the company's effect levels, each clamped to +-127.
+    pub(super) fn manager_apply_effects(&mut self, slot: usize, g: usize, remove: bool) {
+        let base = MANAGER_TABLE + 4 + 0x11 * g as u32;
+        for k in 0..4u32 {
+            let e = self.data.image.u8(base + 2 * k);
+            if e == 0 {
+                continue;
+            }
+            let mut pct = i32::from(self.data.image.i8(base + 2 * k + 1));
+            if remove {
+                pct = -pct;
+            }
+            if let Some(r) = pool::record_mut(&mut self.save.companies, slot) {
+                let o = crate::company_record::CO_EFFECTS + 2 * usize::from(e);
+                let v = (i32::from(i16_at(&r.data, o)) + pct).clamp(-0x7f, 0x7f);
+                pool::put_i16(&mut r.data, o, v as i16);
+            }
+        }
+    }
+
+    /// `manager_pick_candidate(-1)` (`0x438450`) for the company at `slot`.
+    fn manager_pick_for(&self, rng: &mut GameRng, minutes: i32, slot: usize) -> i32 {
+        let Some(d) = pool::record(&self.save.companies, slot).map(|r| r.data.clone()) else {
+            return -1;
+        };
+        let co = Company::from_record(&d);
+        let date = date_of(minutes);
+        let mut uses = [0u8; 40];
+        uses.copy_from_slice(&self.save.state[ST_MANAGER_USE..ST_MANAGER_USE + 40]);
+        let mut avail = [0u8; 40];
+        avail.copy_from_slice(&self.save.state[ST_MANAGER_AVAIL..ST_MANAGER_AVAIL + 40]);
+        let inp = PickIn {
+            year: i32::from(date.year),
+            month: i32::from(date.month),
+            founded: co.founded,
+            cats: &co.cats,
+            arch: &co.arch_cats,
+            c140: i32_at(&d, CO_CAND0),
+            c144: i32_at(&d, CO_CAND1),
+            uses,
+            avail,
+            sal: self.manager_salaries(),
+        };
+        pick_manager(&inp, rng)
+    }
+
+    /// `company_set_manager(g, charge)` (`0x438780`, finance.md 14.3): nothing when `g` already
+    /// works for a company (`0x573e09[g] != 0`); otherwise the current manager's effects are
+    /// removed and his slot freed, `+0x13c = g`, `g`'s effects applied and `uso[g] = company`;
+    /// with `charge` the signing fee `((ftol(effect(0x10) * salary) / 2000) * -1000)` goes to
+    /// category 11, cash and equity; then every company of the set whose candidate `+0x140` /
+    /// `+0x144` was `g` draws a new one (RNG). Scenario effects 0xc1..0xe8 call it with
+    /// `charge = 0`.
+    pub(super) fn company_set_manager(
+        &mut self,
+        rng: &mut GameRng,
+        minutes: i32,
+        slot: usize,
+        g: usize,
+        charge: bool,
+    ) {
+        if g >= 40 || self.save.state[ST_MANAGER_USE + g] != 0 {
+            return;
+        }
+        let Some(old) = pool::record(&self.save.companies, slot).map(|r| i32_at(&r.data, 0x13c))
+        else {
+            return;
+        };
+        let fee = {
+            let eff = f64::from(self.effect_mult(0x10, slot));
+            let sal = self.data.image.i32(MANAGER_TABLE + 0x11 * g as u32);
+            ftol_(eff * f64::from(sal))
+        };
+        if (0..40).contains(&old) {
+            self.manager_apply_effects(slot, old as usize, true);
+            self.save.state[ST_MANAGER_USE + old as usize] = 0;
+        }
+        if let Some(r) = pool::record_mut(&mut self.save.companies, slot) {
+            put_u32(&mut r.data, 0x13c, g as u32);
+        }
+        self.manager_apply_effects(slot, g, false);
+        self.save.state[ST_MANAGER_USE + g] = slot as u8;
+        if charge && let Some(r) = pool::record_mut(&mut self.save.companies, slot) {
+            let d = f64::from(fee / 2000 * -1000);
+            let rd = &mut r.data;
+            put_u32(rd, crate::company_record::CO_PRICE_STAMP, 0);
+            for o in [0x42de, 0x4756, crate::company_record::CO_ACCT] {
+                let v = f64_at(rd, o) + d;
+                put_f64(rd, o, v);
+            }
+            let o = crate::company_record::CO_ACCT + 56;
+            let v = f64_at(rd, o) - d;
+            put_f64(rd, o, v);
+        }
+        for c in self.company_set() {
+            for off in [CO_CAND0, CO_CAND1] {
+                let hit = pool::record(&self.save.companies, c)
+                    .is_some_and(|r| i32_at(&r.data, off) == g as i32);
+                if hit {
+                    let pick = self.manager_pick_for(rng, minutes, c);
+                    if let Some(r) = pool::record_mut(&mut self.save.companies, c) {
+                        put_u32(&mut r.data, off, pick as u32);
+                    }
+                }
+            }
+        }
+        self.log.ran("company_set_manager");
+    }
+
+    /// `company_set_chairman(new)` (`0x438900`, finance.md 15.4) on the raw records: the old
+    /// chairman gains `0x4a8100` (`(min(10, max(0, year - +0x470)) - 10) * 7`) reputation, at
+    /// least -99, and loses his post; the investors' mood `+0x4276` becomes `mood*0.8 + 0.2`
+    /// (no human chairman) or 0; `+0x46a` = the new chairman's reputation (0 without one);
+    /// `+0x134 = 10000` and `+0x470` = this year. Nothing when `new` is already the chairman.
+    pub(super) fn company_set_chairman(&mut self, minutes: i32, slot: usize, new: i32) {
+        let Some(cd) = pool::record(&self.save.companies, slot).map(|r| r.data.clone()) else {
+            return;
+        };
+        let old = i32_at(&cd, CO_CHAIRMAN);
+        if old == new {
+            return;
+        }
+        let year = i32::from(date_of(minutes).year);
+        if old != 0
+            && let Some(r) = pool::record_mut(&mut self.save.persons, old as usize)
+        {
+            let since = i32::from(i16_at(&cd, CO_CHAIR_SINCE));
+            let bonus = if i32_at(&r.data, 0x263) == 0 {
+                0
+            } else {
+                ((year - since).clamp(0, 10) - 10) * 7
+            };
+            let rep = i32_at(&r.data, PE_REP).wrapping_add(bonus).max(-99);
+            put_u32(&mut r.data, PE_REP, rep as u32);
+            put_u32(&mut r.data, 0x263, 0);
+            if i32_at(&r.data, PE_HUMAN) != 0 {
+                // `0x467fd0(0)` when he was the local player (interface state).
+                todo_hook!(
+                    self.log,
+                    "set_local_company",
+                    "0x467fd0: the local player's company changes",
+                    "finance.md 15.4"
+                );
+            }
+        }
+        let new_rec = (new != 0)
+            .then(|| pool::record(&self.save.persons, new as usize))
+            .flatten()
+            .map(|r| (i32_at(&r.data, PE_HUMAN) != 0, i32_at(&r.data, PE_REP)));
+        if new != 0
+            && let Some(r) = pool::record_mut(&mut self.save.persons, new as usize)
+        {
+            put_u32(&mut r.data, 0x263, slot as u32);
+        }
+        if let Some(r) = pool::record_mut(&mut self.save.companies, slot) {
+            let d = &mut r.data;
+            put_u32(d, CO_CHAIRMAN, new as u32);
+            let human = new_rec.is_some_and(|(h, _)| h);
+            let mood = if human {
+                0.0
+            } else {
+                (f64::from(f32_at(d, 0x4276)) * 0.8 + 0.2) as f32
+            };
+            put_f32(d, 0x4276, mood);
+            let rep = if new == 0 {
+                0
+            } else {
+                new_rec.map_or(0, |(_, rep)| rep)
+            };
+            put_u32(d, CO_REP, rep as u32);
+            put_u32(d, 0x134, 10_000);
+            put_u16(d, CO_CHAIR_SINCE, year as u16);
+        }
+        self.log.ran("company_set_chairman");
+    }
+
+    /// `player_remove` (`0x4a6a00`, finance.md 14.4): an active person leaves his
+    /// chairmanship (`0x438900(company, 0)`), loses all 36 positions, becomes inactive and
+    /// leaves the player list (`0x46a940`: `0x570775` count, `0x570779` u16 ids).
+    pub(super) fn player_remove(&mut self, minutes: i32, person: usize) {
+        let Some(r) = pool::record(&self.save.persons, person) else {
+            return;
+        };
+        if i32_at(&r.data, PE_ACTIVE) == 0 {
+            return;
+        }
+        let chair_of = i32_at(&r.data, 0x263);
+        if chair_of != 0 && pool::record(&self.save.companies, chair_of as usize).is_some() {
+            self.company_set_chairman(minutes, chair_of as usize, 0);
+        }
+        if let Some(r) = pool::record_mut(&mut self.save.persons, person) {
+            r.data[PE_HOLDINGS..PE_HOLDINGS + 0x90].fill(0);
+            put_u32(&mut r.data, PE_ACTIVE, 0);
+        }
+        let id = pool::record(&self.save.persons, person).map_or(0, |r| i32_at(&r.data, 0));
+        let st = &mut self.save.state;
+        let n = i32_at(st, 0x28d).max(0) as usize;
+        if let Some(k) = (0..n).find(|&k| i32::from(u16_at(st, 0x291 + 2 * k)) == id) {
+            st.copy_within(0x291 + 2 * (k + 1)..0x291 + 2 * n, 0x291 + 2 * k);
+            put_u32(st, 0x28d, (n - 1) as u32);
+        }
+        self.log.ran("player_remove");
+    }
+
     /// `company_annual_review` (`0x43c760`, finance.md 13) for the company at `slot`.
     pub(super) fn company_annual_review(&mut self, w: &mut World, slot: usize) {
         if !self.v2348() {

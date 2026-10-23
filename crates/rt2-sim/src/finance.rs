@@ -846,9 +846,10 @@ impl Company {
     /// income statement) and adds `d/4` to `dividends_paid`. Returns what was paid so the caller
     /// can credit shareholders with [`holder_dividend`].
     ///
-    /// TODO(finance.md "Em aberto"): whether the suspension/cut is written back to `+0x30` is not
-    /// known; this keeps `dividend` unchanged. The meaning of "patrimonio" in the `-0.2 *` test is
-    /// assumed to be the book value ([`Self::equity`]).
+    /// The suspension and the cut are written back to `+0x30` (`0x4399d0`: `param_1[0xc] = 0` and
+    /// `param_1[0xc] = (float) cap`, read in the decompilation), and the money moves with the
+    /// stored `f32`. The meaning of "patrimonio" in the `-0.2 *` test is the book value
+    /// ([`Self::equity`]).
     pub fn pay_quarterly_dividend(&mut self, ctx: &Ctx) -> DividendPayment {
         let mut d = f64::from(self.dividend);
         let mut outcome = if d > 0.0 {
@@ -861,9 +862,11 @@ impl Company {
         let max = self.max_dividend(ctx);
         if d > 0.0 && (cash_after < -0.2 * self.equity() || max <= 0.01) {
             d = 0.0;
+            self.dividend = 0.0;
             outcome = DividendOutcome::Suspended;
         } else if max < 0.75 * d {
-            d = max;
+            self.dividend = max as f32;
+            d = f64::from(self.dividend);
             outcome = DividendOutcome::Reduced;
         }
         if d > 0.0 {

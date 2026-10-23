@@ -44,6 +44,8 @@ pub const LOT_NEXT: usize = 0x0f;
 
 /// Production stops below this rate (`0x5350b8`, f64 0.01).
 const MIN_RATE: f64 = 0.01;
+/// `+0x9e`: sandbox lot stock (low 7 bits) of a building.
+const OFF_SANDBOX_STOCK: usize = 0x9e;
 /// Lots waiting per output slot above which no more are made (`0x40a770`).
 const MAX_WAITING: i16 = 0x32;
 
@@ -186,16 +188,40 @@ pub fn production_tick(rec: &mut [u8], lots: &mut Pool, env: &Env, log: &mut Hoo
     if rec[OFF_INACTIVE] != 0 {
         return spawned;
     }
+    let tid = rec[OFF_TYPE];
     if env.sandbox {
-        todo_hook!(
-            log,
-            "production_tick_sandbox",
-            "sandbox branch of industry_production_tick (0x40aa20, flags at +0x9e)",
-            "cargo.md 7.3 (sandbox)"
-        );
+        // Sandbox (`0x570227`): no clocks; the low 7 bits of `+0x9e` are a stock of lots to
+        // hand out. For each slot with a rate above the minimum, `ceil(rate)` lots (one per
+        // whole unit below the f32 rate) while the stock lasts, each taking one from it; the
+        // pass over the four slots repeats while the stock is neither empty nor back at its
+        // value on entry (so it drains once any slot produces).
+        let ty = &env.types[usize::from(tid)];
+        let before = rec[OFF_SANDBOX_STOCK] & 0x7f;
+        loop {
+            for k in 0..4 {
+                let st = stock(rec);
+                let rate = ty.production_rate(k, tid, env.year, env.basic_model, true, &st);
+                if rate <= MIN_RATE || rec[OFF_SANDBOX_STOCK] & 0x7f == 0 {
+                    continue;
+                }
+                let rate = rate as f32;
+                let mut i = 0i32;
+                while (i as f32) < rate {
+                    let b = rec[OFF_SANDBOX_STOCK];
+                    if b & 0x7f != 0 {
+                        rec[OFF_SANDBOX_STOCK] = (b & 0x80) | (b.wrapping_sub(1) & 0x7f);
+                        spawn_lot(rec, lots, ty.slots[k].output, env, log, &mut spawned);
+                    }
+                    i += 1;
+                }
+            }
+            let now = rec[OFF_SANDBOX_STOCK] & 0x7f;
+            if now == 0 || now == before {
+                break;
+            }
+        }
         return spawned;
     }
-    let tid = rec[OFF_TYPE];
     let ty = &env.types[usize::from(tid)];
     let territory = i32::from(rec[OFF_TERRITORY] as i8);
     for k in 0..4 {
