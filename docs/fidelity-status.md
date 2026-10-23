@@ -26,8 +26,18 @@ Compara o clone com o original rodando no Wine (`re/scripts/wine/advance_save.py
 | Mapa Atlantis.MP2 | 1 | **igual** | 0 |  |
 | Mapa Atlantis.MP2 | 7 | **igual** | 0 |  |
 | Mapa Atlantis.MP2 | 30 | **igual** | 0 |  |
+| Tutorial convertido pelo clone (0x233C -> 0x2348) | 0 | **igual** | 0 |  |
+| Tutorial convertido pelo clone (0x233C -> 0x2348) | 7 | **igual** | 0 |  |
+| Example convertido pelo clone (0x233C -> 0x2348) | 0 | **igual** | 0 |  |
+| Example convertido pelo clone (0x233C -> 0x2348) | 7 | **igual** | 0 |  |
+| #01 B&O.MAP carregado como save e convertido pelo clone | 0 | **igual** | 0 |  |
+| #01 B&O.MAP carregado como save e convertido pelo clone | 7 | **igual** | 0 |  |
+| Britain.MAP carregado como save e convertido pelo clone | 0 | **igual** | 0 |  |
+| Britain.MAP carregado como save e convertido pelo clone | 7 | **igual** | 0 |  |
+| #01 B&O iniciado pela campanha (0x410de0), game_seed 4321, RNG 777 | 0 | diferente | 5317 | `objects` (1875), `tiles` (1685), `structures` (722) |
+| #01 B&O iniciado pela campanha (0x410de0), game_seed 4321, RNG 777 | 7 | diferente | 5326 | `objects` (1882), `tiles` (1685), `structures` (722) |
 
-<!-- fidelity:state {"Alaska|1": {"equal": true}, "Alaska|30": {"equal": true}, "Alaska|7": {"equal": true}, "Atlantis|1": {"equal": true}, "Atlantis|30": {"equal": true}, "Atlantis|7": {"equal": true}, "Austria|1": {"equal": true}, "Austria|30": {"equal": true}, "Austria|7": {"equal": true}, "Brazil|1": {"equal": true}, "Brazil|30": {"equal": true}, "Brazil|7": {"equal": true}, "Example|1": {"equal": true}, "Example|30": {"equal": false}, "Example|7": {"equal": true}, "Tutorial|1": {"equal": true}, "Tutorial|30": {"equal": true}, "Tutorial|7": {"equal": true}} -->
+<!-- fidelity:state {"Alaska|1": {"equal": true}, "Alaska|30": {"equal": true}, "Alaska|7": {"equal": true}, "Atlantis|1": {"equal": true}, "Atlantis|30": {"equal": true}, "Atlantis|7": {"equal": true}, "Austria|1": {"equal": true}, "Austria|30": {"equal": true}, "Austria|7": {"equal": true}, "B&O New Game|0": {"equal": false}, "B&O New Game|7": {"equal": false}, "B&O.MAP (carga)|0": {"equal": true}, "B&O.MAP (carga)|7": {"equal": true}, "Brazil|1": {"equal": true}, "Brazil|30": {"equal": true}, "Brazil|7": {"equal": true}, "Britain.MAP (carga)|0": {"equal": true}, "Britain.MAP (carga)|7": {"equal": true}, "Example (conversao)|0": {"equal": true}, "Example (conversao)|7": {"equal": true}, "Example|1": {"equal": true}, "Example|30": {"equal": false}, "Example|7": {"equal": true}, "Tutorial (conversao)|0": {"equal": true}, "Tutorial (conversao)|7": {"equal": true}, "Tutorial|1": {"equal": true}, "Tutorial|30": {"equal": true}, "Tutorial|7": {"equal": true}} -->
 <!-- fidelity:end -->
 
 As saídas do original para o Example foram geradas com `trace_save.py` (sem breakpoints) a partir de `base_ex.GAM`, semente 1234 para o RNG do jogo **e** para o rand do CRT (que sorteia a fumaça gravada em `pool_78`; `rt2-advance` aplica `Command::SeedCrtRng`). `rt2-savediff` mascara os bits 4-15 das flags dos passos de rota, que o pathfinder do original preenche com memória de `malloc` não inicializada (`trains.md` 10.7). Testes: `example_one_day_is_equal` e `example_seven_days` em `crates/rt2-sim/tests/worldloop.rs` (precisam de `base_ex.GAM`, `orig_ex_1.GAM`, `orig_ex_7.GAM` em `RT2_FIDELITY_DIR`).
