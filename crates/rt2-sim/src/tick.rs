@@ -226,6 +226,37 @@ impl World {
     /// running the end-of-day/week/month/year hooks at every 23:59 crossed. Without a save only
     /// the clock moves.
     pub fn advance(&mut self, dt: i32) {
+        // Interactive scenario choices (`crate::choice`): wait while one is pending, and keep a
+        // copy to replay the step when a choice comes up without an answer.
+        if self.choices.pending.is_some() {
+            return;
+        }
+        if self.choices.interactive && self.sim.as_ref().is_some_and(|s| s.has_choice_rules()) {
+            let before = self.clone();
+            self.choices.cursor = 0;
+            self.choices.replayable = true;
+            self.advance_step(dt);
+            self.choices.replayable = false;
+            if let Some(message) = self.choices.unanswered.take() {
+                let mut c = std::mem::take(&mut self.choices);
+                *self = before;
+                c.cursor = 0;
+                c.pending = Some(crate::choice::PendingChoice {
+                    id: c.next_id,
+                    message,
+                });
+                c.next_id = c.next_id.wrapping_add(1);
+                self.choices = c;
+            } else {
+                self.choices.answers.clear();
+                self.choices.cursor = 0;
+            }
+            return;
+        }
+        self.advance_step(dt);
+    }
+
+    fn advance_step(&mut self, dt: i32) {
         match self.sim.take() {
             Some(mut sim) => {
                 sim.sim_advance(self, dt);
@@ -237,6 +268,14 @@ impl World {
 }
 
 impl SimState {
+    /// Some rule of the pool is a two-button choice (`+0x60 == 2`).
+    fn has_choice_rules(&self) -> bool {
+        self.save
+            .rules
+            .iter()
+            .any(|r| r.fixed.get(0x60..0x64) == Some(&[2, 0, 0, 0][..]))
+    }
+
     fn v2348(&self) -> bool {
         self.save.layout.version == MAGIC_2348
     }
@@ -250,9 +289,13 @@ impl SimState {
     }
 
     fn rebuild_types(&mut self, year: i32) {
-        // Industry set 0 (`0x5704ac`, see the module notes).
-        let mut types = self.data.industries[0].clone();
-        crate::industry::apply_load_fixups(&mut types, &self.save.header, &self.data.cargo);
+        // The industry set `0x5704ac` (header +0x8974): 0 standard, 1 expansion. The load
+        // fix-ups of `0x4719e0` only touch set 0; set 1 only rebuilds the inputs (cargo.md 7.1.1).
+        let set = usize::from(self.hdr(0x8974) != 0);
+        let mut types = self.data.industries[set].clone();
+        if set == 0 {
+            crate::industry::apply_load_fixups(&mut types, &self.save.header, &self.data.cargo);
+        }
         for t in &mut types {
             t.rebuild_inputs(year);
         }

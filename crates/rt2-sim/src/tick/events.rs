@@ -68,6 +68,7 @@ impl SimState {
             s: self,
             minutes,
             crt: &mut w.crt,
+            choices: &mut w.choices,
             sc: Some(sc),
         };
         fire_trigger(code, &mut world, &mut w.rng);
@@ -78,13 +79,11 @@ impl SimState {
                     raw.fixed[0x4c] = u8::from(r.fired);
                 }
             }
-            if sc.rules.len() > self.save.rules.len() {
-                todo_hook!(
-                    self.log,
-                    "scenario_undo_rule",
-                    "temporary effect: the undo rule is appended to the rule pool (scenarios.md 4.4)",
-                    "scenarios.md 4.4"
-                );
+            // Undo rules of temporary effects (scenarios.md 4.4) join the saved pool.
+            let n = self.save.rules.len();
+            for r in sc.rules.iter().skip(n) {
+                self.save.rules.push(r.to_file());
+                self.log.ran("scenario_undo_rule");
             }
             self.scenario = Some(sc);
         }
@@ -134,6 +133,7 @@ struct ScWorld<'a> {
     s: &'a mut SimState,
     minutes: i32,
     crt: &'a mut CrtRng,
+    choices: &'a mut crate::choice::Choices,
     sc: Option<Scenario>,
 }
 
@@ -488,12 +488,17 @@ impl ScenarioEnv for ScWorld<'_> {
                 .filter_map(|s| pool::record(&self.s.save.track_pieces, s))
                 .filter(|r| r.data.get(0x23).is_some_and(|b| b & 0x80 != 0))
                 .count() as i32,
+            // `TerritoryCompletelyFlooded` (`0x454ae0` case 0x73): 1 unless some tile of the
+            // territory (`+9`) has a terrain class (`0x581090[tile+0 >> 6]`) other than water.
             115 => {
-                self.skip(
-                    "scenario_fn_flooded",
-                    "TerritoryCompletelyFlooded (scan of the tiles)",
-                );
-                0
+                if territory == 0 {
+                    return 0;
+                }
+                let t = rt2_formats::terrain::tables();
+                i32::from(self.s.save.map.tiles.iter().all(|tl| {
+                    let id = (u16::from(tl.var) | (u16::from(tl.ground) << 8)) >> 6;
+                    i32::from(tl.region) != territory || t.class_of_id(id) == 0x12
+                }))
             }
             116 => self.co(company).map_or(0, |c| i32_at(c, CO_TRACK_LEFT)),
             117 => {
@@ -591,13 +596,26 @@ impl ScenarioWorld for ScWorld<'_> {
         0
     }
     fn show_message(&mut self, message: &Message) -> usize {
-        // Output queue only (message.rs); a choice runs the effect set of button 0.
+        // A choice takes the player's button in interactive mode (`crate::choice`), button 0
+        // otherwise; the other kinds only go to the output queue (message.rs). A newspaper
+        // (`+0x60 == 1`) goes through `news_post` (`0x4a42f0`): one CRT draw, the news flag
+        // `0x5707bd` and the counter `0x5707be` are the only saved state it touches.
+        if message.kind == crate::scenario::MessageKind::Newspaper {
+            let _ = self.crt.range(0, 10000);
+            self.s.save.state[0x2d5] = 1;
+            let n = u32_at(&self.s.save.state, 0x2d6).wrapping_add(1);
+            put_u32(&mut self.s.save.state, 0x2d6, n);
+        }
         self.s
             .ts_globals
             .news
             .push(crate::message::GameMessage::Scenario(message.clone()));
         self.s.log.ran("scenario_message");
-        0
+        if message.kind == crate::scenario::MessageKind::Choice {
+            self.choices.answer(message)
+        } else {
+            0
+        }
     }
     fn credit_company(&mut self, company: i32, amount: i32) {
         let slot = company as usize;
@@ -630,11 +648,20 @@ impl ScenarioWorld for ScWorld<'_> {
             crate::ai::Ai::new(ts).territory_set_rights(territory, mask, allow, company, false);
         });
     }
-    fn confiscate(&mut self, _company: i32, _territory: i32, _what: Confiscate, _destroy: bool) {
-        self.skip(
-            "scenario_confiscate",
-            "territory confiscation 0x437d40/0x437db0/0x437f50/0x4380a0",
-        );
+    fn confiscate(
+        &mut self,
+        company: i32,
+        territory: i32,
+        what: Confiscate,
+        destroy: bool,
+        rng: &mut GameRng,
+    ) {
+        // `0x437d40` / `0x437db0` / `0x437f50` / `0x4380a0` (`build::confiscate`).
+        let minutes = self.minutes;
+        let crt = &mut *self.crt;
+        self.s.with_trainstep_parts(minutes, rng, crt, |ts| {
+            crate::ai::Ai::new(ts).territory_confiscate(company, territory, what, destroy);
+        });
     }
     fn deactivate_company(&mut self, _company: i32) {
         self.skip("scenario_deactivate_company", "company_liquidate 0x438170");

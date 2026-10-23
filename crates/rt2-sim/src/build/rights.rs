@@ -10,7 +10,7 @@ const ST_CO_COUNT: usize = 0x241;
 const ST_CO_LIST: usize = 0x245;
 
 impl Ai<'_, '_> {
-    fn active_companies(&self) -> Vec<i32> {
+    pub(crate) fn active_companies(&self) -> Vec<i32> {
         let n = self.ts.state_i32(ST_CO_COUNT).max(0) as usize;
         (0..n)
             .map(|k| {

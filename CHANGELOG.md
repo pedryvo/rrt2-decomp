@@ -213,3 +213,10 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Feature: scenario Choice messages show both buttons and queue the answer (AppState::take_choice_answers); the simulation still applies the effects of button 0 until it gets an AnswerChoice command
 - Docs: formats/sprite-catalog.md 6.1 catalogues the 43 station-view overlay banks (SD<style><key>.imb) and 13 backdrops (sdmbkg<N>.imb): file-name format, draw order, style letters and derived bits of the improvement word
 - RE: the station detail window composes SD%s%s.imb overlays from the improvement table (0x4c0c00), the backdrop sdmbkg%s.imb from station +0x4d (0x4c0ed0) and derives bits 12..14 and 23..27 of station +0x49 on each refresh (0x4c1da0, 0x4c0a50)
+- Fix: every game load moves the first year of engine 3 to 1955 like the original loader (`0x477a60`), so its availability byte matches; expansion campaigns #E07 New Game identical
+- Feature: scenario newspaper messages post to the news list (`news_post` 0x4a42f0: CRT draw, news flag and counter); #E13 New Game identical
+- Feature: territory confiscation effects 55..59 and destruction 299..303 (`0x437d40`, `0x437db0`, `0x437f50`, `0x4380a0`) and the `TerritoryCompletelyFlooded` condition function; #E09 and #E15 New Game identical
+- Feature: undo rules of temporary scenario effects join the saved rule pool (last made first, kept on an evaluation error); #E08 New Game identical
+- Fix: the expansion industry set (`0x5704ac = 1`) takes its own industry type table, without the set-0 load fix-ups; #E08 and #E11 New Game identical
+- RE: a pool step whose block reaches Wine's large-block size (about 0x7f000 bytes) is zero-filled instead of 0xBAADF00D; the buildings grown in that step keep zeros at +0x38
+- Feature: scenario two-button choices can wait for the player's answer (`World::set_interactive_choices`, `World::pending_choice`, `Command::AnswerChoice`); the step is replayed with the answer so the order matches the original's modal window, and a local game with AI players no longer skips the choice as if it were a network game

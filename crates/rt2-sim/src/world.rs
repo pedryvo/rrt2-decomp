@@ -27,6 +27,8 @@ pub struct World {
     pub(crate) speed_resume: u8,
     /// Open merger and chairmanship vote records (`0x574ca0`, `0x574ca4`); not part of a save.
     pub(crate) votes: crate::fincmd::Votes,
+    /// Answers to scenario choices (`crate::choice`); not part of a save.
+    pub(crate) choices: crate::choice::Choices,
 }
 
 impl World {
@@ -42,6 +44,7 @@ impl World {
             speed: DEFAULT_SPEED,
             speed_resume: DEFAULT_SPEED,
             votes: crate::fincmd::Votes::default(),
+            choices: crate::choice::Choices::default(),
         }
     }
 

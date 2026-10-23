@@ -5366,3 +5366,31 @@ name = "statndtl_overlay_keys"
 kind = "global"
 comment = "29 ponteiros para as chaves de 5 letras dos arquivos SD<estilo><chave>.imb (STAT1..ROADB, trees); [D]"
 spec = "docs/formats/sprite-catalog.md"
+
+[[symbol]]
+addr = "0x437d40"
+name = "territory_confiscate_track"
+kind = "function"
+comment = "fastcall(empresa, territorio, destruir): company_release_track (0x437ab0) para a empresa ou para cada empresa do conjunto ativo (empresa < 1); com a opcao de vista 0x574bc8+0x54 redesenha os tiles (0x4cb090); efeitos de cenario 55/56 (0) e 299/300 (1); [S]"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x437db0"
+name = "territory_confiscate_trains"
+kind = "function"
+comment = "fastcall(empresa, territorio): train_delete (0x4cdd50) dos trens da empresa (+0x41), da ultima posicao da lista para a primeira; com territorio so trem no mapa (+0x9c) cuja locomotiva (+0, pool 0x574c70 +9/+0xb) esta no territorio; efeitos 55/57/299/301; [V via New Game #E09/#E15]"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x4380a0"
+name = "territory_confiscate_buildings"
+kind = "function"
+comment = "fastcall(empresa, territorio): predios da empresa (+0x97), colocados (+7) e no territorio (+0x9d, 0 = todos) ficam sem dono (+0x97 = 0); efeitos 55/59/299/303; [S]"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x4c8a30"
+name = "territory_flood"
+kind = "function"
+comment = "thiscall(territorio, quantidade): acha o tile do territorio com menor soma dos 4 cantos e chama 0x490490(x, y, 0x12, 3, 0, soma/4 + quantidade) (inunda com agua); efeito de cenario 233; [S, nao portado]"
+spec = "docs/spec/scenarios.md"

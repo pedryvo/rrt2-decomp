@@ -28,6 +28,11 @@ const ST_GROWTH: usize = 0xE9; // 0x5705d1 f32
 const ST_YEAR_START: usize = 0x20; // 0x570508
 const ST_SEEN_TYPE: usize = 0x11B; // 0x570603 u8[53]
 const HDR_TYPE_FLAGS: usize = 0x8793; // 0x5702cb, 9 bytes per type
+/// Smallest `malloc` request that Wine serves as a large block (`HEAP_MIN_LARGE_BLOCK_SIZE`
+/// 0x7f000 for the block with its 8-byte header, after the CRT's 16-byte rounding): such memory
+/// is fresh zeroed pages, not `0xBAADF00D`. Bracketed by `#E08` (a 3270-slot pool of 159-byte
+/// buildings, 519 930 bytes, keeps the fill; the 3290-slot step, 523 110 bytes, is zero).
+const WINE_LARGE_BLOCK: usize = 0x7eff0;
 const HDR_CITY_MASK_SET: usize = 0x8974; // 0x5704ac industry set
 
 const PL_FIRST: usize = 2;
@@ -389,15 +394,23 @@ impl SiteEnv for SiteWorld<'_> {
             return;
         };
         let rs = self.s.save.objects.record_size;
-        let grown = slot >= self.s.objects_loaded_slots;
+        let loaded = self.s.objects_loaded_slots;
+        let grown = slot >= loaded;
+        let step = self.s.save.objects.field_0c.max(1) as usize;
         if let Some(r) = pool::record_mut(&mut self.s.save.objects, slot) {
             put_u16(&mut r.data, 0, slot as u16);
             if grown {
                 // Never written by `0x409a30`: the heap fill of the grown pool (byte `i` of the
-                // pool's block is `[0x0d, 0xf0, 0xad, 0xba][i % 4]`).
-                const PAT: [u8; 4] = [0x0d, 0xf0, 0xad, 0xba];
-                for o in 0x38..0x3c {
-                    r.data[o] = PAT[(slot * rs + o) % 4];
+                // pool's block is `[0x0d, 0xf0, 0xad, 0xba][i % 4]`). `pool_grow` (`0x4f14c0`)
+                // takes a fresh `malloc(slots * size)` for each step; a block that large comes
+                // from Wine's large-block path (fresh pages, zero) instead of the debug-filled
+                // heap: the slot keeps the fill of the step that created it.
+                let band_end = loaded + (slot + 1 - loaded).div_ceil(step) * step;
+                if band_end * rs < WINE_LARGE_BLOCK {
+                    const PAT: [u8; 4] = [0x0d, 0xf0, 0xad, 0xba];
+                    for o in 0x38..0x3c {
+                        r.data[o] = PAT[(slot * rs + o) % 4];
+                    }
                 }
             }
         }

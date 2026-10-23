@@ -71,6 +71,8 @@ senão: +0 != 0 e engine_allowed[e] (0x570667, todos 1 por padrão; o editor cop
 ```
 Ou seja, um modelo aparece em **junho** do primeiro ano e some depois do último.
 
+**Ano do motor 3 reescrito na carga** [V: New Game `#E07`]: perto do fim de todo `game_load_file` (`0x477a60`), `_DAT_0053cf6f = 0x7a3` (1955), ou `0x7b5` (1973, o valor do `.data`) se `net_min_peer_version() < 0x2333`; o mesmo valor vai para `+0x1c` do veículo `0x53cf9a` (o veículo de locomotiva do motor 3, `+0x2c`). Em jogo local (`0x2334`) o motor 3 sempre começa em 1955, não em 1973 como diz a tabela; por isso `0x573d2d[3]` sai 1 no início do `#E07`, um ano posterior a 1955 e anterior a 1973. Porte: `DataImage::load_engine_year` (`crates/rt2-sim/src/data.rs`).
+
 ### 2.5 Modificadores (`effect_multiplier` `0x46b480`) [S; caminho global V]
 Fator multiplicativo por id: `f32(1 + pct * 0.01)` com `pct = max(i16, -99)` lido de `0x5707c6 + 2*id` (global do cenário), multiplicado pelos equivalentes da empresa (`+0x1ae`), do jogador/gerente (`+0x26b`) e de `0x574ca8` (`+0x58`); resultado mínimo 0.01. Ids usados pelos trens (`t` = tipo 0/1/2):
 

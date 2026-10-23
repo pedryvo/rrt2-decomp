@@ -205,6 +205,76 @@ impl Rule {
         }
     }
 
+    /// The 0x362-byte record of a rule made at run time (the undo rules of spec 4.4, built by
+    /// `rule_evaluate` `0x455f30` with `malloc` + zero fill): the decoded fields at their
+    /// offsets, pointers and the derived flags `+0x2c`/`+0x30`/`+0x320` zero, the four texts and
+    /// the condition empty (`""`, stored as one NUL).
+    pub fn to_file(&self) -> map::Rule {
+        let mut f = vec![0u8; 0x362];
+        let mut put = |off: usize, v: u32| f[off..off + 4].copy_from_slice(&v.to_le_bytes());
+        put(0x04, self.tokens.len() as u32);
+        put(0x10, u32::from(self.date_mode));
+        put(0x14, self.date_year as u32);
+        put(0x18, self.date_month as u32);
+        put(0x1c, self.date_person as u32);
+        put(0x20, self.date_company as u32);
+        put(0x24, u32::from(self.per_company));
+        put(0x28, u32::from(self.per_player));
+        put(0x34, u32::from(self.trigger));
+        put(0x38, u32::from(self.ai_companies));
+        put(0x3c, u32::from(self.human_companies));
+        put(0x40, u32::from(self.ai_players));
+        put(0x44, u32::from(self.human_players));
+        put(0x48, u32::from(self.once));
+        put(0x4c, u32::from(self.fired));
+        put(
+            0x60,
+            match self.message_kind {
+                MessageKind::Dialog => 0,
+                MessageKind::Newspaper => 1,
+                MessageKind::Choice => 2,
+            },
+        );
+        put(0x324, u32::from(self.per_territory));
+        put(0x328, u32::from(self.territory_filter as u16));
+        put(0x32a, u32::from(self.show_when_false));
+        put(0x32e, u32::from(self.first_true_only));
+        put(0x352, u32::from(self.permanent[0]));
+        put(0x356, u32::from(self.permanent[1]));
+        put(0x35a, self.duration[0] as u32);
+        put(0x35e, self.duration[1] as u32);
+        f[0x34f] = u8::from(self.local_company);
+        f[0x350] = u8::from(self.local_player);
+        f[0x351] = self.game_mode;
+        for k in 0..2 {
+            for (e, &b) in self.effects[k].iter().enumerate().take(0x15e) {
+                f[0x64 + k * 0x15e + e] = b as u8;
+            }
+        }
+        let blob = |s: &str| {
+            let mut v = s.as_bytes().to_vec();
+            v.push(0);
+            v
+        };
+        map::Rule {
+            fixed: f,
+            condition: self.condition.clone(),
+            tokens_a: self.tokens.clone(),
+            tokens_b: self.values.clone(),
+            message: self.message.clone(),
+            text2: self.label1.clone(),
+            text3: self.label2.clone(),
+            title: self.title.clone(),
+            raw_blobs: [
+                blob(&self.condition),
+                blob(&self.message),
+                blob(&self.label1),
+                blob(&self.label2),
+                blob(&self.title),
+            ],
+        }
+    }
+
     /// A rule from condition source text: compiles it and derives the loop flags like the editor
     /// (`rule_set_condition` `0x457a30`). Everything else takes the defaults of a new editor rule
     /// (`+0x38..+0x44 = 1`, one-shot off).

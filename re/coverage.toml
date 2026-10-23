@@ -3,11 +3,11 @@
 # Ver docs/re-workflow.md.
 #
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
-# Classificadas (categoria != unknown): 1293 (43.9%)
-# Por categoria: lib=258, platform=114, render=11, audio=56, ui=272, sim=582, unknown=1652
-# Por estado:   unknown=2368, named=125, spec=180, verified=272
-# Entradas manuais: 540
-# sim spec coverage: 71.0% (413 de 582 funcoes sim em spec/verified)
+# Classificadas (categoria != unknown): 1298 (44.1%)
+# Por categoria: lib=258, platform=114, render=11, audio=56, ui=271, sim=588, unknown=1647
+# Por estado:   unknown=2364, named=123, spec=183, verified=275
+# Entradas manuais: 546
+# sim spec coverage: 71.4% (420 de 588 funcoes sim em spec/verified)
 
 [[function]]
 addr = "0x401005"
@@ -9729,40 +9729,43 @@ manual = true
 
 [[function]]
 addr = "0x437ab0"
-name = "company_release_track"
 size = 419
-category = "unknown"
-status = "named"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "company_release_track: Ai::confiscate_track_of (build/confiscate.rs); scenarios.md 4.2.1"
+manual = true
 
 [[function]]
 addr = "0x437d40"
 size = 112
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "territory_confiscate_track: Ai::territory_confiscate (build/confiscate.rs); scenarios.md 4.2.1"
+manual = true
 
 [[function]]
 addr = "0x437db0"
 size = 410
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "territory_confiscate_trains: Ai::confiscate_trains; New Game #E09 e #E15 iguais ao original em 0 e 7 dias"
+manual = true
 
 [[function]]
 addr = "0x437f50"
 size = 329
 category = "sim"
 status = "spec"
-why = "docs/spec/terrain-track.md 3.4 (liquidacao)"
+why = "company_stations_release: Ai::confiscate_stations (destruir conta gancho ausente: building_destroy fora da vista do passo de trem); scenarios.md 4.2.1"
 manual = true
 
 [[function]]
 addr = "0x4380a0"
 size = 201
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "territory_confiscate_buildings: Ai::confiscate_buildings; scenarios.md 4.2.1"
+manual = true
 
 [[function]]
 addr = "0x438170"
@@ -10879,9 +10882,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x455e70"
 size = 182
-category = "ui"
-status = "spec"
-why = "scenarios 2.4; message request passed to ScenarioWorld::show_message, window not ported"
+category = "sim"
+status = "verified"
+why = "rule_show_message: jornal -> news_post; New Game #E13 igual ao original"
 manual = true
 
 [[function]]
@@ -12478,11 +12481,11 @@ manual = true
 
 [[function]]
 addr = "0x4719e0"
-name = "industry_load_fixups"
 size = 297
 category = "sim"
-status = "named"
-why = "symbol:industry_load_fixups"
+status = "verified"
+why = "industry_load_fixups: conjunto 1 (0x5704ac != 0) so reconstroi as entradas (SimState::rebuild_types); New Game #E08 e #E11 iguais"
+manual = true
 
 [[function]]
 addr = "0x471b10"
@@ -13939,7 +13942,7 @@ addr = "0x4a42f0"
 size = 375
 category = "sim"
 status = "verified"
-why = "news_post: contador 0x5707be, bandeira 0x5707bd e um sorteio do CRT [V via snapshot fincmd takeover]"
+why = "news_post: mensagem de jornal das regras (ScWorld::show_message, tick/events.rs): sorteio do CRT, 0x5707bd, 0x5707be; New Game #E13 igual"
 manual = true
 
 [[function]]
@@ -15292,9 +15295,10 @@ manual = true
 [[function]]
 addr = "0x4c8a30"
 size = 416
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "territory_flood: scenarios.md 4.2.1; nao portado (0x490490), gancho scenario_flood"
+manual = true
 
 [[function]]
 addr = "0x4c8df0"

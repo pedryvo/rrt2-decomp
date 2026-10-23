@@ -91,6 +91,7 @@ impl DataImage {
         bytes.extend_from_slice(exe.read(0x0053_9000, (IMAGE_END - 0x0053_9000) as usize)?);
         let mut img = DataImage { bytes };
         img.engine_fixups();
+        img.load_engine_year();
         Ok(img)
     }
 
@@ -136,6 +137,20 @@ impl DataImage {
 
     pub fn f64(&self, va: u32) -> f64 {
         f64::from_le_bytes(self.at(va, 8).try_into().expect("8 bytes"))
+    }
+
+    /// Every `game_load_file` (`0x477a60`, near its end) rewrites the first year of engine 3
+    /// (`0x53cf6f`) and of its loco vehicle (`0x53ddd4 + 0x39 * [0x53cf9a]`): 1955 (0x7a3),
+    /// or 1973 (0x7b5, the table value) when a network peer is older than 0x2333. A local game
+    /// (`net_min_peer_version` = 0x2334) always takes 1955 (trains.md 2.4).
+    fn load_engine_year(&mut self) {
+        let year: u16 = 0x7a3;
+        let ev = ADDR_ENGINE_TABLE + 3 * ENGINE_RECORD_SIZE as u32;
+        self.at_mut(ev + 1, 2).copy_from_slice(&year.to_le_bytes());
+        let loco = u32::from(self.u8(ev + 0x2c));
+        let v = ADDR_VEHICLE_TABLE + loco * VEHICLE_RECORD_SIZE as u32;
+        self.at_mut(v + 0x1c, 2)
+            .copy_from_slice(&year.to_le_bytes());
     }
 
     /// The part of `0x471b10` that rewrites the vehicle and engine tables: per vehicle type

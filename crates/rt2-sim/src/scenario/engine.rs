@@ -149,7 +149,14 @@ pub trait ScenarioWorld: ScenarioEnv {
         rng: &mut GameRng,
     );
     /// Effects 55..59 (`destroy` false) and 299..303 (`destroy` true).
-    fn confiscate(&mut self, company: i32, territory: i32, what: Confiscate, destroy: bool);
+    fn confiscate(
+        &mut self,
+        company: i32,
+        territory: i32,
+        what: Confiscate,
+        destroy: bool,
+        rng: &mut GameRng,
+    );
     /// Effect 189: `0x438170(company, 1)`.
     fn deactivate_company(&mut self, company: i32);
     /// Effect 190 (AI persons only): `0x4a6a00`; also the game-over elimination.
@@ -227,13 +234,14 @@ pub fn evaluate_rule<W: ScenarioWorld>(
         game_over,
     } = sc;
     let mut undo: Vec<Rule> = Vec::new();
-    {
+    let mut result = Ok(());
+    'eval: {
         let rule = &mut rules[index];
         let multiplayer = world.is_multiplayer();
         if !world.is_campaign()
             && ((rule.game_mode == 1 && multiplayer) || (rule.game_mode == 2 && !multiplayer))
         {
-            return Ok(());
+            break 'eval;
         }
         let local_eval = matches!(rule.trigger, trigger::BRIEFING | trigger::STATUS)
             || rule.local_company
@@ -331,7 +339,15 @@ pub fn evaluate_rule<W: ScenarioWorld>(
                         ev.last_t2t = t2t;
                         let r = reduce(&mut ev, &rule.tokens, &rule.values);
                         t2t = ev.last_t2t;
-                        combo.value = r?;
+                        match r {
+                            Ok(v) => combo.value = v,
+                            // An evaluation error stops the loops; the undo rules made so far
+                            // are still appended (`joined_r0x00457809`).
+                            Err(e) => {
+                                result = Err(e);
+                                break 'eval;
+                            }
+                        }
                         combo.value != 0
                     };
                     if !(truth || (rule.show_when_false && rule.trigger == trigger::STATUS)) {
@@ -356,8 +372,11 @@ pub fn evaluate_rule<W: ScenarioWorld>(
             }
         }
     }
+    // The original keeps them on a stack (`0x5665ec`, pushed at the front) and appends them to
+    // the pool from the top: the last one made comes first.
+    undo.reverse();
     rules.extend(undo);
-    Ok(())
+    result
 }
 
 /// Spec 2.4: text conditions, substitutions, the game-over buffer and the dialog. Returns the
@@ -398,8 +417,9 @@ fn show_message<W: ScenarioWorld>(
     }
     match rule.message_kind {
         MessageKind::Choice => {
-            // In a network game (two or more players) the choice is always 0, no window.
-            if world.indexed_persons().len() >= 2 {
+            // In a network game (`net_player_count() >= 2`, not the AI players of the list)
+            // the choice is always 0, no window.
+            if world.is_multiplayer() {
                 0
             } else {
                 world.show_message(&msg).min(1)
@@ -522,7 +542,7 @@ fn apply_effects<W: ScenarioWorld>(
                     3 => Confiscate::Stations,
                     _ => Confiscate::Buildings,
                 };
-                world.confiscate(c.company, c.territory, what, destroy);
+                world.confiscate(c.company, c.territory, what, destroy, rng);
             }
             189 if c.company != 0 => world.deactivate_company(c.company),
             190 if c.person != 0 && !world.is_human_person(c.person) => {
@@ -636,6 +656,7 @@ fn undo_rule<W: ScenarioWorld>(
         human_players: true,
         once: true,
         permanent: [true; 2],
+        duration: [1; 2],
         effects: [neg, vec![0; N_EFFECTS]],
         ..Rule::default()
     }

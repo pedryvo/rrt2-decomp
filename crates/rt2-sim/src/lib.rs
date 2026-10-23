@@ -32,6 +32,7 @@ pub mod ai;
 pub mod build;
 pub mod calendar;
 pub mod cargo;
+pub mod choice;
 pub mod command;
 pub mod company_record;
 pub mod convert;

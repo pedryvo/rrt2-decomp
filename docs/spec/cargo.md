@@ -404,7 +404,7 @@ Notas:
 
 #### 7.1.1 Reescrita da tabela na carga: `industry_load_fixups` (`0x4719e0`) **[V]**
 
-A tabela em memória **não** é a do `.data` depois de carregar um save (medido no Wine: hardware watchpoint na linha 28; o único escritor é `0x4719e0`, chamada pelo carregador `0x477a60`, via `0x477d19`, e por `0x473131`). Só vale para o conjunto 0 (`0x5704ac == 0`); no conjunto 1 chama só `industry_rebuild_inputs(0x1c)`. Passos:
+A tabela em memória **não** é a do `.data` depois de carregar um save (medido no Wine: hardware watchpoint na linha 28; o único escritor é `0x4719e0`, chamada pelo carregador `0x477a60`, via `0x477d19`, e por `0x473131`). Só vale para o conjunto 0 (`0x5704ac == 0`); no conjunto 1 chama só `industry_rebuild_inputs(0x1c)` e a produção usa a tabela do conjunto 1 (`0x541ae0 + 53*0x90`) sem nenhuma reescrita [V: New Game `#E08`/`#E11`, onde o clone usava o conjunto 0 e criava ~40% menos lotes]. Passos:
 
 1. Taxas das casas (tipo 18) pelo byte de dificuldade `0x567d70` (cabeçalho do save, offset de arquivo `0x238`): se 0, slot 0 = 0.6 (`0x3f19999a`), slot 2 = 0.5, slot 3 = 0.4 (`0x3ecccccd`); senão slot 0 = 0.5, slot 2 = 0.4, slot 3 = 0.3 (`0x3e99999a`) se o byte é 1, ou 0.2 (`0x3e4ccccd`) se maior. (O `.data` traz 0.5/0.4/0.2.) `0x567d6f` (byte `0x237`) só ajusta o global `0x5534c0` (8000/6000/5000), fora da tabela.
 2. A linha do **Port** (tipo 28, conjunto 0, `0x542aa0`, 0x90 bytes) é **copiada do cabeçalho do save** (`0x57023b`, offset de arquivo `0x8703`, nos formatos 0x233C e 0x2348). O save grava saídas e insumos próprios do Port (no Tutorial: saídas 22, 2, passageiro modo 1 e 20; o Port do `.data`, goods de cotton/wool, é só o valor de um jogo novo).

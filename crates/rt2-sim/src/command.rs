@@ -45,6 +45,10 @@ pub enum Command {
     /// manager, mergers, chairmanship; docs/spec/commands.md 2.1). `World::apply` runs the
     /// checks of the original's windows first, see [`World::apply_fin`].
     Finance(crate::fincmd::FinCmd),
+    /// The player's button for the pending scenario choice (`World::pending_choice`): 0 the
+    /// first, 1 the second (effect set 1). Ignored when `message_id` is not the pending one.
+    /// See [`crate::choice`].
+    AnswerChoice { message_id: u32, button: u8 },
 }
 
 impl World {
@@ -77,6 +81,9 @@ impl World {
             }
             Command::Finance(c) => {
                 let _ = self.apply_fin(c);
+            }
+            Command::AnswerChoice { message_id, button } => {
+                let _ = self.answer_choice(message_id, button);
             }
         }
     }

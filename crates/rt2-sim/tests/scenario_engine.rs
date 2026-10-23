@@ -118,7 +118,7 @@ impl ScenarioWorld for Mock {
     }
     fn credit_person(&mut self, _p: i32, _a: i32) {}
     fn set_territory_rights(&mut self, _t: i32, _c: i32, _m: u8, _a: bool, _r: &mut GameRng) {}
-    fn confiscate(&mut self, _c: i32, _t: i32, _w: Confiscate, _d: bool) {}
+    fn confiscate(&mut self, _c: i32, _t: i32, _w: Confiscate, _d: bool, _r: &mut GameRng) {}
     fn deactivate_company(&mut self, _c: i32) {}
     fn eliminate_player(&mut self, p: i32) {
         self.eliminated.push(p);

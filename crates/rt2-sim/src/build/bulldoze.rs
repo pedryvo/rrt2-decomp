@@ -54,7 +54,7 @@ impl Ai<'_, '_> {
     /// `tile_track_remove(tile, mask, owner, count)` (`0x4162b0`) with `mask == 0` removes the
     /// track of the tile (counters with `count`), otherwise sets the edges. The book value of
     /// a removed piece (`+0x15 * 8`) is added to `removed` (`0x567684`).
-    fn tile_track_remove(
+    pub(crate) fn tile_track_remove(
         &mut self,
         x: i32,
         y: i32,
