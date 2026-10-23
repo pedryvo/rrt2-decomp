@@ -5163,3 +5163,17 @@ name = "company_territory_access"
 kind = "function"
 comment = "fastcall(empresa): +0x422d = trilho em todos os territorios, +0x422e = trens em todos [V via snapshot rights5]"
 spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x4627f0"
+name = "route_ring_free"
+kind = "function"
+comment = "fastcall(anel): libera os 5 vetores do anel de rota do trem (+0x45..+0x55) e zera +0x65 (trem+0x65 = 0) [V snapshots tp*]"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x462830"
+name = "route_ring_init"
+kind = "function"
+comment = "fastcall(anel, n): aloca x/y (2n), entrada/saida (n) e flags (2n); +0x59 = n, cabeca +0x5d = -1, contagem +0x61 = 0, +0x65 = 1; malloc sem inicializar (0xBAADF00D sob o Wine) [V snapshots tp*]"
+spec = "docs/spec/trains.md"

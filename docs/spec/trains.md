@@ -307,7 +307,7 @@ Port função a função em `crates/rt2-sim/src/trainstep/` (`mem.rs` acesso aos
 ### 10.3 `train_step(trem, dt, 1)`
 ```
 se acidentado e agora >= +0xee: train_delete (0x4cdd50)                         ; não portado
-se +0x9c == 0 (fora dos trilhos): se tem paradas, coloca (0x4d1bb0 + 0x413550)   ; não portado
+se +0x9c == 0 (fora dos trilhos): se tem paradas, coloca (0x4d1bb0 + 0x413550)   ; seção 12
 se +0x9c:
     train_update_speed(trem, agora)                                              ; 10.4
     se andando (+0x99 == 0): se +0xa7 != 0: move   senão: reserve(trem, 1, 0, 5)
@@ -576,3 +576,15 @@ Locomotivas (espécie 0) e tênderes (espécie 1) ocupam os demais registros; o 
 - `train_delete` (`0x4cdd50`): sem reembolso, conta 4 e categoria 6 `-= +8` sem caixa (`0x439930`), `empresa+0x27--`, carros (`0x4d0fa0`; lote de carga ainda `todo_hook`), reservas, rota e paradas.
 - `train_replace_engine` (`0x4d4e90`): baixa o preço antigo, cobra o novo na conta 4 (e na 0 com `pagar`); com o trem fora do trilho troca os carros da frente; no trilho falta recolocar (`0x413550`).
 - `+0x2b/+0x2f` (valor estimado da carga e carimbo, `0x4d2360`) só são calculados pela janela do jogador local.
+
+## 12. Colocação do trem novo (`vehicle_place` `0x413550`, ramo da cabeça; `0x4d1bb0`) [V: snapshots do original]
+
+`crates/rt2-sim/src/trainstep/{motion,arrive,path}.rs`. Um trem comprado (`train_create`, seção 11) está fora dos trilhos (`+0x9c = 0`, carros sem `+0x2a`). O passo (10.3) o coloca assim:
+
+1. `train_consist_at_stop(trem)` (`0x4d1bb0`): IA escolhe a carga (`0x4d8db0`); percorre os **vagões de carga** (tipo com `+0x30 != 0x7f`) comparando o tipo de cada um com `vehicle_type_for_cargo(parada.+4+j)`, `j < parada.+2`. No primeiro que não bate: apaga os de carga de trás para a frente a partir de `j` (`0x4d0fa0`; a carga que levavam, `+0x2d`, fica guardada), acrescenta um vagão novo por carga da parada (`0x414220`, fora dos trilhos; devolve as cargas guardadas ao vagão novo da mesma carga, o resto é liberado por `0x466a60`) e apaga os que sobram além da lista. Estado `+0x9a = 6`. Sem mudança: `0x4d18b0` (trabalho na estação, como em 10.5) e `0x4d0bc0`; com mudança: `+0xbb` bits 0/1 (carga `0x2c`/`0x2d`), `+0x71 = +0x6d` se 0, pesos `+0xaf`/`+0xb3`, `+0xbb &= ~0x20` (sem a opção `0x570229`), `+0x2f = 0` e `0x4d0bc0`. O número de série de cada vagão novo (`+0x2b`) sai do contador global `0x56506c` (começa em 0 a cada execução, não está no save).
+2. `vehicle_place(cabeça, -1, 0xffff, 0)` (`0x413550`): **só se `trem.+0x9d != 0`** (o comando `0x2c` o liga, junto com `+0x6d = agora`; é o que a janela de compra manda depois de editar as paradas; sem ele o trem não anda). Posição: o tile da estação da parada atual (`+0x9e = id da estação`; ponto de passagem: `+10` da parada nos dois eixos, como no original). `+0x9c = 1`, passo `+0x11 = 0`. O pathfinder (`0x4cf8c0`, 10.7) estende a rota a partir dali; se na primeira chamada ele **avança a parada** (o trem já está na estação da parada atual), a parada volta ao valor anterior e a rota é descartada (`0x4627f0`) e recriada (`0x462830(rota, 0x20)`: `+0x59 = 0x20`, `+0x5d = -1`, `+0x61 = 0`, `+0x65 = 1`) só com o passo 0 (`+0x5d = 0`, `+0x61 = 1`). Os vetores da rota são `malloc` sem inicialização (sob o Wine, `0xBAADF00D`). Sem rota (pathfinder falhou): entrada/saída = primeira direção da máscara da peça (`(d-4)&7`, `d`). O lado da via dupla (`+0x25`) vem de `0x536c4c[entrada]`. O comprimento do trecho (`+0x13`), a posição no trecho (`+0x17` = metade), `+0x1b/+0x1f/+0x26` (`0x4ca550`), a estrutura do tile (`0x42e850`, tipo 2), a reserva do passo (`0x4d3950(trem, 0, 0)`) e o tile anterior (`+0xd/+0xf/+0x48/+0x4a` = o atual) fecham a colocação.
+3. O bit `+0xbb & 8` (elétrico sem catenária) é recalculado como na compra.
+
+Os demais vagões entram sozinhos quando a cabeça anda (`vehicle_advance`, ramo não-cabeça, 10.5). Observação do original: uma locomotiva **elétrica** num trecho sem catenária nas duas estações não acha rota (`0x460850` com `param_17`) e o trem fica parado no estado 7.
+
+Verificação (`crates/rt2-sim/tests/build_snapshots.rs`, casos `tp*`): `train_step(trem novo, 320, 1.0)` repetido 1, 10, 40, 120 e 300 vezes no original (relógio avançado 320 minutos por chamada), save gravado depois de cada contagem, idêntico campo a campo (inclusive RNG e o enchimento `0xBAADF00D` dos vetores novos da rota e do `pool_78`). Scripts: `re/scripts/wine/snap_train.py`.

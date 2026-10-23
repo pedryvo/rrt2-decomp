@@ -413,17 +413,19 @@ impl Ts<'_> {
             back = s.nodes[&(x, y)].back[usize::from(b_k)];
             d = b_k;
         }
+        // The source entry: the original's `bVar4` is the direction of the last node walked
+        // (`d`, towards the source), not its parent's (`0x461a63`..`0x462260`, snapshots tp6).
         p.x.push(x);
         p.y.push(y);
-        p.b.push(back.wrapping_sub(4) & 7);
-        p.a.push(back);
+        p.b.push(d.wrapping_sub(4) & 7);
+        p.a.push(d);
         let cnt = p.x.len() as i32;
         let len = if route65 && !rev_start { cnt - 1 } else { cnt };
         self.write_route(t, &p, len, room, rev_start, route65);
         Some(len)
     }
 
-    fn piece_mask(&self, x: i32, y: i32) -> u8 {
+    pub(crate) fn piece_mask(&self, x: i32, y: i32) -> u8 {
         let p = self.tile_track(x, y);
         if p == 0 { 0 } else { self.u8(P::Track, p, 0) }
     }
@@ -433,6 +435,34 @@ impl Ts<'_> {
     pub fn tile_is_water(&self, x: i32, y: i32) -> bool {
         let g = self.t8(x, y, 1);
         g == 0x61 || g == 0x62
+    }
+
+    /// `0x462830(route, n)`: allocates the ring of a train (`+0x45..+0x55`, size `+0x59 = n`,
+    /// head `+0x5d = -1`, count `+0x61 = 0`, `+0x65 = 1`). The arrays are `malloc` memory in
+    /// the original (uninitialized, see below).
+    pub(crate) fn route_init(&mut self, t: i32, n: i32) {
+        let e = self.extra_mut_pub(t);
+        // The original's `malloc` memory reads `0xBAADF00D` (the Wine debug heap fill) in
+        // every array; the arrays are `x` (2n), `y` (2n), `din` (n), `dout` (n), flags (2n).
+        let fill = |len: usize| (0..len).map(|i| [0x0d, 0xf0, 0xad, 0xba][i % 4]);
+        let n = n as usize;
+        e.route_raw = [2 * n, 2 * n, n, n, 2 * n]
+            .into_iter()
+            .flat_map(fill)
+            .collect();
+        let n = n as i32;
+        self.seti32(P::Train, t, 0x59, n);
+        self.seti32(P::Train, t, 0x5d, -1);
+        self.seti32(P::Train, t, 0x61, 0);
+        self.seti32(P::Train, t, 0x65, 1);
+    }
+
+    /// `0x4627f0`: frees the ring of a train (`+0x65 = 0`).
+    pub(crate) fn route_free(&mut self, t: i32) {
+        if self.i32(P::Train, t, 0x65) != 0 {
+            self.extra_mut_pub(t).route_raw.clear();
+            self.seti32(P::Train, t, 0x65, 0);
+        }
     }
 
     /// The copy of the path into the route ring (`0x462260..0x4626a4`).
@@ -445,6 +475,10 @@ impl Ts<'_> {
         rev_start: bool,
         route65: bool,
     ) {
+        if self.i32(P::Train, t, 0x65) == 0 {
+            // `0x460850` allocates the ring on first use (`0x462260`): 0x20 steps.
+            self.route_init(t, 0x20);
+        }
         let n59 = self.i32(P::Train, t, 0x59);
         let mut room = room;
         if room == 0 {

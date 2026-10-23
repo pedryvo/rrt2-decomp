@@ -3,11 +3,11 @@
 # Ver docs/re-workflow.md.
 #
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
-# Classificadas (categoria != unknown): 1271 (43.2%)
-# Por categoria: lib=258, platform=114, render=11, audio=56, ui=274, sim=558, unknown=1674
-# Por estado:   unknown=2410, named=129, spec=183, verified=223
-# Entradas manuais: 516
-# sim spec coverage: 66.1% (369 de 558 funcoes sim em spec/verified)
+# Classificadas (categoria != unknown): 1273 (43.2%)
+# Por categoria: lib=258, platform=114, render=11, audio=56, ui=274, sim=560, unknown=1672
+# Por estado:   unknown=2408, named=129, spec=181, verified=227
+# Entradas manuais: 518
+# sim spec coverage: 66.2% (371 de 560 funcoes sim em spec/verified)
 
 [[function]]
 addr = "0x401005"
@@ -8449,7 +8449,7 @@ addr = "0x413550"
 size = 2933
 category = "sim"
 status = "verified"
-why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
+why = "docs/spec/trains.md 10 e 12: ramo da cabeca e dos vagoes; save oracle Example 1 dia; snapshots tp* (tests/build_snapshots.rs)"
 manual = true
 
 [[function]]
@@ -11242,16 +11242,18 @@ manual = true
 [[function]]
 addr = "0x4627f0"
 size = 56
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/trains.md 12; crates/rt2-sim/src/trainstep/path.rs, tests/build_snapshots.rs (tp*)"
+manual = true
 
 [[function]]
 addr = "0x462830"
 size = 85
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "docs/spec/trains.md 12; crates/rt2-sim/src/trainstep/path.rs, tests/build_snapshots.rs (tp*)"
+manual = true
 
 [[function]]
 addr = "0x462890"
@@ -15602,7 +15604,7 @@ addr = "0x4d1630"
 size = 302
 category = "sim"
 status = "verified"
-why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs e ai_snapshots dl0_rich_c5"
+why = "docs/spec/commands.md 2.1 (0x1a); build_snapshots.rs goto8_*"
 manual = true
 
 [[function]]
@@ -15625,7 +15627,7 @@ addr = "0x4d1bb0"
 size = 1968
 category = "sim"
 status = "verified"
-why = "docs/spec/trains.md 10; snapshots do original (crates/rt2-sim/tests/trainstep_snapshots.rs)"
+why = "docs/spec/trains.md 10 e 12 (troca de composicao incluida); trainstep_snapshots.rs e build_snapshots.rs (tp*)"
 manual = true
 
 [[function]]
@@ -15816,8 +15818,8 @@ why = "no-evidence"
 addr = "0x4d4750"
 size = 55
 category = "sim"
-status = "spec"
-why = "docs/spec/commands.md 2.1 (0x1c)"
+status = "verified"
+why = "docs/spec/commands.md 2.1 (0x1c); build_snapshots.rs cargo8*"
 manual = true
 
 [[function]]
@@ -15915,8 +15917,8 @@ why = "thunk->0x4cdd50"
 addr = "0x4d59b0"
 size = 379
 category = "sim"
-status = "spec"
-why = "docs/spec/trains.md 10"
+status = "verified"
+why = "docs/spec/commands.md 2.1 (0x21); build_snapshots.rs class*"
 manual = true
 
 [[function]]

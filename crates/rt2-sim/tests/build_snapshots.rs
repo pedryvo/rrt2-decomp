@@ -77,6 +77,19 @@ fn run(
             let cmd = rt2_sim::build::cmd::BuildCmd::from_packet(&pkt).expect("packet");
             let _ = ai.execute(cmd);
         }
+        "0x4d0ce0" => {
+            // `train_step(train, dt, 1.0)` called `a[1]` times, the clock advancing by `dt`
+            // before each call (the new-train placement and first movement).
+            let dt = a[0];
+            let base = ai.ts.now;
+            for i in 1..=a[1] {
+                ai.ts.now = base.wrapping_add((i * dt) as u32);
+                ai.ts.train_step(ecx, dt, true);
+            }
+            ai.ts.s.game_time_minutes = ai.ts.now as i32;
+            let b = ai.ts.now.to_le_bytes();
+            ai.ts.s.state[0x0c..0x10].copy_from_slice(&b);
+        }
         "0x46aef0" => {
             ai.station_buy_improvements(ecx, edx as u32);
         }

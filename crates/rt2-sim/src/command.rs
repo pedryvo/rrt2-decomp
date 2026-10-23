@@ -31,7 +31,10 @@ pub enum Command {
     /// A construction command of `cmd_execute` (`0x4b0210`), with the fields of the original
     /// packet: build track (`0x16`), build a station or a building (`0x17`), buy station
     /// improvements (`0x18`), buy a train (`0x19`), insert / delete a stop (`0x1d`, `0x1e`),
-    /// sell a train (`0x1f`), replace an engine (`0x20`), buy or sell an industry (`0x2d`).
+    /// sell a train (`0x1f`), replace an engine (`0x20`), go to a stop (`0x1a`), stop wait mode
+    /// (`0x1b`), cargo per stop (`0x1c`), train class (`0x21`), mark a train ready to leave
+    /// (`0x2c`, needed before a bought train is put on the track), stop sell mode (`0x2f`),
+    /// buy or sell an industry (`0x2d`).
     /// See [`World::apply_build`] for the result.
     Build(crate::build::cmd::BuildCmd),
     /// `0x26` start a company (`cmd_found_company` `0x4bdcd0`, docs/spec/finance.md 17); see

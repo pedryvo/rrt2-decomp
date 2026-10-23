@@ -73,6 +73,25 @@ pub enum BuildCmd {
     DeleteTrain { train: i32 },
     /// `0x20`: replace the engine (no cash movement besides the accounts, `pay = 0`).
     ReplaceEngine { train: i32, engine: i32 },
+    /// `0x1a`: `train_set_stop(train, stop, 1)` (`0x4d1630`): the train heads for `stop`.
+    TrainGotoStop { train: i32, stop: i32 },
+    /// `0x1b`: `train_set_stop_wait` (`0x4d5830`): `mode` 0 no wait, 1 half load, 2 full load
+    /// (stop flags `+3` bits 6..7).
+    StopWait { train: i32, stop: i32, mode: i8 },
+    /// `0x1c`: cargo per car of a stop (`stop == 0xff`: every stop), `0xff` = empty slot.
+    StopCargo {
+        train: i32,
+        stop: i32,
+        cargo: [u8; 6],
+    },
+    /// `0x21`: `train_set_class` (`0x4d59b0`): 0 Halted, 1 Slow, 2 Normal, 3 Express.
+    TrainClass { train: i32, class: i8 },
+    /// `0x2c`: `train+0x6d = now`, `train+0x9d = 1`: the train may leave (the purchase window
+    /// sends it after the stops are edited; `vehicle_place` needs it to put the train on the
+    /// track).
+    TrainMark { train: i32 },
+    /// `0x2f`: `train_set_stop_sell` (`0x4d58e0`): mode 0..3 (stop flags `+3` bits 4..5).
+    StopSell { train: i32, stop: i32, mode: u8 },
     /// `0x2a`: territory rights `mask` (bit 0 trains, 1 track, 2 buildings, 3 stations) for
     /// `price` (computed by the rights window `0x43e760`/`0x440fb0`).
     TerritoryRights {
@@ -197,6 +216,32 @@ impl BuildCmd {
             0x20 => BuildCmd::ReplaceEngine {
                 train: i32::from(u16::from_le_bytes([p[0xc], p[0xd]])),
                 engine: i32::from(p[0xe]),
+            },
+            0x1a => BuildCmd::TrainGotoStop {
+                train: i32::from(u16::from_le_bytes([p[0xc], p[0xd]])),
+                stop: i32::from(p[0xe]),
+            },
+            0x1b => BuildCmd::StopWait {
+                train: i32::from(u16::from_le_bytes([p[0xc], p[0xd]])),
+                stop: i32::from(p[0xe]),
+                mode: p[0xf] as i8,
+            },
+            0x1c => BuildCmd::StopCargo {
+                train: i32::from(u16::from_le_bytes([p[0xc], p[0xd]])),
+                stop: i32::from(p[0xe]),
+                cargo: p[0xf..0x15].try_into().ok()?,
+            },
+            0x21 => BuildCmd::TrainClass {
+                train: i32::from(u16::from_le_bytes([p[0xc], p[0xd]])),
+                class: p[0xe] as i8,
+            },
+            0x2c => BuildCmd::TrainMark {
+                train: i32::from(u16::from_le_bytes([p[0xc], p[0xd]])),
+            },
+            0x2f => BuildCmd::StopSell {
+                train: i32::from(u16::from_le_bytes([p[0xc], p[0xd]])),
+                stop: i32::from(p[0xe]),
+                mode: p[0xf],
             },
             0x2a => BuildCmd::TerritoryRights {
                 company: co,
@@ -390,6 +435,57 @@ impl Ai<'_, '_> {
                     return Err(CmdError::NoSuchObject);
                 }
                 self.replace_engine(train, engine, false);
+                Ok(0)
+            }
+            BuildCmd::TrainGotoStop { train, stop } => {
+                if !self.ts.live(P::Train, train) {
+                    return Err(CmdError::NoSuchObject);
+                }
+                self.ts.set_stop(train, stop, true);
+                Ok(0)
+            }
+            BuildCmd::StopWait { train, stop, mode } => {
+                if !self.ts.live(P::Train, train) {
+                    return Err(CmdError::NoSuchObject);
+                }
+                if stop < i32::from(self.ts.u8(P::Train, train, 0x3b)) {
+                    self.train_set_stop_wait(train, stop, mode);
+                }
+                Ok(0)
+            }
+            BuildCmd::StopCargo { train, stop, cargo } => {
+                if !self.ts.live(P::Train, train) {
+                    return Err(CmdError::NoSuchObject);
+                }
+                if stop != 0xff && stop >= i32::from(self.ts.u8(P::Train, train, 0x3b)) {
+                    return Ok(0);
+                }
+                self.train_stop_cargo(train, stop, cargo);
+                Ok(0)
+            }
+            BuildCmd::TrainClass { train, class } => {
+                if !self.ts.live(P::Train, train) {
+                    return Err(CmdError::NoSuchObject);
+                }
+                self.train_set_class(train, class);
+                Ok(0)
+            }
+            BuildCmd::TrainMark { train } => {
+                if !self.ts.live(P::Train, train) {
+                    return Err(CmdError::NoSuchObject);
+                }
+                let now = self.ts.now;
+                self.ts.set32(P::Train, train, 0x6d, now);
+                self.ts.set8(P::Train, train, 0x9d, 1);
+                Ok(0)
+            }
+            BuildCmd::StopSell { train, stop, mode } => {
+                if !self.ts.live(P::Train, train) {
+                    return Err(CmdError::NoSuchObject);
+                }
+                if stop < i32::from(self.ts.u8(P::Train, train, 0x3b)) {
+                    self.train_set_stop_sell(train, stop, mode);
+                }
                 Ok(0)
             }
             BuildCmd::TerritoryRights {

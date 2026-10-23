@@ -78,7 +78,8 @@ fn is_free(pool: &Pool, s: usize) -> bool {
 
 /// `pool_grow` (`0x4f14c0`): adds `by` slots. The free bitmap keeps its old bytes (bits past the
 /// old end included) and the new bytes are `0xff`; the original leaves the new `next`/`prev`
-/// entries uninitialized (heap garbage in the file), here they are 0.
+/// entries uninitialized: under Wine they read `0xBAADF00D` (the debug heap fill, byte `i` of the
+/// array is `[0x0d, 0xf0, 0xad, 0xba][i % 4]`), which the snapshots of the original show.
 pub fn grow(pool: &mut Pool, by: usize) {
     let old = pool.slots;
     let keep = if old == 0 { 0 } else { (old + 8) >> 3 };
@@ -86,8 +87,12 @@ pub fn grow(pool: &mut Pool, by: usize) {
     pool.bitmap.truncate(keep);
     pool.bitmap.resize(size, 0xff);
     if pool.linked {
-        pool.next.resize(old + by, 0);
-        pool.prev.resize(old + by, 0);
+        let fill = |j: usize| {
+            const PAT: [u8; 4] = [0x0d, 0xf0, 0xad, 0xba];
+            u16::from_le_bytes([PAT[(2 * j) % 4], PAT[(2 * j + 1) % 4]])
+        };
+        pool.next.extend((old..old + by).map(fill));
+        pool.prev.extend((old..old + by).map(fill));
     }
     pool.slots = old + by;
 }

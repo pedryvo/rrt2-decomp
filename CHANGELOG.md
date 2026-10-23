@@ -180,3 +180,6 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Improved: construction previews run the real command on a clone of the world, so the shown path, cost and refusal always match the result
 - Docs: docs/reference/screens.md and docs/ui.md updated for the construction and train screens
 - RE: the original Example save is in the old 0x233C record layout, which `rt2-sim` cannot play; a new bought train is not yet put on the track by the train step (`vehicle_place` head branch), so it does not earn
+- Feature: a bought train is put on the track at its first stop's station and runs (`vehicle_place` head branch and consist change of `train_consist_at_stop`, matching the original over 300 passes), once the purchase window's mark (command `0x2c`) is sent
+- Feature: train commands `0x1a` (go to stop), `0x1b` (stop wait mode), `0x1c` (cargo per stop), `0x21` (class), `0x2c` (mark) and `0x2f` (sell mode) in the simulation, each checked against a snapshot of the original
+- RE: a new train's route ring is allocated by the pathfinder on first use (`0x462830`/`0x4627f0` named); the uninitialized `malloc` and `pool_grow` memory of the original reads `0xBAADF00D` and is now reproduced; an electric engine between stations without catenary finds no route

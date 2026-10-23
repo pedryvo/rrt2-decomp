@@ -51,6 +51,9 @@ pub enum P {
 pub struct Globals {
     /// `0x574b84`: count of trains whose consist changed (`0x4d14b0` refresh pending).
     pub refresh_574b84: i32,
+    /// `0x56506c`: the serial given to the next vehicle (`vehicle_init` `0x414220` stores it in
+    /// `car+0x2b` and counts up; starts at 0 in every run, it is not in the save).
+    pub vehicle_serial: u32,
     /// The `restricted` output of `0x4d00c0` is left untouched when the train is stopped by a
     /// breakdown or a crash: `0x4d0400` then reads whatever its stack slot held, which is the
     /// value of the previous call in practice (approximation, trains.md 10.4).
@@ -328,6 +331,10 @@ impl Ts<'_> {
             .iter_mut()
             .find(|e| e.slot == train as usize)
             .unwrap_or_else(|| panic!("train {train} has no extras"))
+    }
+
+    pub(crate) fn extra_mut_pub(&mut self, train: i32) -> &mut rt2_formats::map::TrainExtra {
+        self.extra_mut(train)
     }
 
     fn route_n(&self, train: i32) -> usize {

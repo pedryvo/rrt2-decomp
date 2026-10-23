@@ -760,9 +760,14 @@ impl Ts<'_> {
         0
     }
 
-    /// `train_consist_at_stop` (`0x4d1bb0`, state 2 after a settlement): an AI train first picks
-    /// the cargo of its cars (`0x4d8db0`); when the cars match the stop's consist (`+2` cars of
-    /// cargo `+4..`) the train starts the station work (state 6, `0x4d18b0`).
+    /// `train_consist_at_stop` (`0x4d1bb0`, trains.md 10.9 and 12): an AI train first picks the
+    /// cargo of its cars (`0x4d8db0`); then the cars carrying cargo are matched one by one with
+    /// the cargo list of the current stop (`+2` cars of vehicle type
+    /// `vehicle_type_for_cargo(stop.+4+j)`). From the first mismatch on, the cars (from the
+    /// last backwards) are removed (`0x4d0fa0`, their lots kept aside) and one car per cargo of
+    /// the stop is appended (`0x414220`, off the track; the lots go back to a new car of the
+    /// same cargo); cars beyond the list are removed. Without changes the train starts the
+    /// station work (`0x4d18b0`); with changes the consist flags and weights are recomputed.
     pub fn train_consist_at_stop(&mut self, t: i32) {
         let company = self.i32(P::Train, t, 0x41);
         if !self.company_is_human(company) {
@@ -770,29 +775,109 @@ impl Ts<'_> {
         }
         let k = self.cur_stop(t);
         let want = i32::from(self.stop8(t, k, 2));
-        let mut change = false;
-        for j in 0..want {
+        let mut changes = 0;
+        let mut saved: Vec<i32> = Vec::new();
+        let mut j = 0;
+        while j < want {
             let car = self.cargo_car(t, j);
-            let vt = self.vehicle_type_for_cargo(i32::from(self.stop8(t, k, 4 + j as usize)));
-            if car == 0 || self.u8(P::Car, car, 8) != vt {
-                change = true;
-                break;
+            let cargo = i32::from(self.stop8(t, k, 4 + j as usize));
+            let vt = self.vehicle_type_for_cargo(cargo);
+            if car != 0 && self.u8(P::Car, car, 8) == vt {
+                j += 1;
+                continue;
+            }
+            // Mismatch at cargo car `j`: remove cargo cars `n-1 ..= j` (last first).
+            let n = self.cargo_car_count(t);
+            for q in (j..n).rev() {
+                let c = self.cargo_car(t, q);
+                changes += 1;
+                let lot = self.i32(P::Car, c, 0x2d);
+                if lot != 0 {
+                    saved.push(lot);
+                    self.seti32(P::Car, c, 0x2d, 0);
+                }
+                self.car_remove(t, c);
+            }
+            // Append a car for each cargo `j..want`, handing the saved lots back.
+            while j < want {
+                changes += 1;
+                let cargo = i32::from(self.stop8(t, k, 4 + j as usize));
+                let vt = self.vehicle_type_for_cargo(cargo);
+                self.vehicle_init(t, vt);
+                let car = self.i32(P::Train, t, 4);
+                for lot in saved.iter_mut() {
+                    if *lot != 0
+                        && i32::from(self.u8(P::Lot, *lot, 0)) == cargo
+                        && self.i32(P::Car, car, 0x2d) == 0
+                    {
+                        self.seti32(P::Car, car, 0x2d, *lot);
+                        let id = self.u16(P::Car, car, 6);
+                        self.set16(P::Lot, *lot, 5, id);
+                        *lot = 0;
+                    }
+                }
+                j += 1;
+            }
+            // Lots without a car of their cargo are freed.
+            for lot in saved.drain(..) {
+                if lot != 0 {
+                    self.set16(P::Lot, lot, 5, 0);
+                    self.lot_free(lot);
+                }
+            }
+            break;
+        }
+        // Cars past the list (`0x4d1f72`).
+        let n = self.cargo_car_count(t);
+        if n > want {
+            for q in (want..n).rev() {
+                let c = self.cargo_car(t, q);
+                changes += 1;
+                self.car_remove(t, c);
             }
         }
-        if !change && self.cargo_car(t, want) != 0 {
-            change = true;
-        }
         self.set8(P::Train, t, 0x9a, 6);
-        if change {
-            todo_hook!(
-                self.log,
-                "train_consist_change",
-                "0x4d1bb0 consist rebuild (0x4d0fa0 remove car, 0x414220 new car)",
-                "trains.md 10.5"
-            );
+        if changes == 0 {
+            self.station_work(t);
+            self.trim_reservations_pub(t);
             return;
         }
-        self.station_work(t);
+        // Flags of the cargo mix (`+0xbb` bits 0 and 1: cargo `0x2c` / `0x2d`).
+        let mut f = self.u8(P::Train, t, 0xbb) & 0xfc;
+        for c in self.cars_with(t, |_, _| true) {
+            match self.vt8(self.u8(P::Car, c, 8), 0x30) {
+                0x2c => f |= 1,
+                0x2d => f |= 2,
+                _ => {}
+            }
+        }
+        self.set8(P::Train, t, 0xbb, f);
+        if self.i32(P::Train, t, 0x71) == 0 {
+            let v = self.i32(P::Train, t, 0x6d);
+            self.seti32(P::Train, t, 0x71, v);
+        }
+        let (mut tons, mut steam) = (0i32, 0i32);
+        for c in self.cars_with(t, |_, _| true) {
+            let w = self.vehicle_weight(c);
+            tons += w;
+            if self.vt8(self.u8(P::Car, c, 8), 0x2e) == 2 {
+                steam += w;
+            }
+        }
+        self.seti32(P::Train, t, 0xaf, tons);
+        self.seti32(P::Train, t, 0xb3, steam);
+        if self.flag_570229 != 0 {
+            todo_hook!(
+                self.log,
+                "train_consist_570229",
+                "0x4d1bb0 with the option 0x570229 (cargo 0x11 flag, 0x4d14b0)",
+                "trains.md 6.1"
+            );
+        } else {
+            let b = self.u8(P::Train, t, 0xbb) & 0xdf;
+            self.set8(P::Train, t, 0xbb, b);
+        }
+        self.seti32(P::Train, t, 0x2f, 0);
         self.trim_reservations_pub(t);
     }
 

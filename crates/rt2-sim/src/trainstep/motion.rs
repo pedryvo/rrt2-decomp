@@ -92,12 +92,12 @@ impl Ts<'_> {
         }
         let mut on = self.u8(P::Train, t, 0x9c) != 0;
         if !on && self.u8(P::Train, t, 0x3b) != 0 {
-            todo_hook!(
-                self.log,
-                "train_place",
-                "0x4d1bb0 + 0x413550 (put a new train on the track)",
-                "trains.md 10.3"
-            );
+            // A train that is not on the track: its consist is matched with the stop
+            // (`0x4d1bb0`), the locomotive is put on the track at the stop's station (`0x413550`)
+            // and the electric-without-wire bit (`+0xbb & 8`) is recomputed (trains.md 12).
+            self.train_consist_at_stop(t);
+            self.place_head_car(t);
+            self.update_wire_bit(t);
             on = self.u8(P::Train, t, 0x9c) != 0;
         }
         if on {
@@ -1493,6 +1493,140 @@ impl Ts<'_> {
         self.route_extend(t)
     }
 
+    // ---- the head car (0x413550, head branch) ---------------------------------------------
+
+    /// `+0xbb & 8` after a placement (`0x4d0ce0`): an electric locomotive on a tile without
+    /// catenary (`piece.+0x23 & 0x10`).
+    fn update_wire_bit(&mut self, t: i32) {
+        let head = self.first_car(t);
+        let he = self.vt_engine(self.u8(P::Car, head, 8));
+        let b = self.u8(P::Train, t, 0xbb);
+        let no_wire = self.en8(he, 0x28) == 2
+            && self.u8(P::Train, t, 0x9c) != 0
+            && self.u8(P::Car, head, 0x2a) != 0
+            && {
+                let (x, y) = (
+                    i32::from(self.i16(P::Car, head, 9)),
+                    i32::from(self.i16(P::Car, head, 0xb)),
+                );
+                let p = self.tile_track(x, y);
+                p == 0 || self.u8(P::Track, p, 0x23) & 0x10 == 0
+            };
+        self.set8(P::Train, t, 0xbb, if no_wire { b | 8 } else { b & 0xf7 });
+    }
+
+    /// `vehicle_place(head, -1, 0xffff, 0)` (`0x413550`, head branch; trains.md 12): puts the
+    /// locomotive of a train that is not on the track on the tile of the current stop (the
+    /// station's, or the waypoint's), asks the pathfinder for a route from there (`0x4cf8c0`),
+    /// sets the first step of the route ring (entry 0), the car's segment and sub-tile point,
+    /// the tile structure, and reserves the step. Needs `train.+0x9d != 0` (set by command
+    /// `0x2c`, or by the AI when it buys a train).
+    pub(crate) fn place_head_car(&mut self, t: i32) {
+        let car = self.first_car(t);
+        if self.u8(P::Train, t, 0x9d) == 0 {
+            return;
+        }
+        let k = self.cur_stop(t);
+        if self.stop8(t, k, 3) & 8 == 0 {
+            let st = i32::from(self.stop16(t, k, 0));
+            let id = self.u16(P::Station, st, 0);
+            self.set16(P::Train, t, 0x9e, id);
+            let (x, y) = (self.u16(P::Station, st, 10), self.u16(P::Station, st, 14));
+            self.set16(P::Car, car, 9, x);
+            self.set16(P::Car, car, 0xb, y);
+        } else {
+            // Both coordinates come from the waypoint's `+10` in the original.
+            let x = self.stop16(t, k, 10);
+            self.set16(P::Car, car, 9, x);
+            self.set16(P::Car, car, 0xb, x);
+        }
+        self.set8(P::Train, t, 0x9c, 1);
+        let idx = 0;
+        self.set16(P::Car, car, 0x11, idx as u16);
+        let stop_before = self.u8(P::Train, t, 0x3c);
+        let has_route = if self.i32(P::Train, t, 0x65) == 0
+            || self.i32(P::Train, t, 0x61) == 0
+            || idx == self.i32(P::Train, t, 0x5d)
+        {
+            self.route_extend(t)
+        } else {
+            true
+        };
+        let mut reset_route = false;
+        if self.u8(P::Train, t, 0x3c) != stop_before {
+            self.set8(P::Train, t, 0x3c, stop_before);
+            reset_route = has_route;
+        }
+        let (x, y) = (
+            i32::from(self.i16(P::Car, car, 9)),
+            i32::from(self.i16(P::Car, car, 0xb)),
+        );
+        if has_route {
+            self.set8(P::Car, car, 0x23, self.rdin(t, idx));
+            self.set8(P::Car, car, 0x24, self.rdout(t, idx));
+        } else {
+            self.set8(P::Car, car, 0x23, 0x7f);
+            let mask = u32::from(self.piece_mask(x, y));
+            for d in 0..8u32 {
+                if mask & (1 << d) != 0 {
+                    self.set8(P::Car, car, 0x23, (d as u8).wrapping_sub(4) & 7);
+                    self.set8(P::Car, car, 0x24, d as u8);
+                    break;
+                }
+            }
+        }
+        if reset_route {
+            self.route_free(t);
+        }
+        let din = self.u8(P::Car, car, 0x23);
+        let p = self.piece_at(x, y);
+        let side = if p == 0 || self.u8(P::Track, p, 0x23) & 1 == 0 {
+            0
+        } else {
+            self.img.i32(0x0053_6c4c + 4 * u32::from(din)) as u8
+        };
+        self.set8(P::Car, car, 0x25, side);
+        let dout = self.u8(P::Car, car, 0x24);
+        if self.i32(P::Train, t, 0x65) == 0 {
+            self.route_init(t, 0x20);
+            self.set_route_step(t, idx, x as u16, y as u16, din, dout);
+            let f = self.rflags(t, idx) & 0xfe;
+            self.set_rflags(t, idx, f);
+            self.seti32(P::Train, t, 0x5d, idx);
+            self.seti32(P::Train, t, 0x61, 1);
+            self.seti32(P::Train, t, 0x65, 1);
+        } else {
+            let f = self.rflags(t, idx) & 0xfe;
+            self.set_rflags(t, idx, f);
+        }
+        let f = self.rflags(t, idx);
+        self.set_rflags(t, idx, ((side & 3) << 1) | (f & 0xf9));
+        let len = self.seg_len(u32::from(din), u32::from(dout), u32::from(side)) << 16;
+        self.seti32(P::Car, car, 0x13, len);
+        self.seti32(P::Car, car, 0x17, len >> 1);
+        self.set32(P::Car, car, 0x26, 0);
+        self.set8(P::Car, car, 0x2a, 1);
+        if self.u16(P::Car, car, 0x45) == 0 {
+            let id = self.i16(P::Car, car, 6) as i32 as u32;
+            self.tile_struct_add(x, y, STRUCT_CAR, id);
+        }
+        let (px, py, pf) = self.track_point(
+            u32::from(din),
+            u32::from(dout),
+            self.i32(P::Car, car, 0x17) >> 16,
+            u32::from(side),
+        );
+        self.seti32(P::Car, car, 0x1b, px);
+        self.seti32(P::Car, car, 0x1f, py);
+        self.set32(P::Car, car, 0x26, pf);
+        self.set_reserved_range(t, idx, idx);
+        let (cx, cy) = (self.u16(P::Car, car, 9), self.u16(P::Car, car, 0xb));
+        self.set16(P::Car, car, 0xd, cx);
+        self.set16(P::Car, car, 0xf, cy);
+        self.set16(P::Car, car, 0x48, cx);
+        self.set16(P::Car, car, 0x4a, cy);
+    }
+
     // ---- trailing cars (0x413550, non-head branch) ----------------------------------------
 
     /// `vehicle_place` (`0x413550`) for a car that is not the head: puts an off-track car on the
@@ -1500,12 +1634,7 @@ impl Ts<'_> {
     fn place_trailing_car(&mut self, car: i32) {
         let t = self.car_train(car);
         if car == self.first_car(t) {
-            todo_hook!(
-                self.log,
-                "vehicle_place_head",
-                "0x413550 head branch (place a train)",
-                "trains.md 10.3"
-            );
+            self.place_head_car(t);
             return;
         }
         let prev = self.car_prev(car);

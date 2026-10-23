@@ -135,30 +135,50 @@ fn lay_track_build_station_buy_train_and_earn() {
     //    inserted as a third stop.
     let d = g.world.date();
     let rows = engine_rows(&g.data, save(&g), co, i32::from(d.year), i32::from(d.month));
-    let engine = rows.first().expect("an engine is available").index;
+    // Not an electric one (`kind == 2`): it would need catenary at both stops to find a route.
+    let engine = rows
+        .iter()
+        .find(|r| r.kind != 2)
+        .expect("a non-electric engine is available")
+        .index;
     let trains0 = company_trains(save(&g), co);
     let t = g
         .world
         .apply_build(BuyTrain(co, engine))
         .expect("buy train");
     assert!(t > 0 && !trains0.contains(&t));
+    // The purchase window marks the train as ready to leave (command `0x2c`); until then the
+    // train is not put on the track (`vehicle_place`, docs/spec/trains.md 12).
+    g.world
+        .apply_build(BuildCmd::TrainMark { train: t })
+        .expect("mark train");
     let stops = train_stops(save(&g), t);
     assert_eq!(stops.len(), 2, "two default stops");
     let new_station = company_stations(save(&g), co)
         .into_iter()
         .max()
         .expect("stations");
-    g.world
-        .apply_build(BuildCmd::InsertStop {
-            train: t,
-            k: 2,
-            station: new_station,
-            waypoint: false,
-            x: 0,
-            y: 0,
-        })
-        .expect("insert stop");
-    assert_eq!(train_stops(save(&g), t).len(), 3);
+    // The default stops are the company's first two stations, which need not be connected:
+    // the route becomes station 1 -> the new station (joined by the laid track), keeping the
+    // cargo list of the default stops.
+    for (k, station) in [(2, 1), (3, new_station)] {
+        g.world
+            .apply_build(BuildCmd::InsertStop {
+                train: t,
+                k,
+                station,
+                waypoint: false,
+                x: 0,
+                y: 0,
+            })
+            .expect("insert stop");
+    }
+    for _ in 0..2 {
+        g.world
+            .apply_build(BuildCmd::DeleteStop { train: t, k: 0 })
+            .expect("delete stop");
+    }
+    assert_eq!(train_stops(save(&g), t).len(), 2);
     // The window refuses a second command on a missing train.
     assert_eq!(
         g.world.apply_build(BuildCmd::DeleteTrain { train: 999 }),
@@ -179,13 +199,13 @@ fn lay_track_build_station_buy_train_and_earn() {
     let income1 = income(&g);
     eprintln!("company train income: {income0} -> {income1}");
     assert!(income1 > income0, "the company's trains earned revenue");
-    // TODO(rt2-sim): a bought train is not put on the track yet (`vehicle_place`, `0x413550`
-    // head branch, `trainstep/motion.rs`), so the new train itself does not earn; once that is
-    // ported this must hold for `t`.
+    // The new train is put on the track at its first stop (`vehicle_place` head branch) and
+    // earns revenue itself.
     let own = train_income(save(&g), t);
     eprintln!("new train {t} income after 120 days: {own}");
+    assert!(own > 0, "the bought train earned revenue");
     assert!(
-        train_stops(save(&g), t).len() == 3,
+        train_stops(save(&g), t).len() == 2,
         "the route survives the run"
     );
 }

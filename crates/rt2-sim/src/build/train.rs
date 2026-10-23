@@ -3,11 +3,13 @@
 //! default or copied stops (`train_default_stops` `0x4d3f40`), stop insertion and deletion
 //! (`0x4d11f0`, `0x4d5710`), the leg length (`0x4d1130`) and the train class (`0x4d59b0`).
 //!
-//! A new train is not on the track: its cars are placed by the train step when it departs
-//! (`0x4d1bb0` -> `0x413550`, trains.md 10).
+//! A new train is not on the track: the train step (`0x4d0ce0`) matches its consist with the first
+//! stop (`0x4d1bb0`) and puts the locomotive on the track (`0x413550`, head branch) once command
+//! `0x2c` has marked it (trains.md 12); the other cars follow as it moves. The stop-editing
+//! commands `0x1a`, `0x1b`, `0x1c`, `0x21` and `0x2f` are here too (commands.md 2.1).
 
 use crate::ai::Ai;
-use crate::trainstep::P;
+use crate::trainstep::{P, Ts};
 
 use super::account_move;
 
@@ -164,10 +166,10 @@ impl Ai<'_, '_> {
         let n = self.ts.i32(P::Company, company, 0x27) + 1;
         self.ts.seti32(P::Company, company, 0x27, n);
         let vt = self.ts.en8(e, 0x2c);
-        self.vehicle_init(t, vt);
+        self.ts.vehicle_init(t, vt);
         if self.ts.en8(e, 0x2b) != 0 {
             let vt2 = self.ts.en8(e, 0x2d);
-            self.vehicle_init(t, vt2);
+            self.ts.vehicle_init(t, vt2);
         }
         s8(self, 0x94, 0);
         let (mut tons, mut steam) = (0i32, 0i32);
@@ -208,45 +210,6 @@ impl Ai<'_, '_> {
             && self.ts.u8(P::Train, t, 0x9c) != 0
             && self.ts.u8(P::Car, head, 0x2a) != 0;
         s8(self, 0xbb, if no_wire { b | 8 } else { b & 0xf7 });
-    }
-
-    /// `vehicle_init(car, id, train, type, -1, 0xffff, 0)` (`0x414220`) for a car that is not
-    /// placed on the track: appended to the train's car list.
-    fn vehicle_init(&mut self, t: i32, vt: u8) {
-        let size = self.ts.record_size(P::Car);
-        let c = self.ts.alloc(P::Car, vec![0u8; size]);
-        let kind = self.ts.vt8(vt, 0x2e);
-        let set8 = |ai: &mut Ai<'_, '_>, o: usize, v: u8| ai.ts.set8(P::Car, c, o, v);
-        let set16 = |ai: &mut Ai<'_, '_>, o: usize, v: u16| ai.ts.set16(P::Car, c, o, v);
-        set8(self, 8, vt);
-        set16(self, 6, c as u16);
-        set8(self, 0x47, u8::from(kind > 1));
-        set16(self, 4, t as u16);
-        self.ts.seti32(P::Car, c, 0x41, 0);
-        set8(self, 0x2a, 0);
-        self.ts.seti32(P::Car, c, 0x2d, 0);
-        for o in [0xd, 0xf, 0x48, 0x4a] {
-            set16(self, o, 0xffff);
-        }
-        set16(self, 0x45, 0);
-        self.ts.seti32(P::Car, c, 0x3d, 0);
-        set16(self, 0x4c, 0);
-        set8(self, 0x4e, 0);
-        self.ts.seti32(P::Car, c, 0x39, 0);
-        self.ts.seti32(P::Car, c, 0x34, 0);
-        set16(self, 0x32, 0);
-        let last = self.ts.i32(P::Train, t, 4);
-        set16(self, 0, last as u16);
-        set16(self, 2, 0);
-        // `+0x2b`: the run-time vehicle serial `0x56506c` (not in the save; 0 after a load).
-        set16(self, 0x2b, 0);
-        set8(self, 0x31, 0);
-        if last == 0 {
-            self.ts.seti32(P::Train, t, 0, c);
-        } else {
-            self.ts.set16(P::Car, last, 2, c as u16);
-        }
-        self.ts.seti32(P::Train, t, 4, c);
     }
 
     /// `0x439720(company, k)`: the `k`-th live station of the company (list order).
@@ -374,41 +337,6 @@ impl Ai<'_, '_> {
         self.ts.set_record(P::Company, company, &r);
     }
 
-    /// `0x4d0fa0(train, car)` + `0x466df0`: unlinks and frees a car (off its tile first).
-    fn car_remove(&mut self, t: i32, c: i32) {
-        let prev = i32::from(self.ts.i16(P::Car, c, 0));
-        let next = i32::from(self.ts.i16(P::Car, c, 2));
-        if next != 0 {
-            self.ts.set16(P::Car, next, 0, prev as u16);
-        }
-        if prev != 0 {
-            self.ts.set16(P::Car, prev, 2, next as u16);
-        }
-        if self.ts.i32(P::Train, t, 0) == c {
-            self.ts.seti32(P::Train, t, 0, next);
-        }
-        if self.ts.i32(P::Train, t, 4) == c {
-            self.ts.seti32(P::Train, t, 4, prev);
-        }
-        if self.ts.u8(P::Car, c, 0x2a) != 0 {
-            let (x, y) = (
-                i32::from(self.ts.i16(P::Car, c, 9)),
-                i32::from(self.ts.i16(P::Car, c, 0xb)),
-            );
-            crate::tilemark::struct_remove(self.ts.s, x, y, 2, c as u32);
-            self.ts.set8(P::Car, c, 0x2a, 0);
-        }
-        if self.ts.i32(P::Car, c, 0x2d) != 0 {
-            todo_hook!(
-                self.ts.log,
-                "car_remove_lot",
-                "0x4d0fa0: the cargo lot of a removed car (0x4bf450 back to the station, 0x466a60)",
-                "trains.md 6.1"
-            );
-        }
-        self.ts.free(P::Car, c);
-    }
-
     /// `train_delete(train)` (`0x4cdd50`, command `0x1f`): no refund: account 4 and category 6
     /// lose the purchase price `+8` without cash (`0x439930`); the cars, reservations, route
     /// and stops go.
@@ -431,11 +359,100 @@ impl Ai<'_, '_> {
             if c == 0 {
                 break;
             }
-            self.car_remove(t, c);
+            self.ts.car_remove(t, c);
         }
         self.ts.set_reserved_range(t, -1, -1);
         self.ts.s.train_extras.retain(|e| e.slot != t as usize);
         self.ts.free(P::Train, t);
+    }
+
+    /// `train_set_stop_wait(train, stop, mode)` (`0x4d5830`, command `0x1b`): the wait mode
+    /// goes into bits 6..7 of the stop's flags (`+3`).
+    pub fn train_set_stop_wait(&mut self, t: i32, k: i32, mode: i8) {
+        let f = self.ts.stop8(t, k, 3);
+        self.ts
+            .set_stop8(t, k, 3, (f & 0x3f) | ((i32::from(mode) << 6) as u8));
+    }
+
+    /// `train_set_stop_sell(train, stop, mode)` (`0x4d58e0`, command `0x2f`): bits 4..5 of the
+    /// stop's flags; with the option `0x570229` (sandbox) the mode becomes 3.
+    pub fn train_set_stop_sell(&mut self, t: i32, k: i32, mode: u8) {
+        let mut f = ((mode & 3) << 4) | (self.ts.stop8(t, k, 3) & 0xcf);
+        if self.ts.flag_570229 != 0 {
+            f |= 0x30;
+        }
+        self.ts.set_stop8(t, k, 3, f);
+    }
+
+    /// `0x4d4750`: the train is working at a station (stopped in state 2, 3, 4, 6 or 9) or
+    /// has `+0x94` set.
+    fn train_working(&self, t: i32) -> bool {
+        let st = self.ts.u8(P::Train, t, 0x9a);
+        (self.ts.u8(P::Train, t, 0x99) != 0 && matches!(st, 2 | 3 | 4 | 6 | 9))
+            || self.ts.u8(P::Train, t, 0x94) != 0
+    }
+
+    /// Command `0x1c` (`cmd_execute` `0x4b0210`): the cargo of each car of stop `k` (every stop
+    /// with `0xff`); a train working at a station whose current stop changed forgets its
+    /// departure minute and runs `train_arrive` (`0x4d29e0`) again.
+    pub fn train_stop_cargo(&mut self, t: i32, k: i32, cargo: [u8; 6]) {
+        let working = self.train_working(t);
+        let cur = self.ts.cur_stop(t);
+        let before: Vec<u8> = (0..14).map(|o| self.ts.stop8(t, cur, o)).collect();
+        let n = cargo.iter().filter(|&&c| c != 0xff).count() as u8;
+        let stops = if k == 0xff {
+            0..i32::from(self.ts.u8(P::Train, t, 0x3b))
+        } else {
+            k..k + 1
+        };
+        for s in stops {
+            self.ts.set_stop8(t, s, 2, n);
+            for (j, c) in cargo.iter().enumerate() {
+                self.ts.set_stop8(t, s, 4 + j, *c);
+            }
+        }
+        if working {
+            let after: Vec<u8> = (0..14).map(|o| self.ts.stop8(t, cur, o)).collect();
+            if before != after {
+                self.ts.seti32(P::Train, t, 0x71, 0);
+                self.ts.train_arrive(t);
+            }
+        }
+    }
+
+    /// `train_set_class(train, class)` (`0x4d59b0`, command `0x21`): the class goes to `+0xa7`
+    /// and, when the train is fast enough (`+0xdb` above `0x537814`), to `+0xa8` (`+4` when the
+    /// track ahead belongs to the company), else `+0xa8 = 0`. Not for a crashed train
+    /// (`+0xf2`), a broken one (`+0xed`) or one under repair (`+0xbc`).
+    pub fn train_set_class(&mut self, t: i32, class: i8) {
+        let ts = &mut *self.ts;
+        if ts.u8(P::Train, t, 0xf2) != 0
+            || ts.u8(P::Train, t, 0xed) != 0
+            || ts.u8(P::Train, t, 0xbc) != 0
+        {
+            return;
+        }
+        ts.set8(P::Train, t, 0xa7, class as u8);
+        if ts.img.f32(0x0053_7814) < ts.f32(P::Train, t, 0xdb) {
+            ts.set8(P::Train, t, 0xa8, class as u8);
+            let (x, y) = (
+                i32::from(ts.i16(P::Train, t, 0xcb)),
+                i32::from(ts.i16(P::Train, t, 0xcd)),
+            );
+            if x > -1 && ts.u8(P::Train, t, 0x9c) != 0 && class != 0 {
+                let p = ts.tile_track(x, y);
+                let owner = if p == 0 {
+                    0
+                } else {
+                    i32::from(ts.u8(P::Track, p, 2))
+                };
+                if owner == ts.i32(P::Train, t, 0x41) {
+                    ts.set8(P::Train, t, 0xa8, (class as u8).wrapping_add(4));
+                }
+            }
+        } else {
+            ts.set8(P::Train, t, 0xa8, 0);
+        }
     }
 
     /// `train_stop_delete(train, k)` (`0x4d5710` -> `0x4d55d0`, command `0x1e`).
@@ -512,7 +529,7 @@ impl Ai<'_, '_> {
             if c == 0 || self.ts.vt8(self.ts.u8(P::Car, c, 8), 0x2e) > 1 {
                 break;
             }
-            self.car_remove(t, c);
+            self.ts.car_remove(t, c);
         }
         for o in [0xcf, 0xd3, 0xd7] {
             self.ts.setf32(P::Train, t, o, 100.0);
@@ -522,10 +539,10 @@ impl Ai<'_, '_> {
         self.ts.seti32(P::Train, t, 0, 0);
         self.ts.seti32(P::Train, t, 4, 0);
         let vt = self.ts.en8(e, 0x2c);
-        self.vehicle_init(t, vt);
+        self.ts.vehicle_init(t, vt);
         if self.ts.en8(e, 0x2b) != 0 {
             let vt2 = self.ts.en8(e, 0x2d);
-            self.vehicle_init(t, vt2);
+            self.ts.vehicle_init(t, vt2);
         }
         if first != 0 {
             let tail = self.ts.i32(P::Train, t, 4);
@@ -551,5 +568,83 @@ impl Ai<'_, '_> {
             };
         self.ts
             .set8(P::Train, t, 0xbb, if no_wire { b | 8 } else { b & 0xf7 });
+    }
+}
+
+impl Ts<'_> {
+    /// `vehicle_init(car, id, train, type, -1, 0xffff, 0)` (`0x414220`) for a car that is not
+    /// placed on the track: appended to the train's car list.
+    pub(crate) fn vehicle_init(&mut self, t: i32, vt: u8) {
+        let size = self.record_size(P::Car);
+        let c = self.alloc(P::Car, vec![0u8; size]);
+        let kind = self.vt8(vt, 0x2e);
+        let set8 = |ai: &mut Ts<'_>, o: usize, v: u8| ai.set8(P::Car, c, o, v);
+        let set16 = |ai: &mut Ts<'_>, o: usize, v: u16| ai.set16(P::Car, c, o, v);
+        set8(self, 8, vt);
+        set16(self, 6, c as u16);
+        set8(self, 0x47, u8::from(kind > 1));
+        set16(self, 4, t as u16);
+        self.seti32(P::Car, c, 0x41, 0);
+        set8(self, 0x2a, 0);
+        self.seti32(P::Car, c, 0x2d, 0);
+        for o in [0xd, 0xf, 0x48, 0x4a] {
+            set16(self, o, 0xffff);
+        }
+        set16(self, 0x45, 0);
+        self.seti32(P::Car, c, 0x3d, 0);
+        set16(self, 0x4c, 0);
+        set8(self, 0x4e, 0);
+        self.seti32(P::Car, c, 0x39, 0);
+        self.seti32(P::Car, c, 0x34, 0);
+        set16(self, 0x32, 0);
+        let last = self.i32(P::Train, t, 4);
+        set16(self, 0, last as u16);
+        set16(self, 2, 0);
+        // `+0x2b`: the run-time vehicle serial `0x56506c` (not in the save; 0 after a load).
+        let serial = self.g.vehicle_serial;
+        self.g.vehicle_serial = serial.wrapping_add(1);
+        set16(self, 0x2b, serial as u16);
+        set8(self, 0x31, 0);
+        if last == 0 {
+            self.seti32(P::Train, t, 0, c);
+        } else {
+            self.set16(P::Car, last, 2, c as u16);
+        }
+        self.seti32(P::Train, t, 4, c);
+    }
+
+    /// `0x4d0fa0(train, car)` + `0x466df0`: unlinks and frees a car (off its tile first).
+    pub(crate) fn car_remove(&mut self, t: i32, c: i32) {
+        let prev = i32::from(self.i16(P::Car, c, 0));
+        let next = i32::from(self.i16(P::Car, c, 2));
+        if next != 0 {
+            self.set16(P::Car, next, 0, prev as u16);
+        }
+        if prev != 0 {
+            self.set16(P::Car, prev, 2, next as u16);
+        }
+        if self.i32(P::Train, t, 0) == c {
+            self.seti32(P::Train, t, 0, next);
+        }
+        if self.i32(P::Train, t, 4) == c {
+            self.seti32(P::Train, t, 4, prev);
+        }
+        if self.u8(P::Car, c, 0x2a) != 0 {
+            let (x, y) = (
+                i32::from(self.i16(P::Car, c, 9)),
+                i32::from(self.i16(P::Car, c, 0xb)),
+            );
+            crate::tilemark::struct_remove(self.s, x, y, 2, c as u32);
+            self.set8(P::Car, c, 0x2a, 0);
+        }
+        if self.i32(P::Car, c, 0x2d) != 0 {
+            todo_hook!(
+                self.log,
+                "car_remove_lot",
+                "0x4d0fa0: the cargo lot of a removed car (0x4bf450 back to the station, 0x466a60)",
+                "trains.md 6.1"
+            );
+        }
+        self.free(P::Car, c);
     }
 }
