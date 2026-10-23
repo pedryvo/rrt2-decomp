@@ -155,6 +155,8 @@ pub struct Gameplay {
     pub invert_zoom: bool,
     /// Wheel zoom step in percent of the default 15 %.
     pub zoom_speed: u32,
+    /// Play the opening video (`anim\INTRO_01.SMK`) when the game starts.
+    pub intro_video: bool,
 }
 
 impl Default for Gameplay {
@@ -168,6 +170,7 @@ impl Default for Gameplay {
             invert_drag: false,
             invert_zoom: false,
             zoom_speed: 100,
+            intro_video: true,
         }
     }
 }

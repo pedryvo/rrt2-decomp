@@ -68,12 +68,21 @@ pub(super) enum InfoScreen {
     Industries,
     IndustryDetail(u32),
     Territory(u32),
+    /// Company book, Overview tab (`compndtl.win`).
+    Overview(u32),
+    /// Company book, Territories tab with its view mode (0 political, 1 access, 2 goodwill).
+    Territories(u32, u8),
+    /// The full-screen company list (`compnlst.win`).
+    Companies,
 }
 
 impl InfoScreen {
     fn tab(self) -> usize {
         match self {
-            InfoScreen::Finance(_) => 0,
+            InfoScreen::Finance(_)
+            | InfoScreen::Overview(_)
+            | InfoScreen::Territories(..)
+            | InfoScreen::Companies => 0,
             InfoScreen::Stock => 1,
             InfoScreen::Trains | InfoScreen::TrainDetail(_) => 2,
             InfoScreen::Stations | InfoScreen::StationDetail(_) => 3,
@@ -107,6 +116,11 @@ impl InfoScreen {
             "industries" => InfoScreen::Industries,
             "industry" => InfoScreen::IndustryDetail(0),
             "territory" => InfoScreen::Territory(0),
+            "overview" => InfoScreen::Overview(0),
+            "territories" => InfoScreen::Territories(0, 0),
+            "territories-access" => InfoScreen::Territories(0, 1),
+            "territories-goodwill" => InfoScreen::Territories(0, 2),
+            "companies" => InfoScreen::Companies,
             _ => return None,
         })
     }
@@ -387,6 +401,23 @@ impl AppState {
                 };
                 Content::Page(info.finance_page(slot))
             }
+            InfoScreen::Overview(c) => {
+                let slot = if c == 0 {
+                    info.player_company().unwrap_or(0)
+                } else {
+                    c
+                };
+                Content::Page(info.overview_page(slot))
+            }
+            InfoScreen::Territories(c, _) => {
+                let slot = if c == 0 {
+                    info.player_company().unwrap_or(0)
+                } else {
+                    c
+                };
+                Content::Page(info.territories_page(slot))
+            }
+            InfoScreen::Companies => Content::List(info.companies_list()),
             InfoScreen::Stock => Content::List(info.stock_market()),
             InfoScreen::Trains => Content::List(info.trains_list()),
             InfoScreen::TrainDetail(s) => Content::Page(info.train_page(first_if_zero(
@@ -499,6 +530,10 @@ impl AppState {
 
     /// Opens the page for what a map click found.
     pub(super) fn open_pick(&mut self, pick: Pick) {
+        // A left click on an industry: the information box with the Buy button (C3).
+        if let Pick::Industry(s) = pick {
+            return self.bldinfo_industry(s as i32, true);
+        }
         // With a company the construction windows take over: the station window (Buy), the
         // industry window (Buy / Sell) and the territory rights.
         if self.player().is_some() {
@@ -571,8 +606,14 @@ impl AppState {
     }
 
     fn cycle_company(&mut self, dir: i32) {
-        let Some(InfoScreen::Finance(c)) = self.info_screen() else {
-            return;
+        let (c, mk): (u32, fn(u32) -> InfoScreen) = match self.info_screen() {
+            Some(InfoScreen::Finance(c)) => (c, InfoScreen::Finance),
+            Some(InfoScreen::Overview(c)) => (c, InfoScreen::Overview),
+            Some(InfoScreen::Territories(c, m)) => {
+                let _ = m;
+                (c, |c| InfoScreen::Territories(c, 0))
+            }
+            _ => return,
         };
         let slots = self.company_slots();
         if slots.is_empty() {
@@ -582,7 +623,7 @@ impl AppState {
         let i = slots.iter().position(|&s| s == cur).unwrap_or(0) as i32;
         let n = slots.len() as i32;
         let next = slots[(i + dir).rem_euclid(n) as usize];
-        self.open_info(InfoScreen::Finance(next));
+        self.open_info(mk(next));
     }
 
     /// Scrolls a list screen by `rows` (clamped when the screen is rebuilt).
@@ -611,7 +652,7 @@ impl AppState {
             A_NEXT_CO => self.cycle_company(1),
             a if (A_FINACT..A_FINACT + 12).contains(&a) => {
                 let company = match screen {
-                    InfoScreen::Finance(c) => self.resolved_company(c),
+                    InfoScreen::Finance(c) | InfoScreen::Overview(c) => self.resolved_company(c),
                     _ => 0,
                 };
                 return self.fin_book_activated(a, company);
@@ -626,7 +667,9 @@ impl AppState {
                     self.info_row(row);
                 }
             }
-            a => return self.tool_activated(a),
+            a => {
+                return self.book_activated(a, Some(screen)) || self.tool_activated(a);
+            }
         }
         true
     }
@@ -668,6 +711,9 @@ impl AppState {
             return;
         };
         let abs = scroll + row;
+        if let InfoScreen::Territories(c, _) = screen {
+            return self.territory_row(c, row);
+        }
         let Some(Content::List(list)) = self.info_content(screen) else {
             return;
         };
@@ -675,7 +721,7 @@ impl AppState {
             return;
         };
         let next = match screen {
-            InfoScreen::Stock => InfoScreen::Finance(id),
+            InfoScreen::Stock | InfoScreen::Companies => InfoScreen::Finance(id),
             InfoScreen::Trains => InfoScreen::TrainDetail(id),
             InfoScreen::Stations => InfoScreen::StationDetail(id),
             InfoScreen::Cities => InfoScreen::CityDetail(id),
@@ -711,7 +757,11 @@ impl AppState {
             Screen::Game(g) => g.info.map_or(0, |i| i.scroll),
             Screen::Menu(_) => 0,
         };
-        let company_nav = matches!(screen, InfoScreen::Finance(_));
+        let company_nav = matches!(
+            screen,
+            InfoScreen::Finance(_) | InfoScreen::Overview(_) | InfoScreen::Territories(..)
+        );
+        let book = super::companybook::is_book(screen);
         let (cw, ch) = ui.logical_size();
         ui.add_root(
             Kind::Panel {
@@ -824,11 +874,19 @@ impl AppState {
             at(PAD + 6.0 * (tw + gap), 54.0, tw, 28.0),
         );
 
-        let body_y = 90.0;
+        let mut body_y = 90.0;
+        if book {
+            self.draw_book_strip(ui, panel, screen, PAD, body_y - 2.0, inner_w);
+            body_y += 36.0;
+        }
+        if matches!(screen, InfoScreen::Stock) {
+            body_y += self.draw_ticker(ui, panel, PAD, body_y - 2.0, inner_w);
+        }
         let mut bottom = ph - 34.0;
         // The finance buttons of the company book (issue, buy back, dividend, ...).
         let acts = match screen {
             InfoScreen::Finance(c) => self.fin_buttons(self.resolved_company(c)),
+            InfoScreen::Overview(c) => self.overview_buttons(self.resolved_company(c)),
             _ => Vec::new(),
         };
         if !acts.is_empty() {
@@ -904,10 +962,54 @@ impl AppState {
                 bottom,
                 ph,
             ),
+            Content::Page(_) if matches!(screen, InfoScreen::Territories(..)) => {
+                let InfoScreen::Territories(c, mode) = screen else {
+                    return;
+                };
+                let company = self.book_company(c);
+                self.draw_territories(ui, panel, company, mode, PAD, body_y, inner_w, bottom);
+            }
+            Content::Page(page) if matches!(screen, InfoScreen::Overview(_)) => {
+                let InfoScreen::Overview(c) = screen else {
+                    return;
+                };
+                let company = self.book_company(c);
+                let portrait = self
+                    .with_info(|i| i.chairman_portrait(company))
+                    .flatten()
+                    .and_then(|k| self.icons.brand.portraits.get(k).copied().flatten());
+                let off = if portrait.is_some() && inner_w > 700.0 {
+                    186.0
+                } else {
+                    0.0
+                };
+                if let Some(sprite) = portrait.filter(|_| off > 0.0) {
+                    ui.add(
+                        panel,
+                        Kind::Image {
+                            sprite,
+                            fit: rt2_ui::Fit::Contain,
+                        },
+                        at(PAD, body_y, 170.0, 196.0),
+                    );
+                }
+                draw_page(
+                    ui,
+                    panel,
+                    &page,
+                    PAD + off,
+                    body_y,
+                    inner_w - off,
+                    bottom,
+                    pw - off,
+                );
+            }
             Content::Page(page) => draw_page(ui, panel, &page, PAD, body_y, inner_w, bottom, pw),
         }
         let hint = match screen {
-            InfoScreen::Finance(_) => self.texts.a("Left / Right: company   Esc: close"),
+            InfoScreen::Finance(_) | InfoScreen::Overview(_) | InfoScreen::Territories(..) => {
+                self.texts.a("Left / Right: company   Esc: close")
+            }
             InfoScreen::Stock => self
                 .texts
                 .a("* = human chairman   Click a row for the company report   Esc: close"),

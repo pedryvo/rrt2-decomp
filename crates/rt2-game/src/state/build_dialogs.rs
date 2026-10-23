@@ -794,23 +794,19 @@ impl AppState {
                 font: f,
                 action: A_TE_STOPS,
             },
-            at(cx, top + 14.0 * dz, cw, body_h * 0.62),
+            at(cx, top + 14.0 * dz, cw, body_h * 0.5),
         );
-        // Wait modes, as the original words them, for the selected stop.
-        if let Some(s) = stops.get(sel) {
-            let msg = t.get(1114 + u32::from(s.wait.min(2)), "");
-            ui.add(
-                root,
-                Kind::Label {
-                    text: msg,
-                    font: fnt(8, dz * 0.55),
-                    color: MUTED,
-                    align: Align::Left,
-                    wrap: true,
-                },
-                at(cx, top + 18.0 * dz + body_h * 0.62, cw, body_h * 0.34),
-            );
-        }
+        // The instrument panel and the stop controls (`train_panel.rs`).
+        self.draw_train_panel(
+            ui,
+            root,
+            cx,
+            top + 18.0 * dz + body_h * 0.5,
+            cw,
+            dz,
+            train,
+            sel,
+        );
         // Column 3: the station chooser and the buttons.
         let rx = cx + cw + pad;
         let rw = w - rx - pad;
@@ -1442,7 +1438,7 @@ impl AppState {
         }
     }
 
-    fn trade_industry(&mut self, building: i32, buy: bool) {
+    pub(super) fn trade_industry(&mut self, building: i32, buy: bool) {
         let Some((co, price, cash, rights_ok)) = self.with_game(|s, data, co| {
             let terr = bt::rec(&s.objects, building).map_or(0, |b| i32::from(b.u8(0x9d)));
             (
@@ -1610,6 +1606,27 @@ impl AppState {
                     pick: 0,
                     confirm: false,
                 },
+                "car-list" => {
+                    let train = *bt::company_trains(s, co).first()?;
+                    Dialog::CarList {
+                        train,
+                        stop: 0,
+                        cargo: bt::train_stops(s, train).first()?.cargo.clone(),
+                    }
+                }
+                "brand" => {
+                    let r = bt::rec(&s.companies, co)?;
+                    Dialog::Brand {
+                        company: co,
+                        name: (4..0x23)
+                            .map(|i| r.u8(i))
+                            .take_while(|&b| b != 0)
+                            .map(|b| b as char)
+                            .collect(),
+                        logo: r.u8(0x2b).min(40),
+                        error: None,
+                    }
+                }
                 "industry" => Dialog::Industry {
                     building: s
                         .objects

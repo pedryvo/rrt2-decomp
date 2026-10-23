@@ -55,6 +55,7 @@ impl Tab {
                 Setting::InvertDrag,
                 Setting::InvertZoom,
                 Setting::ZoomSpeed,
+                Setting::IntroVideo,
             ],
             Tab::Language | Tab::Keys => &[],
         }
@@ -81,10 +82,11 @@ pub enum Setting {
     InvertDrag,
     InvertZoom,
     ZoomSpeed,
+    IntroVideo,
 }
 
 impl Setting {
-    pub const ALL: [Setting; 18] = [
+    pub const ALL: [Setting; 19] = [
         Setting::WindowMode,
         Setting::Resolution,
         Setting::Monitor,
@@ -103,6 +105,7 @@ impl Setting {
         Setting::InvertDrag,
         Setting::InvertZoom,
         Setting::ZoomSpeed,
+        Setting::IntroVideo,
     ];
 
     pub fn index(self) -> u32 {
@@ -133,6 +136,7 @@ impl Setting {
             Setting::InvertDrag => "Reverse mouse dragging",
             Setting::InvertZoom => "Reverse wheel zoom",
             Setting::ZoomSpeed => "Wheel zoom speed",
+            Setting::IntroVideo => "Play the intro video",
         }
     }
 }
@@ -349,6 +353,7 @@ fn row(s: Setting, c: &Config, env: &Env, t: &Texts) -> Row {
         ),
         Setting::InvertDrag => toggle(s, label, g.invert_drag),
         Setting::InvertZoom => toggle(s, label, g.invert_zoom),
+        Setting::IntroVideo => toggle(s, label, g.intro_video),
         Setting::ZoomSpeed => slider(
             s,
             label,
@@ -491,6 +496,11 @@ pub fn apply(c: &mut Config, s: Setting, change: Change, env: &Env) -> Effects {
         Setting::InvertZoom => {
             if change == Change::Toggle {
                 g.invert_zoom = !g.invert_zoom;
+            }
+        }
+        Setting::IntroVideo => {
+            if change == Change::Toggle {
+                g.intro_video = !g.intro_video;
             }
         }
         Setting::ZoomSpeed => {

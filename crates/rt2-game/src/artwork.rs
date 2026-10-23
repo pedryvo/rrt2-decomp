@@ -4,6 +4,8 @@
 
 use rt2_render::assets::{GameAssets, LoadedBank, RgbaImage};
 use rt2_render::atlas::scale2x;
+pub mod brand;
+
 use rt2_ui::{NineSlice, Skin, SkinBuilder, SkinImage, SpriteId, Theme};
 
 /// `setup.imb` record 0: the 1024x768 title backdrop of `setup.win`.
@@ -28,6 +30,8 @@ const ICON_RECORDS: [usize; 13] = [0, 2, 4, 6, 8, 20, 22, 24, 32, 34, 36, 38, 42
 #[derive(Clone, Debug, Default)]
 pub struct Icons {
     map: std::collections::BTreeMap<usize, (SpriteId, SpriteId)>,
+    /// Company logos and chairman portraits (`artwork/brand.rs`).
+    pub brand: brand::BrandArt,
 }
 
 impl Icons {
@@ -61,7 +65,16 @@ pub struct DialogArt {
     pub station_view: Option<SpriteId>,
     /// The editor tool panels (`bp*.imb`).
     pub editor: EditorArt,
+    /// `credits.imb` 0 and `hiscore.imb` 0: the 1024x768 photographs behind Credits and High
+    /// Scores (`credits.win`, `hiscore.win`).
+    pub credits_bg: Option<SpriteId>,
+    pub hiscore_bg: Option<SpriteId>,
+    /// A blank `VIDEO_FRAME` sprite the video player fills with decoded frames.
+    pub video_frame: Option<SpriteId>,
 }
+
+/// Size of the video frame sprite (clips are scaled into it).
+pub const VIDEO_FRAME: (u32, u32) = (640, 480);
 
 /// Names of the editor tool panels, in [`EditorArt::panels`] order: height, paint, fill, add
 /// trees, cut trees, territories, add buildings, bulldoze, overview (`bp*.win`, docs/ui.md).
@@ -208,6 +221,7 @@ pub fn load(assets: &GameAssets) -> Artwork {
             );
         }
     }
+    icons.brand = brand::load(assets, &mut b);
     let mut add = |bank: &str, rec: usize| -> Option<SpriteId> {
         ui_record(assets, bank, rec).map(|i| b.add(to_skin_image(&i, 1)))
     };
@@ -239,6 +253,9 @@ pub fn load(assets: &GameAssets) -> Artwork {
         medal_silver: add("winlose.imb", 2),
         station_view: None,
         editor: EditorArt::default(),
+        credits_bg: None,
+        hiscore_bg: None,
+        video_frame: None,
     };
     let mut dialogs = dialogs;
     for (i, name) in EDITOR_PANELS.iter().enumerate() {
@@ -269,6 +286,17 @@ pub fn load(assets: &GameAssets) -> Artwork {
                 .and_then(|c| c.image_record())
         });
     dialogs.editor.misc = misc.and_then(|r| add("bpmisc.imb", usize::from(r)));
+    // Photographs: no pixel-art upscale, like the title backdrop.
+    for (slot, bank) in [
+        (&mut dialogs.credits_bg, "credits.imb"),
+        (&mut dialogs.hiscore_bg, "hiscore.imb"),
+    ] {
+        *slot = record(assets, bank, 0).map(|mut i| {
+            solidify(&mut i);
+            b.add(to_skin_image(&i, 1))
+        });
+    }
+    dialogs.video_frame = Some(b.reserve(VIDEO_FRAME.0, VIDEO_FRAME.1));
     if assets.contains("sdmbkg1.imb") {
         dialogs.station_view =
             Some(b.reserve(crate::stationview::VIEW_W, crate::stationview::VIEW_H));

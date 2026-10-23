@@ -226,6 +226,8 @@ impl ApplicationHandler for App {
                 // The real game: choices wait for the player, autosaves are written.
                 state.set_interactive_choices(true);
                 state.set_persistence(true);
+                // Clips of the original (intro, end of a scenario) play in the real game only.
+                state.set_videos(true);
                 // Each real game gets its own seed (the original seeds from the clock); the
                 // simulation never sees the clock, only this number.
                 state.set_seed(
@@ -239,12 +241,14 @@ impl ApplicationHandler for App {
                         state.invalid_keys()
                     );
                 }
-                if let Some(path) = self.open.take()
-                    && let Err(e) = state.start(&path)
-                {
-                    self.error = Some(format!("{e:#}"));
-                    event_loop.exit();
-                    return;
+                if let Some(path) = self.open.take() {
+                    if let Err(e) = state.start(&path) {
+                        self.error = Some(format!("{e:#}"));
+                        event_loop.exit();
+                        return;
+                    }
+                } else {
+                    state.play_intro();
                 }
                 self.state = Some(state);
                 self.surface = Some(s);

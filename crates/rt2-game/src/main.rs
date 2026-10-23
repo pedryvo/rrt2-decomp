@@ -11,14 +11,17 @@ mod app;
 mod app_strings;
 mod artwork;
 mod buildtools;
+mod campaign;
 mod catalog;
 mod config;
 mod founding;
 mod gfx;
+mod hiscore;
 mod info;
 mod keys;
 mod locales;
 mod options;
+mod overview;
 mod paths;
 mod pick;
 mod radar;
@@ -81,6 +84,14 @@ struct Args {
     /// the click-to-inspect pages
     #[arg(long, value_parser = parse_point)]
     click: Option<(f32, f32)>,
+    /// With `--screen game`: right-click the map at this physical pixel (X,Y), which opens the
+    /// building or terrain box
+    #[arg(long, value_parser = parse_point)]
+    right_click: Option<(f32, f32)>,
+    /// With `--screen game`: open the Map Overview on a layer (`resource`, `resource:all`,
+    /// `resource:3,5` with cargo ids, `stations`, `grade`, `traffic`, `company`)
+    #[arg(long)]
+    overview: Option<String>,
     /// Screenshot size in pixels, WIDTHxHEIGHT
     #[arg(long, default_value = "1920x1080", value_parser = parse_size)]
     size: (u32, u32),
@@ -345,10 +356,21 @@ fn screenshot(init: Init, skin: rt2_ui::Skin, args: &Args, out: &std::path::Path
             if args.apply {
                 state.apply_tool();
             }
+            if let Some(spec) = &args.overview
+                && !state.show_overview(spec)
+            {
+                bail!("cannot open the overview {spec:?} (unknown layer, or no game)");
+            }
             if let Some((x, y)) = args.click {
                 state.cursor_moved(x, y);
                 state.mouse_button(true, true);
                 state.mouse_button(true, false);
+                state.update(0.0);
+            }
+            if let Some((x, y)) = args.right_click {
+                state.cursor_moved(x, y);
+                state.mouse_button(false, true);
+                state.mouse_button(false, false);
                 state.update(0.0);
             }
         }

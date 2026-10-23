@@ -30,7 +30,7 @@ pub(super) const A_OPT_INC: u32 = 8300;
 pub(super) const A_OPT_BAR: u32 = 8400;
 /// `A_OPT_PICK + setting * 16 + option`.
 pub(super) const A_OPT_PICK: u32 = 8500;
-pub(super) const A_OPT_LANG: u32 = 8800;
+pub(super) const A_OPT_LANG: u32 = 8820;
 pub(super) const A_OPT_KEYLIST: u32 = 8900;
 pub(super) const A_OPT_REBIND: u32 = 8901;
 pub(super) const A_OPT_ADDKEY: u32 = 8902;

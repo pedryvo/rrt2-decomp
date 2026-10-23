@@ -16,6 +16,9 @@ use rt2_sim::finance::{self, Bond, Ctx};
 
 use crate::text::Texts;
 
+mod groupb;
+pub use groupb::TerritoryRow;
+
 // ---- text tables ------------------------------------------------------------------------------
 
 #[derive(Clone, Debug, PartialEq)]

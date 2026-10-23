@@ -19,6 +19,7 @@
 
 use rt2_ui::{Align, Anchor, Color, Fill, Fit, FontStyle, Kind, Layout, NodeId, Ui, game_font};
 
+pub(super) mod brand;
 pub(super) mod fin;
 
 use super::info_ui;
@@ -77,6 +78,11 @@ pub(super) enum Act {
     Choice {
         id: u32,
         button: u8,
+    },
+    /// The Buy / Sell button of a building's information box (`bldinfo.rs`).
+    Trade {
+        building: i32,
+        buy: bool,
     },
 }
 
@@ -149,6 +155,19 @@ pub(super) enum Dialog {
     },
     /// A financial action of the player (`fin.rs`).
     Fin(fin::FinDlg),
+    /// The car list of a stop (`train_panel.rs`, screens.md E4).
+    CarList {
+        train: i32,
+        stop: usize,
+        cargo: Vec<u8>,
+    },
+    /// Change Company Name/Logo (`brand.rs`, screens.md G12).
+    Brand {
+        company: i32,
+        name: String,
+        logo: u8,
+        error: Option<String>,
+    },
 }
 
 fn at(x: f32, y: f32, w: f32, h: f32) -> Layout {
@@ -598,6 +617,12 @@ impl AppState {
                 Outcome::Gold => Medal::Gold,
                 Outcome::Lose => Medal::Loss,
             };
+            match o {
+                Outcome::Bronze => self.record_campaign_medal(crate::campaign::BRONZE),
+                Outcome::Silver => self.record_campaign_medal(crate::campaign::SILVER),
+                Outcome::Gold => self.record_campaign_medal(crate::campaign::GOLD),
+                Outcome::Lose => {}
+            }
             let mut text = over_text;
             if text.is_empty() && other_won {
                 text = self.texts.get(0xa83, "Another player has won the game.");
@@ -605,6 +630,7 @@ impl AppState {
             if let Screen::Game(g) = &mut self.screen {
                 g.over_shown = true;
             }
+            self.game_over_hook(medal);
             // The plaque goes on top of everything: the game is over.
             dialogs.insert(0, Dialog::GameOver { medal, text });
         }
@@ -694,6 +720,10 @@ impl AppState {
                         self.close_dialog();
                         self.answer_choice(id, button);
                     }
+                    Some(Act::Trade { building, buy }) => {
+                        self.close_dialog();
+                        self.trade_industry(building, buy);
+                    }
                     None => {}
                 }
             }
@@ -712,6 +742,10 @@ impl AppState {
             }
             a if (fin::A_FIN_OK..=fin::A_FIN_SHORT).contains(&a) => {
                 self.fin_activated(a);
+            }
+            a if brand::owns(a) => self.brand_activated(a),
+            a if super::train_panel::owns(a) => {
+                self.train_panel_activated(a);
             }
             A_FILE_LOAD => self.file_load(),
             A_FILE_SAVE => {
@@ -865,6 +899,9 @@ impl AppState {
     /// most 30 bytes, the packet's field), Backspace deletes, Enter confirms. True when the key
     /// was consumed.
     pub(super) fn founding_key(&mut self, code: KeyCode, text: Option<&str>) -> bool {
+        if self.brand_key(code, text) {
+            return true;
+        }
         let Screen::Game(g) = &mut self.screen else {
             return false;
         };
@@ -958,6 +995,10 @@ impl AppState {
             } => self.build_newspaper(ui, &headline, &sub, &body),
             Dialog::GameOver { medal, text } => self.build_game_over(ui, medal, &text),
             Dialog::Fin(d) => self.build_fin(ui, &d),
+            Dialog::CarList { train, stop, cargo } => self.build_car_list(ui, train, stop, &cargo),
+            Dialog::Brand {
+                name, logo, error, ..
+            } => self.build_brand(ui, &name, logo, error.as_deref()),
         }
     }
 

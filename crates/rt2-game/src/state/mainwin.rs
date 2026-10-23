@@ -409,7 +409,10 @@ impl AppState {
         );
         let mut center_node = None;
         let mut date_cash: Option<(NodeId, NodeId)> = None;
-        if self.tool_active() {
+        if self.overview_open() {
+            // Map Overview (`bpovervw.win`): the layer list takes the place of the list box.
+            self.build_overview_panel(ui, cbox, center_w, center_h, dz, &mut tips);
+        } else if self.tool_active() {
             // A construction tool's palette takes the place of the list (`bp*.win`).
             self.build_tool_panel(ui, cbox, center_w, center_h, dz, &mut tips);
         } else {
@@ -727,7 +730,7 @@ impl AppState {
     fn camera_op(&mut self, f: impl FnOnce(&mut rt2_render::Camera)) {
         if let Screen::Game(g) = &mut self.screen {
             f(&mut g.camera);
-            if g.build.tool.is_some() {
+            if g.build.tool.is_some() || self.ga.overview.open {
                 self.rebuild_ui();
             }
         }
@@ -735,10 +738,13 @@ impl AppState {
 
     fn tool_clicked(&mut self, i: usize) {
         if let Some(kind) = super::build_ui::ToolKind::from_icon(i) {
+            // Pressing a construction mode leaves the overview.
+            self.ga.overview.open = false;
             self.select_tool(kind);
             return;
         }
         match i {
+            3 => self.overview_toggle(),
             4 => self.open_train_buy(),
             5 => self.toggle_tab(1),
             7 => self.push_dialog(Dialog::FileOptions),

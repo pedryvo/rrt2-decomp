@@ -146,7 +146,7 @@ fn mz(ch: f32) -> f32 {
     (ch / 600.0).clamp(0.85, 1.8)
 }
 
-fn mfont(n: u8, z: f32) -> FontStyle {
+pub(super) fn mfont(n: u8, z: f32) -> FontStyle {
     let f = game_font(n);
     f.with_size((f.size * z).round().max(10.0))
 }
@@ -270,6 +270,8 @@ impl AppState {
             Page::LoadGame | Page::LoadCampaign => {
                 entries = catalog::list_saves(&self.install, own.as_deref());
             }
+            Page::Scores => self.hiscores_reload(),
+            Page::Credits => self.credits_reset(),
             _ => {}
         }
         self.screen = Screen::Menu(super::MenuState {
@@ -597,9 +599,8 @@ impl AppState {
             Page::LoadGame | Page::LoadCampaign => {
                 self.build_load(ui, layer, cw, ch, z, logo_bottom, page)
             }
-            Page::Scores | Page::Credits => {
-                self.build_soon(ui, layer, cw, ch, z, logo_bottom, page)
-            }
+            Page::Scores => self.build_hiscores(ui, layer, cw, ch, z),
+            Page::Credits => self.build_credits(ui, layer, cw, ch, z),
         }
         self.menu_handles.tips = tips;
     }
@@ -1470,6 +1471,7 @@ impl AppState {
         }
         // The scenarios.
         let ly = pad + 2.0 * rowh + 16.0 * z;
+        let progress = self.campaign_progress();
         let items: Vec<String> = entries
             .iter()
             .enumerate()
@@ -1481,7 +1483,11 @@ impl AppState {
                 } else {
                     e.title.clone()
                 };
-                format!("{:>2}. {name}", i + 1)
+                format!(
+                    "{:>2}. {name}{}",
+                    i + 1,
+                    self.campaign_medal_text(&progress, camp.set, i)
+                )
             })
             .collect();
         let list = ui.add(
@@ -1606,6 +1612,22 @@ impl AppState {
                 at(rx, by + 24.0 * z, rw, 40.0 * z),
             );
         }
+        // The medals held in this campaign (`campaign.rs`).
+        let (g, sv, br) = progress.counts(camp.set);
+        ui.add(
+            p,
+            Kind::Label {
+                text: t.af(
+                    "Medals: %1 gold, %2 silver, %3 bronze",
+                    &[g.to_string(), sv.to_string(), br.to_string()],
+                ),
+                font: mfont(1, z * 0.7),
+                color: MUTED,
+                align: Align::Left,
+                wrap: false,
+            },
+            at(rx, h - pad - rowh - 26.0 * z, rw, 22.0 * z),
+        );
         // Play / Back.
         let row = ui.add(
             p,
@@ -1759,65 +1781,6 @@ impl AppState {
             row,
             button(&t.get(lng::CANCEL, "Cancel"), f, super::A_BACK, Some('c')),
             Layout::at(Anchor::Left, 130.0 * z, rowh),
-        );
-    }
-
-    /// High Scores and Credits: not built yet.
-    #[allow(clippy::too_many_arguments)]
-    fn build_soon(
-        &self,
-        ui: &mut Ui,
-        layer: NodeId,
-        cw: f32,
-        ch: f32,
-        z: f32,
-        logo_bottom: f32,
-        page: Page,
-    ) {
-        let t = &self.texts;
-        let (_, y, w, h) = Self::dialog_rect(cw, ch, z, logo_bottom, 520.0 * z, 220.0 * z, false);
-        let x = (cw - w) / 2.0;
-        let p = ui.add(layer, Kind::Panel { fill: Fill::Panel }, at(x, y, w, h));
-        let (title, tip) = match page {
-            Page::Scores => (
-                t.get(1680, "High Scores"),
-                t.a("TODO: the high scores list is not built yet."),
-            ),
-            _ => (
-                t.get(1682, "Credits"),
-                t.a("TODO: the credits are not built yet."),
-            ),
-        };
-        ui.add(
-            p,
-            label(
-                &title,
-                mfont(3, z * 0.8).with_shadow(),
-                CREAM,
-                Align::Center,
-            ),
-            at(20.0 * z, 24.0 * z, w - 40.0 * z, 36.0 * z),
-        );
-        ui.add(
-            p,
-            Kind::Label {
-                text: tip,
-                font: mfont(1, z * 0.8),
-                color: MUTED,
-                align: Align::Center,
-                wrap: true,
-            },
-            at(30.0 * z, 80.0 * z, w - 60.0 * z, 60.0 * z),
-        );
-        ui.add(
-            p,
-            button(
-                &t.get(lng::CANCEL, "Cancel"),
-                mfont(1, z),
-                super::A_BACK,
-                Some('c'),
-            ),
-            Layout::at(Anchor::Bottom, 130.0 * z, 34.0 * z).offset(0.0, 20.0 * z),
         );
     }
 

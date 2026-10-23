@@ -11,6 +11,19 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Fix: a tab of the Options screen with more rows than fit (300% scale on 1080p) scrolls with buttons and the wheel.
 - Fix: save times in the Save and Load dialogs are shown in the local time zone.
 - RE: Map Options page builders 0x480740, 0x4855e0, 0x485230 and 0x486d70 decoded (byte maps in docs/formats/map-gam.md 10.8..10.11); the per-type record at header +0x8793 byte 0 means "disabled by the scenario".
+- Feature: Credits screen with the original photograph and the scrolling text of credits2.lng
+- Feature: High Scores screen with our own table in ~/.local/share/rrt2/hiscore.dat; a won scenario adds a row
+- Feature: Map Overview (globe icon) with the five layers: Resource Map, Station Statuses, Track Grade, Traffic Density, Track by Company
+- Feature: left click on an industry opens the original-style information box (ownership, profitability, price, supplies and demands, Buy/Sell); right click shows the same without Buy, or the terrain box (terrain, territory, access rights, X,Y)
+- Feature: the intro video and the scenario win/lose clips play full screen (decoded with ffmpeg, skippable with a key or a click); new Gameplay option "Play the intro video"
+- Change: the Options language list ids moved to 8820 to make room for a 19th setting
+- Docs: screens A8, A9, A10, C3 to C6 updated in docs/reference/screens.md; docs/ui.md section for the map and general screens
+- Feature: company book Overview tab with chairman portrait, chairman and manager pay, bonus and operation figures, plus a section strip (Overview, Finances, Territories, Companies)
+- Feature: Territories tab with Political, Access Rights and Goodwill map views and a clickable table that opens the rights window
+- Feature: full-screen company list (compnlst) and the Change Company Name/Logo dialog with the 41 railroad logos (applying needs command 0x27 in rt2-sim)
+- Feature: train detail instrument panel (oil, sand, water, throttle gauges), stop controls for next stop, wait, sell mode and class, and the per-stop car list
+- Feature: stock ticker band on the Market screen
+- Feature: campaign medals are saved per scenario and shown on the campaign board
 
 ## v0.3.0 — 2026-10-23
 - Fix: Lay Track drag now starts and ends on a station when pressed on its building (snap to the station's tile), so dragging from one station to another works as in the original

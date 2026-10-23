@@ -344,6 +344,7 @@ impl AppState {
             build: super::build_ui::BuildState::default(),
             last_autosave: (year, month),
             editor: Some(Box::new(ed)),
+            campaign: None,
         }));
         self.rebuild_ui();
         Ok(())

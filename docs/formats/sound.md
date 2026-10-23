@@ -205,4 +205,4 @@ No clone: `rt2_audio::video::ensure_converted` converte com o `ffmpeg` da linha 
 - Fórmula do volume em centibels (`0x4ed320`) e da distância ao centro da vista (`0x49b610`, `0x4f0ca0`): só os argumentos float se perderam na decompilação.
 - Quando as categorias de música 2 e 3 (e o loop de `Chi-town Blues` / `When am I goin' Home`) são pedidas: nenhum chamador de `0x4f6130` passa 2 ou 3 nas funções lidas.
 - Quem escolhe os ids vindos de campos de controle (`.win`): os ids de `swtch`, `adds2`, `noteb`, `whtab`, `ANNCL`, `LOCK*` por controle não foram seguidos até o layout.
-- Significado dos 5 bytes de flags de `video_table` e qual tela dispara cada vídeo além de `intro_01`, `scenwin`/`scenlose`.
+- Significado dos 5 bytes de flags de `video_table` e qual tela dispara cada vídeo além de `intro_01`, `scenwin`/`scenlose` (os que o clone toca em jogo, `docs/ui.md` "grupo A"; as janelas da Activity Box e os clipes de campanha ficam sem gatilho). Observação dos arquivos: nem todo clipe é 640x480 (`CV*` 640x240 a ~9 fps com a altura dobrada, `scenwin` 320x240, `br_*` 236x216, `ca*` só áudio com figura de 4x4); `ffprobe` dá as dimensões.

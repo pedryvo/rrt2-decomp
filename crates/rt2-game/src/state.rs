@@ -29,19 +29,29 @@ use crate::paths;
 use crate::sound::{Cue, MusicRequester};
 use crate::text::Texts;
 
+mod bldinfo;
 mod build_dialogs;
 mod build_ui;
+mod campaign;
+mod companybook;
+mod credits;
 mod dialogs;
 mod editor_modals;
 mod editor_options_ui;
 mod editor_panel;
 mod editor_ui;
+mod groupa;
+mod hiscores;
 mod info_ui;
 mod mainwin;
 mod maplabels;
 mod menus;
 mod options_ui;
+mod overview;
 mod saves_ui;
+mod ticker;
+mod train_panel;
+mod video;
 use dialogs::Dialog;
 use info_ui::InfoState;
 use mainwin::{CenterState, MainIds, NewsItem};
@@ -152,6 +162,8 @@ struct GameState {
     last_autosave: (u16, u8),
     /// The map and scenario editor, when this game is the editor (`editor_ui.rs`).
     editor: Option<Box<editor_ui::EditorState>>,
+    /// `(campaign set, scenario index)` when this game is a campaign scenario (medals).
+    campaign: Option<(usize, usize)>,
 }
 
 /// Hash of the parts of the save the static layers are built from: building type and tile,
@@ -259,6 +271,8 @@ pub struct AppState {
     /// Autosaves and other writes the player did not ask for in this very moment; off until the
     /// window loop enables them, so tests and screenshots never write into the user's folders.
     persist: bool,
+    /// State of the Credits, High Scores, Map Overview, video and right-click screens.
+    ga: groupa::GroupA,
     /// Scenario Choice messages wait for the player (the window loop turns this on); off, they
     /// are answered with button 0 at once like a headless run.
     interactive_choices: bool,
@@ -344,6 +358,7 @@ impl AppState {
             dpi: 1.0,
             saves_dir: paths::saves_dir(),
             persist: false,
+            ga: Default::default(),
             interactive_choices: false,
         };
         s.rebuild_ui();
@@ -437,6 +452,10 @@ impl AppState {
     /// Audio triggers since the last call: the music category of the current screen (menu and
     /// its sub-screens 0, game 1; `sound.md` 2.2) first, then UI sounds in order.
     pub fn take_cues(&mut self) -> Vec<Cue> {
+        if self.video_active() {
+            // The clip has its own sound: music requests wait until it ends.
+            return std::mem::take(&mut self.cues);
+        }
         let music = match self.screen {
             Screen::Menu(_) => self.music.menu(),
             Screen::Game(_) => self.music.game(),
@@ -526,7 +545,7 @@ impl AppState {
                 1.0
             };
             g.camera.drag(k * (x - px), k * (y - py));
-            if g.build.tool.is_some() {
+            if g.build.tool.is_some() || self.ga.overview.open {
                 // The tool's overlay follows the map.
                 self.cursor = Some((x, y));
                 self.rebuild_ui();
@@ -537,6 +556,7 @@ impl AppState {
         self.handle_events(ev);
         self.tool_hover((x, y));
         self.editor_hover((x, y));
+        self.overview_hover();
         self.update_status();
     }
 
@@ -547,6 +567,9 @@ impl AppState {
     }
 
     pub fn mouse_button(&mut self, left: bool, pressed: bool) {
+        if pressed && self.video_skip() {
+            return;
+        }
         let b = if left {
             MouseButton::Left
         } else {
@@ -571,6 +594,8 @@ impl AppState {
             if !left && self.tool_active() {
                 self.cancel_tool_drag();
             }
+            // A right click on the map (no drag) opens the information box of what is there.
+            self.ga.right_press = (!left && self.drag).then_some(self.cursor).flatten();
             if left && self.ui.over_ui() {
                 // sound.md 1.3 id 2: button pressed (ButtonDown, 0x50cc60).
                 self.cues.push(Cue::Event(Event::ButtonDown));
@@ -584,6 +609,9 @@ impl AppState {
             if left && let Some(p) = self.press.take() {
                 self.map_click(p);
             }
+            if !left && let Some(p) = self.ga.right_press.take() {
+                self.map_right_click(p);
+            }
         }
         self.via_mouse = true;
         self.handle_events(ev);
@@ -592,6 +620,10 @@ impl AppState {
 
     pub fn wheel(&mut self, notches: f32) {
         self.ui.input(Input::Wheel(notches));
+        if self.credits_open() {
+            self.credits_scroll(-notches * 60.0);
+            return;
+        }
         if matches!(self.overlay, Some(Overlay::Options(_))) {
             // The rows of a settings tab that does not fit scroll (a list handles its own).
             if self
@@ -625,7 +657,7 @@ impl AppState {
             let step = 1.0 + (ZOOM_STEP - 1.0) * p.zoom_speed as f32 / 100.0;
             let dir = if p.invert_zoom { -1.0 } else { 1.0 };
             g.camera.zoom_by(step.powf(dir * notches));
-            if g.build.tool.is_some() {
+            if g.build.tool.is_some() || self.ga.overview.open {
                 self.rebuild_ui();
             }
         }
@@ -647,6 +679,10 @@ impl AppState {
             return;
         }
         self.keys_down.insert(code);
+        // Any key skips a playing video.
+        if self.video_skip() {
+            return;
+        }
         // The Options screen and the Save / Load dialogs take every key (rebinding must see F11
         // and the like as plain keys).
         if self.options_open() {
@@ -717,6 +753,9 @@ impl AppState {
                 }
             }
             Screen::Menu(_) => {
+                if self.credits_key(code) {
+                    return;
+                }
                 let k = match code {
                     KeyCode::Tab => Some(if self.shift { Key::BackTab } else { Key::Tab }),
                     KeyCode::Enter | KeyCode::NumpadEnter => Some(Key::Enter),
@@ -775,6 +814,9 @@ impl AppState {
             Screen::Menu(_) => None,
         };
         if !ctrl && code == KeyCode::Escape && !self.has_dialog() && self.cancel_tool() {
+            return;
+        }
+        if !ctrl && code == KeyCode::Escape && !self.has_dialog() && self.overview_cancel() {
             return;
         }
         if !ctrl && self.mainwin_key(code) {
@@ -870,6 +912,7 @@ impl AppState {
     /// time since the last call (the only place wall time enters; the simulation itself only
     /// sees whole nominal frames).
     pub fn update(&mut self, dt_ms: f32) {
+        self.ga_tick(dt_ms);
         let held = |bind: &crate::keys::Binding, keys: &BTreeSet<KeyCode>| bind.held(keys);
         let (b, keys) = (&self.binds, &self.keys_down);
         let axis = |neg: &crate::keys::Binding, pos: &crate::keys::Binding| {
@@ -897,7 +940,7 @@ impl AppState {
         {
             let k = PAN_SPEED * pan_pct * dt_ms / 1000.0;
             g.camera.pan(dx * k, dy * k);
-            overlay_stale = g.build.tool.is_some();
+            overlay_stale = g.build.tool.is_some() || self.ga.overview.open;
         }
         // Dialogs and the information screens hold the simulation (the original's "keep the
         // game running in dialogs" option defaults to off for modal windows); so do the Options
@@ -964,6 +1007,7 @@ impl AppState {
         self.mainwin_refresh();
         self.center_refresh();
         self.info_refresh();
+        self.ticker_advance(dt_ms);
     }
 
     // ---- screens --------------------------------------------------------------------------
@@ -981,8 +1025,10 @@ impl AppState {
                         self.options_event(&UiEvent::Pointer(a, fx, fy));
                     } else if a == mainwin::A_RADAR {
                         self.radar_pointer(fx, fy);
-                    } else if self.via_mouse && self.build_pointer(a, fx, fy) {
-                    } else {
+                    } else if !self.book_pointer(a, fx, fy)
+                        && !(self.via_mouse && self.build_pointer(a, fx, fy))
+                    {
+                        // Neither the company book nor a build tool took the pointer.
                         self.dialog_pointer(a, fx);
                     }
                 }
@@ -1035,7 +1081,8 @@ impl AppState {
             return;
         }
         if self.in_game() {
-            if self.dialog_activated(action)
+            if self.overview_activated(action)
+                || self.dialog_activated(action)
                 || self.build_dialog_activated(action)
                 || self.build_activated(action)
                 || self.mainwin_activated(action)
@@ -1124,6 +1171,20 @@ impl AppState {
             "load" => self.open_page(Page::LoadGame),
             "scores" => self.open_page(Page::Scores),
             "credits" => self.open_page(Page::Credits),
+            // Screenshots of the roll and of a clip: `credits@NNN` (design pixels scrolled),
+            // `video:NAME[@ms]`.
+            n if n.starts_with("credits@") => {
+                self.open_page(Page::Credits);
+                self.ga.credits.scroll = n[8..].parse().unwrap_or(0.0);
+                self.rebuild_ui();
+            }
+            n if n.starts_with("video:") => {
+                let (clip, ms) = n[6..].split_once('@').unwrap_or((&n[6..], "0"));
+                if !self.play_video(clip) {
+                    return false;
+                }
+                self.video_wait(ms.parse().unwrap_or(0.0));
+            }
             _ => return false,
         }
         true
@@ -1268,6 +1329,10 @@ impl AppState {
             build: build_ui::BuildState::default(),
             last_autosave: (last_year, world_month),
             editor: None,
+            campaign: match &mode {
+                StartMode::Campaign(_, c) => Some((c.set, c.index)),
+                _ => None,
+            },
         }));
         // Scenario choices wait for the player in the real game; headless they answer button 0.
         if let Screen::Game(g) = &mut self.screen {
@@ -1323,12 +1388,14 @@ impl AppState {
             Screen::Game(_) => {
                 self.build_map_labels(&mut ui);
                 self.build_overlay(&mut ui);
+                self.build_overview_overlay(&mut ui);
                 self.build_mainwin(&mut ui);
                 self.build_info(&mut ui);
                 self.build_dialogs(&mut ui);
             }
         }
         self.build_overlay_screen(&mut ui);
+        self.build_video(&mut ui);
         ui.layout(self.viewport);
         self.ui = ui;
         if let Some((x, y)) = self.cursor {
@@ -1485,6 +1552,10 @@ mod editor_panel_tests;
 mod editor_tests;
 #[cfg(test)]
 mod fin_tests;
+#[cfg(test)]
+mod groupa_tests;
+#[cfg(test)]
+mod groupb_tests;
 #[cfg(test)]
 mod options_tests;
 #[cfg(test)]
