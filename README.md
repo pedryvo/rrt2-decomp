@@ -56,7 +56,7 @@ _The 1998 classic you know, from the same isometric viewpoint,<br>now native at 
 
 **Fidelity:** the clone and the original advance the same save and the results are diffed field by field. Current scoreboard: [`docs/fidelity-status.md`](docs/fidelity-status.md).
 
-**Reverse engineering:** 2945 functions in the executable (1837 excluding linker thunks) · 833 symbols in [`re/symbols.toml`](re/symbols.toml) · 1310 classified (44%), 1635 still unclassified · 472 functions specified (429 of them simulation), 301 verified bit-exact against the original ([`re/coverage.toml`](re/coverage.toml)). A simulation coverage percentage will be published once classification is complete.
+**Reverse engineering:** 2945 functions in the executable (1837 excluding linker thunks) · 853 symbols in [`re/symbols.toml`](re/symbols.toml) · 1318 classified (44%), 1627 still unclassified · 477 functions specified (429 of them simulation), 301 verified bit-exact against the original ([`re/coverage.toml`](re/coverage.toml)). A simulation coverage percentage will be published once classification is complete.
 
 ## 🧭 Roadmap
 
