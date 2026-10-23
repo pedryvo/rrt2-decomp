@@ -625,7 +625,8 @@ mod tests {
             steam.join("steamapps/libraryfolders.vdf"),
             format!(
                 "\"libraryfolders\"\n{{\n\"0\"\n{{\n\"path\" \"{}\"\n}}\n}}\n",
-                lib2.display()
+                // Steam escapes the backslashes of Windows paths.
+                lib2.display().to_string().replace('\\', "\\\\")
             ),
         )
         .unwrap();
