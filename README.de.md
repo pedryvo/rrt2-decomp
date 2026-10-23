@@ -50,7 +50,7 @@ _Der Klassiker von 1998, den Sie kennen, aus derselben isometrischen Perspektive
 | Render-Engine (wgpu) | 🟡 | Originalkarten mit den exakten Geländetexturen, Flüssen, Straßen, Stränden, Gleisen, Bäumen, Städten, Industrien und Bahnhöfen, dazu **fahrende Züge und Rauch** mit flüssiger Interpolation; hochskalierte Sprites für hohe Auflösungen; ~70 fps in 4K · `cargo run --release -p rt2-viewer -- <karte>` |
 | Spielbare Simulation | 🟡 | Weltschleife `rt2-sim` mit Zügen, Bahnhöfen, Wirtschaft, Finanzen, Stadtwachstum, Szenarioregeln und der KI-Konkurrenz: Im Klon fortgeschriebene Original-Spielstände sind in 127 von 128 Fällen, von 1 Tag bis zu 2 Spieljahren, einschließlich seltener Ereignisse (Unfälle, Diebstahl, Liquidationen, KI-Aktienhandel) Feld für Feld **identisch mit dem Original** (Tutorial, Example mit Zügen, vier .MP2-Karten sowie beim Laden konvertierte alte Spielstände und Karten); einschließlich neuer Spiele aller 18 Szenarien der Originalkampagne; und aller 18 Second-Century-Szenarien · [Treue-Tabelle](docs/fidelity-status.md) |
 | Spieloberfläche | 🟡 | App `rrt2`: Hauptmenü mit Originalgrafik, Szenario- und Spielstandlisten, HUD im Spiel mit Datum und Geschwindigkeitsregelung, gestochen scharfer Vektortext mit OFL-Schriften, die den Originalen nachempfunden sind, UI-Skalierung 100–300 % · [docs](docs/ui.md) |
-| Szenarioeditor | ⏳ | |
+| Karten- und Szenario-Editor | 🟡 | Gelände, Bäume, Gebiete, Gebäude, Orte, Flüsse und Straßen; Kartenoptionen, Ziele und ein Regeleditor mit Live-Prüfung; Speichern erhält alle mitgelieferten Karten unverändert. PCX-Import und einige Optionsseiten fehlen noch |
 
 <sub>✅ fertig · 🟡 teilweise · 🔍 in Analyse · ⏳ geplant</sub>
 
