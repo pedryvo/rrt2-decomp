@@ -94,7 +94,7 @@ cargo run --release -p rt2-game -- set-path ~/Games/railroad-tycoon-2   # una so
 cargo run --release -p rt2-game
 ```
 
-Hoy puedes explorar los escenarios, cargar partidas guardadas, ver cómo corre la simulación y cambiar la velocidad. Construir vías y trenes viene a continuación. Los ajustes y las asignaciones de teclas están en `~/.config/rrt2/config.toml`; las partidas guardadas van a `~/.local/share/rrt2/saves`.
+Ya puedes empezar cualquier escenario o campaña desde cero, fundar tu compañía, tender vías, construir estaciones y edificios de apoyo, comprar trenes y fijar sus rutas, comprar industrias y seguir los periódicos, las finanzas y la bolsa mientras corre la simulación. Aún faltan los bonos, la compraventa de acciones y algunas pantallas (ver el inventario en `docs/reference/screens.md`). Los ajustes y las asignaciones de teclas están en `~/.config/rrt2/config.toml`; las partidas guardadas van a `~/.local/share/rrt2/saves`.
 
 ## 🧰 Herramientas
 

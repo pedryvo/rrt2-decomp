@@ -94,7 +94,7 @@ cargo run --release -p rt2-game -- set-path ~/Games/railroad-tycoon-2   # 仅需
 cargo run --release -p rt2-game
 ```
 
-目前您可以浏览场景、载入存档、观看模拟运行并调整速度。接下来将实现铺设轨道和列车。设置和按键绑定位于 `~/.config/rrt2/config.toml`；存档保存在 `~/.local/share/rrt2/saves`。
+现在可以从零开始任意场景或战役：创立公司、铺设轨道、修建车站及配套建筑、购买列车并设置路线、收购产业，并在模拟运行时查看报纸、财务和股市。债券、股票交易和部分界面尚未完成（见 `docs/reference/screens.md` 中的界面清单）。设置和按键绑定位于 `~/.config/rrt2/config.toml`；存档保存在 `~/.local/share/rrt2/saves`。
 
 ## 🧰 工具
 

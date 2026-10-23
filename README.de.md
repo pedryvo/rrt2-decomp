@@ -94,7 +94,7 @@ cargo run --release -p rt2-game -- set-path ~/Games/railroad-tycoon-2   # einmal
 cargo run --release -p rt2-game
 ```
 
-Heute können Sie Szenarien durchsuchen, Spielstände laden, der laufenden Simulation zusehen und die Geschwindigkeit ändern. Gleis- und Zugbau folgen als Nächstes. Einstellungen und Tastenbelegung liegen in `~/.config/rrt2/config.toml`; Spielstände landen in `~/.local/share/rrt2/saves`.
+Sie können jedes Szenario und jede Kampagne von Grund auf starten, Ihre Gesellschaft gründen, Gleise verlegen, Bahnhöfe und Nebengebäude bauen, Züge kaufen und ihre Routen festlegen, Industrien kaufen und Zeitungen, Finanzen und Börse verfolgen, während die Simulation läuft. Anleihen, Aktienhandel und einige Bildschirme fehlen noch (siehe die Übersicht in `docs/reference/screens.md`). Einstellungen und Tastenbelegung liegen in `~/.config/rrt2/config.toml`; Spielstände landen in `~/.local/share/rrt2/saves`.
 
 ## 🧰 Werkzeuge
 
