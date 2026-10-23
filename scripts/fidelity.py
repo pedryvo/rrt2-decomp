@@ -5,6 +5,12 @@ Para cada cenario de scripts/fidelity-scenarios.toml:
   1. base   = original(save, 0 dias, semente)      (conversao do save pelo original, em cache)
   2. orig_N = original(save, N dias, semente)      (Wine; em cache por EXE+cenario+dias+semente)
   3. clone  = rt2-advance(base, N, semente)
+Opcoes por cenario: `preseed = K` (RNG do jogo e do CRT = K antes da carga, `advance_save.py
+--preseed`) com `clone_from = "source"` (o clone converte o proprio arquivo do jogo, `rt2-advance
+<save> --preseed K`, em vez de partir da conversao do original; testa rt2_sim::convert), e
+`new_game = "SET:IDX:GSEED:RSEED"` (o original inicia o cenario da campanha por 0x410de0; o clone
+roda `World::new_game` com as opcoes lidas da saida de 0 dias do original; `campaign_name` = nome
+da tabela 0x552430).
   4. rt2-savediff --json orig_N clone  ->  iguais / N campos / principais grupos
 e reescreve a tabela de docs/fidelity-status.md entre <!-- fidelity:begin --> e <!-- fidelity:end -->.
 Sai com 1 se algum caso que estava IGUAL no placar anterior regrediu.
@@ -52,19 +58,19 @@ def ensure_sandbox(sb):
         sys.exit("falha ao criar o sandbox")
 
 
-def original(args, sb, src, days, seed, out):
+def original(args, sb, src, days, seed, out, extra=()):
     """Roda o original (Wine) e grava `out`. Devolve None se ok, ou a mensagem de erro."""
     if os.path.exists(out) and not args.refresh:
         return None
     wait_wine(args.wait)
     ensure_sandbox(sb)
     tmp = out + ".part"
-    if not src.upper().endswith(".GAM"):  # advance_save.py so aceita .GAM; .MP2 tem o mesmo formato
+    if not src.upper().endswith((".GAM", ".MAP")):  # .MP2 tem o mesmo formato
         staged = os.path.join(os.path.dirname(out), "_stage.GAM")
         shutil.copyfile(src, staged)
         src = staged
     cmd = [sys.executable, "-I", os.path.join(ROOT, "re/scripts/wine/advance_save.py"),
-           sb, src, str(days), str(seed), tmp, "--timeout", str(args.timeout)]
+           sb, src, str(days), str(seed), tmp, "--timeout", str(args.timeout)] + list(extra)
     t0 = time.time()
     r = subprocess.run(cmd, capture_output=True, text=True)
     if r.returncode or not os.path.isfile(tmp):
@@ -164,21 +170,42 @@ def main():
         src = os.path.join(INSTALL, sc["save"])
         seed = sc.get("seed", 1234)
         tag = "%s__%s__s%d" % (re.sub(r"\W+", "_", sc["name"]), sha256(src)[:8], seed)
+        extra, clone_src, clone_extra = [], None, []
+        if "preseed" in sc:
+            extra += ["--preseed", str(sc["preseed"])]
+            tag += "__p%d" % sc["preseed"]
+        if sc.get("new_game"):
+            extra += ["--new-game", sc["new_game"]]
+            tag += "__ng" + re.sub(r"\W+", "_", sc["new_game"])
         print("== %s (%s)" % (sc["name"], sc["save"]), flush=True)
         base = os.path.join(cache, tag + "__d0.GAM")
-        err = original(args, sb, src, 0, seed, base)
+        err = original(args, sb, src, 0, seed, base, extra)
+        if sc.get("new_game"):
+            _, _, _, rseed = (int(v, 0) for v in sc["new_game"].split(":"))
+            crt = sc.get("preseed", 0) & 0xFFFFFFFF
+            for _ in range(2):  # os dois crt_rand_range(1, 32000) de 0x410de0
+                crt = (crt * 214013 + 2531011) & 0xFFFFFFFF
+            clone_src = src
+            clone_extra = ["--new-game", "--options-from", base, "--campaign", "--game-rng",
+                           str(rseed), "--crt", str(crt)]
+            if sc.get("campaign_name"):
+                clone_extra += ["--name", sc["campaign_name"]]
+        elif sc.get("clone_from") == "source":
+            clone_src = src
+            clone_extra = ["--preseed", str(sc.get("preseed", 0))]
         for days in sc["days"]:
             row = {"name": sc["name"], "desc": sc.get("desc", sc["name"]), "days": days}
             rows.append(row)
             orig = os.path.join(cache, "%s__d%d.GAM" % (tag, days))
-            e = err or original(args, sb, src, days, seed, orig)
+            e = err or original(args, sb, src, days, seed, orig, extra)
             if e:
                 row["error"] = e
                 print("  %dd: %s" % (days, e))
                 continue
             clone = os.path.join(cache, "clone_%s_d%d.GAM" % (tag, days))
-            r = subprocess.run([os.path.join(BIN, "rt2-advance"), base, str(days), str(seed),
-                                clone, "--quiet"], capture_output=True, text=True)
+            r = subprocess.run([os.path.join(BIN, "rt2-advance"), clone_src or base, str(days),
+                                str(seed), clone, "--quiet"] + clone_extra,
+                               capture_output=True, text=True)
             if r.returncode:
                 row["error"] = "rt2-advance: " + (r.stderr.strip().splitlines() or ["?"])[-1]
                 print("  %dd: %s" % (days, row["error"]))

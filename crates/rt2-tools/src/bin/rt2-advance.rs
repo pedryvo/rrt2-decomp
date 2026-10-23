@@ -12,10 +12,10 @@ use std::path::PathBuf;
 use anyhow::{Context, bail};
 use clap::Parser;
 use rt2_formats::map::Save;
-use rt2_sim::World;
 use rt2_sim::command::Command;
 use rt2_sim::data::GameData;
 use rt2_sim::exe::Exe;
+use rt2_sim::{NewGameOptions, World};
 
 #[derive(Parser)]
 #[command(about = "Advance a .GAM save N days in the clone (mirrors advance_save.py)")]
@@ -34,9 +34,41 @@ struct Args {
     /// Minutes per sim_advance call (320 = 100 ms at speed 3)
     #[arg(long, default_value_t = 320)]
     step: i32,
+    /// Game and CRT RNG state when the load starts (`advance_save.py --preseed`): a save older than
+    /// 0x2348 is converted on load, which consumes the game RNG
+    #[arg(long, value_parser = parse_u32)]
+    preseed: Option<u32>,
+    /// Start a new game on the input map (`World::new_game`) instead of loading it; the setup
+    /// options (`0x574840` block, campaign block) come from `--options-from`
+    #[arg(long, requires = "options_from")]
+    new_game: bool,
+    /// Save whose option block and campaign block are the new game's options (e.g. the
+    /// original's snapshot right after the start)
+    #[arg(long)]
+    options_from: Option<PathBuf>,
+    /// Name copied to the header (default: the input file stem)
+    #[arg(long)]
+    name: Option<String>,
+    /// Campaign start (`0x410de0`: `0x570234 = 1`)
+    #[arg(long)]
+    campaign: bool,
+    /// Game RNG when the scenario start begins (`rng_seed` before `0x479b20`)
+    #[arg(long, value_parser = parse_u32, default_value = "0")]
+    game_rng: u32,
+    /// CRT rand state when the scenario start begins
+    #[arg(long, value_parser = parse_u32, default_value = "0")]
+    crt: u32,
     /// Do not print the step counters
     #[arg(long)]
     quiet: bool,
+}
+
+fn parse_u32(s: &str) -> Result<u32, String> {
+    match s.strip_prefix("0x") {
+        Some(h) => u32::from_str_radix(h, 16),
+        None => s.parse(),
+    }
+    .map_err(|e| e.to_string())
 }
 
 fn main() -> anyhow::Result<()> {
@@ -55,7 +87,32 @@ fn main() -> anyhow::Result<()> {
         .map_err(anyhow::Error::msg)
         .context("reading SMOKE.imb")?;
 
-    let mut world = World::from_save(&save, &data);
+    let mut world = if args.new_game {
+        let p = args.options_from.as_ref().expect("clap requires it");
+        let opt_save = Save::parse(&std::fs::read(p).with_context(|| p.display().to_string())?)
+            .with_context(|| format!("parsing {}", p.display()))?;
+        let name = args.name.clone().unwrap_or_else(|| {
+            args.input
+                .file_stem()
+                .map(|s| s.to_string_lossy().into_owned())
+                .unwrap_or_default()
+        });
+        let opts = NewGameOptions::from_save(&opt_save, &name, args.campaign, args.crt);
+        let w = World::new_game(&save, &opts, &data, args.game_rng);
+        if !args.quiet {
+            eprintln!(
+                "rng after start: {:#x} crt {:#x}",
+                w.rng().state(),
+                w.crt_rng().state()
+            );
+        }
+        w
+    } else {
+        World::from_save_seeded(&save, &data, args.preseed.unwrap_or(0))
+    };
+    if !args.quiet && args.preseed.is_some() {
+        eprintln!("rng after load: {:#x}", world.rng().state());
+    }
     // Same order as the driver: load, then seed the game RNG.
     world.apply(Command::SeedRng(args.seed));
     world.apply(Command::SeedCrtRng(args.seed));

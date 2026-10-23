@@ -142,8 +142,9 @@ pub const BUILDING_RECORD_SIZE: u32 = 0x154;
 /// Offset of the footprint grid inside a building record (cell `(row, col)` at
 /// `+0xcd - 20 * row - 2 * col`).
 pub const FOOTPRINT_OFFSET: u32 = 0xcd;
-/// Building types loaded (the oracle test exercises types 24..63).
-pub const BUILDING_TYPES: usize = 64;
+/// Building shapes loaded: all `0x7a` records of `building_shape_table` (`0x5457ef`,
+/// world-growth.md 2.4); a map object's `+6` can be any of them (the Example save has 88).
+pub const BUILDING_TYPES: usize = 0x7a;
 
 /// Footprint of one building type: byte of cell `(row, col)` at `[row * 10 + col]`.
 #[derive(Clone, Debug, PartialEq, Eq)]

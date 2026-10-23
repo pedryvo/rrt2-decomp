@@ -2,8 +2,9 @@
 # `save`: caminho relativo a instalacao do original (somente leitura). Todo cenario roda no
 # original com `advance_save.py` (so aceita formato de save; .MP2 funciona copiado como .GAM).
 # `days`: lista de dias a avancar; `seed`: semente do RNG do jogo e do CRT (passos de 320 min).
-# Os arquivos .MAP de cenario (maps/#NN*.MAP) NAO entram: precisam da semantica de "New Game"
-# (inicializacao do cenario) que o clone ainda nao tem e o driver do original so carrega .GAM.
+# `preseed` + `clone_from = "source"`: o clone converte o proprio arquivo 0x233C (rt2_sim::convert)
+# com o RNG do inicio da carga igual ao do original (map-gam.md 9). `new_game`: inicio de cenario da
+# campanha (SET:IDX:GSEED:RSEED, world-tick.md 10; scripts/fidelity.py explica as opcoes).
 
 [[scenario]]
 name = "Tutorial"
@@ -46,3 +47,49 @@ save = "maps/Atlantis.MP2"
 days = [1, 7, 30]
 seed = 1234
 desc = "Mapa Atlantis.MP2"
+
+[[scenario]]
+name = "Tutorial (conversao)"
+save = "games/Tutorial.GAM"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+clone_from = "source"
+desc = "Tutorial convertido pelo clone (0x233C -> 0x2348)"
+
+[[scenario]]
+name = "Example (conversao)"
+save = "games/Example save game.GAM"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+clone_from = "source"
+desc = "Example convertido pelo clone (0x233C -> 0x2348)"
+
+[[scenario]]
+name = "B&O.MAP (carga)"
+save = "maps/#01B&O~1.MAP"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+clone_from = "source"
+desc = "#01 B&O.MAP carregado como save e convertido pelo clone"
+
+[[scenario]]
+name = "Britain.MAP (carga)"
+save = "maps/Britain.MAP"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+clone_from = "source"
+desc = "Britain.MAP carregado como save e convertido pelo clone"
+
+[[scenario]]
+name = "B&O New Game"
+save = "maps/#01B&O~1.MAP"
+days = [0, 7]
+seed = 1234
+preseed = 1234
+new_game = "0:0:4321:777"
+campaign_name = "#01B&o~1"
+desc = "#01 B&O iniciado pela campanha (0x410de0), game_seed 4321, RNG 777"

@@ -34,6 +34,7 @@ pub mod calendar;
 pub mod cargo;
 pub mod command;
 pub mod company_record;
+pub mod convert;
 pub mod data;
 pub mod effects;
 pub mod exe;
@@ -57,4 +58,5 @@ pub mod world;
 
 pub use command::{Command, SpeedChange};
 pub use message::{GameMessage, Outcome};
+pub use tick::NewGameOptions;
 pub use world::World;

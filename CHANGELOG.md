@@ -184,3 +184,7 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Feature: train commands `0x1a` (go to stop), `0x1b` (stop wait mode), `0x1c` (cargo per stop), `0x21` (class), `0x2c` (mark) and `0x2f` (sell mode) in the simulation, each checked against a snapshot of the original
 - RE: a new train's route ring is allocated by the pathfinder on first use (`0x462830`/`0x4627f0` named); the uninitialized `malloc` and `pool_grow` memory of the original reads `0xBAADF00D` and is now reproduced; an electric engine between stations without catenary finds no route
 - Fix: trains bought from the Purchase Train window are marked ready (command 0x2c) so they leave the station.
+- Feature: saves and maps of the shipped 0x233C layout are converted on load like the original (World::from_save_seeded); all 33 shipped .MAP/.GAM match the original's 0-day save field by field
+- Feature: World::new_game starts a scenario from a map (load, setup options, players, game_set_date, initial town growth, scenario triggers 6/0/2); initial growth still diverges in building field textures
+- RE: loader record conversion of 0x477a60 (header, state, 7 pool record types, cars, routes, rules, terrain with track overlays, six hard-coded scenario patches) and saver refresh documented in map-gam.md 9
+- RE: New Game sequence 0x410de0 -> 0x479b20 -> 0x473590/0x474280/game_set_date documented in world-tick.md 10; advance_save.py --preseed/--new-game drive it headlessly

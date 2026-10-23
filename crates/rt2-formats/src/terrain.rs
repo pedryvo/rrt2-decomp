@@ -855,6 +855,71 @@ impl TerrainGrid {
         self.cells[y as usize * self.width + x as usize].v & 1 != 0
     }
 
+    /// `0x42bf90(0, 0, W - 1, H - 1)`: territory border overlays (layer and bank 1). `region` is
+    /// tile byte 9 per tile; `shown(r)` is byte `+0x24` of territory `r` (`0x466830`). A land tile
+    /// gets, for each higher-numbered shown territory among its 8 neighbours (lowest first),
+    /// the border pieces of the runs of neighbours in that territory (`0x42a640`). Run by the
+    /// Load Game wrapper after the loader (`0x479710` -> `0x495d10` -> `0x495700`).
+    pub fn build_territory_borders(&mut self, region: &[u8], shown: impl Fn(u8) -> bool) {
+        let (w, h) = (self.width as i32, self.height as i32);
+        let mut no_rng = GameRng(0);
+        for y in 0..h {
+            for x in 0..w {
+                let (ux, uy) = (x as usize, y as usize);
+                // Layer 1 removals never draw from the RNG (only layer 0 re-picks a variant).
+                self.clear_layer(ux, uy, LAYER_TERRITORY, false, &mut no_rng);
+                if self.class_at(x, y) == WATER_CLASS {
+                    continue;
+                }
+                let edge = x == 0 || y == 0 || x == w - 1 || y == h - 1;
+                let mut cur = i32::from(region[uy * self.width + ux]);
+                loop {
+                    let mut mask = 0u8;
+                    let mut best = 99_999i32;
+                    for pass in 0..2 {
+                        if pass == 1 && best == 99_999 {
+                            continue;
+                        }
+                        for k in 0..8 {
+                            let (nx, ny) = (x + DX[k], y + DY[k]);
+                            if edge && !self.in_bounds(nx, ny) {
+                                continue;
+                            }
+                            let i = ny as usize * self.width + nx as usize;
+                            let r = i32::from(region[i]);
+                            if cur < r && self.class_at(nx, ny) != WATER_CLASS && shown(r as u8) {
+                                if pass == 0 {
+                                    best = best.min(r);
+                                } else if r == best {
+                                    mask |= 1 << k;
+                                }
+                            }
+                        }
+                    }
+                    if mask == 0 {
+                        break;
+                    }
+                    cur = best;
+                    while mask != 0 {
+                        let (ty, rot) = run_piece(&mut mask);
+                        let Some(ty) = ty else { break };
+                        self.push_node(
+                            ux,
+                            uy,
+                            Node {
+                                word: ((ty as u16) << 6)
+                                    | u16::from(BANK_TERRITORY) << 3
+                                    | u16::from(LAYER_TERRITORY),
+                                turns: rot,
+                                shade: 0,
+                            },
+                        );
+                    }
+                }
+            }
+        }
+    }
+
     /// `0x4294d0`: river overlays for the whole map (the loader passes `(0, 0, W, H)`, clamped).
     pub fn build_rivers(&mut self, rng: &mut GameRng) {
         let (w, h) = (self.width as i32, self.height as i32);

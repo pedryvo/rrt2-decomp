@@ -17,13 +17,17 @@ def rd32(a): return struct.unpack("<I", rd(a, 4))[0]
 def wr(a, b): mem.write_memory(a, b)
 def wr32(a, v): wr(a, struct.pack("<I", v & 0xFFFFFFFF))
 SP0 = 0
-def fcall(addr, ecx=0, edx=0, args=()):
-    """Chama addr (fastcall: ECX, EDX; resto na pilha, cdecl) e devolve EAX."""
+def fcall(addr, ecx=0, edx=0, args=(), hooks=None):
+    """Chama addr (fastcall: ECX, EDX; resto na pilha, cdecl) e devolve EAX. `hooks`: endereco ->
+    funcao chamada quando um breakpoint (ja criado) para nele no meio da chamada."""
     sp = SP0 - 0x1000 - 4 * len(args) - 4
     wr32(sp, RET)
     for i, a in enumerate(args): wr32(sp + 4 + 4 * i, a)
     setreg("esp", sp); setreg("ecx", ecx); setreg("edx", edx); setreg("eip", addr)
     gdb.execute("continue", to_string=True)
+    while hooks and reg("eip") in hooks:
+        hooks[reg("eip")]()
+        gdb.execute("continue", to_string=True)
     if reg("eip") != RET:
         log("ERRO fcall %#x parou em eip=%#x" % (addr, reg("eip")))
         raise RuntimeError("fcall")
@@ -60,17 +64,53 @@ wr(buf + 0x200, out.encode() + b"\0")
 #     carga/gravacao chamam o porteiro de forma aninhada e, sem isto, o jogo avancaria sozinho
 wr32(0x574C04, 1)
 
-# 3. carga: o mesmo que o botao Load Game do menu (0x4b75b0 caso 0xc57, LAB_004b8c9a)
-for a in (0x57FEE0, 0x57BC34, 0x57B41C): wr32(a, rd32(a) + 1)       # contadores de reentrada/UI
-fcall(0x495700, 0)                    # prepara a janela de carga (UI, param_1 = 0)
-fcall(0x479710, buf, 0)               # carrega games\<nome>.GM2|.GAM -> chama 0x477a60 (loader)
-wr32(0x57FEE0, rd32(0x57FEE0) - 1)
-fcall(0x502200, 1, 0)
-wr32(0x57B41C, rd32(0x57B41C) - 1)
-wr32(0x574BC4, 1)
-wr32(0x57BC34, rd32(0x57BC34) - 1)
-fcall(0x4F6130, 1)
+# 2c. ADV_PRESEED: fixa o RNG do jogo e o rand do CRT ANTES da carga (a conversao de versoes antigas
+#     e as passadas de terreno do carregador consomem RNG; com isto o resultado e reproduzivel no clone)
+pre = env.get("ADV_PRESEED")
+if pre is not None:
+    wr32(0x55D2C0, int(pre) & 0xFFFFFFFF); wr32(0x5609F0, int(pre) & 0xFFFFFFFF)
+    log("PRESEED %#x" % (int(pre) & 0xFFFFFFFF))
+
+newgame = env.get("ADV_NEWGAME")
+if newgame:
+    # 3'. New Game de um cenario da campanha: 0x410de0 (inicio da campanha, docs/dynamic-analysis.md
+    #     5.8) com [0x566d3d] = conjunto (0 = .MAP originais, 1 = #E..CAMP.MP2) e [0x539c84] = indice.
+    #     Monta o bloco de opcoes 0x574840 (0x4b3ac0, 0x4b45b0), sorteia game_seed e o RNG
+    #     (crt_rand_range + clock_ms: trocados aqui por ADV_GSEED e ADV_RSEED) e chama 0x479b20.
+    cset, cidx = (int(v) for v in newgame.split(":"))
+    gseed, rseed = int(env["ADV_GSEED"]) & 0xFFFFFFFF, int(env["ADV_RSEED"]) & 0xFFFFFFFF
+    wr(0x566D3D, bytes([cset])); wr32(0x539C84, cidx)
+    gdb.Breakpoint("*0x410f64", internal=True)    # mov [0x57486e], esi  (game_seed)
+    gdb.Breakpoint("*0x410f89", internal=True)    # call rng_seed(ecx)
+    def set_gseed(): setreg("esi", gseed)
+    def set_rseed(): setreg("ecx", rseed)
+    hooks = {0x410F64: set_gseed, 0x410F89: set_rseed}
+    # ADV_TRACE="0xaddr,0xaddr": registra ECX, EDX, u16 [ECX] e o RNG em cada chamada (sem parar)
+    for a in filter(None, env.get("ADV_TRACE", "").split(",")):
+        a = int(a, 0)
+        gdb.Breakpoint("*0x%x" % a, internal=True)
+        def tr(a=a):
+            e = reg("ecx")
+            try: w = struct.unpack("<H", rd(e, 2))[0]
+            except Exception: w = -1
+            log("TRACE %#x ecx=%#x edx=%#x [ecx]=%d rng=%#x" % (a, e, reg("edx"), w, rd32(0x55D2C0)))
+        hooks[a] = tr
+    fcall(0x410DE0, 0, 0, hooks=hooks)
+    wr32(0x574C04, 1)                     # 0x479b20 liberou o porteiro no fim
+    log("NEWGAME set=%d idx=%d game_seed=%#x rng_seed=%#x" % (cset, cidx, gseed, rseed))
+else:
+    # 3. carga: o mesmo que o botao Load Game do menu (0x4b75b0 caso 0xc57, LAB_004b8c9a)
+    for a in (0x57FEE0, 0x57BC34, 0x57B41C): wr32(a, rd32(a) + 1)       # contadores de reentrada/UI
+    fcall(0x495700, 0)                    # prepara a janela de carga (UI, param_1 = 0)
+    fcall(0x479710, buf, 0)               # carrega games\<nome>.GM2|.GAM -> chama 0x477a60 (loader)
+    wr32(0x57FEE0, rd32(0x57FEE0) - 1)
+    fcall(0x502200, 1, 0)
+    wr32(0x57B41C, rd32(0x57B41C) - 1)
+    wr32(0x574BC4, 1)
+    wr32(0x57BC34, rd32(0x57BC34) - 1)
+    fcall(0x4F6130, 1)
 snap("LOADED")
+log("LOAD_RNG rng=%#x crt=%#x" % (rd32(0x55D2C0), rd32(0x5609F0)))
 if rd32(0x5704E8) != 1 or rd32(0x566E14) != 1:
     log("ERRO: carga nao colocou o jogo em andamento"); raise RuntimeError("load")
 start_min = rd32(0x5704F4)

@@ -33,6 +33,8 @@ mod company;
 mod events;
 mod found;
 mod history;
+mod newgame;
+pub use newgame::NewGameOptions;
 mod review;
 mod town;
 mod year;
@@ -85,11 +87,35 @@ impl World {
     /// kept raw. The game RNG is not in the file (map-gam.md 5.2): seed it with
     /// [`Command::SeedRng`](crate::Command::SeedRng) before advancing.
     pub fn from_save(save: &Save, data: &GameData) -> World {
+        World::from_save_seeded(save, data, 0)
+    }
+
+    /// [`World::from_save`] with the game RNG at `rng_seed` when the load starts. A save older
+    /// than 0x2348 is converted first as the loader `0x477a60` does ([`crate::convert`]), which
+    /// consumes RNG; the world keeps the RNG state the conversion left (the original's load does
+    /// not restore it either, `docs/dynamic-analysis.md` 5.1).
+    pub fn from_save_seeded(save: &Save, data: &GameData, rng_seed: u32) -> World {
+        if save.layout.version >= MAGIC_2348 {
+            return World::from_loaded(save, data, rng_seed, rng_seed);
+        }
+        let mut rng = rt2_formats::terrain::GameRng(rng_seed);
+        let converted = crate::convert::upgrade(save, &mut rng);
+        let mut w = World::from_loaded(&converted, data, rng.0, rng_seed);
+        let mut sim = w.sim.take().expect("from_loaded builds the sim");
+        sim.load_passes(&mut w, save.layout.version);
+        w.sim = Some(sim);
+        w
+    }
+
+    /// A world over `save` (already in the 0x2348 layout) with the given RNG states, before any
+    /// load pass.
+    pub(crate) fn from_loaded(save: &Save, data: &GameData, rng: u32, crt: u32) -> World {
         let mut w = World::new(
             Date::from_minutes(save.game_time_minutes),
             save.game_seed,
-            0,
+            rng,
         );
+        w.crt = crate::rng::CrtRng::new(crt);
         w.minutes = save.game_time_minutes;
         w.speed = save.game_speed;
         if save.game_speed != 0 {
@@ -125,6 +151,7 @@ impl World {
         s.game_speed = self.speed;
         s.game_seed = self.game_seed;
         s.sync_scalars();
+        crate::convert::saver_refresh(&mut s);
         s
     }
 
@@ -290,7 +317,7 @@ impl SimState {
 
     /// Runs `f` with the train step's view of the state (`crate::trainstep::Ts`) at the
     /// current clock.
-    fn with_trainstep<R>(
+    pub(crate) fn with_trainstep<R>(
         &mut self,
         w: &mut World,
         f: impl FnOnce(&mut crate::trainstep::Ts<'_>) -> R,
@@ -383,7 +410,7 @@ impl SimState {
         t
     }
 
-    fn week_end(&mut self, w: &mut World) {
+    pub(super) fn week_end(&mut self, w: &mut World) {
         self.log.ran("sim_week_end");
         if !self.v2348() {
             todo_hook!(
@@ -787,7 +814,7 @@ impl SimState {
         }
         self.log.ran("territory_year_step");
         if self.hdr(HDR_NO_ECONOMY) == 0 {
-            self.town_year_step(w);
+            self.town_year_step(w, false);
         }
         // 14. Second weekly pass in the same minute.
         self.week_end(w);

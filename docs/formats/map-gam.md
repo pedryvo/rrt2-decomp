@@ -64,7 +64,7 @@ As versões `0x2341..0x2348` têm os mesmos tamanhos de bloco de nível alto; as
 
 Os campos já decodificados mantêm os offsets nos registros maiores (os conversores só inserem campos novos depois deles: nome da estação em +26, nome do trem em +12, lugar em +4..+54, empresa +4/+0x148, pessoa +8/+0x27), então `place_list`, `company_list`, `station_names` etc. funcionam nas duas versões.
 
-Pendências: (1) os bytes de tile de `0x2348` não passam pelo remapeamento de terreno (`<0x233d` e `<0x2342` usam as tabelas `0x552b00`/`0x552cd4`), então os ids de `ground` dos `.MP2` podem não ser os mesmos dos `.MAP` (o teste `is_water` usa os ids de `0x233C`); (2) os campos novos dos registros de `0x2348` (estação +0x39B.., empresa +0x4DEC.., pessoa +0x4DC.., trem +0x143.., lugar +0x96.., território +0x27A..) ficam crus; (3) a versão intermediária `0x2341..0x2347` não é aceita (nenhum arquivo do jogo a usa).
+Pendências (as conversões (1) e (2) estão resolvidas na seção 9): (1) os bytes de tile de `0x2348` não passam pelo remapeamento de terreno (`<0x233d` e `<0x2342` usam as tabelas `0x552b00`/`0x552cd4`), então os ids de `ground` dos `.MP2` podem não ser os mesmos dos `.MAP` (o teste `is_water` usa os ids de `0x233C`); (2) os campos novos dos registros de `0x2348` (estação +0x39B.., empresa +0x4DEC.., pessoa +0x4DC.., trem +0x143.., lugar +0x96.., território +0x27A..) ficam crus; (3) a versão intermediária `0x2341..0x2347` não é aceita (nenhum arquivo do jogo a usa).
 
 ## 2. Mapa de seções do arquivo (alta)
 
@@ -210,3 +210,41 @@ Ambos os `.GAM` derivam de **Britain.MAP** (mesmo `game_seed` 183274, 300x300), 
 ## 8. Implementação
 
 `crates/rt2-formats/src/map.rs`: `Map::parse` (terreno) e `Save::parse` (versões `0x233C` e `0x2348` via `Layout`; data/hora, `game_seed`, os 15 pools, extras e regras; visões `place_list`, `company_list`, `person_list`, `station_names`, `train_names`). Testes com `RT2_DIR` em `crates/rt2-formats/tests/original_data.rs`.
+
+## 9. Conversão no load (`0x477a60`) de `0x233C` para `0x2348` (alta; verificado byte a byte)
+
+O carregador lê cada bloco no tamanho da versão do arquivo e o expande na memória (sempre no layout `0x2348`); o gravador `0x477540` grava o layout da memória. Porte: `rt2_sim::convert` (`upgrade` = conversão dos registros; `SimState::load_passes` = passadas do load; `saver_refresh` = campos que o gravador recalcula), chamado por `World::from_save_seeded(save, data, rng)` para arquivos `< 0x2348`. Só as regras dos ramos `< 0x2341`..`< 0x2348` que valem para `0x233C` são portadas (`0x233D..0x2347` não existem na instalação).
+
+**Verificação.** O original carrega o arquivo e grava com 0 dias (`advance_save.py <sb> <arq> 0 1234 <saida> --preseed 1234`: o RNG do jogo e o do CRT recebem 1234 *antes* da carga; o `.MAP` é copiado como `games/_advin.GAM`); o clone converte o mesmo arquivo com o mesmo RNG e grava (`rt2-advance <arq> 0 1234 <saida> --preseed 1234`). `rt2-savediff` (máscaras de 5.5): **0 diferenças nos 33 arquivos** (Tutorial, Example e os 31 `.MAP`), e o estado do RNG depois do load (`LOAD_RNG` no log) é igual em todos. Teste: `crates/rt2-sim/tests/convert.rs` (`RT2_DIR`, `RT2_CONVERT_DIR` com `index.txt` e `<nome>_d0.GAM`).
+
+### 9.1 Blocos
+- **Cabeçalho** (`< 0x2341`): lê `0x878F` bytes numa área zerada de `0x898A`; as 38 entradas de 9 bytes de `0x5700cd` (arquivo `0x8595`) são copiadas para `0x5702cb` (`0x8793`) e as 15 novas recebem (1, 100, 2); `0x5704b1..0x5704c6` zerados. Em todo load: byte 0 das entradas 49..52 = 1; `< 0x2340`: `0x570227..0x570229` = 0; e (fim do load) quatro entradas de 32 bytes em `0x570250` = `7F` + 9 zeros.
+- **Estado** (`game_running`): três passos. `< 0x233F` (`0x29C8 -> 0x39CB`, buffer novo de malloc): cópia inteira, depois `[0xDF..+0xCF] -> 0xEB`, `[0x1CE..+0x2772] -> 0x1E6`, `[0x2729..+0x217] -> 0x3744`, zera `0x4C1..0x4C5`, `0xDD..0xE9`, `0x1DA..0x1E6`. `< 0x2341` (`-> 0x3A74`): `[0..0x111]`, 15 zeros, `[0x111..0x4C1] -> 0x120`, `0x9A` zeros, `[0x4C1..] -> 0x56A`. `< 0x2347`: `[0xAE..+0x3956] -> 0xDE` (desloca 0x30), `0x3A34 = [0x3A00]`, `0x3A26 &= 0xF7FFFFFF`, `0xDE = 0`. Os bytes do buffer intermediário que ninguém escreve (estado `0x2A31..0x381D` e `0x3A38..`) saem como lixo de heap: no oráculo (processo sob depurador, heap de depuração do Windows) o padrão `0xBAADF00D`, que o porte reproduz.
+- **Tiles**: `< 0x233D` id antigo -> primeiro id da classe (`0x552b00`); `< 0x2343` `0x42a3e0` sorteia a variante (RNG). Os 5 bytes de execução zerados.
+
+### 9.2 Registros das pools
+O leitor de pool (`0x4f1bc0`) lê o tamanho antigo num array novo do tamanho novo: a cauda é lixo de heap (padrão `0xBAADF00D` com fase a partir do início do array, ou seja `(slot*tamanho + off) % 4`) até o conversor escrever.
+| Pool | Conversão |
+|---|---|
+| estações `0x39B -> 0x4C7` (`< 0x233E`) | `+0x381..+0x390 -> +0x4AD`; `+0x61..+0x4AD` zerados; `< 0x2345`: u16 `+0x4BE` = 0; todo load: `+0x4AD` (u32) = região do tile (`+10`, `+0xE`) |
+| pessoas `0x4DC -> 0x576` (`< 0x2341`) | `+0x48D..+0x4DC -> +0x527`, `+0x48D..+0x527` zerados |
+| empresas `0x196C -> 0x4DEC` (`< 0x233E`) | `[0..0x3DF]` fica; 32 entradas de `0x49` em `+0x3DF` viram `0x1ED` (5 bytes copiados, resto zero); `[0xCFF..] -> 0x417F` |
+| empresas `-> 0x4E86` (`< 0x2341`) | `[0x3D0..] -> 0x46A`, `0x9A` zeros |
+| `c7c` `0x11 -> 0x15` (`< 0x2344`) | dois u16 zerados |
+| trens `0x143 -> 0x14D` (`< 0x2346`) | `+0xFC = 0`, `+0xF3 = 1` (cauda = lixo); todo load: `+0xAB = 0` |
+| lugares `0x96 -> 0xB4`, territórios `0x27A -> 0x314` (`< 0x2341`) | caudas zeradas |
+| objetos `c74` (todo load) | `+0x42 = 0`; `+0x9D` = região da estação dona (`+7 == 0`, estação `+8`) ou do tile (`+0x22`, `+0x24`) |
+| carros (extra) `10 -> 14` (`< 0x2347`) | byte 3 `&= 0xF7`, u16 `+10`/`+12` = 0; `< 0x233D`: nos 6 bytes de `+4`, `' '` -> `','` e `'!'` -> `'-'` |
+| rota (extra, `< 0x2348`) | último array u8 -> u16 zerado; `train_route_refresh` `0x4d14b0` por trem com rota |
+| regra (`0x457c90`, `< 0x2341`) | `0x2C8 -> 0x362`: dois blocos de `0x111` em `+0x64` viram `0x15E` (cauda zero), `+0x286..+0x2C8 -> +0x320`; o loader põe `+0x32E = 1` |
+
+### 9.3 Passadas depois da leitura (todas as versões)
+Na ordem: `0x4cb090` (trilhos, mapa todo), rios/estradas/chão (`0x4294d0`, `0x428fe0`, `0x42a7d0`; RNG). **Os sprites de trilho (camadas 4/5) já estão na lista do tile quando a passada do chão roda**: um tile com sobreposições recebe a mistura como nó em vez de trocar o id base (`terrain.rs` `blend`), por isso o porte injeta a presença dos trilhos (`Ai::track_overlay`) na grade antes das passadas. Depois: limites de vista `0x573d7e..` (todos 0 -> 9999, 9999, -1, -1); territórios `+0x2a` (oculto sem id válido -> 1, visível -> o próprio); anos `0x5700c5`/`0x5700c9` fora de 1800..2100 ou do lado errado de `0x5700c1` -> 0; bit 1 do byte 6 de cada tile = `station_at`; os 14 bytes do 1º carro do 1º trem -> `0x573f0e`; os **remendos fixos de seis cenários** (reconhecidos por tamanho do mapa, nº de jogadores/empresas, ano e regras: reescrevem condições de regras com textos do EXE `0x5598bc..0x559be0` via `rule_set_condition` `0x457a30`, ex.: #02 Hannibal, regra 7 e lugar 84); `< 0x2344`: por estação, `0x406f60` (desfaz os vínculos de captação em `pool_58`) e `station_rebuild_links` `0x4071b0` (refaz; o Example ganha 10 vínculos, 72 -> 82). Não salvos/sem efeito no arquivo: `0x4728f0` (UI), `0x42b310`, `0x471880`, janela `0xfd`. Nota: `station_networks_rebuild` `0x46a370` (também chamado pelo loader) não é chamado pelo porte; os 33 arquivos batem sem ele (o resultado já está gravado neles).
+
+O invólucro do Load Game (`0x479710` -> `0x495d10` -> `0x495700`, também no New Game) ainda copia as opções de realismo do byte `0x574872` (bloco final `+0x32`) para `0x573d72..0x573d78` e redesenha as fronteiras de território (`0x42bf90`, `TerrainGrid::build_territory_borders`: camada/banco 1, peças de `0x42a640` para cada território vizinho de número maior e visível `+0x24`).
+
+### 9.4 O gravador (`0x477540`)
+Antes de gravar: para cada jogador da lista (`0x570775`/`0x570779`), `+0x54d = 0` se `+0x122 == 0` (senão um valor da sessão, mascarado); cabeçalho `0x567c88..0x567c9c` = (n, n, 1, humanos, n - humanos, n - 1); `0x567d69/6b` = tamanho do mapa; `0x570235 = 0`; `0x57022f` (campo do checksum) = 0; `0x570233 = (0x570234 != 0)`. `World::to_save` aplica isso (`convert::saver_refresh`).
+
+### 9.5 RNG
+A carga consome o RNG do jogo (variantes de terreno e passadas) e não o restaura; o CRT não é tocado. `World::from_save_seeded` recebe o estado do RNG no início da carga e deixa o mundo com o estado que a conversão deixou (igual ao `LOAD_RNG` do original). `World::from_save` usa 0. Arquivos `0x2348` não passam pelas passadas (o clone os carrega como estão; o original repetiria as passadas de terreno com RNG).

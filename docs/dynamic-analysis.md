@@ -62,7 +62,7 @@ re/scripts/wine/run_original.sh $SB --no-run
 re/scripts/wine/advance_save.py $SB games/Tutorial.GAM <dias> <semente> <saida.GAM> [--step 320] [--timeout 240]
 re/scripts/wine/advance_check.py $SB <Tutorial.GAM> <pasta>      # 1/7/30 dias, determinismo, semente
 ```
-A entrada é copiada para `$SB/games/_advin.GAM` (a instalação nunca é tocada). A saída é gravada em `$SB/saves/_advout.GAM` e copiada para `<saida.GAM>`. Só `.GAM` (o `.MAP` não foi tentado). Tempo: **~11-13 s por run**, quase tudo é a inicialização do Wine; o avanço de 30 dias leva menos de 1 s.
+A entrada é copiada para `$SB/games/_advin.GAM` (a instalação nunca é tocada). A saída é gravada em `$SB/saves/_advout.GAM` e copiada para `<saida.GAM>`. Aceita `.GAM`, `.MAP` e `.MP2` (mesmo formato; o `.MAP` é carregado como save, sem a semântica de New Game). `--preseed K` grava `K` no RNG do jogo e no `rand` do CRT **antes** da carga (a conversão de versões antigas e as passadas de terreno consomem RNG; o log mostra `LOAD_RNG` = estado depois da carga) e `--new-game` inicia um cenário (5.8). Tempo: **~11-13 s por run**, quase tudo é a inicialização do Wine; o avanço de 30 dias leva menos de 1 s.
 
 ### 5.1 Sequência de chamadas (processo do original, via gdb)
 O gdb para no porteiro `game_idle_tick` `0x404e30` com o jogo no **menu principal** (`0x566e14 == 0xb`, depois de 30 quadros). Cada chamada é feita por "register+jump": escreve-se o endereço de retorno `0x4a5940` (código morto) e os argumentos na pilha, ajusta-se `ECX`/`EDX`/`ESP`/`EIP`, `continue`, e lê-se `EAX` quando o breakpoint de retorno dispara. Todas são `fastcall` (ECX, EDX).
@@ -139,7 +139,20 @@ Implicações para o tick do mundo: a cada dia só `state.game_time_minutes`/`da
 - Por caso: `base` = original com 0 dias (conversão para 0x2348), `orig_N` = original com N dias (`advance_save.py`, passos de 320 min), `clone` = `rt2-advance base N semente`, e `rt2-savediff --json orig_N clone` dá iguais / N campos / três maiores grupos.
 - Saídas do original ficam em cache (`~/.cache/rrt2/fidelity/<sha256 do RT2_PLAT.EXE.orig>/`, chave: cenário + sha do save + semente + dias; sandbox do Wine em `~/.cache/rrt2/fidelity/wine/`), então o Wine (~12 s por run, ~1 min no primeiro por causa do aquecimento do sandbox) só roda uma vez; `--refresh` refaz. Antes de cada run espera (até `--wait`, 900 s) não haver `winedbg` ativo, porque `advance_save.py` mata todos os `winedbg` da máquina.
 - O estado anterior (casos IGUAIS) fica num comentário `<!-- fidelity:state ... -->` dentro dos marcadores; o script sai com 1 se um caso que estava igual deixar de ser (e mantém a linha de base igual até ele voltar).
-- Só `.GAM` e `.MP2` (o `.MP2` é lido copiado como `.GAM`); os `maps/#NN*.MAP` precisam de semântica de New Game que o clone não tem e ficam de fora.
+- `.GAM`, `.MAP` e `.MP2` (o `.MP2` é copiado como `.GAM`). Opções por cenário: `preseed` (passa `--preseed` ao original), `clone_from = "source"` (o clone parte do próprio arquivo do jogo com `rt2-advance --preseed`, exercitando `rt2_sim::convert`, em vez da saída de 0 dias do original; `days` pode conter 0) e `new_game = "SET:IDX:GSEED:RSEED"` + `campaign_name` (5.8; o clone usa `rt2-advance <mapa> --new-game --options-from <saída de 0 dias do original>`).
+
+### 5.8 New Game de cenário da campanha (`--new-game SET:IDX:GSEED:RSEED`)
+
+`advance_save.py <sb> <qualquer> <dias> <semente> <saída> --new-game 0:0:4321:777 --preseed 1234` substitui a carga (passo 3 de 5.1) por um início de cenário, sem cliques:
+
+| Passo | Chamada | Observação |
+|---|---|---|
+| 3'a | `[0x566d3d] = SET` (0 = os 18 `maps/#NN*.MAP`, 1 = os `#ENNcamp.MP2`), `[0x539c84] = IDX` | conjunto e índice na tabela de cenários `0x552430` (24 bytes por cenário; nome-base do arquivo no primeiro ponteiro, ex. `#01B&o~1`) |
+| 3'b | `0x410de0()` (início pela lista da campanha) | monta o bloco de opções `0x574840` (`0x4b3ac0`, `0x4b45b0(1)`), sorteia `game_seed` e o RNG e chama `0x479b20(nome)`; depois grava `0x570234 = 1` |
+| 3'c | breakpoints em `0x410f64` (`mov [0x57486e], esi`: `ESI = GSEED`) e `0x410f89` (`call rng_seed(ECX)`: `ECX = RSEED`) | trocam os dois sorteios `crt_rand_range(1,32000) + clock_ms()` por valores fixos (o CRT ainda avança 2 passos: com `--preseed 1234` fica em `0x80d509dc`) |
+| 3'd | `[0x574c04] = 1` | `0x479b20` libera o porteiro ao sair |
+
+O resto (semente, avanço, gravação) é o de 5.1; o log mostra `NEWGAME ...` e `LOAD_RNG` (RNG e CRT depois do início). Nenhum diálogo modal aparece no #01 B&O (o briefing do gatilho 6 não bloqueia). `ADV_TRACE=0xaddr,...` registra `ECX`, `EDX`, `u16 [ECX]` e o RNG a cada chamada desses endereços durante o início, sem parar (ex.: `0x430540,0x409010` lista os lugares e os prédios criados por `0x430a40(1)`, na ordem). Tempo: ~11 s. A entrada pela tela New Scenario (comando de rede 6, `rng_seed(game_seed)`) não foi automatizada.
 
 ## 6. Snapshots de uma função (teste diferencial no nível da função)
 

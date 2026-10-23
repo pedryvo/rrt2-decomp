@@ -373,7 +373,16 @@ impl ScenarioEnv for ScWorld<'_> {
                     _ => m(param, territory),
                 }
             }
-            93 | 94 => 0,
+            // `[0x566d2a] + 1` / `[0x566d00] + 1` (campaign block, header + 0x898E) in a
+            // campaign game (`0x570234`).
+            93 | 94 => {
+                if self.s.hdr(HDR_CAMPAIGN) == 0 {
+                    0
+                } else {
+                    let b = self.s.save.layout.header_len + if id == 93 { 0x2a } else { 0 };
+                    i32_at(&self.s.save.header, b) + 1
+                }
+            }
             95 => {
                 if param > 0
                     && let Some(r) = pool::record(&self.s.save.stations, param as usize)

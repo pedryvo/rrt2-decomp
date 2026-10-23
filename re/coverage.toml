@@ -3,11 +3,11 @@
 # Ver docs/re-workflow.md.
 #
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
-# Classificadas (categoria != unknown): 1273 (43.2%)
-# Por categoria: lib=258, platform=114, render=11, audio=56, ui=274, sim=560, unknown=1672
-# Por estado:   unknown=2408, named=129, spec=181, verified=227
-# Entradas manuais: 518
-# sim spec coverage: 66.2% (371 de 560 funcoes sim em spec/verified)
+# Classificadas (categoria != unknown): 1283 (43.6%)
+# Por categoria: lib=258, platform=114, render=11, audio=56, ui=273, sim=571, unknown=1662
+# Por estado:   unknown=2398, named=126, spec=189, verified=232
+# Entradas manuais: 529
+# sim spec coverage: 66.9% (382 de 571 funcoes sim em spec/verified)
 
 [[function]]
 addr = "0x401005"
@@ -5857,9 +5857,9 @@ why = "thunk->0x466800"
 [[function]]
 addr = "0x4027a7"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4d4660"
 
 [[function]]
 addr = "0x4027ac"
@@ -6835,9 +6835,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x402b94"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x406f60"
 
 [[function]]
 addr = "0x402b9e"
@@ -7849,9 +7849,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x406f60"
 size = 194
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "map-gam.md 9.3: convert::station_unlink"
+manual = true
 
 [[function]]
 addr = "0x407030"
@@ -7979,11 +7980,11 @@ manual = true
 
 [[function]]
 addr = "0x409120"
-name = "building_save_tile"
 size = 203
-category = "unknown"
-status = "named"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "world-tick.md 10: tile salvo em pool_88 (gap do New Game)"
+manual = true
 
 [[function]]
 addr = "0x4091f0"
@@ -8346,8 +8347,9 @@ why = "string:campmisc.imb"
 addr = "0x410de0"
 size = 548
 category = "platform"
-status = "unknown"
-why = "string:.MAP"
+status = "spec"
+why = "world-tick.md 10, dynamic-analysis.md 5.8 (chamado pelo driver)"
+manual = true
 
 [[function]]
 addr = "0x411070"
@@ -9184,7 +9186,7 @@ addr = "0x429fc0"
 size = 1049
 category = "sim"
 status = "spec"
-why = "docs/spec/terrain-track.md 10.6: build/bulldoze.rs (so o caso da escavadeira, raio 0 e -100), snapshot doze_trees"
+why = "world-tick.md 10: campos de building_construct (gap do New Game)"
 manual = true
 
 [[function]]
@@ -9249,11 +9251,11 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x42bf90"
-name = "terrain_build_territory_borders"
 size = 901
-category = "unknown"
-status = "named"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "map-gam.md 9.3: TerrainGrid::build_territory_borders"
+manual = true
 
 [[function]]
 addr = "0x42c320"
@@ -9477,7 +9479,7 @@ addr = "0x430e70"
 size = 350
 category = "sim"
 status = "spec"
-why = "growth/towns_recompute_extent (3.8)"
+why = "world-tick.md 10: towns_recompute_extent"
 manual = true
 
 [[function]]
@@ -9525,7 +9527,7 @@ addr = "0x4317f0"
 size = 39
 category = "sim"
 status = "spec"
-why = "growth/town_reset (3.7)"
+why = "world-tick.md 10: em game_set_date"
 manual = true
 
 [[function]]
@@ -10206,9 +10208,10 @@ manual = true
 [[function]]
 addr = "0x43dca0"
 size = 268
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "world-tick.md 10: em game_set_date"
+manual = true
 
 [[function]]
 addr = "0x43ddb0"
@@ -10907,8 +10910,8 @@ manual = true
 addr = "0x457c90"
 size = 562
 category = "sim"
-status = "spec"
-why = "rule_read, formato em map-gam.md"
+status = "verified"
+why = "map-gam.md 9.2: convert::upgrade_rule_fixed"
 manual = true
 
 [[function]]
@@ -12233,8 +12236,8 @@ why = "no-evidence"
 addr = "0x46b650"
 size = 571
 category = "sim"
-status = "named"
-why = "time.md 2; efeitos colaterais nao especificados"
+status = "spec"
+why = "world-tick.md 10: SimState::game_set_date (sem 0x40b820 por predio)"
 manual = true
 
 [[function]]
@@ -12501,9 +12504,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x473590"
 size = 1001
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "world-tick.md 10: players_setup (sem 0x4a6a00 e nomes do LNG)"
+manual = true
 
 [[function]]
 addr = "0x473980"
@@ -12524,7 +12528,7 @@ addr = "0x474280"
 size = 658
 category = "sim"
 status = "spec"
-why = "finance.md 14.4 (inicio do mundo, pessoas)"
+why = "world-tick.md 10: SimState::world_start"
 manual = true
 
 [[function]]
@@ -12707,15 +12711,15 @@ addr = "0x477540"
 size = 1301
 category = "sim"
 status = "spec"
-why = "save: ordem de blocos igual a do carregador, versao 0x2348"
+why = "map-gam.md 9.4: convert::saver_refresh (contagens de jogadores, campos do cabecalho)"
 manual = true
 
 [[function]]
 addr = "0x477a60"
 size = 7222
 category = "sim"
-status = "spec"
-why = "load: serializacao completa decodificada em docs/formats/map-gam.md"
+status = "verified"
+why = "map-gam.md 9: rt2_sim::convert (upgrade, load_passes); 0 diferencas nos 33 arquivos (tests/convert.rs)"
 manual = true
 
 [[function]]
@@ -12750,9 +12754,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x479b20"
 size = 595
-category = "platform"
-status = "unknown"
-why = "string:.MAP"
+category = "sim"
+status = "spec"
+why = "world-tick.md 10: World::new_game"
+manual = true
 
 [[function]]
 addr = "0x479d80"
@@ -13294,16 +13299,17 @@ manual = true
 [[function]]
 addr = "0x495700"
 size = 1537
-category = "ui"
-status = "spec"
-why = "docs/spec/commands.md 3.1"
+category = "sim"
+status = "verified"
+why = "map-gam.md 9.3: convert::difficulty_flags (parte de jogo)"
 manual = true
 
 [[function]]
 addr = "0x495d10"
+name = "load_ui_refresh"
 size = 57
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -14172,9 +14178,10 @@ manual = true
 [[function]]
 addr = "0x4a7960"
 size = 35
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "world-tick.md 10: em game_set_date"
+manual = true
 
 [[function]]
 addr = "0x4a7990"
@@ -14557,8 +14564,9 @@ why = "string:games\\"
 addr = "0x4b3ac0"
 size = 262
 category = "platform"
-status = "unknown"
-why = "string:.GAM"
+status = "spec"
+why = "world-tick.md 10 (montagem das opcoes nao portada)"
+manual = true
 
 [[function]]
 addr = "0x4b3e00"
@@ -14584,9 +14592,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4b45b0"
 size = 1352
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "world-tick.md 10 (montagem das opcoes nao portada)"
+manual = true
 
 [[function]]
 addr = "0x4b4c00"
@@ -15264,8 +15273,8 @@ why = "no-evidence"
 addr = "0x4c8970"
 size = 189
 category = "sim"
-status = "named"
-why = "growth/territories_recount_land"
+status = "spec"
+why = "world-tick.md 10: territories_recount_land"
 manual = true
 
 [[function]]
@@ -15796,9 +15805,10 @@ manual = true
 [[function]]
 addr = "0x4d4660"
 size = 129
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "world-tick.md 10: em game_set_date"
+manual = true
 
 [[function]]
 addr = "0x4d46f0"

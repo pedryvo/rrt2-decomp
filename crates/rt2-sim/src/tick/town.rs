@@ -565,8 +565,10 @@ impl SimState {
         self.log.ran("building_destroy");
     }
 
-    /// `town_year_step(0)` (`0x430a40`, world-growth.md 3.1).
-    pub(super) fn town_year_step(&mut self, w: &mut World) {
+    /// `town_year_step(new_world)` (`0x430a40`, world-growth.md 3.1): `new_world` is the call of
+    /// the New Game start (`0x474280`), which keeps every scarcity weight at 100 and grows each
+    /// place to its initial size.
+    pub(super) fn town_year_step(&mut self, w: &mut World, new_world: bool) {
         if !self.v2348() {
             todo_hook!(
                 self.log,
@@ -599,7 +601,11 @@ impl SimState {
         };
         for (t, &n) in count.iter().enumerate() {
             let o = HDR_TYPE_FLAGS + 9 * t;
-            pick.scarcity[t] = type_scarcity_percent(n);
+            pick.scarcity[t] = if new_world {
+                100
+            } else {
+                type_scarcity_percent(n)
+            };
             pick.disabled[t] = self.save.header[o] != 0;
             put_u32(&mut self.save.header, o + 1, pick.scarcity[t] as u32);
         }
@@ -637,7 +643,7 @@ impl SimState {
                     year: i32::from(date.year),
                     set1: pick.set1,
                 };
-                town_growth_step(&mut t, &gw, &tab, &mut env, &mut w.rng, dt, false);
+                town_growth_step(&mut t, &gw, &tab, &mut env, &mut w.rng, dt, new_world);
             }
             if let Some(r) = pool::record_mut(&mut self.save.places, place) {
                 put_u32(&mut r.data, 0x2e, t.growth_index as u32);

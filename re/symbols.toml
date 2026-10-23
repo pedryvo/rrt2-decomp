@@ -5177,3 +5177,87 @@ name = "route_ring_init"
 kind = "function"
 comment = "fastcall(anel, n): aloca x/y (2n), entrada/saida (n) e flags (2n); +0x59 = n, cabeca +0x5d = -1, contagem +0x61 = 0, +0x65 = 1; malloc sem inicializar (0xBAADF00D sob o Wine) [V snapshots tp*]"
 spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x479b20"
+name = "scenario_start"
+kind = "function"
+comment = "fastcall(nome): New Game de um cenario: guarda os blocos 0x566d00 e 0x574840, carrega maps\nome.MP2|.MAP (0x477a60), restaura as opcoes, 0x495d10, 0x473590, 0x474280, nome em 0x567b5b, gatilhos 6/0/2, 0x573d2d; [D parcial]"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x410de0"
+name = "campaign_start"
+kind = "function"
+comment = "inicio pela lista da campanha: monta o bloco de opcoes (0x4b3ac0, 0x4b45b0), sorteia game_seed e rng_seed (crt_rand_range+clock_ms) e chama scenario_start; 0x570234=1; [D]"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x474280"
+name = "new_world_start"
+kind = "function"
+comment = "inicio do mundo do New Game: velocidade>=3, opcoes de realismo, game_set_date do ano das opcoes, 0x430e70, 0x4c8970, town_year_step(1), sim_week_end, pessoas +0x548/+0x267; [S]"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x473590"
+name = "players_setup"
+kind = "function"
+comment = "um jogador: vagas do bloco de opcoes -> jogadores (+0x122/+0x126/+0x132/+0x52f, nomes do LNG), empresas 0x43ddb0, zera contadores de territorios e estacoes; [S]"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x495d10"
+name = "load_ui_refresh"
+kind = "function"
+comment = "depois da carga: 0x49a480 e ui_set_editor_mode(0x5748f8) (opcoes de realismo -> 0x573d72..78, fronteiras de territorio); [V via convert]"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x406f60"
+name = "station_unlink_buildings"
+kind = "function"
+comment = "fastcall(estacao): zera a cadeia +0x3d/+0x41 e tira de cada predio o 1o vinculo pool_58 para a estacao; [V via convert]"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x43dca0"
+name = "company_set_date"
+kind = "function"
+comment = "fastcall(empresa): datas e contadores de game_set_date, cotacao 0x43b410(0,1), +0x17e = agora + rng(30,90)*1440; [S]"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x4a7960"
+name = "person_set_date"
+kind = "function"
+comment = "fastcall(pessoa): +0x267 = rng(60,450)*1440; [S]"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x4d4660"
+name = "train_set_date"
+kind = "function"
+comment = "fastcall(trem): desloca o historico +0xfd/+0x10d/+0x11d, datas e contadores; [S]"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x4b3ac0"
+name = "scenario_header_info"
+kind = "function"
+comment = "fastcall(dst,nome,mp2?): copia do cabecalho do mapa nome, checksum, contagens de jogadores e ano inicial para o bloco de opcoes; [S]"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x4b45b0"
+name = "setup_assign_player_slots"
+kind = "function"
+comment = "fastcall(ajustar): limita o numero de IAs as contagens do cenario e distribui as vagas de jogadores do bloco de opcoes (0x4b4360); [S]"
+spec = "docs/spec/world-tick.md"
+
+[[symbol]]
+addr = "0x429fc0"
+name = "terrain_paint_brush"
+kind = "function"
+comment = "fastcall(x,y,raio,forca,flags): pincel de terreno (campos 0x53a0a4) com RNG por tile; usado por building_construct; [S]"
+spec = "docs/spec/world-tick.md"

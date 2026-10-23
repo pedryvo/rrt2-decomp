@@ -40,7 +40,7 @@ impl SimState {
     }
 
     /// `engine_available(e, 0)` (`0x4683a0`, trains.md 2.4) with only the global effects.
-    fn engine_available(&self, e: usize, year: i32, month: i32) -> bool {
+    pub(super) fn engine_available(&self, e: usize, year: i32, month: i32) -> bool {
         let id = if e < 0x3e { e + 0x7f } else { e + 0xf3 };
         let m = i16_at(&self.save.state, ST_GLOBAL_EFFECTS + 2 * id);
         if m < 0 {
