@@ -259,13 +259,13 @@ O usuário decidiu que todos os itens abaixo entram na 1.0, inclusive o multipla
 - [ ] Overlays de mapa: as camadas originais, mais oferta e demanda por carga, lucro por trecho e congestionamento
 - [ ] Gerenciador de frota: modelos de composição e troca de locomotiva em massa
 - [ ] Gráficos e relatórios financeiros mais completos
-- [ ] Notificações configuráveis e histórico de eventos
+- [x] Notificações configuráveis e histórico de eventos
 
 **Plataforma**
 - [ ] Controle (gamepad) e Steam Deck
 - [ ] Mods: dados de jogo (locomotivas, cargas, indústrias, construções, efeitos) exportáveis do EXE para TOML e carregáveis de pacotes de mod, com o EXE como padrão
 - [ ] Acessibilidade: paletas para daltonismo, tamanho de fonte independente da escala da UI, legendas para avisos sonoros
-- [ ] Empacotamento: AppImage e Flatpak no Linux, além dos tarballs e do zip do Windows
+- [x] Empacotamento: AppImage e Flatpak no Linux, além dos tarballs e do zip do Windows
 - [ ] Guia do jogador (instalação, primeiros passos, diferenças em relação ao original, recursos modernos) nos seis idiomas
 
 **Multiplayer** (entre cópias do clone; não conversa com o DirectPlay do original)
