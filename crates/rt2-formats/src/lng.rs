@@ -23,7 +23,7 @@ pub struct LngTable {
     pub first_id: u32,
 }
 
-#[derive(Debug, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Lng {
     pub strings: BTreeMap<u32, String>,
     pub tables: Vec<LngTable>,

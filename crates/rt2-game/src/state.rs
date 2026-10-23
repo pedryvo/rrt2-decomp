@@ -1007,11 +1007,13 @@ impl AppState {
                 (w, crate::setup::Setup::default())
             }
             StartMode::Scenario(setup) => {
-                let o = setup.new_game_options(&save, &name, None, seed);
+                let mut o = setup.new_game_options(&save, &name, None, seed);
+                o.lng = self.texts.english().cloned().map(std::sync::Arc::new);
                 (World::new_game(&save, &o, &data, seed), *setup)
             }
             StartMode::Campaign(setup, c) => {
-                let o = setup.new_game_options(&save, &name, Some(c), seed);
+                let mut o = setup.new_game_options(&save, &name, Some(c), seed);
+                o.lng = self.texts.english().cloned().map(std::sync::Arc::new);
                 (World::new_game(&save, &o, &data, seed), *setup)
             }
         };

@@ -205,3 +205,4 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Feature: finance screens in the game: company book actions (issue bonds, repay, issue stock, buy back, dividend, merger, bankruptcy, managers, chairmanship), personal stock trading with margin, vote dialogs, margin and merger messages
 - Fix: the board's dividend suspension and cut are written back to the company (`0x4399d0`); the Example save now stays identical to the original after 30 days
 - RE: finance windows and rules read from the executable: trade lot 0x4a6e00 (4% of the position + 1000), buy-back lot (cash / (price * 1.2)), dividend buttons 0x449300, bankruptcy rule (two losing years), chairman buttons by stake (50% assume, 10% election), news counter and local company copy
+- Fix: AI players in a new scenario get their persona names and bios from the game text instead of "Unassigned".

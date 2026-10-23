@@ -50,6 +50,12 @@ impl Texts {
         Texts::from_parts(english, locales, locale)
     }
 
+    /// The install's untouched English table (the original builds new-game persona names and
+    /// bios from it, whatever language the clone displays).
+    pub fn english(&self) -> Option<&Lng> {
+        self.english.as_ref()
+    }
+
     pub fn from_parts(english: Option<Lng>, locales: Vec<Translation>, locale: &str) -> Texts {
         let mut t = Texts {
             english,
