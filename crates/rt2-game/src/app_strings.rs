@@ -214,6 +214,13 @@ pub static APP_EN: &[&str] = &[
     "Run trains",
     "Lay track",
     "Build stations",
+    "The economy is now: %1.",
+    "%1 was founded.",
+    "a new company",
+    "The investment values are not valid for this person.",
+    "There is no player who can start a company.",
+    "The company could not be started.",
+    "Construction needs a company: start one first (Start New Company).",
 ];
 
 /// The id of an English default.

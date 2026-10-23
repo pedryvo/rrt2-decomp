@@ -2,11 +2,9 @@
 //! only. A track segment is laid from a station, a station is built on its end, a train is
 //! bought with two stops, the world runs and revenue appears (docs/spec/commands.md 3).
 //!
-//! The Example save of the install uses the old `0x233C` record layout, which the simulation
-//! does not read yet (the conversion the original makes on load is not decoded). The test needs
-//! the same game state in the `0x2348` layout: `RT2_SAVE_2348` (default
-//! `~/.cache/rrt2/buildwork/ex_dl0.GAM`, the Example advanced 0 days by the original under
-//! Wine, `docs/dynamic-analysis.md`). Without it, or without `RT2_DIR`, the test is skipped.
+//! The Example save of the install is in the old `0x233C` layout; `World::from_save_seeded`
+//! converts it on load as the original's loader does. Needs `RT2_DIR` (default
+//! `~/Games/railroad-tycoon-2`); without it the test is skipped.
 
 #![allow(dead_code)]
 
@@ -33,13 +31,6 @@ fn dirs_home() -> Option<PathBuf> {
     std::env::var_os("HOME").map(PathBuf::from)
 }
 
-fn converted_save() -> Option<PathBuf> {
-    let p = std::env::var_os("RT2_SAVE_2348")
-        .map(PathBuf::from)
-        .or_else(|| dirs_home().map(|h| h.join(".cache/rrt2/buildwork/ex_dl0.GAM")))?;
-    p.is_file().then_some(p)
-}
-
 struct Game {
     world: World,
     data: GameData,
@@ -47,14 +38,17 @@ struct Game {
 }
 
 fn load() -> Option<Game> {
-    let (dir, path) = (install()?, converted_save()?);
+    let dir = install()?;
     let exe = Exe::from_bytes(std::fs::read(dir.join("RT2_PLAT.EXE")).ok()?).ok()?;
     let data = GameData::load(&exe).ok()?;
-    let save = Save::parse(&std::fs::read(path).ok()?).ok()?;
-    assert!(playable(&save), "the save must be in the 0x2348 layout");
-    let company = human_company(&save)?;
-    let mut world = World::from_save(&save, &data);
+    let save = Save::parse(&std::fs::read(dir.join("games/Example save game.GAM")).ok()?).ok()?;
+    let mut world = World::from_save_seeded(&save, &data, 1);
     world.apply(Command::SeedRng(1));
+    assert!(
+        playable(world.save_ref()?),
+        "converted to the 0x2348 layout"
+    );
+    let company = human_company(world.save_ref()?)?;
     Some(Game {
         world,
         data,
@@ -75,7 +69,7 @@ fn train_income(save: &Save, train: i32) -> i32 {
 #[test]
 fn lay_track_build_station_buy_train_and_earn() {
     let Some(mut g) = load() else {
-        eprintln!("RT2_DIR or the converted Example save are missing; skipping");
+        eprintln!("RT2_DIR is missing; skipping");
         return;
     };
     let co = g.company;

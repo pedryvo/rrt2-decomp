@@ -22,12 +22,11 @@ use rt2_ui::{
     Align, Anchor, Color, Fill, FontStyle, Kind, Layout, NodeId, Stack, Ui, UiEvent, game_font,
 };
 
-use super::{AppState, Screen};
+use super::{AppState, Screen, StartMode};
 use crate::catalog::{self, Entry};
-use crate::founding::Founding;
 use crate::radar::Radar;
 use crate::scenario_info::{Medal, ScenarioInfo, wrap_text};
-use crate::setup::{Level, Model, Setup};
+use crate::setup::{CampaignStart, Level, Model, Setup};
 use crate::text::id as lng;
 
 pub(super) const A_SINGLE: u32 = 400;
@@ -435,13 +434,13 @@ impl AppState {
             Screen::Game(_) => return,
         };
         if let Some(p) = path {
-            self.start_flow(&p, setup);
+            self.start_flow(&p, StartMode::Scenario(setup));
         }
     }
 
     /// "<Play this Scenario>" on the campaign page.
     fn campaign_play(&mut self) {
-        let (path, setup, scenario, set) = match &self.screen {
+        let (path, setup, scenario, set, difficulty, bonus) = match &self.screen {
             Screen::Menu(m) => (
                 m.entries
                     .get(m.data.campaign.scenario)
@@ -453,6 +452,8 @@ impl AppState {
                 ),
                 m.data.campaign.scenario,
                 m.data.campaign.set,
+                m.data.campaign.difficulty.min(2),
+                m.data.campaign.bonus.min(2),
             ),
             Screen::Game(_) => return,
         };
@@ -476,50 +477,48 @@ impl AppState {
             self.rebuild_ui();
             return;
         }
-        self.start_flow(&path, setup);
+        let c = CampaignStart {
+            set,
+            index: scenario,
+            difficulty,
+            bonus,
+        };
+        self.start_flow(&path, StartMode::Campaign(setup, c));
     }
 
     /// Starts a scenario from the menus: the game opens with the briefing on top and, for a
     /// scenario without a company, the Start New Company dialog after it.
-    fn start_flow(&mut self, path: &std::path::Path, setup: Setup) {
-        if let Err(e) = self.start(path) {
+    fn start_flow(&mut self, path: &std::path::Path, mode: StartMode) {
+        if let Err(e) = self.start_mode(path, mode) {
             eprintln!("cannot start {}: {e:#}", path.display());
             self.go_to_menu();
             return;
         }
-        self.queue_opening_dialogs(path, setup);
+        self.queue_opening_dialogs();
     }
 
-    /// The dialogs of a new game: Start New Company (when the file has no company) under the
-    /// briefing.
-    pub(super) fn queue_opening_dialogs(&mut self, path: &std::path::Path, setup: Setup) {
-        let raw = std::fs::read(path).ok();
-        let save = raw.as_deref().and_then(|r| Save::parse(r).ok());
-        let founder = save.as_ref().and_then(crate::info::founder);
+    /// The dialogs of a game that was just opened: the briefing and, when the player has no
+    /// company yet (a new scenario), Start New Company on top of it.
+    pub fn queue_opening_dialogs(&mut self) {
+        let founding = self.founding_dialog();
         let Screen::Game(g) = &mut self.screen else {
             return;
         };
-        g.setup = setup;
-        let needs_company = g.scenario.as_ref().is_some_and(|s| s.companies == 0);
-        if needs_company && let Some(f) = founder {
-            let conf = crate::founding::investor_confidence(f.human, f.reputation, None);
-            let name = self
-                .texts
-                .table("TEMP_COMPANY_NAMES", 0, "New Railroad Company");
-            let Screen::Game(g) = &mut self.screen else {
-                return;
-            };
-            g.dialogs.push(super::dialogs::Dialog::Founding {
-                f: Founding::new(f.cash, conf),
-                name,
-            });
+        // The last one is on top: Start New Company at the bottom...
+        if let Some(d) = founding {
+            g.dialogs.push(d);
         }
+        // ...then what the start sequence said (a new game runs the briefing rule, trigger 6,
+        // which arrives as a message dialog)...
+        let shown = self.poll_world();
         let Screen::Game(g) = &mut self.screen else {
             return;
         };
-        if g.scenario
-            .as_ref()
-            .is_some_and(|s| !s.briefing.is_empty() || !s.goals.is_empty())
+        // ...else (a loaded game) the briefing and goals from the file's rules.
+        if !shown
+            && g.scenario
+                .as_ref()
+                .is_some_and(|s| !s.briefing.is_empty() || !s.goals.is_empty())
         {
             g.dialogs.push(super::dialogs::Dialog::Goals);
         }

@@ -107,6 +107,16 @@ struct Args {
     /// With `--tool`: send the tool's command (as a click or the end of the drag would)
     #[arg(long)]
     apply: bool,
+    /// With `--screen game`: open the dialogs a started game opens (briefing, then Start New
+    /// Company when the player has no company), as the menus do
+    #[arg(long)]
+    opening: bool,
+    /// With `--screen game`: found a company with this name (the dialog's middle sliders)
+    #[arg(long)]
+    found: Option<String>,
+    /// With `--screen game`: start a scenario map as a campaign game (index 0..18)
+    #[arg(long)]
+    campaign: Option<usize>,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -218,7 +228,27 @@ fn screenshot(init: Init, skin: rt2_ui::Skin, args: &Args, out: &std::path::Path
                 .file
                 .clone()
                 .unwrap_or_else(|| install.join("games").join("Example save game.GAM"));
-            state.start(&file)?;
+            match args.campaign {
+                Some(index) => state.start_mode(
+                    &file,
+                    state::StartMode::Campaign(
+                        setup::Setup::default(),
+                        setup::CampaignStart {
+                            set: 0,
+                            index,
+                            difficulty: 1,
+                            bonus: 0,
+                        },
+                    ),
+                )?,
+                None => state.start(&file)?,
+            }
+            if args.opening {
+                state.queue_opening_dialogs();
+            }
+            if let Some(name) = &args.found {
+                state.found_with_defaults(name);
+            }
             state.advance_days(args.days);
             if let Some((x, y)) = args.focus {
                 state.set_view(x, y, args.zoom, args.rotation);

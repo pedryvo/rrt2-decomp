@@ -1562,7 +1562,7 @@ impl AppState {
         }) else {
             let m = self
                 .texts
-                .a("Construction needs a save in the 0x2348 layout with a human company.");
+                .a("Construction needs a company: start one first (Start New Company).");
             self.toast_text(m);
             return;
         };

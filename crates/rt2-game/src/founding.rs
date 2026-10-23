@@ -1,7 +1,9 @@
 //! The "Start New Company" dialog's numbers: the Player Investment and Outside Investment
-//! sliders and what a company founded with that capital starts with (docs/spec/finance.md 17).
+//! sliders (docs/spec/finance.md 17). What a company founded with the chosen capital starts with
+//! (price, shares, "You buy") is `rt2_sim::found::founding_preview`; the dialog must not
+//! re-derive it.
 //!
-//! Ports of the reference implementations that `crates/rt2-oracle/tests/company.rs` checks
+//! The sliders are ports of the reference implementations that `crates/rt2-oracle/tests/company.rs` checks
 //! against the original executable (`founding_sliders_match_original`,
 //! `credit_multiplier_matches_original`, `company_init_matches_original`); the rules are in
 //! `finance.md` 17.2 (sliders), 17.3 (command 0x26) and 17.4 (`company_init` 0x438a10).
@@ -111,42 +113,6 @@ pub fn investor_confidence(human: bool, reputation: i32, years_as_chairman: Opti
     (f64::from(reputation + 100 + penalty) * 0.1).clamp(0.5, 15.0)
 }
 
-/// What `company_init` makes of a founding capital (`finance.md` 17.4).
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct NewCompany {
-    /// Initial share price (f32 like the record).
-    pub price: f32,
-    /// Shares issued, a multiple of 1000.
-    pub shares: i32,
-    /// Cash after the share sale: `ftol(price) * shares` (the rest of the capital is lost).
-    pub cash: i32,
-}
-
-/// Initial price, shares and cash of a company founded with `capital` dollars.
-pub fn company_init(capital: i32) -> NewCompany {
-    let k = if capital == -1 { 500_000 } else { capital };
-    let mut price = (k / 10_000) as f32;
-    while price >= 100.0 {
-        price *= 0.5;
-    }
-    let shares = (f64::from(k) / f64::from(price) * f64::from(0.001f32)).trunc() as i32 * 1000;
-    let cash = (f64::from(price).trunc() as i32).wrapping_mul(shares);
-    NewCompany {
-        price,
-        shares,
-        cash,
-    }
-}
-
-/// The founder's purchase of their own shares (`finance.md` 17.3): `n_p` shares, rounded to the
-/// nearest 1000 of `P / price`, capped by the issue, and the money it costs (`ftol(n_p * price)`).
-pub fn founder_purchase(own_investment: i32, c: &NewCompany) -> (i32, i32) {
-    let want =
-        ((f64::from(own_investment) / f64::from(c.price)).trunc() as i32 + 500) / 1000 * 1000;
-    let n = c.shares.min(want.max(0));
-    (n, (f64::from(n) * f64::from(c.price)).trunc() as i32)
-}
-
 /// The founding dialog state: both sliders and the derived numbers.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Founding {
@@ -203,15 +169,6 @@ impl Founding {
         self.outside_pos = (self.outside_pos + delta).clamp(0, max.max(0));
     }
 
-    /// Total capital `K = P + O` (`finance.md` 17.3).
-    pub fn capital(&self) -> i32 {
-        self.player_value().saturating_add(self.outside_value())
-    }
-
-    pub fn company(&self) -> NewCompany {
-        company_init(self.capital())
-    }
-
     /// Whether the player may start a company at all: buying power of at least 100 000
     /// (`finance.md` 17.1).
     pub fn allowed(&self) -> bool {
@@ -222,22 +179,6 @@ impl Founding {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn company_init_matches_the_spec_examples() {
-        // finance.md 17.4: K -> (price, shares, cash).
-        let c = company_init(500_000);
-        assert_eq!((c.price, c.shares, c.cash), (50.0, 10_000, 500_000));
-        let c = company_init(1_000_000);
-        assert_eq!((c.price, c.shares, c.cash), (50.0, 20_000, 1_000_000));
-        let c = company_init(1_500_000);
-        assert_eq!((c.price, c.shares, c.cash), (75.0, 20_000, 1_500_000));
-        let c = company_init(4_000_000);
-        assert_eq!((c.price, c.shares, c.cash), (50.0, 80_000, 4_000_000));
-        let c = company_init(123_456);
-        assert_eq!((c.price, c.shares, c.cash), (12.0, 10_000, 120_000));
-        assert_eq!(company_init(-1), company_init(500_000));
-    }
 
     #[test]
     fn player_slider_brackets() {
@@ -285,29 +226,37 @@ mod tests {
         assert!((investor_confidence(true, 0, Some(0)) - 3.0).abs() < 1e-9);
     }
 
+    /// The dialog's sliders must produce exactly the values the simulation's sliders accept
+    /// (`rt2_sim::found`), or command `0x26` answers `InvalidInput`.
     #[test]
-    fn the_founder_buys_in_lots_of_a_thousand() {
-        let c = company_init(1_000_000); // price 50, 20 000 shares
-        assert_eq!(founder_purchase(500_000, &c), (10_000, 500_000));
-        // 120 000 / 50 = 2400 -> (2400 + 500) / 1000 * 1000 = 2000 shares.
-        assert_eq!(founder_purchase(120_000, &c), (2000, 100_000));
-        // Never more than the issue.
-        assert_eq!(founder_purchase(50_000_000, &c).0, 20_000);
+    fn sliders_agree_with_the_simulation() {
+        use rt2_sim::found;
+        for power in [100_000, 250_000, 999_999, 1_000_000, 2_345_678, 25_500_000] {
+            for conf in [0.5, 3.0, 10.0, 15.0] {
+                let mut f = Founding::new(f64::from(power), conf);
+                let ps = found::player_slider(power);
+                assert!(ps.contains(f.player_value()));
+                for _ in 0..3 {
+                    f.move_player(1);
+                    assert!(ps.contains(f.player_value()), "player {power}");
+                    let os = found::outside_slider(conf, f.player_value());
+                    assert!(os.contains(f.outside_value()), "outside {power} {conf}");
+                    f.move_outside(1);
+                    assert!(os.contains(f.outside_value()));
+                }
+            }
+        }
     }
 
     #[test]
     fn the_dialog_moves_both_sliders_and_keeps_the_outside_setting() {
         let mut f = Founding::new(1_000_000.0, 10.0);
         assert!(f.allowed());
-        let before = f.capital();
         f.move_player(1);
         assert!(f.player_value() > 0);
-        let _ = before;
         let o = f.outside_value();
         f.move_outside(-1);
         assert!(f.outside_value() <= o);
-        // Capital is the sum of both settings.
-        assert_eq!(f.capital(), f.player_value() + f.outside_value());
         assert!(!Founding::new(99_999.0, 10.0).allowed());
     }
 }

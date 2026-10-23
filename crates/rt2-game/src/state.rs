@@ -11,7 +11,7 @@ use rt2_audio::Event;
 use rt2_formats::map::Save;
 use rt2_render::live::LiveFrame;
 use rt2_render::{Camera, GameAssets, Scene, SceneOptions};
-use rt2_sim::calendar::{DEFAULT_SPEED, Date, SpeedTable};
+use rt2_sim::calendar::{Date, SpeedTable};
 use rt2_sim::data::GameData;
 use rt2_sim::exe::Exe;
 use rt2_sim::{Command, SpeedChange, World};
@@ -61,6 +61,19 @@ const MAX_STEPS_PER_FRAME: u32 = 5;
 /// Keyboard pan speed in physical pixels per second.
 const PAN_SPEED: f32 = 900.0;
 const ZOOM_STEP: f32 = 1.15;
+/// How a game file is opened (`AppState::start_mode`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum StartMode {
+    /// By extension: `.MAP` / `.MP2` start a scenario with the default options, else load.
+    Auto,
+    /// A saved game, as it is.
+    Load,
+    /// New Scenario with the options of the Game Setup screen.
+    Scenario(crate::setup::Setup),
+    /// New Campaign: the options plus the campaign block.
+    Campaign(crate::setup::Setup, crate::setup::CampaignStart),
+}
+
 /// Seed of the game RNG after a load (it is not in the file, docs/formats/map-gam.md 5.2).
 pub const RNG_SEED: u32 = 1;
 const TOAST_SECS: f32 = 4.0;
@@ -96,7 +109,9 @@ struct GameState {
     hud: MainIds,
     /// The scenario's description, briefing and goals (`scenario_info.rs`).
     scenario: Option<Box<crate::scenario_info::ScenarioInfo>>,
-    /// The options the game was started with (`setup.rs`).
+    /// The options the game was started with (`setup.rs`); the ones the simulation does not take
+    /// yet (sandbox, revenue modifiers, extra computers) wait here for their hooks.
+    #[allow(dead_code)]
     setup: crate::setup::Setup,
     /// Modal dialogs, the last one on top (`dialogs.rs`).
     dialogs: Vec<Dialog>,
@@ -110,8 +125,8 @@ struct GameState {
     last_year: u16,
     /// Simulated day the center list was last refreshed for.
     center_day: i32,
-    /// A map without game state (a new scenario): no save is possible.
-    map_only: bool,
+    /// The win / lose plaque was already opened for this game.
+    over_shown: bool,
     /// The open information screen (finance, trains, ...), if any.
     info: Option<InfoState>,
     /// Fingerprint of what the static map layers show (buildings, track, stations).
@@ -203,6 +218,8 @@ pub struct AppState {
     via_mouse: bool,
     /// Where the left button went down on the map, to tell a click from a drag.
     press: Option<(f32, f32)>,
+    /// Seed of the next start (`set_seed`).
+    seed: u32,
 }
 
 #[derive(Default, Clone)]
@@ -221,13 +238,11 @@ fn format_date(d: Date, texts: &Texts) -> String {
     texts.date(d.month, d.day, d.year)
 }
 
-/// Cash of the player's company: account 0 of the first company (`finance.md` 2: `+0x4766`).
-// TODO: which company is the human's is not decoded (companies are listed in pool order).
+/// Cash of the player's company: account 0 of the human player's company (`finance.md` 2);
+/// `None` while the player has no company (a new scenario before Start New Company).
 fn player_cash(save: &Save) -> Option<f64> {
-    let rec = save.companies.ordered().next()?;
-    let b = rec.data.get(0x4766..0x4766 + 8)?;
-    let v = f64::from_le_bytes(b.try_into().ok()?);
-    v.is_finite().then_some(v)
+    let c = crate::buildtools::human_company(save)?;
+    Some(crate::buildtools::cash(save, c)).filter(|v| v.is_finite())
 }
 
 impl AppState {
@@ -276,9 +291,17 @@ impl AppState {
             music: MusicRequester::default(),
             via_mouse: false,
             press: None,
+            seed: RNG_SEED,
         };
         s.rebuild_ui();
         s
+    }
+
+    /// Seed of the next game's random numbers (game seed, game RNG and CRT state of a start).
+    /// Fixed by default so tests and screenshots repeat; the window loop passes the wall clock
+    /// so each real game differs, as the original's `clock_ms()` seeds did.
+    pub fn set_seed(&mut self, seed: u32) {
+        self.seed = seed.max(1);
     }
 
     /// The writing system of the current language, for the font choice.
@@ -524,6 +547,10 @@ impl AppState {
         }
         match &self.screen {
             Screen::Game(_) => {
+                // Start New Company takes typed text for the company name.
+                if self.founding_key(code, text) {
+                    return;
+                }
                 if !repeat {
                     self.game_key(code, ctrl);
                 }
@@ -734,6 +761,11 @@ impl AppState {
         }
         self.live_alpha = (g.accum_ms / STEP_MS).clamp(0.0, 1.0);
         g.cash_timer -= dt_ms;
+        // Messages and the end of the game, after the steps (and once at the start).
+        self.poll_world();
+        let Screen::Game(g) = &mut self.screen else {
+            return;
+        };
         if g.cash_timer <= 0.0 {
             g.cash_timer = 500.0;
             g.cash = g.world.save_ref().and_then(player_cash);
@@ -867,7 +899,7 @@ impl AppState {
         } else {
             // A saved game keeps its own state; its briefing is offered like a loaded game's
             // (`scenarios.md` 2.2: trigger 6 runs on load too).
-            self.queue_opening_dialogs(&entry.path, crate::setup::Setup::default());
+            self.queue_opening_dialogs();
         }
     }
 
@@ -934,53 +966,77 @@ impl AppState {
         Ok(self.data.as_ref().expect("just loaded"))
     }
 
-    /// Opens a save (a world with its companies, industries...) or a plain scenario map (terrain
-    /// only, clock running).
+    /// Opens a game file: a saved game (`.GAM`) loads as it is, a scenario map (`.MAP`, `.MP2`)
+    /// starts a new game with the default options.
     pub fn start(&mut self, path: &Path) -> Result<()> {
+        self.start_mode(path, StartMode::Auto)
+    }
+
+    /// Starts `path` as `mode` says. A load goes through `World::from_save_seeded` (the old
+    /// `0x233C` layout is converted as the original's loader does); a new scenario or campaign
+    /// game through `World::new_game` with the options of the setup screens
+    /// ([`Setup::new_game_options`]).
+    pub fn start_mode(&mut self, path: &Path, mode: StartMode) -> Result<()> {
         let raw = std::fs::read(path).with_context(|| path.display().to_string())?;
         let (map, save) = catalog::load_any(&raw).with_context(|| path.display().to_string())?;
-        let (world, speeds, map_only) = match &save {
-            Some(save) => {
-                let data = self.game_data()?.clone();
-                let mut w = World::from_save(save, &data);
-                w.apply(Command::SeedRng(RNG_SEED));
-                (w, data.speed_table.clone(), false)
-            }
-            None => {
-                // TODO(time.md): a new game's start date and setup screen are not specified; a
-                // scenario map opens as a clock-only world in 1860 (`Date` of the sample saves).
-                let data = self.game_data()?.clone();
-                let mut w = World::new(Date::new(1860, 1, 1, 0, 0), 1, RNG_SEED);
-                w.apply(Command::SetSpeed(SpeedChange::Absolute(DEFAULT_SPEED)));
-                (w, data.speed_table, true)
-            }
+        let Some(save) = save else {
+            bail!(
+                "{} has no game state (neither a saved game nor a scenario)",
+                path.display()
+            );
         };
-        let scene = Scene::build_with(
-            self.assets.clone(),
-            &map,
-            save.as_ref(),
-            SceneOptions { sprites: true },
-            self.vehicle_names.clone(),
-        );
-        self.pending_scene = Some(Arc::new(scene));
-        self.pending_live = save
-            .as_ref()
-            .map(|s| (LiveFrame::from_save(s), true))
-            .or(Some((LiveFrame::default(), true)));
-        self.live_alpha = 1.0;
-        let scene_fp = save.as_ref().map_or(0, scene_fingerprint);
+        let is_map = path
+            .extension()
+            .and_then(|e| e.to_str())
+            .is_some_and(|e| e.eq_ignore_ascii_case("map") || e.eq_ignore_ascii_case("mp2"));
+        let mode = match mode {
+            StartMode::Auto if is_map => StartMode::Scenario(crate::setup::Setup::default()),
+            StartMode::Auto => StartMode::Load,
+            m => m,
+        };
         let name = path
             .file_stem()
             .map(|s| s.to_string_lossy().into_owned())
             .unwrap_or_else(|| "game".into());
+        let data = self.game_data()?.clone();
+        let seed = self.seed;
+        let (world, setup) = match &mode {
+            StartMode::Load | StartMode::Auto => {
+                let mut w = World::from_save_seeded(&save, &data, seed);
+                w.apply(Command::SeedRng(seed));
+                (w, crate::setup::Setup::default())
+            }
+            StartMode::Scenario(setup) => {
+                let o = setup.new_game_options(&save, &name, None, seed);
+                (World::new_game(&save, &o, &data, seed), *setup)
+            }
+            StartMode::Campaign(setup, c) => {
+                let o = setup.new_game_options(&save, &name, Some(c), seed);
+                (World::new_game(&save, &o, &data, seed), *setup)
+            }
+        };
+        // Everything below reads the converted state the world keeps, not the file's layout.
+        let speeds = data.speed_table.clone();
+        let live = world.save_ref().unwrap_or(&save);
+        let scene = Scene::build_with(
+            self.assets.clone(),
+            &map,
+            Some(live),
+            SceneOptions { sprites: true },
+            self.vehicle_names.clone(),
+        );
+        let live_frame = LiveFrame::from_save(live);
+        let scene_fp = scene_fingerprint(live);
+        let cash = player_cash(live);
+        self.pending_scene = Some(Arc::new(scene));
+        self.pending_live = Some((live_frame, true));
+        self.live_alpha = 1.0;
         let camera = self.fit_camera(map.width, map.height);
-        let scenario = save.as_ref().map(|sv| {
-            Box::new(crate::scenario_info::ScenarioInfo::from_save(
-                sv,
-                &raw,
-                &catalog::map_title(&map, path),
-            ))
-        });
+        let scenario = Some(Box::new(crate::scenario_info::ScenarioInfo::from_save(
+            &save,
+            &raw,
+            &catalog::map_title(&map, path),
+        )));
         let welcome = NewsItem {
             date: format_date(world.date(), &self.texts),
             text: self.texts.af(
@@ -992,11 +1048,11 @@ impl AppState {
         };
         let last_year = world.date().year;
         self.screen = Screen::Game(Box::new(GameState {
-            cash: save.as_ref().and_then(player_cash),
+            cash,
             radar: Some(crate::radar::Radar::new(&map)),
             radar_view: None,
             scenario,
-            setup: crate::setup::Setup::default(),
+            setup,
             dialogs: Vec::new(),
             center: CenterState::default(),
             news: vec![welcome],
@@ -1011,7 +1067,7 @@ impl AppState {
             cash_timer: 500.0,
             toast: None,
             hud: MainIds::default(),
-            map_only,
+            over_shown: false,
             info: None,
             scene_fp,
             build: build_ui::BuildState::default(),
@@ -1067,9 +1123,6 @@ impl AppState {
         let Screen::Game(g) = &self.screen else {
             bail!("no game");
         };
-        if g.map_only {
-            bail!("a bare scenario map has no game state yet");
-        }
         let dir = paths::saves_dir().context("no data folder")?;
         if dir.starts_with(&self.install) {
             bail!("refusing to write inside the game install");
@@ -1250,3 +1303,5 @@ mod tests {
 
 #[cfg(test)]
 mod build_tests;
+#[cfg(test)]
+mod play_tests;

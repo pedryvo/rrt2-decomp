@@ -436,6 +436,15 @@ impl<'a> Info<'a> {
             .or_else(|| self.save.companies.ordered().next().map(|r| r.slot as u32))
     }
 
+    /// The chairman of a company (person record name), `-` when there is none.
+    pub fn chairman_name(&self, company: u32) -> String {
+        rec(&self.save.companies, company)
+            .and_then(|c| rec(&self.save.persons, c.i32(CO_CHAIRMAN).max(0) as u32))
+            .map(|p| p.text(8, 0x27))
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| DASH.to_owned())
+    }
+
     pub fn company_name(&self, slot: u32) -> String {
         rec(&self.save.companies, slot)
             .map(|r| r.text(CO_NAME, CO_NAME + 0x1f))
@@ -1257,7 +1266,7 @@ impl<'a> Info<'a> {
         )
     }
 
-    fn place_name(&self, slot: u32) -> String {
+    pub fn place_name(&self, slot: u32) -> String {
         rec(&self.save.places, slot)
             .map(|r| r.text(0x16, 0x36))
             .filter(|s| !s.is_empty())
@@ -1703,6 +1712,8 @@ fn is_house(ty: u8) -> bool {
 /// What the Start New Company dialog needs to know about the player (`finance.md` 17.1, 17.2).
 #[derive(Clone, Debug, PartialEq)]
 pub struct Founder {
+    /// Pool slot of the person record (`FoundCompany::person`).
+    pub person: i32,
     pub name: String,
     /// Personal cash (`+0x12a`).
     pub cash: f64,
@@ -1724,6 +1735,7 @@ pub fn founder(save: &Save) -> Option<Founder> {
     let p = Rec(&r.data);
     let cash = p.f64(PE_CASH);
     Some(Founder {
+        person: r.slot as i32,
         name: p.text(8, 0x27),
         cash: if cash.is_finite() { cash } else { 0.0 },
         reputation: p.i32(PE_REPUTATION),

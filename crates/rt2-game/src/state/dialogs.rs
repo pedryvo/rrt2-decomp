@@ -11,20 +11,26 @@
 //! `docs/spec/scenarios.md` 2.2 and 5); the year-end report from the company ledger archive
 //! (`finance.md` 1, 8); the founding numbers from `finance.md` 17 (`founding.rs`).
 //!
-//! TODO(sim): rule messages (newspapers, dialogs with choices) and the end-of-game state are
-//! produced inside `rt2-sim`'s scenario engine, whose `show_message` is a stub and whose
-//! `game_over` is not readable from outside (`tick/events.rs`; `view.rs` cannot reach it). The
-//! dialogs below are ready for them: [`AppState::show_event`] and [`AppState::show_game_over`]
-//! are the entry points a `World::take_messages()` / `World::game_over()` accessor would call.
+//! Messages and the end of the game come from the simulation each frame
+//! ([`AppState::poll_world`]): `World::take_messages()` fills the activity box and opens a
+//! dialog or newspaper per message kind ([`AppState::message_dialog`]); `World::game_over()` opens
+//! the win / lose plaque. Start New Company sends `Command` `0x26` through `World::apply_found`
+//! and shows the refusals of the original's window (`finance.md` 17.1).
 
 use rt2_ui::{Align, Anchor, Color, Fill, Fit, FontStyle, Kind, Layout, NodeId, Ui, game_font};
 
 use super::info_ui;
 use super::{AppState, Screen};
-use crate::founding::{Founding, founder_purchase};
+use rt2_sim::build::cmd::CmdError;
+use rt2_sim::found::FoundCompany;
+use rt2_sim::message::{GameMessage, Outcome};
+use rt2_sim::scenario::MessageKind;
+use winit::keyboard::KeyCode;
+
+use crate::founding::Founding;
 use crate::info::{Block, Table};
 use crate::scenario_info::{Medal, humanize_condition, wrap_text};
-use crate::text::id as lng;
+use crate::text::{id as lng, subst};
 
 pub(super) const A_DLG_CLOSE: u32 = 700;
 pub(super) const A_DLG_BTN: u32 = 710;
@@ -112,6 +118,8 @@ pub(super) enum Dialog {
     Founding {
         f: Founding,
         name: String,
+        /// Why the last OK did nothing (`CmdError`), shown in red under the numbers.
+        error: Option<String>,
     },
     /// The year-end report of `company` for `year`, tab 0..4.
     YearEnd {
@@ -191,7 +199,7 @@ impl AppState {
         }
     }
 
-    /// Screenshots: opens a dialog by name (`goals`, `founding`, `year-end[-1..-3]`, `news`,
+    /// Screenshots: opens a dialog by name (`dismiss[-N]` closes the top ones; `goals`, `founding`, `year-end[-1..-3]`, `news`,
     /// `dialog`, `win-gold`, `win-silver`, `win-bronze`, `lose`, `file`, `tool-0..7`); false for
     /// an unknown name.
     pub fn show_dialog(&mut self, name: &str) -> bool {
@@ -207,17 +215,10 @@ impl AppState {
         let d = match name {
             "goals" => Dialog::Goals,
             "founding" => {
-                let founder = g.world.save_ref().and_then(crate::info::founder);
-                let Some(f) = founder else {
+                let Some(d) = self.founding_dialog_any() else {
                     return false;
                 };
-                let conf = crate::founding::investor_confidence(f.human, f.reputation, None);
-                Dialog::Founding {
-                    f: Founding::new(f.cash, conf),
-                    name: self
-                        .texts
-                        .table("TEMP_COMPANY_NAMES", 0, "New Railroad Company"),
-                }
+                d
             }
             n if n.starts_with("year-end") => {
                 let tab = n
@@ -276,6 +277,17 @@ impl AppState {
                     .unwrap_or_default();
                 Dialog::GameOver { medal, text }
             }
+            // Screenshots: closes the topmost `N` dialogs (the ones the simulation queued).
+            n if n.starts_with("dismiss") => {
+                let k = n["dismiss".len()..]
+                    .trim_start_matches('-')
+                    .parse::<usize>()
+                    .unwrap_or(1);
+                for _ in 0..k {
+                    self.close_dialog();
+                }
+                return true;
+            }
             "file" => Dialog::FileOptions,
             n if n.starts_with("tool-") => {
                 let i = n["tool-".len()..].parse::<usize>().unwrap_or(0).min(7);
@@ -307,34 +319,230 @@ impl AppState {
         });
     }
 
-    /// A message from the rules (dialog or newspaper; `docs/spec/scenarios.md` 2.4). The entry
-    /// point for scenario messages once the simulation exposes them.
-    #[allow(dead_code)]
-    pub(super) fn show_event(&mut self, headline: &str, text: &str, newspaper: bool) {
-        let d = if newspaper {
-            Dialog::Newspaper {
-                headline: headline.to_owned(),
-                sub: String::new(),
-                body: text.to_owned(),
-            }
-        } else {
-            Dialog::Message(Message {
-                title: headline.to_owned(),
-                body: text.to_owned(),
-                buttons: vec![(self.texts.get(lng::OK, "OK"), Act::Close)],
-            })
+    /// Screenshots and tests: founds a company named `name` with the dialog's starting slider
+    /// positions, exactly as typing the name and pressing OK would.
+    pub fn found_with_defaults(&mut self, name: &str) {
+        let Some(Dialog::Founding { f, error, .. }) = self.founding_dialog() else {
+            return;
         };
-        self.push_dialog(d);
+        self.push_dialog(Dialog::Founding {
+            f,
+            name: name.to_owned(),
+            error,
+        });
+        self.found_company();
     }
 
-    /// The end of the game with `medal` (`docs/spec/scenarios.md` 5: state 1..3 bronze, silver,
-    /// gold; 4 defeat) and the text of the rule that ended it.
-    #[allow(dead_code)]
-    pub(super) fn show_game_over(&mut self, medal: Medal, text: &str) {
-        self.push_dialog(Dialog::GameOver {
-            medal,
-            text: text.to_owned(),
-        });
+    /// Start New Company for the human founder, when the player has no company yet.
+    pub(super) fn founding_dialog(&self) -> Option<Dialog> {
+        let Screen::Game(g) = &self.screen else {
+            return None;
+        };
+        let save = g.world.save_ref()?;
+        if crate::buildtools::human_company(save).is_some() {
+            return None;
+        }
+        self.founding_dialog_any()
+    }
+
+    /// The dialog for the first human person (else the first person), whatever they chair.
+    pub(super) fn founding_dialog_any(&self) -> Option<Dialog> {
+        let Screen::Game(g) = &self.screen else {
+            return None;
+        };
+        let save = g.world.save_ref()?;
+        let f = crate::info::founder(save)?;
+        // Confidence of the investors (`finance.md` 17.2): never a chairman here, the dialog is
+        // only offered to a person without a company.
+        let conf = crate::founding::investor_confidence(f.human, f.reputation, None);
+        // `TEMP_COMPANY_NAMES[counter % 40]` (`finance.md` 17.4), the counter at `0x5707b9`.
+        let n = crate::buildtools::st_i32(save, 0x0057_07b9).rem_euclid(40) as u32;
+        let name = self
+            .texts
+            .table("TEMP_COMPANY_NAMES", n, "New Railroad Company");
+        Some(Dialog::Founding {
+            f: Founding::new(f.cash, conf),
+            name,
+            error: None,
+        })
+    }
+
+    /// The dialog a simulation message opens, if any (`message.rs`); the activity-box line is
+    /// [`AppState::message_line`].
+    pub(super) fn message_dialog(&self, m: &GameMessage) -> Option<Dialog> {
+        let ok = self.texts.get(lng::OK, "OK");
+        let t = &self.texts;
+        let info = |f: &dyn Fn(&crate::info::Info) -> String| self.with_info(|i| f(i));
+        match m {
+            GameMessage::Scenario(sm) => Some(match sm.kind {
+                MessageKind::Newspaper => Dialog::Newspaper {
+                    headline: sm.text.clone(),
+                    sub: sm.label1.clone(),
+                    body: String::new(),
+                },
+                // The engine takes the effects of button 0 (`message.rs`): the choice cannot be
+                // answered yet, so only that button is offered.
+                MessageKind::Choice => Dialog::Message(Message {
+                    title: String::new(),
+                    body: sm.text.clone(),
+                    buttons: vec![(
+                        if sm.label1.is_empty() {
+                            ok
+                        } else {
+                            sm.label1.clone()
+                        },
+                        Act::Close,
+                    )],
+                }),
+                MessageKind::Dialog => Dialog::Message(Message {
+                    title: String::new(),
+                    body: sm.text.clone(),
+                    buttons: vec![(ok, Act::Close)],
+                }),
+            }),
+            GameMessage::Historical { lng: id, .. } => Some(Dialog::Message(Message {
+                title: String::new(),
+                body: t.get(u32::from(*id), ""),
+                buttons: vec![(ok, Act::Close)],
+            })),
+            // Short headline, the sentence as the story.
+            GameMessage::EconomyChanged { to, .. } => Some(Dialog::Newspaper {
+                headline: t.get(1215 + u32::from((*to).min(4)), ""),
+                sub: String::new(),
+                body: self.message_line(m),
+            }),
+            GameMessage::FirstOfType { building_type, .. } => Some(Dialog::Newspaper {
+                headline: t.get(920 + u32::from(*building_type), ""),
+                sub: String::new(),
+                body: self.message_line(m),
+            }),
+            GameMessage::TownBonusOffer { place, .. } => Some(Dialog::Newspaper {
+                headline: info(&|i| i.place_name(*place as u32)).unwrap_or_default(),
+                sub: String::new(),
+                body: self.message_line(m),
+            }),
+            GameMessage::CompanyBankrupt { .. } => Some(Dialog::Message(Message {
+                title: String::new(),
+                body: self.message_line(m),
+                buttons: vec![(ok, Act::Close)],
+            })),
+            GameMessage::CompanyStarted { .. }
+            | GameMessage::CompanyConnected { .. }
+            | GameMessage::StockSplit { .. } => None,
+        }
+    }
+
+    /// The one-line text of a message, for the activity box and headlines (LNG ids of
+    /// `message.rs`).
+    pub(super) fn message_line(&self, m: &GameMessage) -> String {
+        let t = &self.texts;
+        let co = |c: i32| {
+            self.with_info(|i| i.company_name(c.max(0) as u32))
+                .unwrap_or_default()
+        };
+        let place = |p: i32| {
+            self.with_info(|i| i.place_name(p.max(0) as u32))
+                .unwrap_or_default()
+        };
+        match m {
+            GameMessage::Scenario(sm) => sm.text.clone(),
+            GameMessage::Historical { lng: id, .. } => t.get(u32::from(*id), ""),
+            GameMessage::EconomyChanged { to, .. } => t.af(
+                "The economy is now: %1.",
+                &[t.get(1215 + u32::from((*to).min(4)), "")],
+            ),
+            GameMessage::FirstOfType { place: p, .. } => {
+                if *p > 0 {
+                    subst(
+                        &t.get(94, "A new type of building was built for the first time near %1:"),
+                        &[place(*p)],
+                    )
+                } else {
+                    t.get(95, "A new type of building was built for the first time")
+                }
+            }
+            GameMessage::TownBonusOffer { place: p, amount } => subst(
+                &t.get(226, "%1 has offered a bonus of %2 to the first railroad that connects it to another town!"),
+                &[place(*p), crate::info::money(f64::from(*amount))],
+            ),
+            GameMessage::CompanyStarted { company } => subst(
+                &t.get(166, "%1 has just started the %2."),
+                &[
+                    self.with_info(|i| i.chairman_name(company.max(&0).cast_unsigned()))
+                        .unwrap_or_default(),
+                    co(*company),
+                ],
+            ),
+            GameMessage::CompanyConnected { company, from, to } => subst(
+                &t.get(240, "%1 has connected %2 to %3."),
+                &[co(*company), place(*from), place(*to)],
+            ),
+            GameMessage::CompanyBankrupt { company } => {
+                subst(&t.get(182, "%1 has declared bankruptcy!"), &[co(*company)])
+            }
+            GameMessage::StockSplit { company, ratio } => subst(
+                &t.get(169, "The stock of %1 has split %2 for 1!"),
+                &[co(*company), ratio.to_string()],
+            ),
+        }
+    }
+
+    /// Drains what the simulation produced since the last frame: every message becomes a line
+    /// of the activity box and, by kind, a dialog or newspaper (the oldest on top); then the end
+    /// of the game, once, opens the win / lose plaque.
+    ///
+    /// Returns true when one of the messages was the scenario's briefing (trigger 6).
+    pub(super) fn poll_world(&mut self) -> bool {
+        let Screen::Game(g) = &mut self.screen else {
+            return false;
+        };
+        let msgs = g.world.take_messages();
+        let outcome = if g.over_shown {
+            None
+        } else {
+            g.world.game_over()
+        };
+        let over_text = g.world.game_over_text().to_owned();
+        let other_won = g.world.game_over_other_won();
+        if msgs.is_empty() && outcome.is_none() {
+            return false;
+        }
+        let briefing = msgs
+            .iter()
+            .any(|m| matches!(m, GameMessage::Scenario(sm) if sm.trigger == 6));
+        let mut dialogs = Vec::new();
+        for m in &msgs {
+            let line = activity_line(&self.message_line(m));
+            if !line.is_empty() {
+                self.add_news(line);
+            }
+            if let Some(d) = self.message_dialog(m) {
+                dialogs.push(d);
+            }
+        }
+        if let Some(o) = outcome {
+            let medal = match o {
+                Outcome::Bronze => Medal::Bronze,
+                Outcome::Silver => Medal::Silver,
+                Outcome::Gold => Medal::Gold,
+                Outcome::Lose => Medal::Loss,
+            };
+            let mut text = over_text;
+            if text.is_empty() && other_won {
+                text = self.texts.get(0xa83, "Another player has won the game.");
+            }
+            if let Screen::Game(g) = &mut self.screen {
+                g.over_shown = true;
+            }
+            // The plaque goes on top of everything: the game is over.
+            dialogs.insert(0, Dialog::GameOver { medal, text });
+        }
+        if let Screen::Game(g) = &mut self.screen {
+            // Oldest message on top: push the newest first.
+            g.dialogs.extend(dialogs.into_iter().rev());
+        }
+        self.rebuild_ui();
+        briefing
     }
 
     // ---- actions ----------------------------------------------------------------------------
@@ -418,30 +626,137 @@ impl AppState {
         self.rebuild_ui();
     }
 
-    /// OK in the founding dialog. TODO(sim): the founding command (`0x26`, `finance.md` 17.3) is
-    /// not in `rt2-sim`'s `Command` yet, so the company is not created; the numbers are shown.
+    /// OK in the founding dialog: command `0x26` (`finance.md` 17.3) with the numbers of
+    /// `rt2_sim::found::founding_preview` and the typed name. A refusal keeps the dialog open
+    /// with the original's message (`finance.md` 17.1); success closes it.
     fn found_company(&mut self) {
-        let msg = match self.top_dialog() {
-            Some(Dialog::Founding { f, name }) if f.allowed() => {
-                let c = f.company();
-                let (n, paid) = founder_purchase(f.player_value(), &c);
-                Some(self.texts.af(
-                    "%1 would be founded with %2 shares at %3 (founder buys %4 for %5). TODO: company creation is not in the simulation yet.",
-                    &[
-                        name.clone(),
-                        c.shares.to_string(),
-                        format!("${:.2}", c.price),
-                        n.to_string(),
-                        crate::info::money(f64::from(paid)),
-                    ],
-                ))
-            }
-            _ => None,
+        let Some(Dialog::Founding { f, name, .. }) = self.top_dialog().cloned() else {
+            return;
         };
-        self.close_dialog();
-        if let Some(m) = msg {
-            self.toast(m);
+        if !f.allowed() {
+            let msg = subst(
+                &self.texts.get(
+                    145,
+                    "You need at least %1 in personal cash to start a company.",
+                ),
+                &[crate::info::money(f64::from(rt2_sim::found::MIN_POWER))],
+            );
+            self.set_founding_error(Some(msg));
+            return;
         }
+        let Some(person) = self
+            .game()
+            .and_then(|g| g.world.save_ref())
+            .and_then(crate::info::founder)
+            .map(|p| p.person)
+        else {
+            return;
+        };
+        let p = rt2_sim::found::founding_preview(f.player_value(), f.outside_value());
+        let name = name.trim().to_owned();
+        let cmd = FoundCompany::new(person, &name, -1, p.capital, f.player_value());
+        let result = match &mut self.screen {
+            Screen::Game(g) => g.world.apply_found(cmd),
+            Screen::Menu(_) => return,
+        };
+        match result {
+            Ok(_) => {
+                self.close_dialog();
+                let shown = if name.is_empty() {
+                    self.texts.a("a new company")
+                } else {
+                    name
+                };
+                let msg = self.texts.af("%1 was founded.", &[shown]);
+                self.add_news(msg.clone());
+                self.toast(msg);
+                self.sync_after_build();
+            }
+            Err(e) => {
+                let msg = self.founding_error_text(e);
+                self.set_founding_error(Some(msg));
+            }
+        }
+    }
+
+    /// The text of a refusal (`CmdError`) of command `0x26`.
+    fn founding_error_text(&self, e: CmdError) -> String {
+        let t = &self.texts;
+        match e {
+            CmdError::AlreadyChairman => t.get(
+                2863,
+                "You would have to resign from your current company to start a new one.",
+            ),
+            CmdError::TooManyCompanies => subst(
+                &t.get(
+                    144,
+                    "The maximum number of companies (%1) is already in the game.",
+                ),
+                &[rt2_sim::found::MAX_COMPANIES.to_string()],
+            ),
+            CmdError::FoundingCooldown => t.get(
+                2708,
+                "No government will grant you a charter so soon after founding your last company. Wait two years.",
+            ),
+            CmdError::InsufficientCash => subst(
+                &t.get(145, "You need at least %1 in personal cash to start a company."),
+                &[crate::info::money(f64::from(rt2_sim::found::MIN_POWER))],
+            ),
+            CmdError::InvalidInput => t.a("The investment values are not valid for this person."),
+            CmdError::NoSuchObject | CmdError::Unknown => {
+                t.a("There is no player who can start a company.")
+            }
+            _ => t.a("The company could not be started."),
+        }
+    }
+
+    fn set_founding_error(&mut self, msg: Option<String>) {
+        if let Screen::Game(g) = &mut self.screen
+            && let Some(Dialog::Founding { error, .. }) = g.dialogs.last_mut()
+        {
+            *error = msg;
+        }
+        self.rebuild_ui();
+    }
+
+    /// Typing into the open Start New Company dialog: printable ASCII appends to the name (at
+    /// most 30 bytes, the packet's field), Backspace deletes, Enter confirms. True when the key
+    /// was consumed.
+    pub(super) fn founding_key(&mut self, code: KeyCode, text: Option<&str>) -> bool {
+        let Screen::Game(g) = &mut self.screen else {
+            return false;
+        };
+        let Some(Dialog::Founding { name, error, .. }) = g.dialogs.last_mut() else {
+            return false;
+        };
+        match code {
+            KeyCode::Enter | KeyCode::NumpadEnter => {
+                self.found_company();
+                return true;
+            }
+            KeyCode::Escape => {
+                self.close_dialog();
+                return true;
+            }
+            KeyCode::Backspace => {
+                name.pop();
+            }
+            _ => {
+                let Some(c) = text
+                    .and_then(|t| t.chars().next())
+                    .filter(|c| c.is_ascii() && !c.is_ascii_control())
+                else {
+                    return false;
+                };
+                if name.len() >= 30 {
+                    return true;
+                }
+                name.push(c);
+            }
+        }
+        *error = None;
+        self.rebuild_ui();
+        true
     }
 
     fn file_load(&mut self) {
@@ -490,7 +805,9 @@ impl AppState {
                 self.build_build_dialog(ui, &d);
             }
             Dialog::Goals => self.build_goals(ui),
-            Dialog::Founding { f, name } => self.build_founding(ui, &f, &name),
+            Dialog::Founding { f, name, error } => {
+                self.build_founding(ui, &f, &name, error.as_deref())
+            }
             Dialog::YearEnd { year, tab, company } => self.build_year_end(ui, year, tab, company),
             Dialog::Newspaper {
                 headline,
@@ -794,9 +1111,9 @@ impl AppState {
         out
     }
 
-    fn build_founding(&self, ui: &mut Ui, f: &Founding, name: &str) {
+    fn build_founding(&self, ui: &mut Ui, f: &Founding, name: &str, error: Option<&str>) {
         let t = &self.texts;
-        let fr = self.eagle(ui, 5);
+        let fr = self.eagle(ui, if error.is_some() { 8 } else { 6 });
         let sx = fr.sx;
         let (x, y, w, _h) = fr.text;
         let size = 14.0 * sx;
@@ -900,21 +1217,26 @@ impl AppState {
             );
             yy += bh + lh * 0.4;
         }
-        // What the capital buys (finance.md 17.4) and the company name.
-        let c = f.company();
-        let (n_p, paid) = founder_purchase(f.player_value(), &c);
+        // What the capital buys (`founding_preview`: finance.md 17.3 and 17.4; the founder's
+        // shares are rounded to the nearest 1000, so "You buy" may cost more than P) and the
+        // company name, edited by typing.
+        let p = rt2_sim::found::founding_preview(f.player_value(), f.outside_value());
         let facts = [
             (
                 t.a("Total capital"),
-                crate::info::money(f64::from(f.capital())),
+                crate::info::money(f64::from(p.capital)),
             ),
-            (t.get(267, "Share Price"), format!("${:.2}", c.price)),
-            (t.get(280, "Shares"), c.shares.to_string()),
+            (t.get(267, "Share Price"), format!("${:.2}", p.price)),
+            (t.get(280, "Shares"), p.company_shares.to_string()),
             (
                 t.a("You buy"),
-                format!("{n_p}  ({})", crate::info::money(f64::from(paid))),
+                format!(
+                    "{}  ({})",
+                    p.founder_shares,
+                    crate::info::money(f64::from(p.founder_cost))
+                ),
             ),
-            (t.get(543, "Company Name"), name.to_owned()),
+            (t.get(543, "Company Name"), format!("{name}_")),
         ];
         for (k, v) in facts {
             if yy + lh > fr.text.1 + fr.text.3 + 4.0 * sx {
@@ -931,6 +1253,17 @@ impl AppState {
                 at(x + w * 0.4, yy, w * 0.6, lh),
             );
             yy += lh;
+        }
+        if let Some(e) = error {
+            let lines = Self::body_lines(e, w, size);
+            for l in lines.iter().take(3) {
+                ui.add(
+                    fr.root,
+                    label(l, fnt, Color::rgb(0xf0, 0x8c, 0x7a), Align::Left),
+                    at(x, yy, w, lh),
+                );
+                yy += lh;
+            }
         }
         if !f.allowed() {
             ui.add(
@@ -1360,5 +1693,18 @@ fn trigger_label(texts: &crate::text::Texts, trigger: u8) -> String {
         4 => texts.a("track or station change"),
         5 => texts.a("company founded"),
         _ => texts.a("checked during play"),
+    }
+}
+
+/// The activity box shows a message's first paragraph, cut at 120 characters (briefings run to
+/// pages; the dialog has the full text).
+fn activity_line(text: &str) -> String {
+    let first = text.split("\n\n").next().unwrap_or("").trim();
+    let flat = first.split_whitespace().collect::<Vec<_>>().join(" ");
+    if flat.chars().count() > 120 {
+        let cut: String = flat.chars().take(117).collect();
+        format!("{}...", cut.trim_end())
+    } else {
+        flat
     }
 }

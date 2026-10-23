@@ -164,7 +164,7 @@ fn lbl(text: &str, f: FontStyle, color: Color, align: Align) -> Kind {
 impl AppState {
     // ---- plumbing ---------------------------------------------------------------------------
 
-    fn game(&self) -> Option<&GameState> {
+    pub(super) fn game(&self) -> Option<&GameState> {
         match &self.screen {
             Screen::Game(g) => Some(g),
             Screen::Menu(_) => None,
@@ -330,7 +330,7 @@ impl AppState {
         if denied {
             g.toast = Some((
                 self.texts
-                    .a("Construction needs a save in the 0x2348 layout with a human company."),
+                    .a("Construction needs a company: start one first (Start New Company)."),
                 4.0,
             ));
             return;

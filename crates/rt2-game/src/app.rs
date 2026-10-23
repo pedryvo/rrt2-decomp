@@ -162,6 +162,13 @@ impl ApplicationHandler for App {
         match Surface::new(window, skin) {
             Ok(s) => {
                 let mut state = AppState::new(init);
+                // Each real game gets its own seed (the original seeds from the clock); the
+                // simulation never sees the clock, only this number.
+                state.set_seed(
+                    std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map_or(1, |d| (d.as_millis() % 0xffff_ffff) as u32),
+                );
                 if !state.invalid_keys().is_empty() {
                     eprintln!(
                         "unknown key names in config.toml: {:?}",
