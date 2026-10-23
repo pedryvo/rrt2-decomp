@@ -286,10 +286,6 @@ struct MenuHandles {
     tips: Vec<(NodeId, String)>,
 }
 
-fn format_money(v: f64) -> String {
-    crate::info::money(v)
-}
-
 fn format_date(d: Date, texts: &Texts) -> String {
     texts.date(d.month, d.day, d.year)
 }
@@ -1532,9 +1528,9 @@ mod tests {
 
     #[test]
     fn money_has_thousands_separators_and_a_leading_minus() {
-        assert_eq!(format_money(0.0), "$0");
-        assert_eq!(format_money(1234567.4), "$1,234,567");
-        assert_eq!(format_money(-9999.6), "-$10,000");
+        assert_eq!(crate::info::money(0.0), "$0");
+        assert_eq!(crate::info::money(1234567.4), "$1,234,567");
+        assert_eq!(crate::info::money(-9999.6), "-$10,000");
     }
 
     #[test]
@@ -1556,6 +1552,8 @@ mod fin_tests;
 mod groupa_tests;
 #[cfg(test)]
 mod groupb_tests;
+#[cfg(test)]
+mod mainwin_tests;
 #[cfg(test)]
 mod options_tests;
 #[cfg(test)]

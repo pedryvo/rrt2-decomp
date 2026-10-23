@@ -1,7 +1,8 @@
 //! Names written on the map: the city and region names above the towns and, zoomed in, the
 //! names of the stations (the places pool, `world-growth.md` 2.1; names are the records' own
-//! text, `Info::place_name`). The original's label font and colours are not decoded, so the
-//! style here is the clone's: Copperplate bold with a drop shadow, sized with the zoom.
+//! text, `Info::place_name`). The style follows the original's screenshots (docs/ui.md "Janela
+//! principal"): large cream-yellow Copperplate small capitals with a dark drop shadow, sized
+//! with the zoom; the exact font of the original is not decoded.
 //!
 //! Placement is a pure function of the candidates' screen positions (`place_labels`): labels
 //! are placed by priority (bigger towns first, ties by slot, so the result never depends on
@@ -48,12 +49,17 @@ pub struct Placed {
 
 /// Font size in logical pixels for a city name at `zoom` (a share of the original's full zoom).
 pub fn city_size(zoom: f32) -> f32 {
-    (10.0 + 9.0 * zoom.sqrt()).clamp(11.0, 26.0)
+    (12.0 + 24.0 * zoom.sqrt()).clamp(14.0, 48.0)
+}
+
+/// How much of the UI scale factor `k` the map names follow.
+fn label_k(k: f32) -> f32 {
+    1.0 + (k - 1.0) * 0.25
 }
 
 /// Estimated advance of a text in Copperplate bold.
 fn text_width(text: &str, size: f32) -> f32 {
-    text.chars().count() as f32 * size * 0.62
+    text.chars().count() as f32 * size * 0.66
 }
 
 /// Places the names that fit: `zoom` is the camera's zoom over `NATIVE_ZOOM`, `k` the UI scale
@@ -76,11 +82,12 @@ pub fn place_labels(
     cands.sort_by_key(|c| std::cmp::Reverse(c.priority));
     let mut placed: Vec<Placed> = Vec::new();
     for c in cands {
+        // The names belong to the map: a higher UI scale makes them only a little larger.
         let size = if c.station {
             (city_size(zoom) * 0.72).max(10.0)
         } else {
             city_size(zoom)
-        } * k;
+        } * label_k(k);
         let (w, h) = (text_width(&c.text, size) + 6.0 * k, size * 1.3);
         // Above the town: the buildings stand about a tile and a half tall.
         let lift = if c.station {
@@ -235,16 +242,31 @@ impl AppState {
             } else {
                 Face::Copperplate
             };
-            let font = FontStyle::new(face, l.size / k)
-                .with_weight(700)
-                .with_shadow();
+            let font = FontStyle::new(face, l.size / k).with_weight(700);
             let color = if l.label {
                 Color(0xc8, 0xe4, 0xff, 0xff)
             } else if l.station {
-                Color(0xf0, 0xe0, 0x9a, 0xff)
+                Color(0xe8, 0xdc, 0x9c, 0xff)
             } else {
-                Color(0xff, 0xf8, 0xe8, 0xff)
+                // Cream-yellow, like the names of the original's map.
+                Color(0xf4, 0xe8, 0x9e, 0xff)
             };
+            let lay = Layout::at(Anchor::TopLeft, l.w / k, l.h / k);
+            // A dark drop shadow, soft and 1/16 em deep (two copies), under the text.
+            let d = (l.size / k / 16.0).max(1.0);
+            for (off, alpha) in [(d * 1.8, 0x50u8), (d, 0xd8)] {
+                ui.add(
+                    root,
+                    Kind::Label {
+                        text: l.text.clone(),
+                        font,
+                        color: Color(0x08, 0x0a, 0x06, alpha),
+                        align: Align::Center,
+                        wrap: false,
+                    },
+                    lay.offset(l.x / k + off, l.y / k + off),
+                );
+            }
             ui.add(
                 root,
                 Kind::Label {
@@ -254,7 +276,7 @@ impl AppState {
                     align: Align::Center,
                     wrap: false,
                 },
-                Layout::at(Anchor::TopLeft, l.w / k, l.h / k).offset(l.x / k, l.y / k),
+                lay.offset(l.x / k, l.y / k),
             );
         }
     }
@@ -344,6 +366,6 @@ mod tests {
             1
         );
         assert!(city_size(1.0) > city_size(0.1));
-        assert!(city_size(100.0) <= 26.0);
+        assert!(city_size(100.0) <= 48.0);
     }
 }

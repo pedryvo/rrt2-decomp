@@ -570,6 +570,8 @@ pub static APP_EN: &[&str] = &[
     "Press Esc, Space or click to skip",
     "Medals: %1 gold, %2 silver, %3 bronze",
     "Play the intro video",
+    "Profits",
+    "Message history and scenario briefing",
 ];
 
 /// The id of an English default.

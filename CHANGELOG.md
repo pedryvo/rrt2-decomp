@@ -24,6 +24,10 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Feature: train detail instrument panel (oil, sand, water, throttle gauges), stop controls for next stop, wait, sell mode and class, and the per-stop car list
 - Feature: stock ticker band on the Market screen
 - Feature: campaign medals are saved per scenario and shown on the campaign board
+- Improved: the in-game main window now uses the original chrome: the metal frame (rails, pipe rows, radar, list and activity boxes) from `mwfrme.imb`, cut in pieces that scale to any canvas (extra width grows the center box), the tab strip (`maintab.imb`), compass (`compass.imb`, turns with the view), RT2 logo box, cash and date boxes ("$449K", "Jan 1830") and the company row (logo, name, cash, profits).
+- Improved: map names are larger, cream-yellow Copperplate with a dark drop shadow, like the original.
+- Change: the message history moved into the activity box (click the logo box; Briefing and Close buttons there); the center box opens on the Companies tab; the tabs show a tooltip with their name.
+- Docs: docs/ui.md "Janela principal" and docs/reference/screens.md C1/C2 describe the layout, the art banks and the responsive scheme.
 
 ## v0.3.0 — 2026-10-23
 - Fix: Lay Track drag now starts and ends on a station when pressed on its building (snap to the station's tile), so dragging from one station to another works as in the original

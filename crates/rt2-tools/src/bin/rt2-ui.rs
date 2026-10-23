@@ -27,6 +27,10 @@ struct Args {
     /// Do not draw sprites, only rectangles
     #[arg(long)]
     no_sprites: bool,
+    /// Instead of a window, render every record of this UI bank (`mainbut.imb`) side by side
+    /// (`name` is ignored)
+    #[arg(long)]
+    bank_sheet: Option<String>,
 }
 
 const ARCHIVES: [&str; 4] = ["RT2_11PL.PK2", "RT2_09GO.PK2", "RT2_06.PK2", "RT2.PK2"];
@@ -149,8 +153,40 @@ fn draw_sprite(
     Ok(true)
 }
 
+/// Renders image 0 of every record of a UI bank in a wrapping row, magenta background.
+fn bank_sheet(args: &Args, bank: &str) -> anyhow::Result<()> {
+    let blob = find(&args.dir, bank)?.with_context(|| format!("{bank} not found"))?;
+    let lad = Lad::parse(&blob)?;
+    let (cols, cell) = (8usize, 260usize);
+    let rows = lad.records.len().div_ceil(cols);
+    let mut cv = Canvas {
+        w: cols * cell,
+        h: rows * cell,
+        px: vec![0; cols * cell * rows * cell * 4],
+    };
+    for p in cv.px.as_chunks_mut::<4>().0 {
+        p.copy_from_slice(&[255, 0, 255, 255]);
+    }
+    let font = load_font(&args.dir, 1)?;
+    for i in 0..lad.records.len() {
+        let (x, y) = ((i % cols * cell) as i32, (i / cols * cell) as i32);
+        cv.rect(x, y, cell as i32, cell as i32, None, [0, 0, 0, 255]);
+        draw_sprite(&args.dir, &mut cv, bank, i, x + 4, y + 16)?;
+        cv.text(&font, x + 2, y + 2, &i.to_string(), [255, 255, 255]);
+    }
+    let file = std::fs::File::create(&args.out)?;
+    let mut enc = png::Encoder::new(std::io::BufWriter::new(file), cv.w as u32, cv.h as u32);
+    enc.set_color(png::ColorType::Rgba);
+    enc.set_depth(png::BitDepth::Eight);
+    enc.write_header()?.write_image_data(&cv.px)?;
+    Ok(())
+}
+
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
+    if let Some(bank) = &args.bank_sheet {
+        return bank_sheet(&args, bank);
+    }
     let blob = find(&args.dir, &args.name)?.with_context(|| format!("{} not found", args.name))?;
     let win = Window::parse(&blob)?;
     if args.dump {

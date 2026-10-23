@@ -19,13 +19,14 @@
 use std::sync::Arc;
 
 use rt2_ui::{
-    Align, Anchor, Color, Fill, FontStyle, Kind, Layout, NodeId, Stack, Ui, UiEvent, game_font,
+    Align, Anchor, Color, Fill, Fit, FontStyle, Kind, Layout, NodeId, SpriteId, Stack, Ui, UiEvent,
+    game_font,
 };
 use winit::keyboard::KeyCode;
 
 use super::dialogs::Dialog;
 use super::info_ui::{self, InfoScreen};
-use super::{AppState, Screen, format_date, format_money};
+use super::{AppState, Screen, format_date};
 use crate::info::{Info, Table};
 use crate::scenario_info::wrap_text;
 use crate::text::id as lng;
@@ -40,6 +41,8 @@ pub(super) const A_CENTER_TAB: u32 = 330;
 pub(super) const A_CENTER_ROW: u32 = 340;
 pub(super) const A_LIST_SCREEN: u32 = 341;
 pub(super) const A_BRIEFING: u32 = 342;
+/// The small message button of the activity box: history on / off.
+pub(super) const A_NEWS: u32 = 343;
 
 /// The eight action icons: first record of the (up, down) pair in `mainbut.imb`, the LNG id of
 /// the status-line hint, the English hint and a short caption for when there is no art.
@@ -91,17 +94,29 @@ const NAV: [(usize, u32, u32, &str, &str); 4] = [
 ];
 
 const TEXT: Color = Color::rgb(0xee, 0xe4, 0xc8);
-const MUTED: Color = Color::rgb(0xb4, 0xaa, 0x8e);
 const HEAD: Color = Color::rgb(0xe6, 0xc2, 0x6a);
-const INSET: Color = Color(0x0c, 0x0f, 0x0c, 0xd8);
 
 /// State of the center list box.
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug)]
 pub(super) struct CenterState {
     /// 0 Stations, 1 Trains, 2 Players, 3 Companies.
     pub tab: usize,
     pub sel: Option<usize>,
     pub scroll: usize,
+    /// The activity box shows the message history instead of the logo.
+    pub news_open: bool,
+}
+
+impl Default for CenterState {
+    /// The original opens on the Companies tab (the screenshots of the manual and the game).
+    fn default() -> CenterState {
+        CenterState {
+            tab: 3,
+            sel: None,
+            scroll: 0,
+            news_open: false,
+        }
+    }
 }
 
 /// Widgets of the main window the per-frame update writes to.
@@ -115,6 +130,13 @@ pub(super) struct MainIds {
     pub status: Option<NodeId>,
     pub radar: Option<NodeId>,
     pub center: Option<NodeId>,
+    /// The compass picture and the view rotation it shows.
+    pub compass: Option<NodeId>,
+    pub compass_rot: u8,
+    /// The four tab bars of the tab strip, in tab order.
+    pub tab_nodes: Vec<NodeId>,
+    /// The floating tooltip over the tabs: its box and its label.
+    pub tooltip: Option<(NodeId, NodeId)>,
     /// Hint texts of the widgets, shown on the status line while the mouse is over them.
     pub tips: Vec<(NodeId, String)>,
 }
@@ -126,9 +148,32 @@ pub(super) struct NewsItem {
     pub text: String,
 }
 
-/// How big everything is: `dz` is 1 on a small canvas and grows with the canvas height.
-fn design_scale(ch: f32) -> f32 {
-    (ch / 620.0).clamp(1.0, 2.0)
+/// Size of the original layout every position below is taken from (`mainwin.win`).
+const DESIGN: (f32, f32) = (1024.0, 768.0);
+
+/// Left rail plates of the tool icons (`mwfrme.imb` 0 and 2: 44x34 holes at x 16): design y of
+/// the nine plates and the plate of each of the eight tools (the fifth plate stays empty).
+const PLATE_X: f32 = 16.0;
+const PLATE_Y: [f32; 9] = [40.0, 85.0, 130.0, 175.0, 220.0, 272.0, 317.0, 362.0, 407.0];
+const TOOL_PLATE: [usize; 8] = [0, 1, 2, 3, 5, 6, 7, 8];
+/// Empty plates of the right rail (`mwfrme.imb` 1 at 954,63: 44x34 holes at x 10).
+const RIGHT_PLATE_X: f32 = 964.0;
+const RIGHT_PLATE_Y: [f32; 6] = [131.0, 176.0, 221.0, 273.0, 318.0, 363.0];
+/// The four tab bars over the tab strip (`mainwin.win` bars 257, 258, 260, 259).
+const TAB_X: [f32; 4] = [490.0, 542.0, 594.0, 646.0];
+const TAB_W: [f32; 4] = [52.0, 52.0, 51.0, 52.0];
+/// Rotate right, rotate left, zoom out, zoom in (`mainwin.win` buttons 216..219).
+const NAV_X: [f32; 4] = [788.0, 844.0, 903.0, 959.0];
+const TEAL: Color = Color(0x5a, 0xb4, 0xa4, 0xc0);
+
+/// The chrome sits on a canvas that is at least the design size scaled by `dz`.
+fn money_k(v: f64) -> String {
+    let k = if v.is_finite() {
+        (v / 1000.0).round()
+    } else {
+        0.0
+    };
+    format!("{}K", crate::info::money(k))
 }
 
 fn font(n: u8, dz: f32) -> FontStyle {
@@ -150,71 +195,131 @@ fn at(x: f32, y: f32, w: f32, h: f32) -> Layout {
     Layout::at(Anchor::TopLeft, w, h).offset(x, y)
 }
 
+fn at4(r: [f32; 4]) -> Layout {
+    at(r[0], r[1], r[2], r[3])
+}
+
 fn panel(fill: Fill) -> Kind {
     Kind::Panel { fill }
 }
 
-/// Geometry of the bottom panel, shared by the builder and the camera code.
+/// Which compass picture (`compass.imb`: 0 north to the upper right, 1 upper left, 2 lower left,
+/// 3 lower right) shows where world north (-y) points on the screen for a view rotation.
+pub(super) fn compass_index(rotation: u8) -> usize {
+    let mut cam = rt2_render::Camera::fit(1, 1, (1, 1));
+    cam.rotation = rotation % 4;
+    let (f, r) = (cam.forward(), cam.right());
+    // North is (0, -1): its components along the screen's up and right axes.
+    let (up, right) = (-f.y, -r.y);
+    match (right >= 0.0, up >= 0.0) {
+        (true, true) => 0,
+        (false, true) => 1,
+        (false, false) => 2,
+        (true, false) => 3,
+    }
+}
+
+/// Where everything of the main window goes. The window is the original 1024x768 design scaled
+/// by `dz` (the largest scale that fits the canvas) and pinned to the bottom; on a canvas wider
+/// than that the extra width `ex` is inserted in the middle of the bottom frame, so the left
+/// parts (radar, tools) keep the left edge, the right parts (nav buttons, activity box,
+/// compass) keep the right edge and the center box grows.
 #[derive(Clone, Copy, Debug)]
 pub(super) struct Geometry {
     pub(super) dz: f32,
-    /// Height of the whole bottom panel (content plus status line).
+    /// Top of the design area in logical units.
+    pub(super) y0: f32,
+    /// Extra width between the left and right parts.
+    pub(super) ex: f32,
+    /// Height of the strip the bottom frame covers on the map (the camera frames what is above).
     pub(super) ph: f32,
-    /// Height of the status line.
-    pub(super) sl: f32,
-    pub(super) inset: f32,
-    /// Side of the square radar and activity boxes.
-    pub(super) side: f32,
 }
 
 pub(super) fn geometry(cw: f32, ch: f32) -> Geometry {
-    let dz = design_scale(ch);
-    let sl = (22.0 * dz).round();
-    let ph = (215.0 * dz).min(ch * 0.40).max(150.0).round();
-    let inset = (8.0 * dz).round();
-    let mut side = ph - sl - 2.0 * inset;
-    // On a narrow canvas the side boxes shrink so the center box keeps some room.
-    let min_center = 300.0;
-    if cw - 2.0 * (side + 2.0 * inset) < min_center {
-        side = ((cw - min_center) / 2.0 - 2.0 * inset).max(60.0);
-    }
+    let dz = (ch / DESIGN.1).min(cw / DESIGN.0).max(0.3);
+    let ex = (cw - (DESIGN.0 * dz).round()).max(0.0);
     Geometry {
         dz,
-        ph,
-        sl,
-        inset,
-        side,
+        y0: ch - (DESIGN.1 * dz).round(),
+        ex,
+        ph: ((DESIGN.1 - 470.0) * dz).round(),
+    }
+}
+
+impl Geometry {
+    /// X of a design position in the left part.
+    pub(super) fn x(&self, d: f32) -> f32 {
+        (d * self.dz).round()
+    }
+
+    /// X of a design position in the right part.
+    pub(super) fn xr(&self, d: f32) -> f32 {
+        (d * self.dz).round() + self.ex
+    }
+
+    pub(super) fn y(&self, d: f32) -> f32 {
+        self.y0 + (d * self.dz).round()
+    }
+
+    /// A rectangle `[x, y, w, h]` of the left part (design units in, logical out).
+    pub(super) fn rl(&self, x: f32, y: f32, w: f32, h: f32) -> [f32; 4] {
+        let (x0, x1) = (self.x(x), self.x(x + w));
+        [x0, self.y(y), x1 - x0, self.y(y + h) - self.y(y)]
+    }
+
+    /// A rectangle of the right part.
+    pub(super) fn rr(&self, x: f32, y: f32, w: f32, h: f32) -> [f32; 4] {
+        let (x0, x1) = (self.xr(x), self.xr(x + w));
+        [x0, self.y(y), x1 - x0, self.y(y + h) - self.y(y)]
+    }
+
+    /// A rectangle from a position of the left part to one of the right part.
+    pub(super) fn span(&self, x0: f32, x1: f32, y: f32, h: f32) -> [f32; 4] {
+        let (a, b) = (self.x(x0), self.xr(x1));
+        [a, self.y(y), b - a, self.y(y + h) - self.y(y)]
+    }
+
+    /// The inside of the center box: the list area (`mainwin.win` list 325).
+    pub(super) fn center(&self) -> [f32; 4] {
+        self.span(287.0, 699.0, 526.0, 158.0)
     }
 }
 
 /// The parts of the window the in-game HUD covers, as `[x, y, w, h]` in logical units: the bottom
-/// panel, the eight action icons down the left edge, the rotate/zoom buttons above the activity
-/// box and the speed controls at the top right (the same geometry as `build_mainwin`).
+/// frame, the two rails, the rotate/zoom buttons and the compass with the speed controls (the
+/// same geometry as `build_mainwin`).
 pub(super) fn hud_blockers(cw: f32, ch: f32) -> Vec<[f32; 4]> {
-    let Geometry {
-        dz,
-        ph,
-        inset,
-        side,
-        ..
-    } = geometry(cw, ch);
-    let per = (ch - ph - 16.0) / 8.0;
-    let bh = (per - 4.0).clamp(20.0, 34.0 * dz).round();
-    let bw = (bh * 50.0 / 34.0).round();
-    let nav_h = (34.0 * dz).round().min(side / 4.0 * 0.68);
-    let nav_w = (nav_h * 50.0 / 34.0).round();
-    let nav_total = 4.0 * nav_w + 12.0 * dz;
+    let g = geometry(cw, ch);
+    let top = g.y(470.0);
     vec![
-        [0.0, ch - ph, cw, ph],
-        [6.0 * dz, 8.0 * dz, bw, per * 8.0],
+        [0.0, top, cw, ch - top],
+        g.rl(0.0, 6.0, 85.0, 397.0),
+        g.rr(954.0, 63.0, 70.0, 340.0),
+        g.rr(780.0, 425.0, 244.0, 45.0),
         [
-            cw - inset - nav_total,
-            ch - ph - 4.0 - nav_h,
-            nav_total,
-            nav_h,
+            g.xr(929.0) - 230.0 * g.dz,
+            g.y(14.0),
+            cw - g.xr(929.0) + 230.0 * g.dz,
+            62.0 * g.dz,
         ],
-        [cw - inset - 250.0 * dz, inset, 250.0 * dz, 30.0 * dz],
     ]
+}
+
+/// Row height, header height and the number of rows the center list shows for `tab`.
+fn center_rows(gm: &Geometry, tab: usize) -> (f32, f32, usize) {
+    let h = gm.center()[3];
+    // The companies tab has no header and taller rows (logo, name, cash and profits).
+    let (rowh, head_h) = if tab == 3 {
+        ((40.0 * gm.dz).round(), 0.0)
+    } else {
+        let rowh = (19.0 * gm.dz).round();
+        (rowh, rowh + 4.0)
+    };
+    (
+        rowh,
+        head_h,
+        (((h - head_h) / rowh).floor() as usize).max(1),
+    )
 }
 
 impl AppState {
@@ -258,8 +363,8 @@ impl AppState {
         ]
     }
 
-    /// A camera that frames the whole map in the part of the screen the bottom panel leaves
-    /// free (the map is drawn under the panel, so the view is shifted up by half of it).
+    /// A camera that frames the whole map in the part of the screen the bottom frame leaves
+    /// free (the map is drawn under the frame, so the view is shifted up by half of it).
     pub(super) fn fit_camera(&self, w: usize, h: usize) -> rt2_render::Camera {
         let k = self.scale.factor();
         let ph = geometry(self.viewport.0 as f32 / k, self.viewport.1 as f32 / k).ph * k;
@@ -269,56 +374,85 @@ impl AppState {
         cam
     }
 
-    /// Builds the main window over the map.
+    /// Builds the main window over the map: the frame of the original art (rails, bottom frame
+    /// with the radar, center and activity boxes), the tool icons, the tab strip, the
+    /// rotate/zoom buttons and the compass, all placed by [`Geometry`].
     pub(super) fn build_mainwin(&mut self, ui: &mut Ui) {
         let (cw, ch) = ui.logical_size();
         let gm = geometry(cw, ch);
-        let Geometry {
-            dz,
-            ph,
-            sl,
-            inset,
-            side,
-        } = gm;
-        let (center_tab, center_sel, center_scroll) = match &self.screen {
-            Screen::Game(g) => (g.center.tab, g.center.sel, g.center.scroll),
+        let a = gm.dz;
+        let art = self.dialog_art.main;
+        let (center_tab, center_sel, center_scroll, news_open) = match &self.screen {
+            Screen::Game(g) => (
+                g.center.tab,
+                g.center.sel,
+                g.center.scroll,
+                g.center.news_open,
+            ),
             Screen::Menu(_) => return,
+        };
+        let rotation = match &self.screen {
+            Screen::Game(g) => g.camera.rotation,
+            Screen::Menu(_) => 0,
         };
         let mut tips: Vec<(NodeId, String)> = Vec::new();
         let tip = |id: u32, en: &str, t: &AppState| t.texts.get(id, en);
+        let tile = (a * 100.0).round() as u16;
+        let metal = Color(0x14, 0x14, 0x12, 0xff);
+        let dark = Color(0x05, 0x08, 0x04, 0xff);
 
-        // ---- the bottom panel -------------------------------------------------------------
-        let bottom = ui.add_root(
-            panel(Fill::Panel),
-            Layout::at(Anchor::Bottom, 0.0, ph).offset(0.0, 0.0),
-        );
-        // Status line.
-        let status_bar = ui.add(
-            bottom,
-            panel(Fill::Solid(Color(0x10, 0x20, 0x14, 0xe0))),
-            Layout::at(Anchor::Bottom, 0.0, sl).offset(inset, 4.0),
-        );
-        let status = ui.add(
-            status_bar,
-            label("", font(2, dz * 0.9), TEXT, Align::Left),
-            Layout::fill().offset(8.0 * dz, 0.0),
-        );
+        let root = ui.add_root(panel(Fill::None), Layout::fill());
+        // Invisible plates over the frame stop clicks reaching the map.
+        for r in hud_blockers(cw, ch) {
+            ui.add(root, panel(Fill::Solid(Color(0, 0, 0, 0))), at4(r));
+        }
+        let solid = |ui: &mut Ui, r: [f32; 4], c: Color| {
+            ui.add(root, panel(Fill::Solid(c)), at4(r));
+        };
+        let image = |ui: &mut Ui, s: Option<SpriteId>, r: [f32; 4], fit: Fit| {
+            s.map(|s| ui.add(root, Kind::Image { sprite: s, fit }, at4(r)))
+        };
 
-        // Radar (B).
-        let body_h = ph - sl - 2.0 * inset - 4.0;
-        let side = side.min(body_h);
-        let radar_box = ui.add(
-            bottom,
-            panel(Fill::Solid(INSET)),
-            at(inset, inset, side, side),
-        );
+        // ---- what shows through the holes of the frame -------------------------------------
+        let radar_rect = gm.rl(21.0, 467.0, 236.0, 244.0);
+        let act_rect = gm.rr(766.0, 497.0, 237.0, 214.0);
+        let center = gm.center();
+        solid(ui, radar_rect, metal);
+        solid(ui, act_rect, Color(0x12, 0x14, 0x34, 0xff));
+        for (i, y) in PLATE_Y.iter().enumerate() {
+            let _ = i;
+            solid(ui, gm.rl(PLATE_X, *y, 44.0, 34.0), dark);
+        }
+        for y in RIGHT_PLATE_Y {
+            solid(ui, gm.rr(RIGHT_PLATE_X, y, 44.0, 34.0), dark);
+        }
+        // Small gaps of the frame, the tab strip left of the tabs and the strip over the center.
+        solid(ui, gm.rl(135.0, 433.0, 34.0, 9.0), dark);
+        solid(ui, gm.rr(931.0, 419.0, 34.0, 17.0), dark);
+        solid(ui, gm.rr(756.0, 445.0, 24.0, 26.0), dark);
+        solid(ui, gm.span(402.0, 625.0, 502.0, 6.0), dark);
+        solid(ui, gm.span(490.0, 490.0, 687.0, 43.0), dark);
+        solid(ui, gm.rr(700.0, 692.0, 38.0, 36.0), dark);
+        let overlay = self.overview_open() || self.tool_active();
+        match art.olive {
+            Some(o) => {
+                image(ui, Some(o), center, Fit::Tile(tile));
+            }
+            None => solid(ui, center, Color(0x3c, 0x34, 0x10, 0xff)),
+        }
+        if overlay {
+            solid(ui, center, Color(0, 0, 0, 0x96));
+        }
+
+        // ---- the radar -----------------------------------------------------------------------
+        let radar_box = ui.add(root, panel(Fill::None), at4(radar_rect));
         let mut radar_node = None;
         if let Screen::Game(g) = &self.screen
             && let Some(r) = &g.radar
         {
             let (cols, rows) = (r.cols as f32, r.rows as f32);
-            let fit = (side - 4.0) / cols.max(rows);
-            let (w, h) = (cols * fit, rows * fit);
+            let fit = (radar_rect[2] / cols).min(radar_rect[3] / rows);
+            let (w, h) = ((cols * fit).floor(), (rows * fit).floor());
             let colors = Arc::new(r.colors_with_view(&g.camera, self.viewport));
             let n = ui.add(
                 radar_box,
@@ -337,234 +471,306 @@ impl AppState {
             radar_node = Some(n);
         }
 
-        // Activity box (D).
-        let act_x = cw - inset - side;
-        let act = ui.add(
-            bottom,
-            panel(Fill::Solid(INSET)),
-            at(act_x, inset, side, side),
-        );
-        let news_font = font(8, dz * 0.62);
-        let chars = ((side - 14.0 * dz) / (news_font.size * 0.55))
-            .floor()
-            .max(10.0) as usize;
+        // ---- the activity box: logo, messages, history ---------------------------------------
+        image(ui, art.title, act_rect, Fit::Stretch);
+        let news_font = font(8, a * 0.62);
+        let tx = gm.rr(797.0, 623.0, 198.0, 84.0);
+        let chars = ((tx[2] - 6.0) / (news_font.size * 0.55)).floor().max(10.0) as usize;
         let mut lines = Vec::new();
         if let Screen::Game(g) = &self.screen {
-            for item in g.news.iter().take(12) {
+            let take = if news_open { 50 } else { 3 };
+            for item in g.news.iter().take(take) {
                 lines.extend(wrap_text(&format!("{}: {}", item.date, item.text), chars));
                 lines.push(String::new());
             }
         }
-        ui.add(
-            act,
-            label(
-                &self.texts.a("Messages"),
-                font(2, dz * 0.9),
-                HEAD,
-                Align::Left,
-            ),
-            at(8.0 * dz, 4.0 * dz, side - 16.0 * dz, 20.0 * dz),
-        );
-        let btn_h = (24.0 * dz).round();
-        ui.add(
-            act,
-            Kind::Text {
-                lines,
-                scroll: 0,
-                row_h: news_font.line_height(),
-                font: news_font,
-                color: TEXT,
-            },
-            at(
-                8.0 * dz,
-                26.0 * dz,
-                side - 16.0 * dz,
-                side - 26.0 * dz - btn_h - 8.0 * dz,
-            ),
-        );
-        let brief = ui.add(
-            act,
-            Kind::Button {
-                text: self.texts.get(2642, "Briefing"),
-                font: font(1, dz),
-                action: A_BRIEFING,
-                enabled: true,
-                hotkey: None,
-            },
-            Layout::at(Anchor::Bottom, side - 16.0 * dz, btn_h).offset(0.0, 4.0 * dz),
-        );
-        tips.push((brief, tip(2643, "View the scenario briefing dialog.", self)));
-
-        // Center list box (C).
-        let left_edge = inset + side + inset;
-        let right_edge = act_x - inset;
-        let avail_w = (right_edge - left_edge).max(120.0);
-        let center_w = avail_w.min(760.0 * dz);
-        let center_x = left_edge + (avail_w - center_w) / 2.0;
-        let center_h = ph - sl - 2.0 * inset - 4.0;
-        let cbox = ui.add(
-            bottom,
-            panel(Fill::Solid(INSET)),
-            at(center_x, inset, center_w, center_h),
-        );
+        if !news_open {
+            // A click anywhere on the logo box opens the message history; the history has its
+            // own Close button.
+            let hist = ui.add(
+                root,
+                Kind::Hotspot {
+                    action: A_NEWS,
+                    on: false,
+                    enabled: true,
+                },
+                at4(act_rect),
+            );
+            tips.push((hist, self.texts.a("Message history and scenario briefing")));
+        }
+        if news_open {
+            // The history takes over the whole box.
+            solid(ui, act_rect, Color(0x08, 0x0a, 0x1c, 0xe8));
+            ui.add(
+                root,
+                label(
+                    &self.texts.a("Messages"),
+                    font(2, a * 0.9),
+                    HEAD,
+                    Align::Left,
+                ),
+                at(
+                    act_rect[0] + 10.0 * a,
+                    act_rect[1] + 6.0 * a,
+                    act_rect[2] - 20.0 * a,
+                    20.0 * a,
+                ),
+            );
+            ui.add(
+                root,
+                Kind::Text {
+                    lines,
+                    scroll: 0,
+                    row_h: news_font.line_height(),
+                    font: news_font,
+                    color: TEXT,
+                },
+                at(
+                    act_rect[0] + 10.0 * a,
+                    act_rect[1] + 30.0 * a,
+                    act_rect[2] - 20.0 * a,
+                    act_rect[3] - 30.0 * a - 48.0 * a,
+                ),
+            );
+            let bw = (act_rect[2] - 30.0 * a) / 2.0;
+            let by = act_rect[1] + act_rect[3] - 42.0 * a;
+            let brief = ui.add(
+                root,
+                Kind::Button {
+                    text: self.texts.get(2642, "Briefing"),
+                    font: font(1, a * 0.8),
+                    action: A_BRIEFING,
+                    enabled: true,
+                    hotkey: None,
+                },
+                at(act_rect[0] + 10.0 * a, by, bw, (24.0 * a).round()),
+            );
+            tips.push((brief, tip(2643, "View the scenario briefing dialog.", self)));
+            ui.add(
+                root,
+                Kind::Button {
+                    text: self.texts.a("Close"),
+                    font: font(1, a * 0.8),
+                    action: A_NEWS,
+                    enabled: true,
+                    hotkey: None,
+                },
+                at(act_rect[0] + 20.0 * a + bw, by, bw, (24.0 * a).round()),
+            );
+        } else {
+            solid(
+                ui,
+                gm.rr(766.0, 618.0, 237.0, 93.0),
+                Color(0x04, 0x06, 0x18, 0xa8),
+            );
+            ui.add(
+                root,
+                Kind::Text {
+                    lines,
+                    scroll: 0,
+                    row_h: news_font.line_height(),
+                    font: news_font,
+                    color: TEXT,
+                },
+                at4(tx),
+            );
+        }
+        // ---- the center box: list, or the panel of a tool ------------------------------------
+        let cbox = ui.add(root, panel(Fill::None), at4(center));
         let mut center_node = None;
-        let mut date_cash: Option<(NodeId, NodeId)> = None;
         if self.overview_open() {
             // Map Overview (`bpovervw.win`): the layer list takes the place of the list box.
-            self.build_overview_panel(ui, cbox, center_w, center_h, dz, &mut tips);
+            self.build_overview_panel(ui, cbox, center[2], center[3], a, &mut tips);
         } else if self.tool_active() {
             // A construction tool's palette takes the place of the list (`bp*.win`).
-            self.build_tool_panel(ui, cbox, center_w, center_h, dz, &mut tips);
+            self.build_tool_panel(ui, cbox, center[2], center[3], a, &mut tips);
         } else {
-            let strip_h = (28.0 * dz).round();
             self.build_center_table(
                 ui,
                 cbox,
                 center_tab,
                 center_sel,
                 center_scroll,
-                center_w,
-                center_h - strip_h,
-                dz,
+                [center[2], center[3]],
+                &gm,
                 &mut center_node,
             );
-            // The strip under the table: date, cash, the four tabs and the list-screen button.
-            let strip_y = center_h - strip_h;
-            ui.add(
-                cbox,
-                panel(Fill::Solid(Color(0x16, 0x1c, 0x16, 0xf0))),
-                at(0.0, strip_y, center_w, strip_h),
+        }
+        // Inner shadows of the three boxes.
+        if let Some([s0, s1, s2]) = art.shade {
+            image(ui, Some(s0), radar_rect, Fit::Stretch);
+            image(
+                ui,
+                Some(s1),
+                gm.span(287.0, 699.0, 525.0, 159.0),
+                Fit::Stretch,
             );
-            let date_w = (150.0 * dz).min(center_w * 0.30);
-            let cash_w = (120.0 * dz).min(center_w * 0.24);
-            let date = ui.add(
-                cbox,
-                label("", font(1, dz), TEXT, Align::Left),
-                at(6.0 * dz, strip_y, date_w, strip_h),
-            );
-            let cash = ui.add(
-                cbox,
-                label("", font(1, dz), HEAD, Align::Left),
-                at(6.0 * dz + date_w, strip_y, cash_w, strip_h),
-            );
-            let tabs_x = 6.0 * dz + date_w + cash_w + 4.0 * dz;
-            let list_w = (30.0 * dz).round();
-            let tabs_w = (center_w - tabs_x - list_w - 6.0 * dz).max(80.0);
-            let tab_w = tabs_w / 4.0;
-            let tab_tips = [1800u32, 1801, 1802, 1803];
-            let tab_en = [
-                "Show stations in this list box.",
-                "Show trains in this list box.",
-                "Show players in this list box.",
-                "Show companies in this list box.",
-            ];
-            for (i, name) in self.center_tab_names().iter().enumerate() {
-                let t = ui.add(
-                    cbox,
-                    Kind::Toggle {
-                        text: name.clone(),
-                        font: font(1, dz * 0.92),
-                        action: A_CENTER_TAB + i as u32,
-                        on: i == center_tab,
-                        enabled: true,
-                    },
-                    at(
-                        tabs_x + i as f32 * tab_w,
-                        strip_y + 2.0,
-                        tab_w - 2.0,
-                        strip_h - 4.0,
-                    ),
-                );
-                tips.push((t, tip(tab_tips[i], tab_en[i], self)));
-            }
-            let ls = ui.add(
-                cbox,
-                Kind::Icon {
-                    up: self.icons.get(8).map(|i| i.0),
-                    down: self.icons.get(8).map(|i| i.1),
-                    fallback: "=".to_owned(),
-                    font: font(1, dz),
-                    action: A_LIST_SCREEN,
-                    on: false,
-                },
-                at(
-                    center_w - list_w - 4.0 * dz,
-                    strip_y + 2.0,
-                    list_w,
-                    strip_h - 4.0,
-                ),
-            );
-            tips.push((ls, tip(1799, "Go to the list screen", self)));
-            date_cash = Some((date, cash));
+            image(ui, Some(s2), act_rect, Fit::Stretch);
         }
 
-        // ---- the eight action icons, down the left edge -----------------------------------
-        let avail = ch - ph - 16.0;
-        let per = avail / 8.0;
-        let bh = (per - 4.0).clamp(20.0, 34.0 * dz).round();
-        let bw = (bh * 50.0 / 34.0).round();
-        let tools = ui.add_root(panel(Fill::None), at(6.0 * dz, 8.0 * dz, bw, per * 8.0));
-        ui.set_stack(tools, Stack::column(per - bh, 0.0));
+        // ---- the frame -----------------------------------------------------------------------
+        image(
+            ui,
+            art.rail_left,
+            gm.rl(0.0, 6.0, 85.0, 397.0),
+            Fit::Stretch,
+        );
+        image(
+            ui,
+            art.rail_right,
+            gm.rr(954.0, 63.0, 70.0, 340.0),
+            Fit::Stretch,
+        );
+        for (row, y, h, cut) in [
+            (art.row0, 403.0, 105.0, crate::artwork::mainwin::ROW0_CUT),
+            (art.row1, 508.0, 260.0, crate::artwork::mainwin::ROW1_CUT),
+        ] {
+            if let Some([l, f, r]) = row {
+                let (c0, c1) = (cut.0 as f32, cut.1 as f32);
+                image(ui, Some(l), gm.rl(0.0, y, c0, h), Fit::Stretch);
+                image(ui, Some(f), gm.span(c0, c1, y, h), Fit::Tile(tile));
+                image(ui, Some(r), gm.rr(c1, y, DESIGN.0 - c1, h), Fit::Stretch);
+            }
+        }
+
+        // ---- the tab strip with cash and date -------------------------------------------------
+        let strip = gm.rr(490.0, 687.0, 207.0, 45.0);
+        let tab_art = art.tabs.map(|t| t[center_tab.min(3)]);
+        image(ui, tab_art, strip, Fit::Stretch);
+        let tab_tips = [1800u32, 1801, 1802, 1803];
+        let tab_en = [
+            "Show stations in this list box.",
+            "Show trains in this list box.",
+            "Show players in this list box.",
+            "Show companies in this list box.",
+        ];
+        let names = self.center_tab_names();
+        let mut tab_nodes = Vec::new();
+        for i in 0..4 {
+            let r = gm.rr(TAB_X[i], 688.0, TAB_W[i], 45.0);
+            let t = ui.add(
+                root,
+                Kind::Hotspot {
+                    action: A_CENTER_TAB + i as u32,
+                    on: art.tabs.is_none() && i == center_tab,
+                    enabled: true,
+                },
+                at4(r),
+            );
+            if art.tabs.is_none() {
+                ui.add(
+                    t,
+                    label(&names[i], font(1, a * 0.7), TEXT, Align::Center),
+                    Layout::fill(),
+                );
+            }
+            tips.push((t, tip(tab_tips[i], tab_en[i], self)));
+            tab_nodes.push(t);
+        }
+        let cash = ui.add(
+            root,
+            label(
+                "",
+                font(2, a * 0.85),
+                Color::rgb(0xff, 0xfd, 0xf0),
+                Align::Center,
+            ),
+            at4(gm.rl(291.0, 697.0, 90.0, 28.0)),
+        );
+        let date = ui.add(
+            root,
+            label(
+                "",
+                font(2, a * 0.85),
+                Color::rgb(0xff, 0xfd, 0xf0),
+                Align::Center,
+            ),
+            at4(gm.rl(392.0, 697.0, 90.0, 28.0)),
+        );
+        let ls = ui.add(
+            root,
+            Kind::Icon {
+                up: self.icons.get(8).map(|i| i.0),
+                down: self.icons.get(8).map(|i| i.1),
+                fallback: "=".to_owned(),
+                font: font(1, a),
+                action: A_LIST_SCREEN,
+                on: false,
+            },
+            at4(gm.rr(700.0, 692.0, 38.0, 36.0)),
+        );
+        tips.push((ls, tip(1799, "Go to the list screen", self)));
+
+        // ---- the tool icons on the left rail ----------------------------------------------------
         for (i, (rec, tip_id, tip_en, caption)) in TOOLS.iter().enumerate() {
             let (up, down) = self
                 .icons
                 .get(*rec)
                 .map_or((None, None), |p| (Some(p.0), Some(p.1)));
             let n = ui.add(
-                tools,
+                root,
                 Kind::Icon {
                     up,
                     down,
                     fallback: (*caption).to_owned(),
-                    font: font(1, dz * 0.9),
+                    font: font(1, a * 0.7),
                     action: A_TOOL + i as u32,
                     on: self.tool_kind() == super::build_ui::ToolKind::from_icon(i),
                 },
-                Layout::at(Anchor::TopLeft, bw, bh),
+                at4(gm.rl(PLATE_X, PLATE_Y[TOOL_PLATE[i]], 44.0, 34.0)),
             );
             tips.push((n, tip(*tip_id, tip_en, self)));
         }
 
-        // ---- rotate / zoom above the activity box -----------------------------------------
-        let nav_h = (34.0 * dz).round().min(side / 4.0 * 0.68);
-        let nav_w = (nav_h * 50.0 / 34.0).round();
-        let nav = ui.add_root(
-            panel(Fill::None),
-            Layout::at(Anchor::BottomRight, 4.0 * nav_w + 12.0 * dz, nav_h).offset(inset, ph + 4.0),
-        );
-        ui.set_stack(nav, Stack::row(4.0 * dz, 0.0));
-        for (rec, action, tip_id, tip_en, caption) in NAV {
+        // ---- rotate / zoom on the pipe above the activity box ---------------------------------
+        for (i, (rec, action, tip_id, tip_en, caption)) in NAV.into_iter().enumerate() {
             let (up, down) = self
                 .icons
                 .get(rec)
                 .map_or((None, None), |p| (Some(p.0), Some(p.1)));
             let n = ui.add(
-                nav,
+                root,
                 Kind::Icon {
                     up,
                     down,
                     fallback: caption.to_owned(),
-                    font: font(1, dz),
+                    font: font(1, a),
                     action,
                     on: false,
                 },
-                Layout::at(Anchor::TopLeft, nav_w, nav_h),
+                at4(gm.rr(NAV_X[i], 432.0, 51.0, 34.0)),
             );
             tips.push((n, tip(tip_id, tip_en, self)));
         }
 
-        // ---- speed controls, top right (the original has none on screen: `+` / `-` keys) ----
-        let sp = ui.add_root(
+        // ---- the compass, top right ---------------------------------------------------------
+        let compass = art.compass.map(|c| {
+            ui.add(
+                root,
+                Kind::Image {
+                    sprite: c[compass_index(rotation)],
+                    fit: Fit::Stretch,
+                },
+                at4(gm.rr(929.0, 23.0, 80.0, 46.0)),
+            )
+        });
+
+        // ---- speed controls, left of the compass (the original has none on screen) -------------
+        // Never smaller than a readable 0.7 of the design size, however small the canvas is.
+        let u = a.max(0.7);
+        let bsz = (28.0 * u).round();
+        let sp_w = bsz * 3.5 + 12.0 * u + 110.0 * u;
+        let sp = ui.add(
+            root,
             panel(Fill::None),
-            Layout::at(Anchor::TopRight, 250.0 * dz, 30.0 * dz).offset(inset, inset),
+            at(gm.xr(929.0) - sp_w - 6.0 * a, gm.y(26.0), sp_w, bsz),
         );
-        ui.set_stack(sp, Stack::row(4.0 * dz, 0.0));
-        let bsz = (30.0 * dz).round();
+        ui.set_stack(sp, Stack::row(4.0 * u, 0.0));
         ui.add(
             sp,
             Kind::Button {
                 text: "-".into(),
-                font: font(3, dz * 0.8),
+                font: font(3, u * 0.75),
                 action: super::A_SLOWER,
                 enabled: true,
                 hotkey: None,
@@ -575,7 +781,7 @@ impl AppState {
             sp,
             Kind::Button {
                 text: "II".into(),
-                font: font(6, dz * 0.8),
+                font: font(6, u * 0.75),
                 action: super::A_PAUSE,
                 enabled: true,
                 hotkey: None,
@@ -586,7 +792,7 @@ impl AppState {
             sp,
             Kind::Button {
                 text: "+".into(),
-                font: font(3, dz * 0.8),
+                font: font(3, u * 0.75),
                 action: super::A_FASTER,
                 enabled: true,
                 hotkey: None,
@@ -595,38 +801,76 @@ impl AppState {
         );
         let speed = ui.add(
             sp,
-            label("", font(2, dz).with_shadow(), TEXT, Align::Left),
-            Layout::at(Anchor::TopLeft, 120.0 * dz, bsz),
+            label("", font(2, u * 0.9).with_shadow(), TEXT, Align::Left),
+            Layout::at(Anchor::TopLeft, 110.0 * u, bsz),
+        );
+
+        // ---- the status line on the ground strip ------------------------------------------------
+        let status = ui.add(
+            root,
+            label(
+                "",
+                font(2, a * 0.8).with_shadow(),
+                Color::rgb(0xf4, 0xea, 0xc4),
+                Align::Left,
+            ),
+            at4(gm.span(60.0, 964.0, 735.0, 30.0)),
         );
 
         // ---- the toast (save confirmations and the like) -----------------------------------
-        let toast_root = ui.add_root(panel(Fill::None), Layout::fill());
         let toast = ui.add(
-            toast_root,
+            root,
             label(
                 "",
                 game_font(6).with_shadow(),
                 Color::rgb(0xff, 0xe0, 0x80),
                 Align::Left,
             ),
-            Layout::at(Anchor::BottomLeft, 0.0, 28.0).offset(inset + 4.0, ph + 8.0),
+            at(
+                gm.x(300.0),
+                gm.y(470.0) - 34.0,
+                gm.xr(740.0) - gm.x(300.0),
+                28.0,
+            ),
         );
         ui.set_visible(toast, false);
 
+        // The tooltip with the name of the tab under the cursor, on top of everything else.
+        let tt_root = ui.add_root(panel(Fill::None), Layout::fill());
+        let tt = ui.add(
+            tt_root,
+            panel(Fill::Solid(Color(0x12, 0x10, 0x08, 0xf0))),
+            at(0.0, 0.0, 10.0, 10.0),
+        );
+        let tt_label = ui.add(
+            tt,
+            label(
+                "",
+                font(2, a.max(0.7) * 0.8),
+                Color::rgb(0xff, 0xf6, 0xd8),
+                Align::Center,
+            ),
+            Layout::fill(),
+        );
+        ui.set_visible(tt, false);
+
         if let Screen::Game(g) = &mut self.screen {
             g.hud = MainIds {
-                date: date_cash.map(|d| d.0),
-                cash: date_cash.map(|d| d.1),
+                tooltip: Some((tt, tt_label)),
+                date: Some(date),
+                cash: Some(cash),
                 speed: Some(speed),
                 pause: Some(pause),
                 toast: Some(toast),
                 status: Some(status),
                 radar: radar_node,
                 center: center_node,
+                compass,
+                compass_rot: rotation,
+                tab_nodes,
                 tips,
             };
         }
-        let _ = (HEAD, MUTED);
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -637,33 +881,26 @@ impl AppState {
         tab: usize,
         sel: Option<usize>,
         scroll: usize,
-        w: f32,
-        h: f32,
-        dz: f32,
+        [w, h]: [f32; 2],
+        gm: &Geometry,
         center_node: &mut Option<NodeId>,
     ) {
+        let dz = gm.dz;
+        let (rowh, head_h, visible) = center_rows(gm, tab);
         let mut table = self.center_table(tab);
-        // As many columns as fit: about 70 logical pixels each, the first one wider.
-        let max_cols = ((w / (80.0 * dz)).floor() as usize).clamp(2, table.cols.len().max(2));
-        table.cols.truncate(max_cols);
-        for r in &mut table.rows {
-            r.truncate(max_cols);
-        }
-        let rowh = (19.0 * dz).round();
-        let size = (rowh * 0.62).max(10.0);
-        let head_h = rowh + 4.0;
-        let visible = (((h - head_h) / rowh).floor() as usize).max(1);
         let n = table.rows.len();
         let first = scroll.min(n.saturating_sub(visible));
         let shown = visible.min(n.saturating_sub(first));
-        let tb_w = w - if n > visible { 8.0 } else { 0.0 };
+        let size = (rowh * 0.62).max(6.0);
+        let bar_w = (14.0 * dz).round();
+        let tb_w = w - bar_w - 4.0 * dz;
         if n == 0 {
             ui.add(
                 parent,
                 label(
                     &self.texts.a("Nothing to show."),
                     info_ui::font(size * 1.1),
-                    MUTED,
+                    TEXT,
                     Align::Left,
                 ),
                 at(12.0 * dz, head_h + 6.0, w - 24.0 * dz, rowh),
@@ -681,27 +918,116 @@ impl AppState {
                 font: info_ui::font(size),
                 action: A_CENTER_ROW,
             },
-            at(0.0, head_h - 1.0, w, rowh * shown as f32 + 2.0),
+            at(0.0, head_h - 1.0, tb_w, rowh * shown as f32 + 2.0),
         );
         *center_node = Some(list);
-        info_ui::draw_table(
-            ui, parent, &table, 0.0, 2.0, tb_w, rowh, size, first, visible, false,
-        );
-        if n > visible {
-            // A slim scroll bar.
-            let track_h = h - head_h;
-            ui.add(
-                parent,
-                panel(Fill::Solid(Color(255, 255, 255, 0x18))),
-                at(w - 6.0, head_h, 6.0, track_h),
+        if tab == 3 {
+            self.draw_company_rows(ui, parent, tb_w, rowh, first, shown, dz);
+        } else {
+            // As many columns as fit: about 80 design pixels each.
+            let max_cols =
+                ((tb_w / (80.0 * dz)).floor() as usize).clamp(2, table.cols.len().max(2));
+            table.cols.truncate(max_cols);
+            for r in &mut table.rows {
+                r.truncate(max_cols);
+            }
+            info_ui::draw_table(
+                ui, parent, &table, 0.0, 2.0, tb_w, rowh, size, first, visible, false,
             );
+        }
+        if n > visible {
+            // The scroll bar sits in the dark slot of the frame right of the box.
+            let slot = [w + 12.0 * dz, 22.0 * dz, 18.0 * dz, h - 44.0 * dz];
             let frac = visible as f32 / n as f32;
-            let th = (track_h * frac).max(12.0);
-            let ty = head_h + (track_h - th) * (first as f32 / (n - visible).max(1) as f32);
+            let th = (slot[3] * frac).max(14.0 * dz);
+            let ty = slot[1] + (slot[3] - th) * (first as f32 / (n - visible).max(1) as f32);
             ui.add(
                 parent,
-                panel(Fill::Solid(Color::rgb(0x8a, 0x7c, 0x55))),
-                at(w - 6.0, ty, 6.0, th),
+                panel(Fill::Solid(Color(0xc8, 0xb4, 0x78, 0xff))),
+                at(slot[0] + 2.0, ty, slot[2] - 4.0, th),
+            );
+        }
+    }
+
+    /// The companies tab: one tall row per company (logo, name, cash, profits) like the list of
+    /// the original (`mainwin.win` list 325).
+    #[allow(clippy::too_many_arguments)]
+    fn draw_company_rows(
+        &self,
+        ui: &mut Ui,
+        parent: NodeId,
+        w: f32,
+        rowh: f32,
+        first: usize,
+        shown: usize,
+        dz: f32,
+    ) {
+        let rows = self.with_info(|i| i.company_rows()).unwrap_or_default();
+        let t = &self.texts;
+        let size = (rowh * 0.36).max(6.0);
+        let f = info_ui::font(size);
+        let pad = 3.0 * dz;
+        for (n, c) in rows.iter().skip(first).take(shown).enumerate() {
+            let y = n as f32 * rowh;
+            ui.add(
+                parent,
+                panel(Fill::Solid(Color(0xff, 0xf0, 0x8c, 0x1c))),
+                at(2.0, y + 2.0, w - 4.0, rowh - 4.0),
+            );
+            ui.add(
+                parent,
+                panel(Fill::Frame(if c.human {
+                    TEAL
+                } else {
+                    Color(0, 0, 0, 0x60)
+                })),
+                at(2.0, y + 2.0, w - 4.0, rowh - 4.0),
+            );
+            if let Some(Some(s)) = self.icons.brand.logos.get(c.logo) {
+                ui.add(
+                    parent,
+                    Kind::Image {
+                        sprite: *s,
+                        fit: Fit::Contain,
+                    },
+                    at(6.0 * dz, y + 5.0 * dz, rowh - 8.0 * dz, rowh - 10.0 * dz),
+                );
+            }
+            let tx = rowh + 4.0 * dz;
+            let half = rowh / 2.0;
+            ui.add(
+                parent,
+                label(
+                    &c.name,
+                    f.with_shadow(),
+                    Color::rgb(0xff, 0xf6, 0xd8),
+                    Align::Left,
+                ),
+                at(tx, y + pad, w - tx - 6.0 * dz, half - pad),
+            );
+            ui.add(
+                parent,
+                label(
+                    &format!("{} {}", t.get(31, "Cash"), money_k(c.cash)),
+                    f.with_shadow(),
+                    Color::rgb(0xff, 0xf6, 0xd8),
+                    Align::Left,
+                ),
+                at(tx, y + half - pad, w * 0.5 - tx, half),
+            );
+            ui.add(
+                parent,
+                label(
+                    &format!("{} {}", t.a("Profits"), money_k(c.profit)),
+                    f.with_shadow(),
+                    if c.profit < 0.0 {
+                        Color::rgb(0xff, 0x9a, 0x88)
+                    } else {
+                        Color::rgb(0xff, 0xf6, 0xd8)
+                    },
+                    Align::Left,
+                ),
+                at(w * 0.55, y + half - pad, w * 0.45 - 6.0 * dz, half),
             );
         }
     }
@@ -722,9 +1048,19 @@ impl AppState {
             A_CENTER_ROW => self.center_open_row(),
             A_LIST_SCREEN => self.center_list_screen(),
             A_BRIEFING => self.push_dialog(Dialog::Goals),
+            A_NEWS => self.toggle_news(),
             _ => return false,
         }
         true
+    }
+
+    /// The message button: the activity box shows the history (and the Briefing button) or the
+    /// logo with the latest messages.
+    fn toggle_news(&mut self) {
+        if let Screen::Game(g) = &mut self.screen {
+            g.center.news_open = !g.center.news_open;
+        }
+        self.rebuild_ui();
     }
 
     fn camera_op(&mut self, f: impl FnOnce(&mut rt2_render::Camera)) {
@@ -764,6 +1100,7 @@ impl AppState {
                 tab: tab.min(3),
                 sel: None,
                 scroll: 0,
+                news_open: g.center.news_open,
             };
         }
         self.rebuild_ui();
@@ -794,9 +1131,7 @@ impl AppState {
         let (cw, ch) = self.ui.logical_size();
         let gm = geometry(cw, ch);
         let n = self.center_table(g.center.tab).rows.len();
-        let rowh = (19.0 * gm.dz).round();
-        let h = gm.ph - gm.sl - 2.0 * gm.inset - 4.0 - (28.0 * gm.dz).round();
-        let visible = (((h - rowh - 4.0) / rowh).floor() as usize).max(1);
+        let (_, _, visible) = center_rows(&gm, g.center.tab);
         g.center.scroll.min(n.saturating_sub(visible))
     }
 
@@ -896,14 +1231,16 @@ impl AppState {
         };
         let texts = &self.texts;
         let hud = g.hud.clone();
-        let date = format_date(g.world.date(), texts);
+        let d = g.world.date();
+        // The date box of the original shows month and year ("Jan 1830"), the cash box thousands.
+        let date = format!("{} {}", texts.month_short(d.month), d.year);
         let speed = if g.world.speed() == 0 {
             texts.get(lng::PAUSED, "Paused")
         } else {
             format!("{} {}", texts.get(lng::SPEED, "Speed:"), g.world.speed())
         };
         let cash = match g.cash {
-            Some(c) => format_money(c),
+            Some(c) => money_k(c),
             None => String::new(),
         };
         let paused = g.world.speed() == 0;
@@ -924,6 +1261,16 @@ impl AppState {
                 Some((n, Arc::new(r.colors_with_view(&g.camera, self.viewport))))
             }
             _ => None,
+        };
+        if let (Some(n), Some(c)) = (hud.compass, self.dialog_art.main.compass)
+            && let Screen::Game(g) = &mut self.screen
+            && g.hud.compass_rot != g.camera.rotation
+        {
+            g.hud.compass_rot = g.camera.rotation;
+            self.ui.set_sprite(n, c[compass_index(g.camera.rotation)]);
+        }
+        let Screen::Game(_) = &self.screen else {
+            return;
         };
         if let Some(n) = hud.date {
             self.ui.set_text(n, date);
@@ -982,6 +1329,47 @@ impl AppState {
             }
         };
         self.ui.set_text(status, text);
+        self.update_tooltip(hovered);
+    }
+
+    /// Shows the name of the tab under the cursor in a small box above it, hides it elsewhere.
+    fn update_tooltip(&mut self, hovered: Option<NodeId>) {
+        let Screen::Game(g) = &self.screen else {
+            return;
+        };
+        let Some((tt, label)) = g.hud.tooltip else {
+            return;
+        };
+        let tab = hovered.and_then(|h| g.hud.tab_nodes.iter().position(|&n| n == h));
+        let Some(i) = tab else {
+            if self.ui.is_shown(tt) {
+                self.ui.set_visible(tt, false);
+                self.ui.layout(self.viewport);
+            }
+            return;
+        };
+        let name = self.center_tab_names()[i].clone();
+        let (cw, ch) = self.ui.logical_size();
+        let a = geometry(cw, ch).dz.max(0.7);
+        let r = self.ui.rect(g.hud.tab_nodes[i]);
+        let size = (game_font(2).size * a * 0.8).round();
+        let (w, h) = (
+            name.chars().count() as f32 * size * 0.7 + 14.0 * a,
+            size * 1.6,
+        );
+        let x = (r.x + r.w / 2.0 - w / 2.0).clamp(2.0, cw - w - 2.0);
+        let y = r.y - h - 4.0 * a;
+        let moved = self.ui.rect(tt);
+        if self.ui.is_shown(tt) && (moved.x - x).abs() < 0.5 && (moved.y - y).abs() < 0.5 {
+            return;
+        }
+        self.ui.set_text(label, name);
+        {
+            let node = self.ui.node_mut(tt);
+            node.layout = at(x, y, w, h);
+            node.visible = true;
+        }
+        self.ui.layout(self.viewport);
     }
 
     /// "x, y  Name" for the map tile under physical pixel `pos`.

@@ -5,6 +5,7 @@
 use rt2_render::assets::{GameAssets, LoadedBank, RgbaImage};
 use rt2_render::atlas::scale2x;
 pub mod brand;
+pub mod mainwin;
 
 use rt2_ui::{NineSlice, Skin, SkinBuilder, SkinImage, SpriteId, Theme};
 
@@ -71,6 +72,8 @@ pub struct DialogArt {
     pub hiscore_bg: Option<SpriteId>,
     /// A blank `VIDEO_FRAME` sprite the video player fills with decoded frames.
     pub video_frame: Option<SpriteId>,
+    /// The chrome of the in-game main window (`artwork/mainwin.rs`).
+    pub main: mainwin::MainArt,
 }
 
 /// Size of the video frame sprite (clips are scaled into it).
@@ -256,6 +259,7 @@ pub fn load(assets: &GameAssets) -> Artwork {
         credits_bg: None,
         hiscore_bg: None,
         video_frame: None,
+        main: mainwin::MainArt::default(),
     };
     let mut dialogs = dialogs;
     for (i, name) in EDITOR_PANELS.iter().enumerate() {
@@ -296,6 +300,7 @@ pub fn load(assets: &GameAssets) -> Artwork {
             b.add(to_skin_image(&i, 1))
         });
     }
+    dialogs.main = mainwin::load(assets, &mut b);
     dialogs.video_frame = Some(b.reserve(VIDEO_FRAME.0, VIDEO_FRAME.1));
     if assets.contains("sdmbkg1.imb") {
         dialogs.station_view =

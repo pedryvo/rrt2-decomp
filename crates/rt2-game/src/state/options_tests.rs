@@ -399,8 +399,9 @@ fn edge_scrolling_and_camera_preferences_move_the_camera() {
     example_game(&mut s);
     s.update(0.0);
     let start = game(&s).camera.target;
-    // Off by default: the cursor at the edge does nothing.
-    s.cursor_moved(1.0, 450.0);
+    // Off by default: the cursor at the edge does nothing (the top edge: the left and bottom
+    // edges are covered by the frame of the main window).
+    s.cursor_moved(700.0, 1.0);
     s.update(100.0);
     assert_eq!(game(&s).camera.target, start);
     s.config.gameplay.edge_scroll = true;

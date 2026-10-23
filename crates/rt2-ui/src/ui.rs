@@ -164,6 +164,9 @@ pub enum Fit {
     /// Fill the rectangle, cropping only the bottom (or the sides) so the top edge stays visible.
     CoverTop,
     Contain,
+    /// Repeat the sprite at its original size times `n / 100` (logical pixels), starting at the
+    /// top left; the last column and row are cropped. Frame fillers and textures.
+    Tile(u16),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -436,6 +439,13 @@ impl Ui {
         if let Kind::Text { lines, scroll, .. } = &mut self.nodes[id.0].kind {
             *lines = new;
             *scroll = 0;
+        }
+    }
+
+    /// Swaps the sprite of a [`Kind::Image`] (the compass turning with the view).
+    pub fn set_sprite(&mut self, id: NodeId, new: SpriteId) {
+        if let Kind::Image { sprite, .. } = &mut self.nodes[id.0].kind {
+            *sprite = new;
         }
     }
 

@@ -578,7 +578,7 @@ impl UiRenderer {
                     Fill::Panel => self.panel(&mut layer.quads, r, k),
                 },
                 Kind::Image { sprite, fit } => {
-                    self.image(&mut layer.quads, r, *sprite, *fit);
+                    self.image(&mut layer.quads, r, *sprite, *fit, k);
                 }
                 Kind::Label {
                     text,
@@ -961,7 +961,7 @@ impl UiRenderer {
         s.uv
     }
 
-    fn image(&self, out: &mut Vec<Vertex>, r: Rect, id: crate::skin::SpriteId, fit: Fit) {
+    fn image(&self, out: &mut Vec<Vertex>, r: Rect, id: crate::skin::SpriteId, fit: Fit, k: f32) {
         let Some(s) = self.skin.sprite(id) else {
             return;
         };
@@ -969,6 +969,31 @@ impl UiRenderer {
         let (ow, oh) = s.size;
         match fit {
             Fit::Stretch => self.quad(out, r, uv, [1.0; 4]),
+            Fit::Tile(n) => {
+                let (tw, th) = (ow * f32::from(n) / 100.0 * k, oh * f32::from(n) / 100.0 * k);
+                if tw < 1.0 || th < 1.0 {
+                    return;
+                }
+                let (du, dv) = (uv[2] - uv[0], uv[3] - uv[1]);
+                // A hair of tolerance so a rectangle sized to whole tiles gets no sliver.
+                let eps = 0.01;
+                let mut y = 0.0;
+                while y < r.h - eps {
+                    let h = th.min(r.h - y);
+                    let mut x = 0.0;
+                    while x < r.w - eps {
+                        let w = tw.min(r.w - x);
+                        self.quad(
+                            out,
+                            Rect::new(r.x + x, r.y + y, w, h),
+                            [uv[0], uv[1], uv[0] + du * w / tw, uv[1] + dv * h / th],
+                            [1.0; 4],
+                        );
+                        x += tw;
+                    }
+                    y += th;
+                }
+            }
             Fit::Contain => {
                 let k = (r.w / ow).min(r.h / oh);
                 let (w, h) = (ow * k, oh * k);

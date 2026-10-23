@@ -306,6 +306,17 @@ pub struct Info<'a> {
 }
 
 /// One company's derived finance numbers.
+/// One company of the main window's Companies tab (`Info::company_rows`).
+#[derive(Clone, Debug, PartialEq)]
+pub struct CompanyRow {
+    pub slot: u32,
+    pub name: String,
+    pub logo: usize,
+    pub cash: f64,
+    pub profit: f64,
+    pub human: bool,
+}
+
 struct Standing {
     co: finance::Company,
     price: Option<i32>,
@@ -500,6 +511,34 @@ impl<'a> Info<'a> {
             title: self.t(1726, "Players"),
             table: t,
         }
+    }
+
+    /// The companies as the main window's Companies tab shows them (`mainwin.win` list 325): name,
+    /// logo, cash (account 0) and the profit of the year so far (income statement total, the
+    /// same figure as the company report's "This year" profit). Same order and ids as
+    /// [`Info::stock_market`].
+    pub fn company_rows(&self) -> Vec<CompanyRow> {
+        self.save
+            .companies
+            .ordered()
+            .map(|r| {
+                let rr = Rec(&r.data);
+                let s = self.standing(&rr);
+                let d = self.detailed();
+                CompanyRow {
+                    slot: r.slot as u32,
+                    name: self.company_name(r.slot as u32),
+                    logo: self.company_logo(r.slot as u32),
+                    cash: rr.f64(crate::buildtools::CO_CASH),
+                    profit: if d {
+                        s.co.cats.iter().sum::<f64>()
+                    } else {
+                        0.0
+                    },
+                    human: self.is_human_company(&rr),
+                }
+            })
+            .collect()
     }
 
     /// Stock market overview (`stockdtl.win`, LNG 56 "Market Overview"): one row per company.
