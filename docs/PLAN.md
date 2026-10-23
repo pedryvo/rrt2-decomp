@@ -248,6 +248,7 @@ O usuário decidiu que todos os itens abaixo entram na 1.0. O multiplayer contin
 **Jogo completo**
 - [ ] Todas as telas do inventário (`docs/reference/screens.md`) prontas, menos as exclusivas do multiplayer
 - [ ] Vídeos de introdução (Smacker)
+- [ ] Janela principal com o visual do original (referência: screenshot do usuário de 2026-10-23): moldura de metal e canos da arte original em 9-slice, abas da caixa central com ícones, caixas de caixa e data, caixa da direita com logo e retrato, rosa dos ventos girando com a câmera, nomes das cidades em amarelo-creme com sombra e a linha da empresa na caixa central. Adaptável a qualquer resolução e escala; não precisa ser idêntica.
 - [ ] Opções para corrigir bugs do original, com o modo fiel como padrão; cada correção tem nome e o save/replay guarda o conjunto de regras usado
 - [ ] Caso de fidelidade de 10 anos (ou mais) idêntico ao original
 
