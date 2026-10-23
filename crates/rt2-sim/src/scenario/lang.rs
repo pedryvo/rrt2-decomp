@@ -155,6 +155,10 @@ pub trait ScenarioEnv {
         }
     }
     /// Every company / person / territory of the pool, in list order (class parameter scan).
+    /// The enabled fixes of original bugs (faithful unless the world says otherwise).
+    fn rules(&self) -> crate::ruleset::Ruleset {
+        crate::ruleset::Ruleset::FAITHFUL
+    }
     fn companies(&self) -> Vec<i32>;
     fn persons(&self) -> Vec<i32>;
     fn territories(&self) -> Vec<i32>;
@@ -368,6 +372,12 @@ pub fn reduce(ev: &mut Eval, ids_in: &[i32], vals_in: &[i32]) -> Result<i32, u32
                         r.wrapping_mul(s).wrapping_add(l)
                     }
                     0x58 => l.wrapping_mul(r),
+                    // Original: divisor 0 -> 1, so x / 0 = x; the fix gives 1 (editor3.txt).
+                    0x59 if r == 0
+                        && ev.env.rules().has(crate::ruleset::Fix::ScenarioDivByZero) =>
+                    {
+                        1
+                    }
                     0x59 => l.wrapping_div(if r != 0 { r } else { 1 }),
                     _ => 0,
                 };

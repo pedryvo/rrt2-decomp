@@ -49,6 +49,9 @@ pub enum Command {
     /// first, 1 the second (effect set 1). Ignored when `message_id` is not the pending one.
     /// See [`crate::choice`].
     AnswerChoice { message_id: u32, button: u8 },
+    /// Switches the optional fixes of original bugs ([`crate::ruleset`]); a replay starts with
+    /// the ruleset of its header, and a change in the options screen is logged as this command.
+    SetRuleset(crate::ruleset::Ruleset),
 }
 
 impl World {
@@ -85,6 +88,7 @@ impl World {
             Command::AnswerChoice { message_id, button } => {
                 let _ = self.answer_choice(message_id, button);
             }
+            Command::SetRuleset(r) => self.set_ruleset(r),
         }
     }
 

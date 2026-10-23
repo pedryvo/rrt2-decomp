@@ -271,8 +271,22 @@ impl SimState {
         // 2. Overhead (16.1).
         let mut acc = 0i32;
         let mut n = 0i32;
+        // Original bug: the zeroed new year counts and the third year is skipped; the fix
+        // averages the archives k = 0..2 (the three completed years).
+        let full_years = self.rules.has(crate::ruleset::Fix::OverheadAverage);
         for i in 0..3i32 {
             let y = year - i;
+            if full_years {
+                if y >= co.founded {
+                    let sum = co.arch_cats[i as usize]
+                        .iter()
+                        .take(5)
+                        .fold(0.0, |a, b| a + b);
+                    acc = ftol_(f64::from(acc) + sum);
+                    n += 1;
+                }
+                continue;
+            }
             if y >= co.founded {
                 let sum = if y == year {
                     0.0

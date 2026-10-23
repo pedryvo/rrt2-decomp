@@ -40,6 +40,13 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Feature: Windows installer with Start menu shortcut, and macOS .app in a .dmg
 - RE: multiplayer rules of the original specified in docs/spec/multiplayer.md: host-sequenced deterministic lockstep (command batches stamped with a game minute and a time horizon), lobby commands 1..9, desync checksum (reaction only in debug mode), disconnect handling (host migration, human persons handed to the AI, no late join), and every rule that changes with several humans (dialogs never pause time and auto-close, daily train steps, no newspapers, victory ends the game for all).
 - Feature: first-run setup screen detects the original install or lets you pick the folder, then Play
+- Feature: rt2-sim commands 0x27 (company name and logo, `cmd_set_company_info` 0x4bddb0) and 0x29 (train throttle, `train_set_throttle` 0x4d6080), verified by before/after snapshots of the original.
+- Feature: optional fixes of 15 original bugs (`rt2_sim::ruleset`), faithful by default; each fix is a named flag, stored in a save trailer the original ignores, in replay headers and as `Command::SetRuleset`; `rt2-advance --fixes`.
+- Docs: docs/spec/original-bugs.md catalogs the documented bugs of the original (address, spec, impact, fix flag).
+- RE: 10-year fidelity cases (Example and #01 B&O New Game, 3650 days) in the scoreboard.
+- RE: `industry_receive_cargo` (0x40b250) ported: a delivery of an input converts it into output lots (Example, day 3314); stations built in a grown building slot keep the heap fill at +0x38 (Example, slot 415); the end-of-game state [0x573d70] is saved (#01 B&O, 20 years).
+- RE: two runs of the original from the same save can differ in the smoke pool (`pool_78`) over long runs (Example, days 2540 and 3650): run-to-run noise of the original, documented in docs/fidelity-status.md.
+- Fix: a lot delivered back at its own station returns to its industry pile (0x4bf760, Example day 5215), and the lot life now uses the loader's minutes (`cargo.+8`), not the days of the static EXE image.
 
 ## v0.3.0 — 2026-10-23
 - Fix: Lay Track drag now starts and ends on a station when pressed on its building (snap to the station's tile), so dragging from one station to another works as in the original

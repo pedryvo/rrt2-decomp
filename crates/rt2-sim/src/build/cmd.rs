@@ -106,6 +106,17 @@ pub enum BuildCmd {
         building: i32,
         buy: bool,
     },
+    /// `0x27`: `cmd_set_company_info` (`0x4bddb0`): the company's logo/colour byte `+0x2b` and
+    /// its name (`+4`, copied up to and including the NUL). Sent by the founding window
+    /// `0x4bd950` when it edits an existing company.
+    SetCompanyInfo {
+        company: i32,
+        name: [u8; 31],
+        logo: u8,
+    },
+    /// `0x29`: `train_set_throttle(train, (f32) value)` (`0x4d6080`): the throttle `+0xdb` and
+    /// the effective class `+0xa8` (the slider of `traindtl.win`).
+    TrainThrottle { train: i32, value: u8 },
 }
 
 /// Why a command did nothing.
@@ -254,6 +265,15 @@ impl BuildCmd {
                 building: i32::from_le_bytes(p[0xd..0x11].try_into().ok()?),
                 buy: p[0x11] != 0,
             },
+            0x27 => BuildCmd::SetCompanyInfo {
+                company: co,
+                name: p[0xd..0x2c].try_into().ok()?,
+                logo: p[0x2c],
+            },
+            0x29 => BuildCmd::TrainThrottle {
+                train: i32::from(u16::from_le_bytes([p[0xc], p[0xd]])),
+                value: p[0xe],
+            },
             _ => return None,
         })
     }
@@ -304,7 +324,18 @@ impl Ai<'_, '_> {
                     || !self.perm(0x0057_06b9)
                     || self.ts.img.u8(0x0053_5c39 + kind * 0x27) != 1
                     || self.ts.i16(P::Industry, building, 0x97) != 0
-                    || self.ts.u8(P::Company, company, 0x479 + terr * 0x1ed) & 2 == 0
+                    || self.ts.u8(P::Company, company, 0x479 + terr * 0x1ed)
+                        & if self
+                            .ts
+                            .g
+                            .rules
+                            .has(crate::ruleset::Fix::TerritoryRightsPerKind)
+                        {
+                            4
+                        } else {
+                            2
+                        }
+                        == 0
                 {
                     return Err(CmdError::NotBuyable);
                 }
@@ -513,6 +544,34 @@ impl Ai<'_, '_> {
                 } else {
                     self.sell_industry(company, building);
                 }
+                Ok(0)
+            }
+            BuildCmd::SetCompanyInfo {
+                company,
+                name,
+                logo,
+            } => {
+                // The executor takes the company record without a liveness test (`0x4668a0`);
+                // only the window of a live company sends it. The name is a C string: the window
+                // always terminates it inside the 31 bytes (`_strncpy(.., 0x1e)`).
+                let len = name
+                    .iter()
+                    .position(|&b| b == 0)
+                    .ok_or(CmdError::InvalidInput)?;
+                if !self.ts.live(P::Company, company) {
+                    return Err(CmdError::NoSuchObject);
+                }
+                self.ts.set8(P::Company, company, 0x2b, logo);
+                for (k, &b) in name[..=len].iter().enumerate() {
+                    self.ts.set8(P::Company, company, 4 + k, b);
+                }
+                Ok(0)
+            }
+            BuildCmd::TrainThrottle { train, value } => {
+                if !self.ts.live(P::Train, train) {
+                    return Err(CmdError::NoSuchObject);
+                }
+                self.train_set_throttle(train, f32::from(value));
                 Ok(0)
             }
         }

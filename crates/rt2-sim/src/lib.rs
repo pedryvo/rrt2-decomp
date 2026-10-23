@@ -23,6 +23,7 @@
 //! | [`message`] | output queue of dialogs, headlines and the game outcome | `docs/spec/scenarios.md` 2.4, `time.md` 7.5 |
 //! | [`exe`], [`data`] | run-time loader for the copyrighted data tables (cargo, industries, engines, vehicles, track and station tables, stock economy multiplier and company-age weights) | `docs/spec/cargo.md` 3, 7.1; `trains.md` 2; `terrain-track.md` 2.2, 3.3; `finance.md` 3.1 |
 //! | [`growth`] | yearly town/region growth, building type pick and site search, removal pick, industry rating | `docs/spec/world-growth.md` |
+//! | [`ruleset`] | optional fixes of original bugs (faithful by default), save trailer and replay header | `docs/spec/original-bugs.md` |
 //! | [`fp`] | `ftol`, f32 stores, `pow` (integer x87 emulation of the CRT `_CIpow`, no libm) | `docs/spec/time.md` 3; `trains.md` 8 |
 //!
 //! Intentional divergence: the simulation advances with a fixed nominal frame
@@ -53,6 +54,7 @@ pub mod industry;
 pub mod message;
 pub mod pool;
 pub mod rng;
+pub mod ruleset;
 pub mod scenario;
 pub mod tick;
 pub mod tilemark;
@@ -64,5 +66,6 @@ pub mod world;
 
 pub use command::{Command, SpeedChange};
 pub use message::{GameMessage, Outcome};
+pub use ruleset::{Fix, Ruleset};
 pub use tick::NewGameOptions;
 pub use world::World;

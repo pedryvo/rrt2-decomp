@@ -61,6 +61,15 @@ struct Args {
     /// Do not print the step counters
     #[arg(long)]
     quiet: bool,
+    /// Fixes of original bugs to enable, comma-separated ids of `rt2_sim::ruleset::FIXES` or
+    /// `all` (docs/spec/original-bugs.md). Default: faithful. A non-faithful output carries the
+    /// ruleset trailer.
+    #[arg(long, default_value = "")]
+    fixes: String,
+    /// CRT `rand` state after the load instead of `seed` (to resume a continuous run of the
+    /// original from one of its saves; `ADV_CRT=<state> advance_save.py`).
+    #[arg(long, value_parser = parse_u32)]
+    crt_state: Option<u32>,
 }
 
 fn parse_u32(s: &str) -> Result<u32, String> {
@@ -118,8 +127,10 @@ fn main() -> anyhow::Result<()> {
         eprintln!("rng after load: {:#x}", world.rng().state());
     }
     // Same order as the driver: load, then seed the game RNG.
+    let rules = rt2_sim::Ruleset::parse(&args.fixes).map_err(|e| anyhow::anyhow!("{e}"))?;
+    world.apply(Command::SetRuleset(rules));
     world.apply(Command::SeedRng(args.seed));
-    world.apply(Command::SeedCrtRng(args.seed));
+    world.apply(Command::SeedCrtRng(args.crt_state.unwrap_or(args.seed)));
     let start = world.minutes();
     let total = i64::from(args.days) * 1440;
     let mut done = 0i64;
@@ -134,18 +145,19 @@ fn main() -> anyhow::Result<()> {
             world.minutes() - start
         );
     }
-    let out = world.to_save().to_bytes();
+    let out = world.to_file_bytes();
     std::fs::write(&args.output, &out).with_context(|| args.output.display().to_string())?;
     if !args.quiet {
         let d = world.date();
         eprintln!(
-            "{:04}-{:02}-{:02} {:02}:{:02}, rng state {:#x}, {} bytes",
+            "{:04}-{:02}-{:02} {:02}:{:02}, rng state {:#x}, crt {:#x}, {} bytes",
             d.year,
             d.month,
             d.day,
             d.hour,
             d.minute,
             world.rng().state(),
+            world.crt_rng().state(),
             out.len()
         );
         if let Some(log) = world.hook_log() {

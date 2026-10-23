@@ -68,6 +68,11 @@ pub struct Globals {
     pub networks_dirty: bool,
     /// Output queue of player-visible messages ([`crate::message`]); never read by the rules.
     pub news: Vec<crate::message::GameMessage>,
+    /// The enabled fixes of original bugs, copied from the world for each session.
+    pub rules: crate::ruleset::Ruleset,
+    /// Slot count of the building pool when the save was read (see
+    /// `tick::town::grown_slot_fill`), copied from the world for each session.
+    pub objects_loaded_slots: usize,
 }
 
 pub struct Ts<'a> {

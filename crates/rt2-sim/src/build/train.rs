@@ -456,6 +456,36 @@ impl Ai<'_, '_> {
         }
     }
 
+    /// `train_set_throttle(train, v)` (`0x4d6080`, command `0x29`): `+0xdb = v`; at or below
+    /// `0x537814` the effective class `+0xa8` is 0, else the class `+0xa7` (`+4` on the
+    /// company's own track). Unlike `train_set_class` it does not skip a crashed or broken
+    /// train.
+    pub fn train_set_throttle(&mut self, t: i32, v: f32) {
+        let ts = &mut *self.ts;
+        ts.setf32(P::Train, t, 0xdb, v);
+        if v <= ts.img.f32(0x0053_7814) {
+            ts.set8(P::Train, t, 0xa8, 0);
+            return;
+        }
+        let class = ts.u8(P::Train, t, 0xa7);
+        ts.set8(P::Train, t, 0xa8, class);
+        let (x, y) = (
+            i32::from(ts.i16(P::Train, t, 0xcb)),
+            i32::from(ts.i16(P::Train, t, 0xcd)),
+        );
+        if x > -1 && ts.u8(P::Train, t, 0x9c) != 0 && class != 0 {
+            let p = ts.tile_track(x, y);
+            let owner = if p == 0 {
+                0
+            } else {
+                i32::from(ts.u8(P::Track, p, 2))
+            };
+            if owner == ts.i32(P::Train, t, 0x41) {
+                ts.set8(P::Train, t, 0xa8, class.wrapping_add(4));
+            }
+        }
+    }
+
     /// `train_stop_delete(train, k)` (`0x4d5710` -> `0x4d55d0`, command `0x1e`).
     pub fn stop_delete(&mut self, t: i32, k: i32) {
         let n = i32::from(self.ts.u8(P::Train, t, 0x3b));

@@ -16,7 +16,7 @@ desc = "Tutorial (sem trens, sem estações)"
 [[scenario]]
 name = "Example"
 save = "games/Example save game.GAM"
-days = [1, 7, 30, 90, 180, 365, 730]
+days = [1, 7, 30, 90, 180, 365, 730, 3650]
 seed = 1234
 desc = "Example save game (9 trens, 11 estações)"
 
@@ -102,7 +102,7 @@ desc = "Britain.MAP carregado como save e convertido pelo clone"
 [[scenario]]
 name = "B&O New Game"
 save = "maps/#01B&O~1.MAP"
-days = [0, 7, 365, 730]
+days = [0, 7, 365, 730, 3650, 7300]
 seed = 1234
 preseed = 1234
 new_game = "0:0:4321:777"

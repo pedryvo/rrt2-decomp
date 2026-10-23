@@ -511,8 +511,14 @@ impl Ts<'_> {
             );
             // The original ORs the uninitialized build-mode arrays C and D into bits 4-7 and
             // 14-15 of the flags (heap garbage); they are left as they were here.
-            let f = self.rflags(t, head) & 0xf6;
-            self.set_rflags(t, head, f);
+            if self.g.rules.has(crate::ruleset::Fix::RouteStepFlags) {
+                // Fix: no heap garbage in bits 4-7 and 14-15 either.
+                let f = self.rflags16(t, head) & 0x3f06;
+                self.set_rflags16(t, head, f);
+            } else {
+                let f = self.rflags(t, head) & 0xf6;
+                self.set_rflags(t, head, f);
+            }
             let k1 = k + 1;
             written = next_written;
             if k1 == len {

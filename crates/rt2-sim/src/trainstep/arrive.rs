@@ -234,7 +234,7 @@ impl Ts<'_> {
             link = self.i32(P::Link, link, 0xa);
         }
         let effect_cargo = if c < 32 { 0x3e + c } else { 0xf1 + c } as usize;
-        let d = Delivery {
+        let mut d = Delivery {
             year: self.year,
             now: self.now,
             econ_state: self.state_i32(0x22f).clamp(0, 4) as usize,
@@ -269,7 +269,16 @@ impl Ts<'_> {
             effect_all: self.effect(0x3d, company, 0, dst_region),
             effect_cargo: self.effect(effect_cargo, company, 0, dst_region),
         };
-        let rev = delivery_revenue(&d, self.revenue);
+        let mut rev = delivery_revenue(&d, self.revenue);
+        if !estimate && rev.industry != 0 {
+            // The consuming industry takes the lot in the middle of the formula (`0x4bfa78`):
+            // its conversion recomputes the linked stations, and the price level `+0x321+c` is
+            // read after the call (Example, day 3647: a milk delivery converted by a cheese
+            // factory lowers the level of the next lot of the same settlement).
+            self.industry_receive_cargo(rev.industry as i32, c as u32);
+            d.dst_price_level = self.u8(P::Station, dst, (0x321 + c) as usize);
+            rev = delivery_revenue(&d, self.revenue);
+        }
         if self.flag_570229 != 0 && c == 0x11 && !estimate {
             self.set8(P::Station, dst, 0x4c0, 1);
         }
@@ -300,16 +309,136 @@ impl Ts<'_> {
         })
     }
 
+    /// `industry_receive_cargo(industry, c)` (`0x40b250`, cargo.md 7.4): the input stock of `c`
+    /// (`+0x6b`, f32, `+= 1.0` from the f64 `0x5350c8`) and the delivery counter `+0x34`; then,
+    /// for every converter slot (mode 0) valid this year, while the stock covers both inputs:
+    /// takes them and makes `ceil(rate)` output lots (`industry_spawn_lot`); at the end, if a
+    /// conversion happened, the active industry's linked stations recompute their supply and
+    /// demand (`0x4bebf0`). Seen in the Example at day 3313 (a coal-and-iron delivery).
+    pub fn industry_receive_cargo(&mut self, ind: i32, c: u32) {
+        self.log.ran("industry_receive_cargo");
+        let tid = usize::from(self.u8(P::Industry, ind, 7));
+        let Some(ty) = self.types.get(tid).cloned() else {
+            return;
+        };
+        if let Some(i) = ty.inputs.iter().position(|&x| u32::from(x) == c) {
+            let o = 0x6b + 4 * i;
+            let v = (f64::from(self.f32(P::Industry, ind, o)) + 1.0) as f32;
+            self.setf32(P::Industry, ind, o, v);
+        }
+        let n = self.i16(P::Industry, ind, 0x34).wrapping_add(1);
+        self.set16(P::Industry, ind, 0x34, n as u16);
+        let year = i32::from(self.year);
+        let mut converted = false;
+        for slot in &ty.slots {
+            if slot.output == 0x7f
+                || i32::from(slot.year_from) > year
+                || year > i32::from(slot.year_to)
+                || slot.mode != 0
+            {
+                continue;
+            }
+            let [a, b] = slot.inputs;
+            if a.need == 0 && b.need == 0 {
+                // The original loops forever here; no converter of the data has no input.
+                continue;
+            }
+            loop {
+                let sa = 0x6b + 4 * usize::from(a.index);
+                let sb = 0x6b + 4 * usize::from(b.index);
+                if (a.need != 0 && self.f32(P::Industry, ind, sa) < f32::from(a.need))
+                    || (b.need != 0 && self.f32(P::Industry, ind, sb) < f32::from(b.need))
+                {
+                    break;
+                }
+                if a.need != 0 {
+                    let v = self.f32(P::Industry, ind, sa) - f32::from(a.need);
+                    self.setf32(P::Industry, ind, sa, v);
+                }
+                if b.need != 0 {
+                    let v = self.f32(P::Industry, ind, sb) - f32::from(b.need);
+                    self.setf32(P::Industry, ind, sb, v);
+                }
+                if slot.rate > 0.0 {
+                    let mut k = 0i32;
+                    loop {
+                        self.industry_spawn_lot(ind, slot.output);
+                        k += 1;
+                        if (k as f32) >= slot.rate {
+                            break;
+                        }
+                    }
+                }
+                converted = true;
+            }
+        }
+        let n = i32::from(self.i8(P::Industry, ind, 0x33));
+        if converted && self.u8(P::Industry, ind, 0x4f) == 0 && n > 0 {
+            for k in 0..n {
+                let mut link = self.i32(P::Industry, ind, 0x2f);
+                for _ in 0..k {
+                    link = self.i32(P::Link, link, 6);
+                }
+                let st = i32::from(self.u16(P::Link, link, 2));
+                self.station_recompute_supply_demand(st);
+            }
+        }
+    }
+
+    /// `industry_spawn_lot(industry, cargo)` (`0x40a770`) on the train-step view: the same rule
+    /// as [`crate::industry`]'s weekly production (50 waiting lots per output slot at most,
+    /// except in the sandbox), then the linked stations ([`Ts::industry_lot_spawned`]).
+    pub fn industry_spawn_lot(&mut self, ind: i32, cargo: u8) {
+        use crate::industry::{
+            LOT_CARGO, LOT_CREATED, LOT_INDUSTRY, LOT_NEXT, OFF_INACTIVE, OFF_PILE, OFF_PILE_COUNT,
+            OFF_PRODUCED, OFF_STATIONS, OFF_TYPE,
+        };
+        if self.u8(P::Industry, ind, OFF_INACTIVE) != 0 {
+            return;
+        }
+        let tid = usize::from(self.u8(P::Industry, ind, OFF_TYPE));
+        let Some(i) = self
+            .types
+            .get(tid)
+            .and_then(|t| t.slots.iter().position(|s| s.output == cargo))
+        else {
+            return;
+        };
+        let sandbox = self
+            .s
+            .header
+            .get((0x0057_0227 - crate::ai::HDR_BASE) as usize)
+            .is_some_and(|&b| b != 0);
+        let waiting = self.i16(P::Industry, ind, OFF_PILE_COUNT + 2 * i);
+        if waiting >= 0x32 && !sandbox {
+            return;
+        }
+        let p = self.u8(P::Industry, ind, OFF_PRODUCED + i).wrapping_add(1);
+        self.set8(P::Industry, ind, OFF_PRODUCED + i, p);
+        self.set16(
+            P::Industry,
+            ind,
+            OFF_PILE_COUNT + 2 * i,
+            waiting.wrapping_add(1) as u16,
+        );
+        let mut lot = vec![0u8; self.record_size(P::Lot)];
+        lot[LOT_CARGO] = cargo;
+        lot[LOT_INDUSTRY..LOT_INDUSTRY + 2].copy_from_slice(&(ind as u16).to_le_bytes());
+        lot[LOT_CREATED..LOT_CREATED + 4].copy_from_slice(&self.now.to_le_bytes());
+        let head = self.u16(P::Industry, ind, OFF_PILE);
+        lot[LOT_NEXT..LOT_NEXT + 2].copy_from_slice(&head.to_le_bytes());
+        let slot = self.alloc(P::Lot, lot);
+        self.set16(P::Industry, ind, OFF_PILE, slot as u16);
+        if self.i8(P::Industry, ind, OFF_STATIONS) > 0 {
+            self.industry_lot_spawned(ind, cargo);
+        }
+    }
+
     /// The `commit == 0` branch of `0x4bf760` (cargo.md 4.8).
     fn deliver_side_effects(&mut self, dst: i32, src: i32, lot: i32, c: i32, r: i32, ind: u32) {
-        if ind != 0 {
-            todo_hook!(
-                self.log,
-                "industry_receive_cargo",
-                "industry_receive_cargo 0x40b250 (input stock, conversion)",
-                "cargo.md 7.4"
-            );
-        }
+        // `industry_receive_cargo` (`0x40b250`) already ran inside the formula when an industry
+        // took the lot (`ind != 0`, see `cargo_delivery_revenue`).
+        let _ = ind;
         let v = self.i16(P::Station, src, 0x4b7).wrapping_add(1);
         self.set16(P::Station, src, 0x4b7, v as u16);
         let v = self.i16(P::Station, dst, 0x4b9).wrapping_add(1);
@@ -328,19 +457,9 @@ impl Ts<'_> {
         self.set_state_i32(0x227, v);
         let origin = u32::from(self.u16(P::Lot, lot, 3));
         if self.u32(P::Station, dst, 0) == origin {
-            let age = self.now.wrapping_sub(self.u32(P::Lot, lot, 7));
-            let life = (self.img.i32(0x0054_04b9 + 0x21 * c as u32) >> 1) as u32;
-            let src_ind = i32::from(self.u16(P::Lot, lot, 1));
-            if age < life && src_ind != 0 && self.exists(P::Industry, src_ind) {
-                todo_hook!(
-                    self.log,
-                    "lot_return_to_pile",
-                    "0x4bf760 lot back to its industry pile (0x40b1b0, 0x468af0)",
-                    "cargo.md 4.8"
-                );
-            } else {
-                self.lot_free(lot);
-            }
+            // Delivered back at its own station: the same rule as `0x4bf450` (a fresh lot of an
+            // existing industry returns to its pile, else it is freed). Example, day 5215.
+            self.lot_back_to_industry(lot);
         } else {
             self.lot_free(lot);
         }
@@ -364,7 +483,12 @@ impl Ts<'_> {
         }
         let owner = self.i32(P::Station, dst, 0x39);
         let m = self.effect(0x3c, owner, 0, self.i32(P::Station, dst, 0x4ad));
-        let srev = ftol(f64::from(m) + f64::from(bonus));
+        // Original bug: `fiadd`, the multiplier is added (cargo.md 4.8).
+        let srev = if self.g.rules.has(crate::ruleset::Fix::StationRevenueEffect) {
+            ftol(f64::from(m) * f64::from(bonus))
+        } else {
+            ftol(f64::from(m) + f64::from(bonus))
+        };
         let v = self
             .i32(P::Station, dst, 0x5d)
             .wrapping_add(r.wrapping_add(srev));
@@ -380,17 +504,20 @@ impl Ts<'_> {
         }
     }
 
-    /// `0x4bf450(lot)`: a lot unloaded back at its own station while still fresh (age below
-    /// half its cargo's life, `0x5404b9 + 0x21*cargo`) returns to its industry: the
+    /// `0x4bf450(lot)` (and the same branch of `0x4bf760`): a lot unloaded back at its own
+    /// station while still fresh (age below half its cargo's life, `0x5404b9 + 0x21*cargo`) returns to its industry: the
     /// industry's waiting count for that output (`+0x8b + 2*k`, `k` from `0x40b1b0`) grows,
     /// the lot forgets its station and car (`+3..+6`, `+0xb..+0xe`) and every linked station
     /// counts it again (`0x468af0`); otherwise it is freed (`0x466a60`).
     pub fn lot_back_to_industry(&mut self, lot: i32) {
         let cargo = self.i8(P::Lot, lot, 0);
         let age = self.now.wrapping_sub(self.u32(P::Lot, lot, 7));
+        // `cargo.+8` of the run-time table (`0x5404b9 + 0x21*cargo`), which the loader
+        // (`0x471b10`) turns into minutes: `wait_scale` (the static image still has days).
         let life = (self
-            .img
-            .i32(0x0054_04b9u32.wrapping_add((i32::from(cargo) * 0x21) as u32))
+            .cargo
+            .get(cargo as u8 as usize)
+            .map_or(0, |k| k.wait_scale)
             >> 1) as u32;
         let ind = i32::from(self.u16(P::Lot, lot, 1));
         if age < life && ind != 0 && self.exists(P::Industry, ind) {
@@ -683,19 +810,23 @@ impl Ts<'_> {
         self.seti32(P::Train, t, 0x71, v);
         let gross = freight.wrapping_add(pass).wrapping_add(mail);
         let (mut own_prev, mut own_cur) = (false, false);
+        // Original bugs: the owner is credited even when it is the train's company (which pays
+        // nothing), and an unowned station takes the fee without crediting anyone.
+        let fix_own = self.g.rules.has(crate::ruleset::Fix::StationFeeOwnStation);
+        let fix_unowned = self.g.rules.has(crate::ruleset::Fix::StationFeeUnowned);
         if fee_prev != 0 {
             let owner = self.i32(P::Station, prev, 0x39);
-            if owner != 0 {
+            if owner != 0 && !(fix_own && owner == company) {
                 self.ledger_credit(owner, 2, f64::from(fee_prev));
             }
-            own_prev = owner == company;
+            own_prev = owner == company || (fix_unowned && owner == 0);
         }
         if fee_cur != 0 {
             let owner = self.i32(P::Station, station, 0x39);
-            if owner != 0 {
+            if owner != 0 && !(fix_own && owner == company) {
                 self.ledger_credit(owner, 2, f64::from(fee_cur));
             }
-            own_cur = owner == company;
+            own_cur = owner == company || (fix_unowned && owner == 0);
         }
         let deducted =
             (if own_cur { 0 } else { fee_cur }).wrapping_add(if own_prev { 0 } else { fee_prev });

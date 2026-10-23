@@ -188,7 +188,12 @@ impl Ts<'_> {
         // saves `train_step`'s `esi` (a record pointer) right at that address. Nonzero, so the
         // slow-down is the restricted one (`tau >> 4`). Measured in the original: 0x02f3f10b on
         // every call of the Example's train 9 broken down at 1878-01-17 (day 707).
-        let restricted = restricted.unwrap_or(true);
+        let restricted = restricted.unwrap_or(
+            !self
+                .g
+                .rules
+                .has(crate::ruleset::Fix::BrokenTrainDeceleration),
+        );
         let mut tau = self.en32(eng, 0x1c).wrapping_mul(1440);
         if self.i32(P::Train, t, 0x69) > target {
             tau >>= if restricted { 4 } else { 1 };

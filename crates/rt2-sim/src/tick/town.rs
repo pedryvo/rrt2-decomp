@@ -33,6 +33,21 @@ const HDR_TYPE_FLAGS: usize = 0x8793; // 0x5702cb, 9 bytes per type
 /// is fresh zeroed pages, not `0xBAADF00D`. Bracketed by `#E08` (a 3270-slot pool of 159-byte
 /// buildings, 519 930 bytes, keeps the fill; the 3290-slot step, 523 110 bytes, is zero).
 const WINE_LARGE_BLOCK: usize = 0x7eff0;
+/// The bytes `building_construct` (`0x409a30`) never writes (`+0x38..+0x3c`) in a slot past
+/// the pool as loaded: the heap fill of the grown pool (byte `i` of the pool's block is
+/// `[0x0d, 0xf0, 0xad, 0xba][i % 4]`). `pool_grow` (`0x4f14c0`) takes a fresh
+/// `malloc(slots * size)` for each step; a block that large comes from Wine's large-block path
+/// (fresh pages, zero) instead of the debug-filled heap: the slot keeps the fill of the step
+/// that created it. Used by every building creator (towns here, stations in `build/station.rs`).
+pub(crate) fn grown_slot_fill(data: &mut [u8], slot: usize, loaded: usize, step: usize, rs: usize) {
+    let band_end = loaded + (slot + 1 - loaded).div_ceil(step) * step;
+    if band_end * rs < WINE_LARGE_BLOCK {
+        const PAT: [u8; 4] = [0x0d, 0xf0, 0xad, 0xba];
+        for o in 0x38..0x3c {
+            data[o] = PAT[(slot * rs + o) % 4];
+        }
+    }
+}
 const HDR_CITY_MASK_SET: usize = 0x8974; // 0x5704ac industry set
 
 const PL_FIRST: usize = 2;
@@ -407,18 +422,7 @@ impl SiteEnv for SiteWorld<'_> {
         if let Some(r) = pool::record_mut(&mut self.s.save.objects, slot) {
             put_u16(&mut r.data, 0, slot as u16);
             if grown {
-                // Never written by `0x409a30`: the heap fill of the grown pool (byte `i` of the
-                // pool's block is `[0x0d, 0xf0, 0xad, 0xba][i % 4]`). `pool_grow` (`0x4f14c0`)
-                // takes a fresh `malloc(slots * size)` for each step; a block that large comes
-                // from Wine's large-block path (fresh pages, zero) instead of the debug-filled
-                // heap: the slot keeps the fill of the step that created it.
-                let band_end = loaded + (slot + 1 - loaded).div_ceil(step) * step;
-                if band_end * rs < WINE_LARGE_BLOCK {
-                    const PAT: [u8; 4] = [0x0d, 0xf0, 0xad, 0xba];
-                    for o in 0x38..0x3c {
-                        r.data[o] = PAT[(slot * rs + o) % 4];
-                    }
-                }
+                grown_slot_fill(&mut r.data, slot, loaded, step, rs);
             }
         }
         if let Some(r) = pool::record_mut(&mut self.s.save.places, self.place) {

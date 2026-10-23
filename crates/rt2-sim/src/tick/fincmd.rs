@@ -48,6 +48,8 @@ const PERM_BOND: u32 = 0x0057_06af;
 const PERM_REPAY: u32 = 0x0057_06b0;
 const PERM_DIVIDEND: u32 = 0x0057_06b1;
 const PERM_MERGER: u32 = 0x0057_06b4;
+/// "Merging companies": never read by the original (fix `merger_permission`).
+const PERM_MERGING: u32 = 0x0057_06bd;
 const PERM_TAKEOVER: u32 = 0x0057_06bb;
 const PERM_RESIGN: u32 = 0x0057_06bc;
 const PERM_SHORT: u32 = 0x0057_06bf;
@@ -1917,7 +1919,13 @@ impl SimState {
             } => {
                 let b = live(buyer)?;
                 let t = live(target)?;
-                if !self.st8(PERM_MERGER) {
+                // Original bug: the window reads "Retiring a train" (commands.md 4).
+                let perm = if self.rules.has(crate::ruleset::Fix::MergerPermission) {
+                    PERM_MERGING
+                } else {
+                    PERM_MERGER
+                };
+                if !self.st8(perm) {
                     return Err(FinError::NotAllowed);
                 }
                 if self.company_set().len() < 2 {

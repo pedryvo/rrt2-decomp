@@ -112,6 +112,17 @@ impl Ai<'_, '_> {
     pub fn building_create(&mut self, b: NewBuilding) -> i32 {
         let size = self.ts.record_size(P::Industry);
         let id = self.ts.alloc(P::Industry, vec![0u8; size]);
+        // A station built in a slot the pool grew into keeps the heap fill at `+0x38..+0x3c`
+        // (seen in the Example before day 2920, slot 415).
+        let loaded = self.ts.g.objects_loaded_slots;
+        if loaded > 0 && id as usize >= loaded {
+            let step = crate::trainstep::mem::pool_of(self.ts.s, P::Industry)
+                .field_0c
+                .max(1) as usize;
+            let mut rec = self.ts.record(P::Industry, id);
+            crate::tick::town::grown_slot_fill(&mut rec, id as usize, loaded, step, size);
+            self.ts.set_record(P::Industry, id, &rec);
+        }
         self.building_construct(id, b);
         id
     }

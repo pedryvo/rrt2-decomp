@@ -113,7 +113,18 @@ impl Ai<'_, '_> {
         }
         if company != 0 {
             let terr = usize::from(self.ts.t8(ax, ay, 9));
-            if self.ts.u8(P::Company, company, 0x479 + terr * 0x1ed) & 2 == 0 {
+            // Original: the track right (bit 1) also places stations; fix: station right.
+            let need = if self
+                .ts
+                .g
+                .rules
+                .has(crate::ruleset::Fix::TerritoryRightsPerKind)
+            {
+                8
+            } else {
+                2
+            };
+            if self.ts.u8(P::Company, company, 0x479 + terr * 0x1ed) & need == 0 {
                 return None;
             }
         }

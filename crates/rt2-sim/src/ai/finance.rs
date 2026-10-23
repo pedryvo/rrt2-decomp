@@ -231,8 +231,10 @@ impl Ai<'_, '_> {
         }
         // 6. Dividend review in December.
         let last_review = crate::pool::i32_at(&rec, 0x16a);
+        let mut reviewed = false;
         if b_b1 && self.month() == 12 && year - last_review >= 1 && year - c.founded >= 2 {
             crate::pool::put_u32(&mut rec, 0x16a, year as u32);
+            reviewed = true;
             let mut acc = 0f32;
             for i in 0..3 {
                 let w = 3 - i;
@@ -260,7 +262,13 @@ impl Ai<'_, '_> {
             }
         }
         // 7. Dividend policy, every turn.
-        if policy == 1 {
+        // Original bug: policy 1 cuts every turn; the fix cuts once, at the December review.
+        let once = self
+            .ts
+            .g
+            .rules
+            .has(crate::ruleset::Fix::AiDividendPolicyOnce);
+        if policy == 1 && (!once || reviewed) {
             c.dividend = (f64::from(c.dividend) * 0.66) as f32;
         } else if policy == 2 {
             c.dividend = 0.0;

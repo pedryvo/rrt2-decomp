@@ -120,6 +120,8 @@ start_min = rd32(0x5704F4)
 
 # 4. RNG: a carga nao restaura a sequencia; fixa a semente do jogo (0x55d2c0) e a do CRT (0x5609f0)
 wr32(0x55D2C0, seed); wr32(0x5609F0, seed)
+if env.get("ADV_CRT"):  # env ADV_CRT=0x..: CRT state of a continuous run (resume from its save)
+    wr32(0x5609F0, int(env["ADV_CRT"], 0) & 0xFFFFFFFF)
 
 # 5. avanca: sim_advance(ECX = minutos) em passos fixos, sem o porteiro.
 #    ADV_SKIP_CHOICES=1 (advance_save.py --skip-choices): a escolha de regra de cenario
@@ -168,6 +170,6 @@ if end_min - start_min != 1440 * days:
 # 6. grava: gravador 0x477540 (ECX = caminho, EDX = 0 -> arquivo em disco)
 fcall(0x477540, buf + 0x200, 0)
 snap("SAVED")
-log("RESULT start_minutes=%d end_minutes=%d rng_end=%#x" % (start_min, end_min, rd32(0x55D2C0)))
+log("RESULT start_minutes=%d end_minutes=%d rng_end=%#x crt_end=%#x" % (start_min, end_min, rd32(0x55D2C0), rd32(0x5609F0)))
 log("DONE %.1f" % (time.time() - t0))
 gdb.execute("quit")

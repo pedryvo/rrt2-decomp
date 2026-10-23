@@ -450,9 +450,9 @@ O cálculo de `m` e `período` (até o `>>= 1` do Overtime) é verificado por `t
 
 Ou seja, a produção anual é `prod * m` lotes e todos os lotes devidos são criados a cada chamada (a cada semana, 48 vezes por ano de 336 dias). Em modelo avançado ou expert um conversor só produz quando recebe insumo (7.4). `industry_spawn_lot` (`0x40a770`) cria o lote (`criado = agora`) na pilha, a menos que o slot já tenha 50 lotes esperando (fora do sandbox), e recalcula as estações ligadas (`0x4bebf0`, `+0x4b5 += 1`).
 
-### 7.4 Entrada de carga e conversão (`0x40b250`) **[S]**
+### 7.4 Entrada de carga e conversão (`0x40b250`) **[V]**
 
-Ao entregar `c` a uma indústria: `estoque[idx de c] += 1`, `+0x34 += 1`; para cada slot de modo 0 válido no ano, enquanto o estoque cobre as unidades exigidas de entrada 1 e entrada 2: subtrai-as e cria `ceil(taxa)` lotes de saída (`industry_spawn_lot`), repetindo; no fim recalcula as estações ligadas. Ex.: aciaria (carvão x1 + ferro x1 -> 2 aço), fábrica de automóveis (aço x2 + pneu x1 -> 3 autos).
+Ao entregar `c` a uma indústria: `estoque[idx de c] += 1`, `+0x34 += 1`; para cada slot de modo 0 válido no ano, enquanto o estoque cobre as unidades exigidas de entrada 1 e entrada 2: subtrai-as e cria `ceil(taxa)` lotes de saída (`industry_spawn_lot`), repetindo; no fim recalcula as estações ligadas. Ex.: aciaria (carvão x1 + ferro x1 -> 2 aço), fábrica de automóveis (aço x2 + pneu x1 -> 3 autos). O estoque soma o f64 `1.0` (`0x5350c8`) ao f32; o laço de um slot só para quando falta insumo (um slot de modo 0 sem insumos travaria o original; não existe nos dados). `industry_spawn_lot` (`0x40a770`) avisa as estações ligadas a cada lote (`0x468af0`, `0x4bebf0`, `+0x4b5`). **Ordem na receita:** `cargo_delivery_revenue` (`0x4bf760`) chama `0x40b250` no ramo da indústria consumidora **antes** de ler o nível de preço `estação+0x321+c` (`0x4bfa78` -> `0x4bfa97`), então a receita do lote usa o nível já recalculado pela conversão. [V] Example, dias 3314 e 3648 (`docs/fidelity-status.md`, "Longo prazo" 16); port em `crates/rt2-sim/src/trainstep/arrive.rs`.
 
 ### 7.5 Casas
 

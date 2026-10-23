@@ -80,7 +80,18 @@ impl Ai<'_, '_> {
         let rights = self
             .ts
             .u8(P::Company, self.company, 0x479 + (terr * 0x1ed) as usize);
-        if rights & 2 != 0 && f64::from(price) <= self.cash() {
+        // Original: the track right (bit 1); fix: the building right (bit 2).
+        let need = if self
+            .ts
+            .g
+            .rules
+            .has(crate::ruleset::Fix::TerritoryRightsPerKind)
+        {
+            4
+        } else {
+            2
+        };
+        if rights & need != 0 && f64::from(price) <= self.cash() {
             self.commands.push(AiCommand::BuyIndustry {
                 company: self.company,
                 industry: b,

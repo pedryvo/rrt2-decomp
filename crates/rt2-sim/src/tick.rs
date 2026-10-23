@@ -42,7 +42,7 @@ pub use newgame::NewGameOptions;
 mod review;
 pub(crate) use history::co as history_co;
 pub(crate) use review::{PickIn, pick_manager};
-mod town;
+pub(crate) mod town;
 mod year;
 
 // State block offsets (VA - 0x5704e8), version 0x2348.
@@ -91,6 +91,8 @@ pub struct SimState {
     /// The status buffer `[0x5665e0]` while `rule_collect_status` (`0x458210`) runs: the
     /// trigger 7 messages are appended to it instead of being shown.
     pub(crate) status_buf: Option<Vec<u8>>,
+    /// The enabled fixes of original bugs (faithful by default, [`crate::ruleset`]).
+    pub(crate) rules: crate::ruleset::Ruleset,
 }
 
 impl PartialEq for SimState {
@@ -170,6 +172,7 @@ impl World {
             ground_layer: None,
             track_cache: None,
             status_buf: None,
+            rules: crate::ruleset::Ruleset::FAITHFUL,
         };
         sim.rebuild_types(i32::from(save.date.year));
         w.sim = Some(Box::new(sim));
@@ -202,6 +205,25 @@ impl World {
             crate::tilemark::recompute_light(&mut s, x0, y0, x1, y1);
         }
         s
+    }
+
+    /// The bytes of a clone save: [`World::to_save`] as the original writes it, plus the
+    /// ruleset trailer when a fix is on ([`crate::ruleset::append_save_trailer`]; the original
+    /// ignores it and plays the file with its own rules).
+    pub fn to_file_bytes(&self) -> Vec<u8> {
+        let mut b = self.to_save().to_bytes();
+        crate::ruleset::append_save_trailer(&mut b, self.ruleset());
+        b
+    }
+
+    /// Splits a save file into the parsed save and the ruleset its trailer stores (faithful for
+    /// a file of the original). Build the world with [`World::from_save_seeded`] and apply the
+    /// ruleset with [`World::set_ruleset`].
+    pub fn parse_file(
+        raw: &[u8],
+    ) -> Result<(Save, crate::ruleset::Ruleset), Box<dyn std::error::Error + Send + Sync>> {
+        let (body, rules) = crate::ruleset::split_save_trailer(raw)?;
+        Ok((Save::parse(body)?, rules))
     }
 
     /// Drains the output queue of player-visible messages ([`crate::message`]), oldest first.
@@ -367,11 +389,15 @@ impl SimState {
         }
         let cur = date_of(w.minutes);
         let new = date_of(w.minutes.wrapping_add(dt));
+        // Day ends crossed by this call: each adds the 23:59 -> 00:00 minute to the clock
+        // without moving the trains (original quirk; fix `trains_midnight_minute`).
+        let mut midnights = 0;
         // The original tests each field with `<`, not the date as a whole.
         if cur.year < new.year || cur.month < new.month || cur.day < new.day {
             let to_midnight = 1439 - (i32::from(cur.hour) * 60 + i32::from(cur.minute));
             self.sim_advance(w, to_midnight);
             self.day_end(w);
+            midnights += 1;
             dt -= to_midnight + 1;
             loop {
                 let d = date_of(w.minutes);
@@ -380,14 +406,22 @@ impl SimState {
                 }
                 self.sim_advance(w, 1439);
                 self.day_end(w);
+                midnights += 1;
                 dt -= MINUTES_PER_DAY;
             }
         }
-        self.linear_pass(w, dt);
+        let extra = if self.rules.has(crate::ruleset::Fix::TrainsMidnightMinute) {
+            midnights
+        } else {
+            0
+        };
+        self.linear_pass(w, dt, extra);
     }
 
-    /// The linear path of `sim_advance` (world-tick.md 2.1), also run with `dt == 0`.
-    fn linear_pass(&mut self, w: &mut World, dt: i32) {
+    /// The linear path of `sim_advance` (world-tick.md 2.1), also run with `dt == 0`. `extra`
+    /// minutes are given to the trains on top of `dt` (only with the fix
+    /// `trains_midnight_minute`; 0 in the faithful rules).
+    fn linear_pass(&mut self, w: &mut World, dt: i32, extra: i32) {
         self.log.ran("linear_pass");
         let t = w.minutes.wrapping_add(dt);
         self.set_clock(w, t);
@@ -413,7 +447,7 @@ impl SimState {
             let mut id = ts.first_id(crate::trainstep::P::Train);
             while id != 0 {
                 let next = ts.next_id(crate::trainstep::P::Train, id);
-                ts.train_step(id, dt, true);
+                ts.train_step(id, dt + extra, true);
                 ts.log.ran("train_step");
                 id = next;
             }
@@ -458,6 +492,8 @@ impl SimState {
             flag_570229,
             flag_570236,
         };
+        ts.g.rules = self.rules;
+        ts.g.objects_loaded_slots = self.objects_loaded_slots;
         let r = f(&mut ts);
         self.ts_globals = ts.g;
         r

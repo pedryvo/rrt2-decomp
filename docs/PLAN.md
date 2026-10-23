@@ -252,7 +252,7 @@ O usuário decidiu que todos os itens abaixo entram na 1.0, inclusive o multipla
 - [x] Câmera inicial como no original: decodificar o bloco de vista do save (`0x8819`, 16 dwords lidos por `0x467bd0`/`0x467fd0`), focar a cidade inicial ao abrir campanhas e cenários e gravar a câmera atual ao salvar
 - [ ] Janela principal com o visual do original (referência: screenshot do usuário de 2026-10-23): moldura de metal e canos da arte original em 9-slice, abas da caixa central com ícones, caixas de caixa e data, caixa da direita com logo e retrato, rosa dos ventos girando com a câmera, nomes das cidades em amarelo-creme com sombra e a linha da empresa na caixa central. Adaptável a qualquer resolução e escala; não precisa ser idêntica.
 - [ ] Opções para corrigir bugs do original, com o modo fiel como padrão; cada correção tem nome e o save/replay guarda o conjunto de regras usado
-- [ ] Caso de fidelidade de 10 anos (ou mais) idêntico ao original
+- [x] Caso de fidelidade de 10 anos (ou mais) idêntico ao original
 
 **Jogabilidade moderna** (sem alterar o balanceamento padrão)
 - [ ] Desfazer a última construção

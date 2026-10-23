@@ -12,6 +12,7 @@ use crate::company_record::{CO_ACCT, CO_ACTIVE, CO_CATS, CO_CHAIRMAN, CO_EFFECTS
 use crate::finance::Company;
 use crate::fp::ftol as ftol_;
 use crate::rng::{CrtRng, GameRng};
+use crate::ruleset::Fix;
 use crate::scenario::{
     Confiscate, Message, Scenario, ScenarioEnv, ScenarioWorld, Scope, fire_trigger,
 };
@@ -26,6 +27,8 @@ const ST_MULTIPLAYER: usize = 0x3A34; // 0x573f1c
 const HDR_CAMPAIGN: usize = 0x86FC; // 0x570234
 
 const CO_VARS: usize = 0x4219;
+/// `[0x573d70]`: end-of-game state, 0 playing, 1..3 victory, 4 defeat (scenarios.md 5).
+const ST_GAME_OVER: usize = 0x573d70 - 0x5704e8;
 const CO_TRACK_LEFT: usize = 0x4260;
 const CO_TERR_BLOCK: usize = 0x479;
 const CO_TERR_STRIDE: usize = 0x1ed;
@@ -33,6 +36,40 @@ const PE_VARS: usize = 0x534;
 const TERR_VARS: usize = 0x2b;
 const TERR_FLAGS: usize = 0x44;
 const TERR_EFFECTS: usize = 0x58;
+
+impl World {
+    /// The value of scenario function `id` (scenarios.md 3.5, `0x454ae0` without class) for
+    /// the context `(company, person, territory)`, 0 = none; `param` is the literal of the
+    /// functions that take one. Read-only (id 0 `Random1To10000` is not drawn: 0). For the
+    /// scenario editor's preview and for tests. 0 without save pools.
+    pub fn scenario_function_value(
+        &mut self,
+        id: usize,
+        param: i32,
+        company: i32,
+        person: i32,
+        territory: i32,
+    ) -> i32 {
+        if id == 0 {
+            return 0;
+        }
+        let Some(mut sim) = self.sim.take() else {
+            return 0;
+        };
+        let v = {
+            let mut world = ScWorld {
+                s: &mut sim,
+                minutes: self.minutes,
+                crt: &mut self.crt,
+                choices: &mut self.choices,
+                sc: None,
+            };
+            world.value(id, param, company, person, territory)
+        };
+        self.sim = Some(sim);
+        v
+    }
+}
 
 impl SimState {
     /// `event_fire_trigger(code)` (`0x457fe0`).
@@ -50,14 +87,17 @@ impl SimState {
             return;
         }
         let mut sc = self.scenario.take().unwrap_or_else(|| {
-            Scenario::new(
+            let mut sc = Scenario::new(
                 self.save
                     .rules
                     .iter()
                     .map(crate::scenario::Rule::from_file)
                     .collect(),
                 self.data.scenario_effects.clone(),
-            )
+            );
+            // The end-of-game state lives in the raw state (`[0x573d70]`).
+            sc.game_over.state = self.save.state.get(ST_GAME_OVER).copied().unwrap_or(0);
+            sc
         });
         // Pool state of the raw records (the engine reads the decoded copy).
         for (r, raw) in sc.rules.iter_mut().zip(&self.save.rules) {
@@ -84,6 +124,10 @@ impl SimState {
             for r in sc.rules.iter().skip(n) {
                 self.save.rules.push(r.to_file());
                 self.log.ran("scenario_undo_rule");
+            }
+            // `[0x573d70]` is saved (seen at the end of #01 B&O, 20 years: defeat, 4).
+            if let Some(b) = self.save.state.get_mut(ST_GAME_OVER) {
+                *b = sc.game_over.state;
             }
             self.scenario = Some(sc);
         }
@@ -199,7 +243,13 @@ impl ScWorld<'_> {
         let territory = if n_terr == 1 { 0 } else { territory };
         let mut g = i32_at(c, 0x4229);
         let year = i32::from(date_of(self.minutes).year);
-        let n = ftol_(f64::from(i32_at(c, 0x148).wrapping_sub(year)) * 1.5).max(1);
+        // Original bug: `founded - year` (always <= 0, so N = 1); the fix uses the age.
+        let age = if self.s.rules.has(Fix::GoodwillAge) {
+            year.wrapping_sub(i32_at(c, 0x148))
+        } else {
+            i32_at(c, 0x148).wrapping_sub(year)
+        };
+        let n = ftol_(f64::from(age) * 1.5).max(1);
         let (mut sum_v, mut sum_sv) = (0.0f64, 0.0f64);
         for t in 1..=n_terr {
             let b = Self::block_off(t as i32);
@@ -250,6 +300,10 @@ impl ScWorld<'_> {
 }
 
 impl ScenarioEnv for ScWorld<'_> {
+    fn rules(&self) -> crate::ruleset::Ruleset {
+        self.s.rules
+    }
+
     fn value(&mut self, id: usize, param: i32, company: i32, person: i32, territory: i32) -> i32 {
         let year_now = i32::from(u16_at(&self.s.save.state, ST_GAME_DATE));
         let month_now = i32::from(self.s.save.state[ST_GAME_DATE + 2]);
@@ -278,9 +332,15 @@ impl ScenarioEnv for ScWorld<'_> {
             15..=18 => self.st_i32(ST_TRACK_CELLS + 4 * (id - 15)),
             19..=22 => self.st_i32(ST_GAME_VARS + 4 * (id - 19)),
             23 => self.co(company).map_or(0, |c| ftol_(f64_at(c, CO_ACCT))),
-            24 => self
-                .co(company)
-                .map_or(0, |c| ftol_(f64_at(c, CO_ACCT + 48))),
+            24 => self.co(company).map_or(0, |c| {
+                let d = ftol_(f64_at(c, CO_ACCT + 48));
+                // Original: the debt as stored (negative).
+                if self.s.rules.has(Fix::ScenarioCompanyDebt) {
+                    d.wrapping_neg()
+                } else {
+                    d
+                }
+            }),
             25 => self.co(company).map_or(0, |c| {
                 ftol_((0..6).fold(0.0, |a, i| a + f64_at(c, CO_ACCT + 8 * i)))
             }),
@@ -370,6 +430,8 @@ impl ScenarioEnv for ScWorld<'_> {
                 .pe(person)
                 .map_or(0, |p| i32::from(i32_at(p, 0x263) != 0)),
             58 => self.pe(person).map_or(0, |p| i32_at(p, 0x263)),
+            // Original bug: `PlayerId` shares the `CompanyId` branch (0x454dbc).
+            59 if self.s.rules.has(Fix::ScenarioPlayerId) => person,
             59 => company,
             60..=63 => self
                 .pe(person)
@@ -439,6 +501,9 @@ impl ScenarioEnv for ScWorld<'_> {
                 .filter_map(|s| pool::record(&self.s.save.stations, s))
                 .filter(|r| i32_at(&r.data, 0x45) == 0 && r.data[0x4bb] != 0)
                 .count() as i32,
+            97 if self.s.rules.has(Fix::ScenarioIndustryProfitsThisYear) => self
+                .co(company)
+                .map_or(0, |c| ftol_(f64_at(c, CO_CATS + 24))),
             97 | 101 => self.co(company).map_or(0, |c| {
                 if i32_at(c, 0x148) < year_now {
                     let a = Company::from_record(c);

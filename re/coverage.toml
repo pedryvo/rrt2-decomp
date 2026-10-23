@@ -5,7 +5,7 @@
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
 # Classificadas (categoria != unknown): 1421 (48.3%)
 # Por categoria: lib=258, platform=180, render=11, audio=53, ui=298, sim=621, unknown=1524
-# Por estado:   unknown=2176, named=161, spec=307, verified=301
+# Por estado:   unknown=2176, named=161, spec=304, verified=304
 # Entradas manuais: 696
 # sim spec coverage: 73.4% (456 de 621 funcoes sim em spec/verified)
 
@@ -8078,8 +8078,8 @@ why = "no-evidence"
 addr = "0x40a770"
 size = 323
 category = "sim"
-status = "spec"
-why = "cargo.md 7.3"
+status = "verified"
+why = "industry.rs spawn_lot (weekly) and trainstep/arrive.rs industry_spawn_lot (conversion); fidelity Example 3314"
 manual = true
 
 [[function]]
@@ -8126,8 +8126,8 @@ manual = true
 addr = "0x40b250"
 size = 503
 category = "sim"
-status = "spec"
-why = "cargo.md 7.4"
+status = "verified"
+why = "crates/rt2-sim/src/trainstep/arrive.rs industry_receive_cargo; fidelity Example day 3314 (docs/fidelity-status.md, Longo prazo 14)"
 manual = true
 
 [[function]]
@@ -14975,8 +14975,8 @@ manual = true
 addr = "0x4bddb0"
 size = 133
 category = "sim"
-status = "spec"
-why = "docs/spec/commands.md 2.1 (0x27)"
+status = "verified"
+why = "crates/rt2-sim/src/build/cmd.rs SetCompanyInfo; snapshots v1coinfo* (tests/build_snapshots.rs)"
 manual = true
 
 [[function]]
@@ -16181,7 +16181,7 @@ addr = "0x4d6080"
 size = 166
 category = "sim"
 status = "verified"
-why = "tests/commands.rs cmd_train_throttle_0x29"
+why = "crates/rt2-sim/src/build/train.rs train_set_throttle; snapshots v1thr* (tests/build_snapshots.rs)"
 manual = true
 
 [[function]]

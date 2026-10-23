@@ -98,6 +98,21 @@ impl World {
         self.minutes = self.minutes.wrapping_add(dt);
     }
 
+    /// The enabled fixes of original bugs (faithful for a world without save pools).
+    pub fn ruleset(&self) -> crate::ruleset::Ruleset {
+        self.sim
+            .as_ref()
+            .map_or(crate::ruleset::Ruleset::FAITHFUL, |s| s.rules)
+    }
+
+    /// Sets the fixes of original bugs. The rules only exist for the simulation, so a world
+    /// without save pools ignores it.
+    pub fn set_ruleset(&mut self, rules: crate::ruleset::Ruleset) {
+        if let Some(s) = self.sim.as_mut() {
+            s.rules = rules;
+        }
+    }
+
     pub(crate) fn change_speed(&mut self, new: u8) {
         let new = new.min(MAX_SPEED);
         if self.speed != 0 {

@@ -1,0 +1,64 @@
+# Bugs do original e as correções opcionais
+
+Catálogo dos comportamentos do `RT2_PLAT.EXE` que as specs documentam como bug, descuido ou leitura de memória não inicializada, e das correções opcionais do clone (`docs/PLAN.md` seção 10, item 10). O **modo fiel é o padrão**: o clone reproduz cada item abaixo, e o placar de fidelidade (`docs/fidelity-status.md`) roda nesse modo. Cada correção é uma flag nomeada, independente, que muda só o comportamento que nomeia; o código da correção não roda com a flag desligada.
+
+Implementação: `crates/rt2-sim/src/ruleset.rs` (`Ruleset`, `Fix`, `FIXES` com id, nome, descrição, referência e se muda a jogabilidade, para a interface). Testes: `crates/rt2-sim/tests/ruleset.rs` (cada correção ligada sozinha muda o comportamento documentado; o padrão explícito é igual ao padrão; a correção não vaza para outra função) e os testes de unidade do módulo.
+
+## 1. Correções com flag
+
+| Bit | id | Comportamento do original | Endereço | Spec | Impacto no jogo | Correção |
+|---|---|---|---|---|---|---|
+| 0 | `ai_dividend_policy_once` | Com Dividend Payout 1, a IA multiplica o dividendo `+0x30` por 0,66 em **todo** turno mensal | `0x45fbf0` | `ai.md` 10, item 7 | os dividendos da IA caem a quase zero ao longo do ano e derrubam a cotação | o corte de 0,66 só no turno em que a revisão de dezembro fixa o dividendo |
+| 1 | `merger_permission` | A janela de fusão lê a permissão `0x5706b4` ("Retiring a train"); `0x5706bd` ("Merging companies") não é lida por ninguém | `0x48b170` | `commands.md` 4; `finance.md` 18 | cenários que proíbem fusões não as proíbem, e proibir aposentar trens bloqueia fusões | lê `0x5706bd` |
+| 2 | `station_fee_own_station` | A taxa de estação de cada vagão entregue é creditada ao dono da estação mesmo quando ele é a empresa do trem, que não paga nada | `0x4d2c10` | `cargo.md` 6, item 3 e "Em aberto"; `terrain-track.md` 9 | dinheiro do nada: US$ 2000 por vagão em cada ponta na categoria 2 (estações) | só credita outra empresa |
+| 3 | `station_fee_unowned` | Uma estação sem dono (0) cobra a taxa do trem e ninguém recebe | `0x4d2c10` | `terrain-track.md` 9; `cargo.md` 6 | o trem perde US$ 2000 por vagão em estações sem dono | não cobra |
+| 4 | `station_revenue_effect` | `Srev = ftol(efeito(0x3c) + B)`: o multiplicador é **somado** (`fiadd`) ao bônus de serviço dos passageiros | `0x4bf760` | `cargo.md` 4.8 | o efeito de receita de estação (gerentes, eventos) quase não age; o dono ganha US$ 1 por entrega sem bônus | `ftol(efeito(0x3c) * B)` |
+| 5 | `scenario_div_by_zero` | Nas condições de cenário, divisor 0 vira 1: `x / 0 = x` | `0x454270` | `scenarios.md` 3.2, 8 | a regra do `editor3.txt` ("always evaluates to 1") não vale | `x / 0 = 1` |
+| 6 | `scenario_player_id` | `PlayerId` (59) devolve o id da **empresa** (ramo `0x454dbc` de `CompanyId`) | `0x454ae0` | `scenarios.md` 3.5 | condições por jogador comparam ids errados | devolve a pessoa do contexto |
+| 7 | `scenario_industry_profits_this_year` | `CompanyIndustryProfitsThisYear` (97) usa o ramo de 101 e devolve o lucro do ano **anterior** | `0x454ae0` | `scenarios.md` 3.5 | valor errado nas condições | categoria 3 do ano corrente (`empresa+0x4286+24`) |
+| 8 | `scenario_company_debt` | `CompanyDebt` (24) devolve a dívida como guardada (negativa) | `0x454ae0` | `scenarios.md` 3.5 | `CompanyDebt > X` funciona ao contrário | devolve o valor positivo |
+| 9 | `goodwill_age` | Goodwill: `N = max(1, ftol((fundação - ano) * 1,5))`, operandos trocados, então `N = 1` | `0x43eca0` | `scenarios.md` 3.5 (id 37) | cargas da vida inteira não são normalizadas pela idade; empresas antigas têm goodwill inflado | `N = max(1, ftol((ano - fundação) * 1,5))` |
+| 10 | `territory_rights_per_kind` | Posicionar estação e comprar indústria checam o direito de **trilho** (bit 1); os bits 2 (prédios) e 3 (estações) só afetam texto e regras | `0x4087a0`, `0x408630`, `0x43ea30` | `commands.md` 4 | comprar só o direito de estação ou de prédio não serve para nada | estação: bit 3; indústria: bit 2 (jogador e IA) |
+| 11 | `trains_midnight_minute` | O minuto 23:59 -> 00:00 é somado ao relógio fora do caminho linear: os trens não andam nele (7 dias: 10080 minutos de relógio, 10073 de trem) | `0x4a5cb0` (`sim_advance`), fim do dia | `world-tick.md` 2; `time.md` 4 | trens ~0,07% mais lentos | o passo linear seguinte dá aos trens os minutos dos fins de dia cruzados |
+| 12 | `broken_train_deceleration` | Com o trem parado por quebra, batida ou `+0xbc`, `0x4d00c0` não escreve `restricted` e `0x4d0400` lê a pilha (o `esi` salvo por `0x412900`: verdadeiro) | `0x4d00c0`, `0x4d0400` | `trains.md` 10.4; `fidelity-status.md` "Longo prazo" 11 | o trem quebrado freia com `tau >> 4` em vez de `>> 1`, de acordo com lixo de pilha | `restricted = falso` |
+| 13 | `route_step_flags` | O pathfinder dos trens faz OR de vetores de `malloc` não inicializados nos bits 4-7 e 14-15 das flags dos passos de rota | `0x4cf8c0` -> `0x460850` | `trains.md` 10.1, 10.7 | nenhum visível (determinismo; o `rt2-savediff` mascara esses bits) | limpa os bits |
+| 14 | `overhead_average` | A sobrecarga anual faz `(0 + R_Y + R_{Y-1}) / 3`: o ano novo zerado conta no divisor e `Y-2` fica de fora | `0x43d800` | `finance.md` 16.1 | sobrecarga cerca de 1/3 menor | média dos três anos completos (arquivos `k = 0..2`) |
+
+Os bits são parte do formato (save e replay): uma correção mantém o bit para sempre e correções novas usam bits novos (`RULESET_VERSION` sobe).
+
+## 2. Bugs documentados sem flag (ainda)
+
+Ficam fiéis; a coluna "Por quê" diz o que falta para virar flag.
+
+| id | Comportamento | Endereço | Spec | Impacto | Por quê |
+|---|---|---|---|---|---|
+| `rating_extra_debt_sign` | Rating de crédito: `est = (conta6 + X) * taxa` com `conta6` negativa: a dívida extra `X` de um título novo melhora a cobertura | `0x43b650` | `finance.md` 4.2 | o título novo deixa o rating melhor em vez de pior | `Company::credit_rating` não recebe o contexto das regras (struct `finance::Ctx` usada também pela interface); fica para quando a assinatura mudar |
+| `fundamental_dividend_self_compare` | Preço fundamental: o teste "o dividendo não caiu" compara o ano com ele mesmo (sempre verdadeiro) | `0x43aea0` | `finance.md` 3.1 | cortes de dividendo não penalizam o critério de dividendos | a regra pretendida não é conhecida |
+| `bankruptcy_cash_noop` | Falência: `caixa = (caixa - H) + H`, preço recalculado com o ano de falência antigo, ações novas sem dono | `0x43bc30` | `finance.md` 9 | metade da dívida some sem efeito no caixa; diluição | pode ser intencional |
+| `dividend_public_float_vanishes` | A parte do dividendo das ações sem dono sai do caixa e não vai a ninguém | `0x4399d0` | `finance.md` 6 | sumidouro de dinheiro | pode ser intencional (ações em tesouraria do mercado) |
+| `scen_loads_hauled_from_always_0` | `CompanyTerritoryLoadsHauledFromThisYear/Lifetime` (103/104) valem sempre 0 | `0x454ae0` | `scenarios.md` 3.5 | condições com elas nunca são verdadeiras | não há dado no save que diga o que deveriam somar |
+| `scen_years_elapsed_dec28` | `GameYearsElapsedSinceStart` conta o ano a partir de 28/dez | `0x454ae0` | `scenarios.md` 3.5 | erro de um no fim do ano | provavelmente intencional (último dia do ano) |
+| `scen_neq_unusable` | `!=` é partido em `!` e `=` pelo tokenizador e nunca pode ser escrito | `0x453e70` | `scenarios.md` 3.1, 8 | regras com `!=` falham ao compilar | correção mudaria o compilador de regras do editor; nenhum arquivo do jogo usa |
+| `scen_once_keeps_evaluating` | Regra "uma vez" continua sendo avaliada (e sorteando `Random1To10000`) nas combinações restantes | `0x455f30` | `scenarios.md` 3.4, 8 | ordem do RNG | candidata a flag; muda a ordem de sorteios de todo cenário com regras aleatórias |
+| `scen_confiscate_ignores_value` | Efeitos 55..59 / 299..303 confiscam com qualquer byte não nulo | `0x437d40..0x4380a0` | `scenarios.md` 4.2.1, 8 | "Confiscate None" também confisca | o editor só grava 0/1; sem caso real |
+| `passenger_bonus_to_station_owner` | O bônus de restaurante/hotel/saloon vai ao dono da estação de destino; taxas 10/15/5/15/25% (manual: 20/30/10/20/40%) | `0x4bf760` | `cargo.md` 4.8, 11 | usar estação alheia dá o bônus ao concorrente | as taxas batem com o LNG final; provável decisão de projeto |
+| `station_fee_prev_stop_any_car` | A taxa é cobrada na parada anterior (`trem+0x9e`) para todo vagão entregue, mesmo os que não carregaram lá | `0x4d2c10` | `cargo.md` 6 | taxa paga à estação errada | a origem real de cada carga não fica no vagão |
+| `ai_astar_stale_span` | No A* de construção da IA, curvas herdam o vão do último passo reto (variável de pilha reaproveitada) | `0x460850` | `ai.md` 14 | custos e formas de rota da IA | muda toda construção da IA; candidata a flag |
+| `ai_pick_stop_mode_is_train_id` | `ai_replan_train` passa o byte baixo do id do trem como `mode` | `0x4d8f40` -> `0x4d87e0` | `ai.md` 7.1, 14 | rotas da IA dependem do id do trem | inferência (a spec não chama de bug) |
+| `ai_sim_stale_track_globals` | As simulações de custo da IA usam as globais deixadas por `build_preview_suspend` até a primeira construção real do turno | `0x46b150`, `0x4cc060` | `ai.md` 14 | IA erra o preço de rotas | candidata a flag |
+| `ai_extend_network_ignores_result` | `ai_extend_network` devolve 1 sem checar a construção | `0x435320` | `ai.md` 13 | IA acha que construiu | candidata a flag |
+| `ai_pick_stop_ratio_global` | A razão `0x57951c` é global e sobrevive ao turno da IA | `0x4d87e0` | `fidelity-status.md` "Eventos raros" | replanos estranhos após estação destruída | candidata a flag |
+| `freefloat_index_minus1` | `company_free_float` com empresa fora do conjunto ativo lê o índice -1 (`pessoa+0x1cf`) | `0x43e580` | comentário em `ai/finance.rs` | float livre errado (caso raro) | caso de borda |
+| `station_remove_loop_index_reuse` | Ao remover estação, a busca da estação principal reaproveita o índice do laço de empresas | ver `build/demolish.rs` | comentário | replanos extras e sorteios | candidata a flag |
+| `level_cross_wrong_vertex` | `0x427050`: com só o primeiro canto livre, o vértice gravado é `(x1, y2)` | `0x427050` | comentário em `build/level.rs` | vértice errado nivelado | cosmético |
+| `tile_rebuild_stale_local50` | A reconstrução dos tiles de trilho mantém `local_50` de um tile ao outro | ver `build/tiles.rs` | comentário | artefatos de camada | cosmético |
+| `founder_shares_round_up` | As ações do fundador arredondam para o milhar mais próximo; o custo pode passar do investimento escolhido | `0x4bdcd0` | `finance.md` 17 | paga mais que o escolhido | provável decisão de projeto |
+| `ledger_without_cash_0x439930` | `0x439930` move conta e categoria sem caixa na venda e na batida de trem | `0x439930` | `terrain-track.md` | os livros perdem a identidade contábil | regra pretendida incerta |
+
+Determinismo e estado de interface (sem efeito de regra; sem flag porque o clone precisa deles para bater com o original): `vehicle_init` deixa `+0x13`/`+0x38` sem inicializar (`0x414220`, "Longo prazo" 12); `train_default_stops` deixa bytes de pilha (`0x4d3f40`); `building_construct` não escreve `+0x38..+0x3b` (`0x409a30`); `0x430da0` só zera `+2/+4`; o som da caixa registradora depende do relógio de parede (`0x46abf0`, "Longo prazo" 13); o passo de tempo depende dos ms do quadro (`0x46c650`; o clone já usa quadro fixo, divergência intencional); cada notícia sorteia `crt_rand_range(0, 10000)` (`0x4a42f0`); a alça de som e a vista da interface gravadas no trem (`0x4d0870`, `0x466230`); o comando `0x17` local limpa o bit de tamanho em `estação+0x49`.
+
+## 3. Onde o conjunto de regras é guardado
+
+- **Save do clone:** um trailer de 24 bytes depois do último byte do `.GAM`: `versão u16, reservado u16, bits u64, tamanho u32 (= 12), "RT2CRULE"` (`ruleset::append_save_trailer`, `split_save_trailer`; `World::to_file_bytes`, `World::parse_file`). O modo fiel não grava trailer, e o arquivo é byte a byte o do original. O carregador do original (`0x477a60`) lê o arquivo em sequência até a última regra e não confere o checksum, então ignora o trailer: carregado no original (Wine), `base_ex.GAM` com e sem o trailer dá o mesmo save depois de 7 dias (`~/.cache/rrt2/v1sim/trailer_check.sh`). Um save regravado pelo original perde o trailer e volta ao modo fiel, que é o que o original jogou. Bits desconhecidos (save de um clone mais novo) são erro (`RulesetError::UnknownFixes`), nunca descartados em silêncio.
+- **Replay:** `ruleset::ReplayHeader` (`"RT2CRPLY"`, formato, versão das regras, bits, `game_seed`, sementes do RNG e do CRT) guarda as regras do início; uma troca durante o jogo é o comando `Command::SetRuleset`, gravado no log como qualquer comando.
+- **Interface:** `ruleset::FIXES` (id estável, nome e descrição em inglês, referência, `gameplay`). Os ids servem de chave da tabela de strings.
