@@ -4,6 +4,7 @@
 //! language) of a change.
 
 use crate::config::{Config, RESOLUTIONS, WindowMode};
+use crate::notices::Category;
 use crate::text::Texts;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -13,15 +14,17 @@ pub enum Tab {
     Language,
     Keys,
     Gameplay,
+    Notices,
 }
 
 impl Tab {
-    pub const ALL: [Tab; 5] = [
+    pub const ALL: [Tab; 6] = [
         Tab::Display,
         Tab::Audio,
         Tab::Language,
         Tab::Keys,
         Tab::Gameplay,
+        Tab::Notices,
     ];
 
     pub fn english(self) -> &'static str {
@@ -31,6 +34,7 @@ impl Tab {
             Tab::Language => "Language",
             Tab::Keys => "Keys",
             Tab::Gameplay => "Gameplay",
+            Tab::Notices => "Notices",
         }
     }
 
@@ -56,6 +60,12 @@ impl Tab {
                 Setting::InvertZoom,
                 Setting::ZoomSpeed,
                 Setting::IntroVideo,
+            ],
+            Tab::Notices => &[
+                Setting::NoticeScenario,
+                Setting::NoticeFinance,
+                Setting::NoticeTowns,
+                Setting::NoticeCompetitors,
             ],
             Tab::Language | Tab::Keys => &[],
         }
@@ -83,10 +93,14 @@ pub enum Setting {
     InvertZoom,
     ZoomSpeed,
     IntroVideo,
+    NoticeScenario,
+    NoticeFinance,
+    NoticeTowns,
+    NoticeCompetitors,
 }
 
 impl Setting {
-    pub const ALL: [Setting; 19] = [
+    pub const ALL: [Setting; 23] = [
         Setting::WindowMode,
         Setting::Resolution,
         Setting::Monitor,
@@ -106,6 +120,10 @@ impl Setting {
         Setting::InvertZoom,
         Setting::ZoomSpeed,
         Setting::IntroVideo,
+        Setting::NoticeScenario,
+        Setting::NoticeFinance,
+        Setting::NoticeTowns,
+        Setting::NoticeCompetitors,
     ];
 
     pub fn index(self) -> u32 {
@@ -114,6 +132,17 @@ impl Setting {
 
     pub fn from_index(i: u32) -> Option<Setting> {
         Setting::ALL.get(i as usize).copied()
+    }
+
+    /// The notification category of a `Notice*` setting.
+    pub fn notice_category(self) -> Option<Category> {
+        match self {
+            Setting::NoticeScenario => Some(Category::Scenario),
+            Setting::NoticeFinance => Some(Category::Finance),
+            Setting::NoticeTowns => Some(Category::Towns),
+            Setting::NoticeCompetitors => Some(Category::Competitors),
+            _ => None,
+        }
     }
 
     pub fn english(self) -> &'static str {
@@ -137,6 +166,10 @@ impl Setting {
             Setting::InvertZoom => "Reverse wheel zoom",
             Setting::ZoomSpeed => "Wheel zoom speed",
             Setting::IntroVideo => "Play the intro video",
+            Setting::NoticeScenario => Category::Scenario.english(),
+            Setting::NoticeFinance => Category::Finance.english(),
+            Setting::NoticeTowns => Category::Towns.english(),
+            Setting::NoticeCompetitors => Category::Competitors.english(),
         }
     }
 }
@@ -354,6 +387,15 @@ fn row(s: Setting, c: &Config, env: &Env, t: &Texts) -> Row {
         Setting::InvertDrag => toggle(s, label, g.invert_drag),
         Setting::InvertZoom => toggle(s, label, g.invert_zoom),
         Setting::IntroVideo => toggle(s, label, g.intro_video),
+        Setting::NoticeScenario
+        | Setting::NoticeFinance
+        | Setting::NoticeTowns
+        | Setting::NoticeCompetitors => toggle(
+            s,
+            label,
+            c.notices
+                .get(s.notice_category().unwrap_or(Category::Scenario)),
+        ),
         Setting::ZoomSpeed => slider(
             s,
             label,
@@ -508,6 +550,16 @@ pub fn apply(c: &mut Config, s: Setting, change: Change, env: &Env) -> Effects {
                 g.zoom_speed = v as u32;
             }
         }
+        Setting::NoticeScenario
+        | Setting::NoticeFinance
+        | Setting::NoticeTowns
+        | Setting::NoticeCompetitors => {
+            if change == Change::Toggle
+                && let Some(cat) = s.notice_category()
+            {
+                c.notices.toggle(cat);
+            }
+        }
     }
     fx
 }
@@ -529,6 +581,7 @@ pub fn reset_tab(c: &mut Config, tab: Tab) -> Effects {
             fx.audio = true;
         }
         Tab::Gameplay => c.gameplay = d.gameplay,
+        Tab::Notices => c.notices = d.notices,
         Tab::Keys => c.keys = d.keys,
         Tab::Language => {}
     }

@@ -20,6 +20,7 @@ mod hiscore;
 mod info;
 mod keys;
 mod locales;
+mod notices;
 mod options;
 mod overview;
 mod paths;

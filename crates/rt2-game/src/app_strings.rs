@@ -572,6 +572,19 @@ pub static APP_EN: &[&str] = &[
     "Play the intro video",
     "Profits",
     "Message history and scenario briefing",
+    "Notices",
+    "Scenario and economy",
+    "Finance and stocks",
+    "Towns and industries",
+    "Competitors",
+    "A hidden category shows no message line or pop-up; its events stay in the event history.",
+    "Event history",
+    "History",
+    "Show on map",
+    "No events yet.",
+    "%1 events",
+    "Click an event to center the map on it.",
+    "No location for this event.",
 ];
 
 /// The id of an English default.

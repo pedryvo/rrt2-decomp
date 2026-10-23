@@ -42,6 +42,7 @@ mod editor_panel;
 mod editor_ui;
 mod groupa;
 mod hiscores;
+mod history;
 mod info_ui;
 mod mainwin;
 mod maplabels;
@@ -1059,6 +1060,7 @@ impl AppState {
     fn row_event(&mut self, action: u32, row: usize) -> bool {
         let e = UiEvent::Selected(action, row);
         self.options_event(&e)
+            || self.history_event(action, row)
             || self.saves_event(&e)
             || self.editor_row(action, row)
             || self.menu_event(&e)
@@ -1289,14 +1291,19 @@ impl AppState {
             &raw,
             &catalog::map_title(&map, path),
         )));
+        let welcome_text = self.texts.af(
+            "Game started: %1.",
+            &[scenario
+                .as_ref()
+                .map_or_else(|| name.clone(), |s| s.title.clone())],
+        );
         let welcome = NewsItem {
             date: format_date(world.date(), &self.texts),
-            text: self.texts.af(
-                "Game started: %1.",
-                &[scenario
-                    .as_ref()
-                    .map_or_else(|| name.clone(), |s| s.title.clone())],
-            ),
+            detail: welcome_text.clone(),
+            text: welcome_text,
+            category: crate::notices::Category::Scenario,
+            pos: None,
+            shown: self.config.notices.scenario,
         };
         let last_year = world.date().year;
         let world_month = world.date().month;
@@ -1553,6 +1560,8 @@ mod fin_tests;
 mod groupa_tests;
 #[cfg(test)]
 mod groupb_tests;
+#[cfg(test)]
+mod history_tests;
 #[cfg(test)]
 mod mainwin_tests;
 #[cfg(test)]

@@ -190,6 +190,8 @@ pub struct Config {
     pub audio: crate::sound::AudioSettings,
     pub display: Display,
     pub gameplay: Gameplay,
+    /// Which notices to show (`[notices]`, `notices.rs`).
+    pub notices: crate::notices::Notices,
 }
 
 impl Config {

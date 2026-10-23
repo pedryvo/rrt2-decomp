@@ -29,7 +29,7 @@ pub(super) const A_OPT_DEC: u32 = 8200;
 pub(super) const A_OPT_INC: u32 = 8300;
 pub(super) const A_OPT_BAR: u32 = 8400;
 /// `A_OPT_PICK + setting * 16 + option`.
-pub(super) const A_OPT_PICK: u32 = 8500;
+pub(super) const A_OPT_PICK: u32 = 8430;
 pub(super) const A_OPT_LANG: u32 = 8820;
 pub(super) const A_OPT_KEYLIST: u32 = 8900;
 pub(super) const A_OPT_REBIND: u32 = 8901;
@@ -141,6 +141,7 @@ impl AppState {
             "language" => Tab::Language,
             "keys" => Tab::Keys,
             "gameplay" => Tab::Gameplay,
+            "notices" => Tab::Notices,
             // The key tab while rebinding "Pause / resume", then after pressing Q (a clash).
             "keys-rebind" | "keys-conflict" => {
                 self.open_options(Tab::Keys);
@@ -736,14 +737,19 @@ impl AppState {
                 }
             }
         }
-        // A hint under the rows of the display tab.
-        if tab == Tab::Display {
+        // A hint under the rows of the display and notices tabs.
+        if matches!(tab, Tab::Display | Tab::Notices) {
+            let hint = if tab == Tab::Display {
+                t.a("Window size does not apply in borderless fullscreen, which uses the monitor's size.")
+            } else {
+                t.a("A hidden category shows no message line or pop-up; its events stay in the event history.")
+            };
             let hint_y = b.y + shown as f32 * row_h + 4.0;
             if hint_y + 18.0 < b.y + b.h + 4.0 {
                 ui.add(
                     panel,
                     text(
-                        &t.a("Window size does not apply in borderless fullscreen, which uses the monitor's size."),
+                        &hint,
                         label_font.with_size((fs * 0.8).round().max(10.0)),
                         MUTED,
                         Align::Left,

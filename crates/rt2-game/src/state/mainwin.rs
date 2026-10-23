@@ -25,9 +25,11 @@ use rt2_ui::{
 use winit::keyboard::KeyCode;
 
 use super::dialogs::Dialog;
+use super::history::A_HIST_OPEN;
 use super::info_ui::{self, InfoScreen};
 use super::{AppState, Screen, format_date};
 use crate::info::{Info, Table};
+use crate::notices::Category;
 use crate::scenario_info::wrap_text;
 use crate::text::id as lng;
 
@@ -145,8 +147,19 @@ pub(super) struct MainIds {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct NewsItem {
     pub date: String,
+    /// One line for the activity box.
     pub text: String,
+    /// The whole message, for the event history.
+    pub detail: String,
+    pub category: Category,
+    /// The map tile the event is about, when it has one (the history centers the camera there).
+    pub pos: Option<(i32, i32)>,
+    /// The category's notice was on when the event happened: the activity box shows it.
+    pub shown: bool,
 }
+
+/// Entries kept in the event history of a session (docs/ui.md); the oldest are dropped.
+pub(super) const HISTORY_CAP: usize = 500;
 
 /// Size of the original layout every position below is taken from (`mainwin.win`).
 const DESIGN: (f32, f32) = (1024.0, 768.0);
@@ -542,7 +555,7 @@ impl AppState {
         let mut lines = Vec::new();
         if let Screen::Game(g) = &self.screen {
             let take = if news_open { 50 } else { 3 };
-            for item in g.news.iter().take(take) {
+            for item in g.news.iter().filter(|n| n.shown).take(take) {
                 lines.extend(wrap_text(&format!("{}: {}", item.date, item.text), chars));
                 lines.push(String::new());
             }
@@ -595,30 +608,43 @@ impl AppState {
                     act_rect[3] - 30.0 * a - 48.0 * a,
                 ),
             );
-            let bw = (act_rect[2] - 30.0 * a) / 2.0;
+            let bw = (act_rect[2] - 40.0 * a) / 3.0;
             let by = act_rect[1] + act_rect[3] - 42.0 * a;
+            let bh = (24.0 * a).round();
+            let bfont = font(1, a * 0.72);
             let brief = ui.add(
                 root,
                 Kind::Button {
                     text: self.texts.get(2642, "Briefing"),
-                    font: font(1, a * 0.8),
+                    font: bfont,
                     action: A_BRIEFING,
                     enabled: true,
                     hotkey: None,
                 },
-                at(act_rect[0] + 10.0 * a, by, bw, (24.0 * a).round()),
+                at(act_rect[0] + 10.0 * a, by, bw, bh),
             );
             tips.push((brief, tip(2643, "View the scenario briefing dialog.", self)));
             ui.add(
                 root,
                 Kind::Button {
+                    text: self.texts.a("History"),
+                    font: bfont,
+                    action: A_HIST_OPEN,
+                    enabled: true,
+                    hotkey: None,
+                },
+                at(act_rect[0] + 20.0 * a + bw, by, bw, bh),
+            );
+            ui.add(
+                root,
+                Kind::Button {
                     text: self.texts.a("Close"),
-                    font: font(1, a * 0.8),
+                    font: bfont,
                     action: A_NEWS,
                     enabled: true,
                     hotkey: None,
                 },
-                at(act_rect[0] + 20.0 * a + bw, by, bw, (24.0 * a).round()),
+                at(act_rect[0] + 30.0 * a + 2.0 * bw, by, bw, bh),
             );
         } else {
             solid(
@@ -1261,15 +1287,38 @@ impl AppState {
 
     // ---- per-frame --------------------------------------------------------------------------
 
-    /// Adds a line to the activity box (newest first), dated now.
+    /// Adds a line about the player's own action to the activity box (newest first), dated now.
     pub(super) fn add_news(&mut self, text: String) {
+        self.add_event(Category::Finance, None, text.clone(), text);
+    }
+
+    /// Records an event: always in the history, and in the activity box when the notices of its
+    /// category are on (`notices.rs`). `text` is the one-line form, `detail` the whole message.
+    pub(super) fn add_event(
+        &mut self,
+        category: Category,
+        pos: Option<(i32, i32)>,
+        text: String,
+        detail: String,
+    ) {
         let date = match &self.screen {
             Screen::Game(g) => format_date(g.world.date(), &self.texts),
             Screen::Menu(_) => return,
         };
+        let shown = self.config.notices.get(category);
         if let Screen::Game(g) = &mut self.screen {
-            g.news.insert(0, NewsItem { date, text });
-            g.news.truncate(50);
+            g.news.insert(
+                0,
+                NewsItem {
+                    date,
+                    text,
+                    detail,
+                    category,
+                    pos,
+                    shown,
+                },
+            );
+            g.news.truncate(HISTORY_CAP);
         }
     }
 

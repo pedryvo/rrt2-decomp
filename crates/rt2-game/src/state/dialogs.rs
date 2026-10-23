@@ -32,6 +32,7 @@ use winit::keyboard::KeyCode;
 
 use crate::founding::Founding;
 use crate::info::{Block, Table};
+use crate::notices::Category;
 use crate::scenario_info::{Medal, humanize_condition, wrap_text};
 use crate::text::{id as lng, subst};
 
@@ -161,6 +162,13 @@ pub(super) enum Dialog {
         stop: usize,
         cargo: Vec<u8>,
     },
+    /// The event history (`history.rs`): filter (0 = all, else category + 1), selected row of the
+    /// filtered list and its first visible row.
+    History {
+        filter: usize,
+        sel: Option<usize>,
+        scroll: usize,
+    },
     /// Change Company Name/Logo (`brand.rs`, screens.md G12).
     Brand {
         company: i32,
@@ -230,7 +238,7 @@ impl AppState {
         }
     }
 
-    /// Screenshots: opens a dialog by name (`dismiss[-N]` closes the top ones; `goals`, `founding`, `year-end[-1..-3]`, `news`,
+    /// Screenshots: opens a dialog by name (`dismiss[-N]` closes the top ones; `goals`, `history`, `founding`, `year-end[-1..-3]`, `news`,
     /// `dialog`, `win-gold`, `win-silver`, `win-bronze`, `lose`, `file`, `tool-0..7`, `fin-bond`, `fin-stock`, `fin-buyback`,
     /// `fin-dividend`, `fin-merger`, `fin-bankrupt`, `fin-repay`, `fin-manager`, `fin-resign`, `fin-trade`, `fin-assume`,
     /// `fin-election`, `fin-vote`); false for
@@ -247,6 +255,11 @@ impl AppState {
         let year = i32::from(g.world.date().year);
         let d = match name {
             "goals" => Dialog::Goals,
+            "history" => Dialog::History {
+                filter: 0,
+                sel: None,
+                scroll: 0,
+            },
             "founding" => {
                 let Some(d) = self.founding_dialog_any() else {
                     return false;
@@ -602,11 +615,18 @@ impl AppState {
             .any(|m| matches!(m, GameMessage::Scenario(sm) if sm.trigger == 6));
         let mut dialogs = Vec::new();
         for m in &msgs {
-            let line = activity_line(&self.message_line(m));
+            let category = Category::of(m);
+            let full = self.message_line(m);
+            let line = activity_line(&full);
             if !line.is_empty() {
-                self.add_news(line);
+                let pos = self.message_pos(m);
+                self.add_event(category, pos, line, full.trim().to_owned());
             }
-            if let Some(d) = self.message_dialog(m) {
+            // A category switched off in the options shows no pop-up (docs/ui.md); a scenario
+            // choice the world waits for is not one of these (`pending_choice_dialog`).
+            if self.config.notices.get(category)
+                && let Some(d) = self.message_dialog(m)
+            {
                 dialogs.push(d);
             }
         }
@@ -743,6 +763,7 @@ impl AppState {
             a if (fin::A_FIN_OK..=fin::A_FIN_SHORT).contains(&a) => {
                 self.fin_activated(a);
             }
+            a if super::history::owns(a) => self.history_activated(a),
             a if brand::owns(a) => self.brand_activated(a),
             a if super::train_panel::owns(a) => {
                 self.train_panel_activated(a);
@@ -996,6 +1017,11 @@ impl AppState {
             Dialog::GameOver { medal, text } => self.build_game_over(ui, medal, &text),
             Dialog::Fin(d) => self.build_fin(ui, &d),
             Dialog::CarList { train, stop, cargo } => self.build_car_list(ui, train, stop, &cargo),
+            Dialog::History {
+                filter,
+                sel,
+                scroll,
+            } => self.build_history(ui, filter, sel, scroll),
             Dialog::Brand {
                 name, logo, error, ..
             } => self.build_brand(ui, &name, logo, error.as_deref()),

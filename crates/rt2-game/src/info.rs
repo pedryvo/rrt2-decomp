@@ -1308,6 +1308,11 @@ impl<'a> Info<'a> {
         )
     }
 
+    /// The tile of a place (the `Location` of its record), for centering the map on it.
+    pub fn place_tile(&self, slot: u32) -> Option<(i32, i32)> {
+        rec(&self.save.places, slot).map(|r| (i32::from(r.i16(4)), i32::from(r.i16(6))))
+    }
+
     pub fn place_name(&self, slot: u32) -> String {
         rec(&self.save.places, slot)
             .map(|r| r.text(0x16, 0x36))
