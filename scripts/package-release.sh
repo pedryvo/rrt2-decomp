@@ -26,6 +26,7 @@ mkdir -p "$stage/licenses"
 cp "$tdir/$exe" "$stage/"
 cp README.md CHANGELOG.md "$stage/"
 cp assets/fonts/OFL-*.txt "$stage/licenses/"
+cp LICENSE "$stage/LICENSE"
 cat > "$stage/INSTALL.txt" <<'T'
 Railroad Tycoon II clone (rrt2)
 

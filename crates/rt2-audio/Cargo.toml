@@ -3,6 +3,8 @@ name = "rt2-audio"
 description = "Music and sound effects for the Railroad Tycoon II clone (audio never feeds back into the sim)"
 edition.workspace = true
 version.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [dependencies]
 rt2-formats.workspace = true

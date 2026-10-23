@@ -3,6 +3,8 @@ name = "rt2-sim"
 description = "Deterministic simulation core of the Railroad Tycoon II clone"
 edition.workspace = true
 version.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [dependencies]
 thiserror.workspace = true

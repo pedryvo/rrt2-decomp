@@ -10,6 +10,7 @@
 [![Status](https://img.shields.io/badge/status-pre--alpha-orange)](#-fortschritt)
 [![Phase](https://img.shields.io/badge/phase-1_%E2%80%94_file_formats-blue)](docs/PLAN.md)
 [![Platforms](https://img.shields.io/badge/platforms-Linux_%7C_Windows-lightgrey)](#-bauen)
+[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
 
 _Der Klassiker von 1998, den Sie kennen, aus derselben isometrischen Perspektive,<br>jetzt nativ in 1080p, 4K und Ultrawide._
 
@@ -171,3 +172,5 @@ Die Projektdokumentation unter `docs/` ist auf Portugiesisch verfasst.
 ## ⚖️ Rechtliches
 
 _Railroad Tycoon_ ist eine Marke der jeweiligen Rechteinhaber. Dies ist ein nicht kommerzielles Fanprojekt ohne Verbindung zu PopTop Software, Take-Two Interactive oder anderen Rechteinhabern. Hier werden weder Originalcode noch Original-Assets verbreitet. Das Repository enthält nur neuen Code, durch Reverse Engineering zur Interoperabilität erstellte Dokumentation und die Dateinamen, die zum Lesen der Daten einer rechtmäßigen Kopie nötig sind.
+
+Der Quellcode von rrt2-decomp steht unter der [GNU General Public License v3.0 oder später](LICENSE). Die mitgelieferten Schriften stehen unter der SIL Open Font License (siehe `assets/fonts/`).

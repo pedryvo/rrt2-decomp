@@ -3,6 +3,8 @@ name = "rt2-oracle"
 description = "Differential-testing harness: runs functions of the original executable in the Unicorn emulator"
 edition.workspace = true
 version.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [features]
 # Link the system libunicorn (default). CI runners lack it and use

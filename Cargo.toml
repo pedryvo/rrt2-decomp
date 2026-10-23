@@ -3,6 +3,8 @@ resolver = "3"
 members = ["crates/*"]
 
 [workspace.package]
+license = "GPL-3.0-or-later"
+repository = "https://github.com/pedryvo/rrt2-decomp"
 edition = "2024"
 version = "0.1.0"
 

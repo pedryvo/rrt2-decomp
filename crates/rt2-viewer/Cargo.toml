@@ -3,6 +3,8 @@ name = "rt2-viewer"
 description = "Isometric terrain viewer for Railroad Tycoon II maps and saves"
 edition.workspace = true
 version.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [dependencies]
 rt2-formats.workspace = true

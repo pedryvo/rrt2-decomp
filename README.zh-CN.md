@@ -10,6 +10,7 @@
 [![Status](https://img.shields.io/badge/status-pre--alpha-orange)](#-progress)
 [![Phase](https://img.shields.io/badge/phase-1_%E2%80%94_file_formats-blue)](docs/PLAN.md)
 [![Platforms](https://img.shields.io/badge/platforms-Linux_%7C_Windows-lightgrey)](#-building)
+[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
 
 _您熟悉的 1998 年经典之作，同样的等距视角，<br>如今原生支持 1080p、4K 和超宽屏。_
 
@@ -171,3 +172,5 @@ re/
 ## ⚖️ 法律声明
 
 _Railroad Tycoon_ 是其各自所有者的商标。这是一个非营利的粉丝项目，与 PopTop Software、Take-Two Interactive 或任何权利人均无关联。此处不分发任何原版代码或资源。本仓库仅包含新编写的代码、为实现互操作性而通过逆向工程产出的文档，以及从正版副本读取数据所需的文件名。
+
+rrt2-decomp 的源代码采用 [GNU 通用公共许可证 v3.0 或更高版本](LICENSE) 授权。随附字体采用 SIL Open Font License（见 `assets/fonts/`）。

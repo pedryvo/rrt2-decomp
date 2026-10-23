@@ -242,3 +242,4 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Fix: a broken-down train decelerates with the restricted rate (the original reads stack garbage there)
 - Fix: the cash register sound of the player's deliveries draws the CRT rand
 - RE: the original's message-box window depends on the host clock; advance_save.py now keeps it open and choice skipping is opt-in (--skip-choices); rt2-savediff masks the interface view and train sound handle bits
+- Change: the project is licensed under GPL-3.0-or-later (LICENSE).

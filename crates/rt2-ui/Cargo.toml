@@ -3,6 +3,8 @@ name = "rt2-ui"
 description = "Small retained, scalable UI layer on wgpu with native text (glyphon) for the Railroad Tycoon II clone"
 edition.workspace = true
 version.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [dependencies]
 wgpu = "30"
