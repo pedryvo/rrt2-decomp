@@ -32,6 +32,8 @@ use crate::text::Texts;
 mod build_dialogs;
 mod build_ui;
 mod dialogs;
+mod editor_modals;
+mod editor_ui;
 mod info_ui;
 mod mainwin;
 mod menus;
@@ -145,6 +147,8 @@ struct GameState {
     build: build_ui::BuildState,
     /// Game year and month of the last autosave (or of the start).
     last_autosave: (u16, u8),
+    /// The map and scenario editor, when this game is the editor (`editor_ui.rs`).
+    editor: Option<Box<editor_ui::EditorState>>,
 }
 
 /// Hash of the parts of the save the static layers are built from: building type and tile,
@@ -526,6 +530,7 @@ impl AppState {
         let ev = self.ui.input(Input::CursorMoved { x, y });
         self.handle_events(ev);
         self.tool_hover((x, y));
+        self.editor_hover((x, y));
         self.update_status();
     }
 
@@ -549,9 +554,12 @@ impl AppState {
         if pressed {
             // With a construction tool the left button acts on the map instead of panning it.
             let tool = left && self.tool_active() && !self.ui.over_ui() && !self.has_dialog();
+            let tool = tool || (left && self.editor_active() && !self.ui.over_ui());
             self.drag = self.in_game() && !self.ui.over_ui() && !tool;
             self.press = (left && self.drag).then_some(self.cursor).flatten();
-            if tool {
+            if tool && self.editor_active() {
+                self.editor_press();
+            } else if tool {
                 self.tool_press();
             }
             if !left && self.tool_active() {
@@ -565,6 +573,7 @@ impl AppState {
             self.drag = false;
             if left {
                 self.tool_release();
+                self.editor_release();
             }
             if left && let Some(p) = self.press.take() {
                 self.map_click(p);
@@ -666,6 +675,12 @@ impl AppState {
         }
         match &self.screen {
             Screen::Game(_) => {
+                if self.editor_active() {
+                    if !repeat || self.editor_modal_open() {
+                        self.editor_key(code, text);
+                    }
+                    return;
+                }
                 // Start New Company takes typed text for the company name.
                 if self.founding_key(code, text) {
                     return;
@@ -727,7 +742,9 @@ impl AppState {
                 m.data.side = menus::Side::None;
                 self.rebuild_ui();
             }
-            Page::Single | Page::Scores | Page::Credits => self.open_page(Page::Main),
+            Page::Single | Page::Editor | Page::Scores | Page::Credits => {
+                self.open_page(Page::Main)
+            }
             Page::NewScenario | Page::NewCampaign | Page::LoadGame | Page::LoadCampaign => {
                 self.open_page(Page::Single);
             }
@@ -868,6 +885,14 @@ impl AppState {
         // Dialogs and the information screens hold the simulation (the original's "keep the
         // game running in dialogs" option defaults to off for modal windows); so do the Options
         // and Save / Load screens.
+        if g.editor.is_some() {
+            g.accum_ms = 0.0;
+            if overlay_stale {
+                self.rebuild_ui();
+            }
+            self.editor_tick(dt_ms);
+            return;
+        }
         let on_hold = !g.dialogs.is_empty() || covered;
         if !on_hold {
             g.accum_ms += dt_ms.min(250.0);
@@ -975,6 +1000,7 @@ impl AppState {
         let e = UiEvent::Selected(action, row);
         self.options_event(&e)
             || self.saves_event(&e)
+            || self.editor_row(action, row)
             || self.menu_event(&e)
             || self.mainwin_event(&e)
             || self.build_row_event(action, row)
@@ -985,6 +1011,9 @@ impl AppState {
             return;
         }
         if saves_ui::owns(action) && self.saves_activated(action) {
+            return;
+        }
+        if self.editor_activated(action) {
             return;
         }
         if self.in_game() {
@@ -1063,6 +1092,7 @@ impl AppState {
         match name {
             "main" => self.open_page(Page::Main),
             "single" => self.open_page(Page::Single),
+            "editor" => self.open_page(Page::Editor),
             "new-scenario" => self.open_page(Page::NewScenario),
             "map" | "options" => {
                 self.open_page(Page::NewScenario);
@@ -1219,6 +1249,7 @@ impl AppState {
             scene_fp,
             build: build_ui::BuildState::default(),
             last_autosave: (last_year, world_month),
+            editor: None,
         }));
         // Scenario choices wait for the player in the real game; headless they answer button 0.
         if let Screen::Game(g) = &mut self.screen {
@@ -1270,6 +1301,7 @@ impl AppState {
         self.menu_handles = MenuHandles::default();
         match &self.screen {
             Screen::Menu(_) => self.build_menu(&mut ui),
+            Screen::Game(_) if self.editor_active() => self.build_editor(&mut ui),
             Screen::Game(_) => {
                 self.build_overlay(&mut ui);
                 self.build_mainwin(&mut ui);
@@ -1283,7 +1315,7 @@ impl AppState {
         if let Some((x, y)) = self.cursor {
             self.ui.input(Input::CursorMoved { x, y });
         }
-        if self.in_game() {
+        if self.in_game() && !self.editor_active() {
             self.mainwin_refresh();
         }
     }
@@ -1428,6 +1460,8 @@ mod tests {
 
 #[cfg(test)]
 mod build_tests;
+#[cfg(test)]
+mod editor_tests;
 #[cfg(test)]
 mod fin_tests;
 #[cfg(test)]

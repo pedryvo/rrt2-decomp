@@ -210,14 +210,14 @@ se jogadores <= 1 e nowreck (0x574b74): devolve y * 0.0001
 ```
 O parâmetro `/nowreck` (`game_init_paths` `0x465050`) ou a trapaça `nowreck` (`0x46c8a0`) **não zeram** a chance: multiplicam por 1e-4.
 
-### 5.3 Consequências [S]
+### 5.3 Consequências [V: placar Crash, CrashHuman, Theft]
 | | Quebra `0x4ce4c0` | Acidente `0x4ce730` |
 |---|---|---|
 | Estado | `+0xed = 1` | `+0xf2 = 1` |
 | Duração | `rng_range(60, 120)` dias (`* 1440` min) | `rng_range(30, 45)` dias, depois o trem é **apagado** (`0x4d0ce0` -> `0x4cdd50`) |
 | Penalidade | `2000 / (n^0.66 + 4)` | `8000 / (n^0.66 + 4)` |
 
-`n` = número de trens da empresa (`empresa+0x27`). A penalidade sai de `empresa+0x4229` (mínimo 0) e do valor por território `empresa+0x47a + terr*0x1ed` (i16, mínimo -10000; território do tile da locomotiva, ou 1 fora dos trilhos). Os dois também marcam `+0xa8 = 20` e põem o minuto da locomotiva `+0x3d` em `agora - 500`. Acidente com velocidade de jogo > 4 rebaixa a velocidade para 4. Ao fim da quebra, `0x4d0400` limpa `+0xed`/`+0xbc` e chama `0x4d59b0`.
+`n` = número de trens da empresa (`empresa+0x27`). A penalidade sai de `empresa+0x4229` (mínimo 0) e do valor por território `empresa+0x47a + terr*0x1ed` (i16, mínimo -10000; território do tile da locomotiva, ou 1 fora dos trilhos). Os dois também marcam `+0xa8 = 20` e põem o minuto da locomotiva `+0x3d` em `agora - 500`. Acidente com velocidade de jogo > 4 rebaixa a velocidade para 4 (comando na fila; só na empresa da interface, que também perde a alça de som `+0xab`, recebe a mensagem LNG 0x8af e o som `ENCRA61m`). Ao fim da quebra, `0x4d0400` limpa `+0xed`/`+0xbc` e chama `0x4d59b0`. O roubo (`0x4ceaa0`) usa a mesma penalidade da quebra (`0x535690`), o acidente a de `0x535510`.
 
 ### 5.4 O rand do CRT nos trens
 `0x4d0400`, `0x4d2360` e `0x4d29e0` chamam `crt_rand_range(0, 3)` só para o som: nos dois primeiros o resultado é descartado (o `EAX` é sobrescrito logo depois, `0x4d07c4`/`0x4d07ec`, `0x4d253a`/`0x4d256f`); em `0x4d29e0` ele escolhe a variante do som (`+ 0x27`, índice em `0x55e7b0`). Não muda o trem, mas consome o estado do CRT, que também sorteia a fumaça gravada no save (10.6). As quebras usam o RNG do jogo (`rng.md`, gerador A).
@@ -249,8 +249,10 @@ A manutenção cresce com `(1 + 0.04*idade)^2` (x1,96 aos 10 anos, x3,24 aos 20)
 - Combustível anual = `motor.+0x24 * nível_comb * mod(0x11) * mod(0x12+t) * (v * 0.7 + 40) * 0.5`, com `v = engine_fuel_speed(motor, empresa, acelerador)` (`0x4d6030`) `= ftol((engine_max_speed(motor, +0x2e + 120, 0.0002, 0, 0, empresa, 0) >> 16) * acel/85 * 1.8)`.
 - Com modificadores neutros esses números **são** as colunas Cost, Maint. e Fuel da tabela A-1 do guia (anexo A, última coluna).
 
-### 6.4 Roubo de trem (`0x4cf390`, segundo ramo) [V: sorteios e RNG]
+### 6.4 Roubo de trem (`0x4cf390`, segundo ramo) [V: placar Theft, Arrest, TheftYear]
 `c = f32((células * 0.0005) * (pct(0x573e02) * 0.01))` (células já pela metade para a IA); sai se `c <= 1e-5`. Se há uma cidade/estação próxima (`0x4021e4`), `k = dist(0x4f0cd0) - 2*nível - 3`; se `k < 1` não há roubo, senão `c *= 1 + 0.1k`. `c /= (mod(0x21) + 1) * 0.5`; caboose: `c *= 0.4`. Se `c > rng_range(0, 1000000) * 1e-6` e o trem leva passageiros ou correio (carga 0 ou 1), há roubo (`0x4ceaa0`) ou, com `rng_range(0,100) < (mod(0x21)+1) * 0.1 * 100` (x1.3 com caboose), os ladrões são presos (mensagens 0x8b2/0x8b3).
+
+Detalhes do port (`trainstep/motion.rs`): a cidade é `0x42fa30(x, y)` do tile da locomotiva (só lugares de tipo 0, ou de tipo 2 fora da água com o conjunto industrial 1), e só é procurada se `c > 1e-5`; `k = int_dist(locomotiva, lugar) - 2*lugar.+0x2c - 3`. A tabela de ladrões `0x573da2` está no bloco de estado (`state + 0x38ba`, 4 entradas de 0x18 bytes: nome, flags `+0x15`, ano `+0x16`); `0x573e02` é `state + 0x391a` e `0x573d9e` (i32) `state + 0x38b6`. Roubo (`0x4ceaa0(trem, 0)`): só se algum vagão de classe `+0x30 <= 1` leva lote (todos esses lotes são liberados, `0x466a60`); `+0x69 = 0`, `+0xbc = 1`, `rng_range(30, 60)` dias, `+0xa8 = 20`, penalidade, e o sorteio do ladrão (`rng_range(0, n-1)`) acontece para qualquer empresa (a mensagem LNG 0x8b0/0x8b1 só na da interface). Prisão: o ladrão sorteado ganha o bit 0, a notícia (LNG 0x8b4) passa por `news_post` (`0x4a42f0`: `crt_rand_range(0, 10000)`, `0x5707bd = 1`, `0x5707be += 1`) em qualquer empresa e `0x573e02 /= 3` (truncado). No 1º de janeiro (`sim_year_end` `0x4a50f2`), se `0x573e02 < 0x573d9e`: `0x573e02 = ftol(0x573e02 + max((base - pct) * 0.05, 1.0))`.
 
 ## 7. Envelhecimento
 Não há obsolescência forçada: a idade (`ano - +0xbd`) só entra nas fórmulas: velocidade -0,5% por ano e peso efetivo +0,5% por ano até 50 anos (4.2); chance de quebra `(idade + 30)/30`, com 0 no primeiro ano e x0.6 no segundo (5.2); manutenção `(1 + 0.04 idade)^2` e combustível `(1 + 0.01 idade)^2` (6.2).
@@ -576,7 +578,8 @@ Locomotivas (espécie 0) e tênderes (espécie 1) ocupam os demais registros; o 
 - `0x4d3f40(trem, de)`: copia as paradas de `de` ou usa as duas primeiras estações da empresa (`0x439720`; sem estações, as duas primeiras do mundo) com 2 cargas (passageiros, ou `0x26` com o conjunto industrial). Os bytes da parada além da lista de cargas são pilha não inicializada no original (máscara no teste).
 - `0x4d11f0` (inserir; sem registro copia as cargas da parada anterior; zera `+0xe5/+0xdf`, `+0xe9 = 2.0`; primeira parada: `train_set_stop(0, 1)`), `0x4d1130` (`+0x33` = soma de `int_dist` entre paradas + 8), `0x4d5710`/`0x4d55d0` (apagar; sem paradas para o trem).
 - `train_delete` (`0x4cdd50`): sem reembolso, conta 4 e categoria 6 `-= +8` sem caixa (`0x439930`), `empresa+0x27--`, carros (`0x4d0fa0`; lote de carga ainda `todo_hook`), reservas, rota e paradas.
-- `train_replace_engine` (`0x4d4e90`): baixa o preço antigo, cobra o novo na conta 4 (e na 0 com `pagar`); com o trem fora do trilho troca os carros da frente; no trilho falta recolocar (`0x413550`).
+- `train_replace_engine` (`0x4d4e90`): baixa o preço antigo, cobra o novo na conta 4 (e na 0 com `pagar`); guarda o tile e o passo de rota da locomotiva (`+9`, `+0xb`, `+0x11`) se ela está no trilho, reserva (`0x4d3c80(1,1,1)`), tira cada carro do trilho (`0x413500`: `+0x2a = 0` e a estrutura do tile), solta a reserva, troca os carros da frente e cria a locomotiva nova (`0x414220` com a posição guardada: ramo da cabeça de `0x413550` com tile e passo explícitos, rota mantida) e o tênder (atrás, ramo de vagão); depois `0x4d14b0` e o bit `+0xbb & 8`. [V: placar Engine]
+- `0x4d0fa0` (carro removido) com lote: se o trem está trabalhando na estação de origem do lote (parado nos estados 2, 3, 4, 6, 9 ou `+0x94`), `0x4bf450` (lote ainda fresco volta à indústria: `+0x8b + 2k` da indústria `+= 1`, estação/carro do lote zerados, `0x468af0`); senão `0x466a60`.
 - `+0x2b/+0x2f` (valor estimado da carga e carimbo, `0x4d2360`) só são calculados pela janela do jogador local.
 
 ## 12. Colocação do trem novo (`vehicle_place` `0x413550`, ramo da cabeça; `0x4d1bb0`) [V: snapshots do original]

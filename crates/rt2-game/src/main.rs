@@ -126,6 +126,15 @@ struct Args {
     /// With `--screen game`: start a scenario map as a campaign game (index 0..18)
     #[arg(long)]
     campaign: Option<usize>,
+    /// With `--screen editor`: the tool inside the group (0, 1, ...)
+    #[arg(long, default_value_t = 0)]
+    sub: usize,
+    /// With `--screen editor`: the palette entry (terrain slot, mix or tree type)
+    #[arg(long)]
+    item: Option<usize>,
+    /// With `--screen editor`: click the map at these tiles (X,Y) before the shot, repeatable
+    #[arg(long = "edit-at", value_parser = parse_point)]
+    edit_at: Vec<(f32, f32)>,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -145,6 +154,8 @@ enum Screen {
     /// An information screen over the loaded game: finance, stock, trains, train, stations,
     /// station, cities, city, industries, industry or territory (see `--info`).
     Info,
+    /// The map editor over a map (`--page` is the tool group, `--tool` the dialog; see docs/ui.md).
+    Editor,
 }
 
 #[derive(Subcommand)]
@@ -240,6 +251,33 @@ fn screenshot(init: Init, skin: rt2_ui::Skin, args: &Args, out: &std::path::Path
             if !state.show_options(tab) {
                 bail!("unknown options tab {tab:?}");
             }
+        }
+        Screen::Editor => {
+            let file = args
+                .file
+                .clone()
+                .unwrap_or_else(|| install.join("maps").join("Local Industry.MP2"));
+            state.open_editor(&file)?;
+            if let Some(g) = &args.page
+                && !state.editor_show_group(g, args.sub, args.item)
+            {
+                bail!("unknown editor tool group {g:?}");
+            }
+            if let Some((x, y)) = args.focus {
+                state.set_view(x, y, args.zoom, args.rotation);
+            }
+            if let Some((x, y)) = args.hover {
+                state.editor_set_hover(x as i32, y as i32);
+            }
+            for (x, y) in &args.edit_at {
+                state.editor_apply(*x as i32, *y as i32);
+            }
+            if let Some(d) = &args.tool
+                && !state.editor_show_dialog(d)
+            {
+                bail!("unknown editor dialog {d:?}");
+            }
+            state.update(0.0);
         }
         Screen::NewGame => state.show_new_game(),
         Screen::LoadGame => state.show_load_game(),

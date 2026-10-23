@@ -323,7 +323,7 @@ chairman humano: m_f32 = f32((m_f32 + 1) * 0.5)
 ### 13.6 Candidatos a gerente (anos ímpares, `ano & 1`)
 `+0x140` e `+0x144` são regerados: os dois antigos recebem `uso[c]++` (para não saírem de novo), `+0x140 = manager_pick_candidate(-1)`, depois `+0x144 = manager_pick_candidate(-1)` (já com o novo `+0x140`), e os contadores voltam. Os sorteios vêm da seção 14.1 (2 ou mais cada).
 
-### 13.7 Aviso e demissão do chairman [V]
+### 13.7 Aviso e demissão do chairman [V; placar Fire]
 Só se `0x573d7a == 0` (não é editor) **e** a restrição `0x5706ba` ("Being fired as chairman", LNG 1284, tabela 13.9) está ligada; a demissão ainda exige `0x573d75` (modelo financeiro >= avançado) e chairman presente. `S` = ações (`+0x2c`), `held` = soma das posições longas (> 0) das pessoas **ativas** (`pessoa.+4 != 0`) na empresa (posição `idx` da empresa no conjunto `0x570729/0x57072d`).
 ```
 se S - held > S/2:                                          ; mais de 50% de ações fora das pessoas
@@ -340,9 +340,9 @@ se S - held > S/2:                                          ; mais de 50% de aç
             se (i16 +0x472) < ano - 1:  aviso: se o chairman é a pessoa local (0x566ca4) e 0x570237 == 0: caixa LNG 2277 ; +0x472 = ano
             senão: demissão: LNG 2275/2276 e company_set_chairman(0) = 0x438900(empresa, 0)
 ```
-Ou seja, **um aviso num ano, demissão no seguinte** (mesmo para chairmans de IA, sem mensagem) se a empresa seguir ruim. `0x438900` está na seção 15.4.
+A demissão e a liquidação são os **últimos passos** da revisão (depois de gravar reputação, salário, bônus, posição e candidatos): `news_post` (LNG 0x8e3/0x8e4) e `0x438900(empresa, 0)`; depois `0x438170(empresa, f)` e `news_post` (LNG 0x8e7/0x8e8). O byte `0x574bc8 + 0x240` (opção da interface, fora do save) é 0 na configuração padrão: `f = 0`. Ou seja, **um aviso num ano, demissão no seguinte** (mesmo para chairmans de IA, sem mensagem) se a empresa seguir ruim. `0x438900` está na seção 15.4.
 
-### 13.8 Liquidação pelos credores [V]
+### 13.8 Liquidação pelos credores [V; placar Liquidate]
 Mesmo portão de 13.7 (editor desligado, restrição `0x5706ba`), mas sem o requisito `0x573d75`. Conta anos consecutivos `n = 0, 1, 2` (limite de preço `thr = 5, 7, 9`):
 ```
 repita: y = ano - n ; sai se y < fundação
@@ -454,8 +454,8 @@ Constantes: `0x535350` 0,0125; `0x535360` 1/60 (0,016667); `0x5351c8` 0,2. Passa
 ### 15.4 Troca de chairman (`0x438900(empresa, novo)`) [S]
 Se `novo != atual`: o chairman antigo (se houver) recebe `+0x52b += 0x4a8100` e mínimo -99, onde `0x4a8100(pessoa)` = `(min(10, max(0, ano - empresa.+0x470)) - 10) * 7` (penalidade de 0 a -70 por mandato curto; 0 sem empresa) e `+0x263 = 0`. Grava `+0x23 = novo`; atitude dos investidores `+0x4276`: `*0.8 + 0.2` (sem humano) ou 0 (humano); `+0x46a = novo.+0x52b` (0 sem chairman); **`+0x134 = 10000`** e `+0x470 = ano`; o novo recebe `+0x263 = empresa`.
 
-### 15.5 Liquidação (`0x438170(empresa, f)`) [S]
-Apaga os trens da empresa (`0x4cdd50`), tira o dono das indústrias, solta as estações (`f = 0`: sem dono; `f != 0`: `0x40adb0(prédio, 1)` por estação, efeito não analisado), tira a coluna da empresa das 36 posições de todas as pessoas (deslocando as seguintes), libera o gerente (`uso[+0x13c] = 0`, `+0x13c = -1`), tira o chairman, zera `+0x16e` e retira a empresa do conjunto `0x570729` (`0x46a830`).
+### 15.5 Liquidação (`0x438170(empresa, f)`) [V para f = 0: placar Liquidate]
+Apaga os trens da empresa (`0x4cdd50`), tira o dono das indústrias, solta as estações (`f = 0`: sem dono; `f != 0`: `0x40adb0(prédio, 1)` por estação, efeito não analisado), tira a coluna da empresa das 36 posições de todas as pessoas (deslocando as seguintes), libera o gerente (`uso[+0x13c] = 0`, `+0x13c = -1`), tira o chairman, zera `+0x16e` e retira a empresa do conjunto `0x570729` (`0x46a830`). Ordem: trens pela lista de trás para a frente (`train_nth`); indústrias com `+0x97 == empresa` e tipo `+7 != 0` pela lista de trás para a frente; estações (`+0x39`) de trás para a frente (com `f = 0` o prédio da estação, `+4`, também perde `+0x97`); `0x437ab0(empresa, 0, f)` (o trilho fica sem dono); gerente; posições; chairman. Os carros dos trens apagados soltam seus lotes por `0x4d0fa0` (trains.md 11). Com `f != 0` (efeito 189) `0x437ab0` apaga os trens no trilho e o trilho e as estações são demolidas: não portado (gancho `liquidate_destroy`).
 
 ## 16. Fim de ano: sobrecarga e métricas arquivadas (complemento da seção 8)
 

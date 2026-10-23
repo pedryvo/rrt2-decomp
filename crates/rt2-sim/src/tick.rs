@@ -30,6 +30,7 @@ use crate::todo_hook;
 use crate::world::World;
 
 mod company;
+mod editor;
 mod events;
 mod fincmd;
 mod found;

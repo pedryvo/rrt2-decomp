@@ -12,6 +12,7 @@
 //! Determinism: the game RNG is passed explicitly and drawn only by `Random1To10000`, in text
 //! order, once per evaluated combination, without short-circuit (spec 3.4).
 
+pub mod edit;
 pub mod engine;
 pub mod lang;
 pub mod rule;

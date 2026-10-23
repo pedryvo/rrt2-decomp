@@ -346,6 +346,8 @@ se melhor >= 1.15: compra/vende 1000 (forçado) e repete; notícia LNG 2324 se e
 ```
 Sem RNG do jogo.
 
+Precisão (asm de `0x4a8af0`): `m`, `L`, a cotação justa e a melhor nota são `f32`; as cadeias de cada nota ficam no x87. As constantes são `double` (1e5, 1e-5, 1.1, 0.01, 0.005, 1.25, 0.95, 0.92, 3, 0.5, 0.9, 0.6, 1.15) e a cotação vezes `1000.0f` para o teste de margem. Compra: `0x4a6f60(pessoa, idx, 1, 0)` e `0x4a7300(pessoa, idx, 1000, margem = 1, forçado = 0)`; venda: `0x4a7190(pessoa, idx, 1, 1, 0)` e `0x4a73d0(pessoa, idx, 1000, 1)`. No clone (`tick/fincmd.rs`, `ai_trade_stocks`) a negociação roda depois da fase das pessoas do turno mensal e antes da das empresas (ela não sorteia e não muda o que os testes de fundação seguintes leem); verificado no placar `Stocks` (10 negócios em 60 dias) e `Liquidate`.
+
 ## 10. Finanças da empresa de IA (`company_ai_finance` `0x45fbf0`) [S]
 Completa `finance.md` 9.1 (lá, o resumo; aqui os valores):
 1. **Refinanciamento simulado:** para `k = 1..títulos`, numa cópia da empresa: quita os `k` de maior taxa e emite `k` de 500 000 a 30 anos; ganho = `Σ juros quitados - Σ juros novos - 8000k`; guarda o melhor `k` com ganho > 0. Restaura. Se `0x5706b0` e `0x5706af`: quita os `k` de maior taxa (a reemissão vem do passo 2).

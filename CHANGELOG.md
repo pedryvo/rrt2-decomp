@@ -3,6 +3,14 @@
 Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Docs or RE (reverse-engineering finding). Append `(original bug)` to fixes of bugs present in the original game.
 
 ## Unreleased
+- Feature: map and scenario editor (main menu Editor): new/open/save .MP2 maps, height, paint, fill, trees, territories, add buildings/industries/cities/rivers/roads, bulldozer, undo, Map Options and a scenario rules editor with live condition validation
+- RE: editor tool routines ported from the executable (elevation brushes 0x426480, trees 0x429fc0, fill 0x490490, mixed paint 0x48cc00, rivers 0x429ea0, places 0x42f630, territories 0x4c8470) and the saver's map overview 0x477040, byte-identical to the original's .MP2 files
+- Docs: editor screens L1..L13 and the editor chapter of the UI notes
+- RE: Rare events in the fidelity scoreboard: prepared saves (`re/scripts/wine/prepare_rare.py`, `rt2-savepatch`) for train crashes, thefts and arrests, the board firing an AI chairman, creditor liquidation, AI stock trading and the AI's on-track engine swap; all identical to the original.
+- Fix: Train crashes (0x4ce730), thefts (0x4ceaa0) with the nearest-town factor, arrests and the yearly theft-rate recovery now follow the original; a crashed train is removed when its wreck time ends.
+- Fix: The annual review now fires the chairman and liquidates bankrupt companies (0x438170), and computer persons trade stocks (0x4a8af0).
+- Fix: The AI's engine replacement on a train on the track (0x4d4e90) and the cargo lot of a removed car (0x4d0fa0).
+- Fix: Town growth reads the live building count and a demolished building's list links are cleared (diverged with other RNG seeds at the year end).
 
 ## v0.1.0 — 2026-10-23
 

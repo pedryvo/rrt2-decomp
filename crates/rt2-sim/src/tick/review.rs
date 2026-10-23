@@ -755,23 +755,6 @@ impl SimState {
                 liquidate = true;
             }
         }
-        if fire {
-            todo_hook!(
-                self.log,
-                "review_fire_chairman",
-                "company_set_chairman(0) 0x438900: the board dismisses the chairman",
-                "finance.md 13.7, 15.4"
-            );
-        }
-        if liquidate {
-            todo_hook!(
-                self.log,
-                "review_liquidation",
-                "company_liquidate 0x438170: the creditors liquidate the company",
-                "finance.md 13.8, 15.5"
-            );
-        }
-
         // -- write back
         if bonus != 0 {
             co.credit(11, -bonus_paid);
@@ -802,6 +785,81 @@ impl SimState {
             put_u32(&mut p.data, PE_REP, new_chair_rep as u32);
             put_f64(&mut p.data, PE_CASH, cash_after);
         }
+        // The dismissal and the liquidation are the last steps of the review (13.7, 13.8):
+        // the newspaper story (LNG 0x8e3/0x8e4, `news_post` `0x4a42f0`) and
+        // `company_set_chairman(0)` (`0x438900`); then `company_liquidate` (`0x438170`) with
+        // its story (LNG 0x8e7/0x8e8).
+        if fire {
+            self.fc_news_post(w);
+            self.company_set_chairman(w.minutes, slot, 0);
+            self.log.ran("review_fire_chairman");
+        }
+        if liquidate {
+            // `f` = 1 needs the interface option `0x574bc8 + 0x240` (not in the save; off in
+            // the default configuration): stations and track stay, without an owner.
+            let minutes = w.minutes;
+            self.company_liquidate(minutes, &mut w.rng, &mut w.crt, slot, false);
+            self.fc_news_post(w);
+            self.log.ran("review_liquidation");
+        }
         self.log.ran("company_annual_review");
+    }
+
+    /// `company_liquidate(company, f)` (`0x438170`, finance.md 15.5): the company's trains are
+    /// deleted (`0x4cdd50`, train list from the tail), its industries (`+0x97`, type `+7 != 0`)
+    /// and stations (`+0x39`, with the station building's `+0x97`) lose their owner, then the
+    /// track, the manager, the holdings column, the chairman's post, the active flag and the
+    /// company set (`company_liquidate` tail, shared with the merger). `f != 0` (stations
+    /// demolished with `0x40adb0`, track removed by `0x437ab0(c, 0, 1)`) is not ported.
+    pub(crate) fn company_liquidate(
+        &mut self,
+        minutes: i32,
+        rng: &mut GameRng,
+        crt: &mut crate::rng::CrtRng,
+        slot: usize,
+        destroy: bool,
+    ) {
+        if destroy {
+            todo_hook!(
+                self.log,
+                "liquidate_destroy",
+                "0x438170 with f != 0: stations demolished (0x40adb0) and track removed (0x437ab0)",
+                "finance.md 15.5"
+            );
+        }
+        let c = slot as i32;
+        self.with_trainstep_parts(minutes, rng, crt, |ts| {
+            use crate::trainstep::P;
+            let trains = crate::pool::list_order(&ts.s.trains);
+            for &t in trains.iter().rev() {
+                let t = t as i32;
+                if ts.live(P::Train, t) && ts.i32(P::Train, t, 0x41) == c {
+                    crate::ai::Ai::new(ts).train_delete(t);
+                }
+            }
+        });
+        for b in pool::list_order(&self.save.objects).into_iter().rev() {
+            if let Some(r) = pool::record_mut(&mut self.save.objects, b)
+                && i32::from(i16_at(&r.data, 0x97)) == c
+                && r.data[7] != 0
+            {
+                put_u16(&mut r.data, 0x97, 0);
+            }
+        }
+        for st in pool::list_order(&self.save.stations).into_iter().rev() {
+            let Some(r) = pool::record_mut(&mut self.save.stations, st) else {
+                continue;
+            };
+            if i32_at(&r.data, ST_STATION_COMPANY) != c {
+                continue;
+            }
+            put_u32(&mut r.data, ST_STATION_COMPANY, 0);
+            let b = i32_at(&r.data, 4);
+            if let Some(br) = pool::record_mut(&mut self.save.objects, b as usize) {
+                put_u16(&mut br.data, 0x97, 0);
+            }
+        }
+        self.fc_liquidate(slot);
+        self.log.ran("company_liquidate");
     }
 }

@@ -427,6 +427,139 @@ impl SimState {
         Some((price, f64::from(credit)))
     }
 
+    /// `ai_person_trade_stocks` (`0x4a8af0`, ai.md 9.2) for the computer person `person`: a
+    /// greedy loop that buys or sells one lot of 1000 shares per round while the best score
+    /// is at least 1.15. Scores (x87 chains, the f32 locals rounded as in the original):
+    /// buy `fair / price(+1000)`, sell `price(-1000) / fair` (`fair` = `+0x427a`, x1.1 for the
+    /// person's own company), adjusted by the persona's investing (`0x551e97`), margin
+    /// (`0x551e8f`) and short-selling (`0x551e93`) traits and the leverage `L` = holdings value
+    /// / net worth (`0x4a6d00`, `0x4a7620`). No RNG; the interface news (LNG 0x911..0x914)
+    /// only names the local company's trades.
+    pub(super) fn ai_trade_stocks(&mut self, w: &mut World, person: usize) {
+        let now = w.minutes;
+        let mut mg = MarginGuard::default();
+        let trait_of = |s: &Self, base: u32| -> f64 {
+            let k = s
+                .person_data(person)
+                .map_or(0, |d| i32::from(d[0x52f] as i8));
+            f64::from(s.data.image.i32(base.wrapping_add((k * 0x23) as u32)))
+        };
+        let mut guard = 0;
+        loop {
+            guard += 1;
+            if guard > 100_000 {
+                break;
+            }
+            let Some(pd) = self.person_data(person) else {
+                return;
+            };
+            let cash = f64_at(pd, PE_CASH);
+            let chair_of = i32_at(pd, PE_CHAIR_OF);
+            let m = if cash <= 100_000.0 {
+                1.0f32
+            } else {
+                (cash * 1e-5) as f32
+            };
+            let set = self.company_set();
+            let mut value = 0.0f64;
+            for (i, &c) in set.iter().enumerate().take(36) {
+                let h = self.holdings(person, i);
+                if h != 0 {
+                    value += f64::from(self.fc_price(now, c, 0)) * f64::from(h);
+                }
+            }
+            let worth = value + cash;
+            let lev = (value / worth) as f32;
+            let lf = f64::from(lev);
+            let mut best = 0.0f32;
+            let mut best_co = 0i32;
+            let mut best_idx = 0usize;
+            let mut buy = true;
+            for (idx, &c) in set.iter().enumerate() {
+                let can_buy = self.fc_can_buy(now, person, idx, true, 0);
+                let can_sell = self.fc_can_sell(now, person, idx, true, true, 0);
+                let Some(cd) = self.company_data(c) else {
+                    continue;
+                };
+                let own = i32_at(cd, CO_CHAIRMAN) == person as i32;
+                let other = !own && chair_of != 0;
+                if !can_buy && !can_sell {
+                    continue;
+                }
+                let mut fair = f32_at(cd, 0x427a);
+                if own {
+                    fair = (f64::from(fair) * 1.1) as f32;
+                }
+                if can_buy {
+                    let price = self.fc_price(now, c, 1000) as f32;
+                    let mut a = f64::from(fair) / f64::from(price);
+                    if other {
+                        a = (a - 1.0) * (trait_of(self, 0x0055_1e97) * 0.01) + 1.0;
+                    }
+                    if f64::from(price) * 1000.0 > cash {
+                        a = (a - 1.0) * (trait_of(self, 0x0055_1e8f) * 0.005) + 1.0;
+                        if lf > 1.25 {
+                            a = (a - 1.0) / lf + 1.0;
+                        }
+                    }
+                    if a > 0.95 {
+                        a *= f64::from(m);
+                    }
+                    if a > f64::from(best) {
+                        best = a as f32;
+                        best_co = c as i32;
+                        best_idx = idx;
+                        buy = true;
+                    }
+                }
+                if can_sell {
+                    let price = self.fc_price(now, c, -1000);
+                    let mut v = f64::from(price) / f64::from(fair);
+                    if other {
+                        v = (v - 1.0) * (trait_of(self, 0x0055_1e97) * 0.005) + 1.0;
+                    }
+                    let h = self.holdings(person, idx);
+                    if h < 1 {
+                        v = (v - 1.0) * (trait_of(self, 0x0055_1e93) * 0.005) + 1.0;
+                    } else if v > 0.92 {
+                        let mut l2 = if lf <= 1.1 {
+                            lf
+                        } else {
+                            (lf - 1.1) * 3.0 + 1.1
+                        };
+                        if l2 < 0.5 {
+                            l2 = 0.5;
+                        }
+                        v = l2 * (v - 0.9) + 0.9;
+                    }
+                    if !other {
+                        v = if h <= 1000 {
+                            0.0
+                        } else {
+                            (v - 1.0) * 0.6 + 1.0
+                        };
+                    }
+                    if v > f64::from(best) {
+                        best = v as f32;
+                        best_co = c as i32;
+                        best_idx = idx;
+                        buy = false;
+                    }
+                }
+            }
+            if best_co == 0 || f64::from(best) < 1.15 {
+                break;
+            }
+            self.log.ran("ai_person_trade");
+            if buy {
+                self.fc_buy(now, w, &mut mg, person, best_idx, 1000, true, false);
+            } else {
+                self.fc_sell(now, w, &mut mg, person, best_idx, 1000, true);
+            }
+        }
+        self.log.ran("ai_person_trade_stocks");
+    }
+
     /// `margin_check_all` (`0x46bb10`): runs the broker's routine for every person of the
     /// player set until a pass sells nothing. Nested calls (from the broker's own sales) only
     /// ask for another pass.
@@ -819,7 +952,7 @@ impl SimState {
     /// `company_liquidate(0)` (`0x438170`), after the merger moved everything away: frees the
     /// manager, removes the company column of every person's positions, removes the chairman's
     /// post, marks the company inactive and drops it from the company set.
-    fn fc_liquidate(&mut self, slot: usize) {
+    pub(super) fn fc_liquidate(&mut self, slot: usize) {
         // Track the company still owns goes ownerless (`0x437ab0(0, 0)`).
         for r in self.save.track_pieces.records.iter_mut() {
             if usize::from(r.data[2]) == slot {

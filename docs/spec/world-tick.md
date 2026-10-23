@@ -129,7 +129,7 @@ Correção a `time.md` 7.4 item 8: em dezembro o gatilho 2 (início de mês) **t
 | 14 | `sim_week_end()` | segundo passo semanal no mesmo minuto | 3.2 |
 | 15 | para cada indústria (C): `industry_year_reset` `0x40b7c0` | se ativa: zera `+0x34`, `+0x63`, `+0x67`, recontagem de pilhas, `0x4beae0` na estação ligada (`+8`) | `0x4beae0(estação)` zera 8 bytes `+0x59..+0x60` (as receitas do ano como origem `+0x59` e destino `+0x5d`, `cargo.md` 7) e os três `u16` `+0x4b5`, `+0x4b7`, `+0x4b9` (`finance.md` 13.4) [V no Example: `stations` em 30 dias iguais]; o resto **não especificada** |
 | 16 | peças de trilho (slots decrescentes): `+0x1f = +0x1b; +0x1b = 0` | desgaste do ano anterior | `terrain-track.md` |
-| 17 | data -> 1/jan 00:00, `T += 1`; zera `0x573d05/09/0d`; se `0x573e02 < 0x573d9e`: `0x573e02 = ftol(...)` | | `time.md` 7.5 |
+| 17 | data -> 1/jan 00:00, `T += 1`; zera `0x573d05/09/0d`; se `0x573e02 < 0x573d9e` (i32): `0x573e02 = ftol(0x573e02 + max((0x573d9e - 0x573e02) * 0.05, 1.0))` (`0x4a50f2`, trains.md 6.4) | | `time.md` 7.5 |
 | 18 | `industry_rebuild_inputs(i)` `0x471880`, i = 0..52 | tipos de indústria | `cargo.md` |
 | 19 | mensagens históricas (1877, 1879, 1900, 1910, 1960) | LNG 2630, 2851, 419, 417, 420 | `time.md` 7.5 |
 | 20 | `event_fire_trigger(0)` | regras "início de ano" | |

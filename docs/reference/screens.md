@@ -163,19 +163,19 @@ Fora de escopo do clone de jogo único: K1 a K4, mas ficam registradas.
 
 | # | Tela | Propósito e conteúdo | Como se chega | .win | Referências | Status |
 |---|---|---|---|---|---|---|
-| L1 | Menu do editor | New Map / Load Map | Editor | `setup.win` | M:C9_01 | ⏳ |
-| L2 | Novo mapa: dimensões | Largura e altura (sliders), From Scratch, From Image | New Map | `setup.win` | M:C9_01 | ⏳ |
-| L3 | Importar imagem e escala de altura | Caminho do PCX (cinza indexado) e Height Scale | From Image | `filerq.win` (suposição) | M (cap. 10) | ⏳ |
-| L4 | Janela do editor | Mapa + caixa central + coluna direita de ferramentas (Undo, Map Options...) | entrar no editor | `mainwin.win` | M:C9_03.call | ⏳ |
-| L5 | Elevar/baixar terreno | Alisar, elevar, baixar ao nível do mar; pincel | ferramenta | `bpraisea.win` (2304..2306) | M:C101_raise_lower | ⏳ |
-| L6 | Pintar terreno | Paleta sólida/mista, pincel | ferramenta | `bppaintt.win` (2448..2457) | M:C102_paint_terrain | ⏳ |
-| L7 | Preencher terreno | All/Adj. e Match/Above/Below | ferramenta | `bpfillte.win` (2436..2451) | M:C103_fill_terrain | ⏳ |
-| L8 | Árvores | Adicionar e cortar, pincel | ferramenta | `bpaddtre.win`, `bpremtre.win` | M:C104_addtrees | ⏳ |
-| L9 | Territórios | Lista e diálogo Territory Setup (nome, goodwill padrão, borda visível, direitos separados, comprável) | ferramenta | `bpterrit.win` (4301) | M:C105_territories | 🟡 (o painel "Território" do clone mostra região/tiles ao clicar no mapa, não é o editor) |
-| L10 | Construir prédio / cidade / região / rótulo / rio / células reservadas | Lista de prédios e 5 comandos especiais | ferramenta | `bpaddbui.win` (2600..2605) | M:C106_build_new | ⏳ |
-| L11 | Add City / Add Region | Abas General (tipo, nome, tamanho, arquitetura) e Industry (pesos 0..200) | Add City/Region | `cityset.win` (3401..3407) | M (cap. 10) | ⏳ |
-| L12 | Map Options | Seções: General, Victory Conditions, Events, Players, Player Pool, Managers, Economy, Engines, Industries, Restrictions, Ports, Robbers | botão Map Options | `mapset.win` (3501..3507) | M:C9_13 | ⏳ |
-| L13 | Editor de eventos | Trigger, Message Text (Dialog/Newspaper/Choice), Frequency, Effect (sliders), Comments | Map Options > Events | `eventset.win` (33801..33869; banco `buildbuy.imb`) | `editor3.txt` da instalação | ⏳ |
+| L1 | Menu do editor | New Map / Load Map | Editor | `setup.win` | M:C9_01 | ✅ (`state/menus.rs`, `Page::Editor`) |
+| L2 | Novo mapa: dimensões | Largura e altura (sliders), From Scratch, From Image | New Map | `setup.win` | M:C9_01 | 🟡 (nome, largura, altura, terreno base; sem From Image) |
+| L3 | Importar imagem e escala de altura | Caminho do PCX (cinza indexado) e Height Scale | From Image | `filerq.win` (suposição) | M (cap. 10) | ⏳ (PCX/escala de altura não portados) |
+| L4 | Janela do editor | Mapa + caixa central + coluna direita de ferramentas (Undo, Map Options...) | entrar no editor | `mainwin.win` | M:C9_03.call | ✅ (`state/editor_ui.rs`: painel inferior com grupos, paleta, radar e botões) |
+| L5 | Elevar/baixar terreno | Alisar, elevar, baixar ao nível do mar; pincel | ferramenta | `bpraisea.win` (2304..2306) | M:C101_raise_lower | ✅ (`rt2_sim::editor::elevation_brush`, 0x426480) |
+| L6 | Pintar terreno | Paleta sólida/mista, pincel | ferramenta | `bppaintt.win` (2448..2457) | M:C102_paint_terrain | ✅ (sólida e mista; 0x42a3e0, 0x48cc00) |
+| L7 | Preencher terreno | All/Adj. e Match/Above/Below | ferramenta | `bpfillte.win` (2436..2451) | M:C103_fill_terrain | ✅ (Match/Above/Below, adjacente e tudo; 0x490490, 0x490bd0) |
+| L8 | Árvores | Adicionar e cortar, pincel | ferramenta | `bpaddtre.win`, `bpremtre.win` | M:C104_addtrees | ✅ (0x429fc0; 8 tipos de árvore) |
+| L9 | Territórios | Lista e diálogo Territory Setup (nome, goodwill padrão, borda visível, direitos separados, comprável) | ferramenta | `bpterrit.win` (4301) | M:C105_territories | ✅ (lista, New/Edit, pincel; Territory Setup) |
+| L10 | Construir prédio / cidade / região / rótulo / rio / células reservadas | Lista de prédios e 5 comandos especiais | ferramenta | `bpaddbui.win` (2600..2605) | M:C106_build_new | ✅ (lista dos 98 prédios e os 6 comandos especiais; comando 0x17 com dono 0) |
+| L11 | Add City / Add Region | Abas General (tipo, nome, tamanho, arquitetura) e Industry (pesos 0..200) | Add City/Region | `cityset.win` (3401..3407) | M (cap. 10) | 🟡 (aba General e aba Industry de pesos 0..200; a janela do original é `cityset.win`) |
+| L12 | Map Options | Seções: General, Victory Conditions, Events, Players, Player Pool, Managers, Economy, Engines, Industries, Restrictions, Ports, Robbers | botão Map Options | `mapset.win` (3501..3507) | M:C9_13 | 🟡 (General, Victory, Restrictions, Economy e Industries; Players, Managers, Engines, Ports e Robbers ficam como o mapa) |
+| L13 | Editor de eventos | Trigger, Message Text (Dialog/Newspaper/Choice), Frequency, Effect (sliders), Comments | Map Options > Events | `eventset.win` (33801..33869; banco `buildbuy.imb`) | `editor3.txt` da instalação | ✅ (lista de regras, gatilho, condição validada ao vivo, mensagem, efeitos da tabela de 350 linhas com faixas, permanente/temporário) |
 
 ## Resumo e contagem
 

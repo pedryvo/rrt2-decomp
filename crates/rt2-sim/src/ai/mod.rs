@@ -70,7 +70,7 @@ pub const CO_ELECTRIC: usize = 0x4264;
 pub const CO_CASH: usize = 0x4766;
 
 /// Header byte of a global at `va` (header block = `0x567b38..`).
-const HDR_BASE: u32 = 0x0056_7b38;
+pub(crate) const HDR_BASE: u32 = 0x0056_7b38;
 /// State byte of a global at `va` (state block = `0x5704e8..`).
 const ST_BASE: u32 = 0x0057_04e8;
 
@@ -119,6 +119,10 @@ pub struct Ai<'t, 'a> {
     pub ai_turn: bool,
     /// The language file, for the names the primitives write (stations).
     pub lng: Option<std::rc::Rc<rt2_formats::lng::Lng>>,
+    /// Persons whose turn reached `ai_person_trade_stocks` (`0x4a8af0`), in order: the trading
+    /// needs the finance commands of the world loop, which runs it after the persons' phase
+    /// (the trades draw no RNG and touch nothing the later founding tests read).
+    pub traders: Vec<i32>,
 }
 
 /// A command the AI queues instead of acting at once.
@@ -244,6 +248,7 @@ impl<'t, 'a> Ai<'t, 'a> {
             overlay_snapshot: None,
             ai_turn: false,
             lng: None,
+            traders: Vec::new(),
         }
     }
 
@@ -391,8 +396,16 @@ impl<'t, 'a> Ai<'t, 'a> {
 /// "no AI" flag `0x570229` (and the runtime cheat `0x5748fc`, 0 in a loaded game). Returns the
 /// commands the turn queued (apply them with [`apply_command`] at the next command step).
 pub fn monthly_turn(ts: &mut Ts<'_>) -> Vec<AiCommand> {
+    let (_, mut cmds) = monthly_turn_persons(ts);
+    cmds.extend(monthly_turn_companies(ts));
+    cmds
+}
+
+/// The persons' phase of [`monthly_turn`]: returns the persons that trade stocks
+/// ([`Ai::traders`], in order) and the queued commands.
+pub fn monthly_turn_persons(ts: &mut Ts<'_>) -> (Vec<i32>, Vec<AiCommand>) {
     if ts.flag_570229 != 0 {
-        return Vec::new();
+        return (Vec::new(), Vec::new());
     }
     ts.log.ran("ai_monthly_turn");
     // build_preview_suspend / resume (0x46b150, 0x46b290): UI preview layer, no state.
@@ -411,6 +424,18 @@ pub fn monthly_turn(ts: &mut Ts<'_>) -> Vec<AiCommand> {
         }
         i += 1;
     }
+    let traders = std::mem::take(&mut ai.traders);
+    (traders, ai.finish())
+}
+
+/// The companies' phase of [`monthly_turn`]: every company without a chairman or with an AI
+/// chairman.
+pub fn monthly_turn_companies(ts: &mut Ts<'_>) -> Vec<AiCommand> {
+    if ts.flag_570229 != 0 {
+        return Vec::new();
+    }
+    let mut ai = Ai::new(ts);
+    ai.ai_turn = true;
     let mut i = 0;
     loop {
         let ids = ai.ids(P::Company);

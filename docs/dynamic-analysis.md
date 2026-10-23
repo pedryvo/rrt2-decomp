@@ -154,6 +154,22 @@ Implicações para o tick do mundo: a cada dia só `state.game_time_minutes`/`da
 
 O resto (semente, avanço, gravação) é o de 5.1; o log mostra `NEWGAME ...` e `LOAD_RNG` (RNG e CRT depois do início). Nenhum diálogo modal aparece no #01 B&O (o briefing do gatilho 6 não bloqueia). `ADV_TRACE=0xaddr,...` registra `ECX`, `EDX`, `u16 [ECX]` e o RNG a cada chamada desses endereços durante o início, sem parar (ex.: `0x430540,0x409010` lista os lugares e os prédios criados por `0x430a40(1)`, na ordem). `ADV_HOOKPY=<arquivo.py>` executa o arquivo dentro do gdb antes de `0x410de0`, com `hooks`, `reg`, `rd`, `rd32`, `log` e `gdb` à mão: ele pode criar breakpoints e registrar funções em `hooks[endereço]` (inclusive ligar breakpoints só depois da K-ésima chamada de outro, para não pagar o custo de parar em toda chamada), por exemplo para despejar as listas de sobreposição dos tiles (`tile+10`, nós `{u16 word, u8 giros, i8 sombra, u32 próximo}`) ou as chamadas de `building_can_place` entre dois prédios. Traços longos precisam de `--timeout` maior que o padrão de 240 s. Tempo: ~11 s. A entrada pela tela New Scenario (comando de rede 6, `rng_seed(game_seed)`) não foi automatizada.
 
+### 5.9 Saves preparados: eventos raros (`prepare_rare.py`, `rt2-savepatch`)
+
+Acidentes, roubos, demissões, liquidações, a bolsa da IA e a troca de locomotiva quase não aparecem nos saves do jogo. `python3 -I re/scripts/wine/prepare_rare.py [--only NOME] [--list]` gera em `~/.cache/rrt2/rare/` (fora do repositório: são dados do jogo) saves que os provocam em poucos dias: parte da conversão de 0 dias do Example **feita pelo original** (o cache de `scripts/fidelity.py --only Example`) e escreve campos crus com `rt2-savepatch <in> <out> --set 'ALVO+OFF:TIPO=VALOR'` (`ALVO` = `state`, `trailer` ou `pool[slot]`, ex. `trains[3]+0xbd:u16=1700`, `companies[5]+0x4766:f64=-5e7`; `--get` e `--list POOL` para inspecionar; o checksum `0x4ef4d0` é recalculado). O placar usa `prepared = "~/.cache/rrt2/rare/X.GAM"` no lugar de `save`: o original carrega o arquivo preparado (o carregador valida), a saída de 0 dias é a base do clone e a semente do cenário escolhe o desfecho dos dados (procurada com o clone, que já reproduzia os sorteios). Receitas:
+
+| Receita | Patch | Evento (casos do placar) |
+|---|---|---|
+| `crash`, `crashhuman` | locomotivas de 1700 (`+0xbd`), sem óleo (`+0xd3`), acelerador 250 (`+0xdb`) nos trens da IA / do jogador | quebra e acidente (`0x4ce730`), remoção do destroço (`0x4cdd50`): `Crash` (semente 1), `CrashHuman` (7) |
+| `theft` | `0x573e02` (state `+0x391a`) = 3000 e um ladrão nomeável em `0x573da2` | roubo (`0x4ceaa0`, `0x42fa30`): `Theft` (4); prisão (bit 0 do ladrão, notícia, `/3`): `Arrest` (2) |
+| `theftyear` | `0x573e02` = 50 abaixo de `0x573d9e` = 2000 | recuperação anual (`0x4a50f2`): `TheftYear` |
+| `fire` | empresa 5: reputação -60, já avisada, arquivo do ano anterior ruim | demissão do chairman (`0x438900`): `Fire` |
+| `liquidate` | empresa 5: caixa, patrimônio, lucro e preço ruins em 3 anos (`+0x4766`, `+0x479e`, `+0x4286`, arquivos) | liquidação (`0x438170`) e venda de ações da IA: `Liquidate` |
+| `stocks` | pessoa 2 com $5 000 000 | `ai_person_trade_stocks` (`0x4a8af0`): `Stocks` |
+| `engine` | trens 3 e 4 com motor de 1800 (`+0xa9`), `+0x4243` da empresa 5 = 0 | troca de locomotiva no trilho (`0x4d4e90`): `Engine` (semente 2); `FieldDemolition` (1234) demole uma fazenda no fim do ano |
+
+Mudar uma receita muda o sha do arquivo e, com ele, a chave do cache do placar (o original roda de novo).
+
 ## 6. Snapshots de uma função (teste diferencial no nível da função)
 
 `re/scripts/wine/snap_call.py <sandbox> <in.GAM> <dias> <semente> <0xfunção> <K> <nome> <dir> [função_do_clone]` roda o original como `trace_save.py` (agora com `TR_GDBPY` para trocar o script do gdb) e, na K-ésima chamada da função, **grava o jogo antes da chamada e depois do retorno** (`snap_gdb.py`: o gravador `0x477540` é chamado com a pilha 0x3000 abaixo do quadro corrente e os registradores são restaurados; a FPU está vazia na entrada das funções medidas). Registra o trem/vagão de `ECX` (slot), o RNG do jogo (`0x55d2c0`) e o rand do CRT (`0x5609f0`) antes e depois, e acrescenta a linha `nome função trem rng crt rng_depois crt_depois [dt]` a `<dir>/manifest.txt`. Com `SNAP_CALLS=<arquivo>` e `SNAP_FUNCS=<json>` o script registra também a árvore de chamadas feita durante a chamada (profundidade pela pilha), útil para saber quais funções portar.

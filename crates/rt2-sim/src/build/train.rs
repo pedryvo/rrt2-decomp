@@ -203,6 +203,7 @@ impl Ai<'_, '_> {
         let v = f64::from(m_all) * f64::from(m_kind) * f64::from(price);
         self.ts.seti32(P::Train, t, 8, crate::fp::ftol(v));
         account_move(self.ts, company, 4, v);
+        self.ts.train_route_refresh(t);
         let head = self.ts.i32(P::Train, t, 0);
         let he = self.ts.vt_engine(self.ts.u8(P::Car, head, 8));
         let b = self.ts.u8(P::Train, t, 0xbb);
@@ -509,18 +510,23 @@ impl Ai<'_, '_> {
             account_move(self.ts, company, 0, f64::from(price));
         }
         self.ts.set16(P::Train, t, 0xa0, 0);
+        // A locomotive on the track hands its tile and route step to the new one (`0x414220`
+        // with a position -> `0x413550` head branch); every car is lifted first (`0x413500`).
         let head = self.ts.i32(P::Train, t, 0);
-        if self.ts.u8(P::Car, head, 0x2a) != 0 {
-            todo_hook!(
-                self.ts.log,
-                "replace_engine_on_track",
-                "0x4d4e90 on a train on the track: stop, lift the cars (0x413500), place the new engine (0x413550)",
-                "trains.md 6.1"
-            );
-            return;
-        }
+        let at = (self.ts.u8(P::Car, head, 0x2a) != 0).then(|| {
+            (
+                self.ts.i16(P::Car, head, 9),
+                self.ts.i16(P::Car, head, 0xb),
+                self.ts.i16(P::Car, head, 0x11),
+            )
+        });
         let f9a = self.ts.u8(P::Train, t, 0x9a);
         self.ts.reserve(t, 1, 1, 1);
+        let mut c = self.ts.i32(P::Train, t, 0);
+        while c != 0 {
+            self.ts.car_lift(c);
+            c = i32::from(self.ts.i16(P::Car, c, 2));
+        }
         self.ts.set_reserved_range(t, -1, -1);
         self.ts.set8(P::Train, t, 0x9c, 0);
         self.ts.set8(P::Train, t, 0xfb, f9a);
@@ -539,7 +545,7 @@ impl Ai<'_, '_> {
         self.ts.seti32(P::Train, t, 0, 0);
         self.ts.seti32(P::Train, t, 4, 0);
         let vt = self.ts.en8(e, 0x2c);
-        self.ts.vehicle_init(t, vt);
+        self.ts.vehicle_init_at(t, vt, at);
         if self.ts.en8(e, 0x2b) != 0 {
             let vt2 = self.ts.en8(e, 0x2d);
             self.ts.vehicle_init(t, vt2);
@@ -552,6 +558,7 @@ impl Ai<'_, '_> {
                 self.ts.seti32(P::Train, t, 4, last);
             }
         }
+        self.ts.train_route_refresh(t);
         let head = self.ts.i32(P::Train, t, 0);
         let he = self.ts.vt_engine(self.ts.u8(P::Car, head, 8));
         let b = self.ts.u8(P::Train, t, 0xbb);
@@ -575,6 +582,34 @@ impl Ts<'_> {
     /// `vehicle_init(car, id, train, type, -1, 0xffff, 0)` (`0x414220`) for a car that is not
     /// first in its train: appended to the car list and, behind another car, placed on the route.
     pub(crate) fn vehicle_init(&mut self, t: i32, vt: u8) {
+        self.vehicle_init_at(t, vt, None);
+    }
+
+    /// `0x413500(car)`: the car leaves the track (`+0x2a = 0`) and, unless it is hidden
+    /// (`+0x45`), its tile structure.
+    pub(crate) fn car_lift(&mut self, c: i32) {
+        if self.u8(P::Car, c, 0x2a) == 0 {
+            return;
+        }
+        self.set8(P::Car, c, 0x2a, 0);
+        if self.u16(P::Car, c, 0x45) == 0 {
+            let (x, y) = (
+                i32::from(self.i16(P::Car, c, 9)),
+                i32::from(self.i16(P::Car, c, 0xb)),
+            );
+            crate::tilemark::struct_remove(
+                self.s,
+                x,
+                y,
+                2,
+                i32::from(self.i16(P::Car, c, 6)) as u32,
+            );
+        }
+    }
+
+    /// [`Self::vehicle_init`] with the position argument of `0x414220`: the first car of an
+    /// empty train is placed at `at` (`0x413550` head branch) instead of staying off the track.
+    pub(crate) fn vehicle_init_at(&mut self, t: i32, vt: u8, at: Option<(i16, i16, i16)>) {
         let size = self.record_size(P::Car);
         let c = self.alloc(P::Car, vec![0u8; size]);
         // The slot's memory keeps the bytes of the car freed there before (`pool_free` does not
@@ -625,6 +660,8 @@ impl Ts<'_> {
         // first car of an empty train is skipped (`param_4 == -1`).
         if last != 0 {
             self.place_trailing_car(c);
+        } else if at.is_some() {
+            self.place_head_car_at(t, at);
         }
     }
 
@@ -652,13 +689,19 @@ impl Ts<'_> {
             crate::tilemark::struct_remove(self.s, x, y, 2, c as u32);
             self.set8(P::Car, c, 0x2a, 0);
         }
-        if self.i32(P::Car, c, 0x2d) != 0 {
-            todo_hook!(
-                self.log,
-                "car_remove_lot",
-                "0x4d0fa0: the cargo lot of a removed car (0x4bf450 back to the station, 0x466a60)",
-                "trains.md 6.1"
-            );
+        // The car's lot (`0x4d0fa0`): back to its industry (`0x4bf450`) when the train works
+        // at the lot's own station (stopped in state 2, 3, 4, 6 or 9, or `+0x94`), freed
+        // (`0x466a60`) otherwise.
+        let lot = self.i32(P::Car, c, 0x2d);
+        if lot != 0 {
+            let st = self.u8(P::Train, t, 0x9a);
+            let working = (self.u8(P::Train, t, 0x99) != 0 && matches!(st, 2 | 3 | 4 | 6 | 9))
+                || self.u8(P::Train, t, 0x94) != 0;
+            if working && self.u16(P::Train, t, 0x9e) == self.u16(P::Lot, lot, 3) {
+                self.lot_back_to_industry(lot);
+            } else {
+                self.lot_free(lot);
+            }
         }
         self.free(P::Car, c);
     }

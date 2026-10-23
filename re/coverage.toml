@@ -3,11 +3,11 @@
 # Ver docs/re-workflow.md.
 #
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
-# Classificadas (categoria != unknown): 1301 (44.2%)
-# Por categoria: lib=258, platform=114, render=11, audio=56, ui=274, sim=588, unknown=1644
-# Por estado:   unknown=2359, named=124, spec=180, verified=282
-# Entradas manuais: 552
-# sim spec coverage: 71.4% (420 de 588 funcoes sim em spec/verified)
+# Classificadas (categoria != unknown): 1302 (44.2%)
+# Por categoria: lib=258, platform=114, render=11, audio=54, ui=274, sim=591, unknown=1643
+# Por estado:   unknown=2334, named=147, spec=175, verified=289
+# Entradas manuais: 554
+# sim spec coverage: 71.4% (422 de 591 funcoes sim em spec/verified)
 
 [[function]]
 addr = "0x401005"
@@ -7397,7 +7397,7 @@ why = "thunk->0x40b450"
 [[function]]
 addr = "0x402dab"
 size = 5
-category = "audio"
+category = "sim"
 status = "unknown"
 why = "thunk->0x4ceaa0"
 
@@ -8443,9 +8443,10 @@ manual = true
 [[function]]
 addr = "0x413500"
 size = 66
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "vehicle_lift: placar Engine"
+manual = true
 
 [[function]]
 addr = "0x413550"
@@ -9004,30 +9005,34 @@ manual = true
 
 [[function]]
 addr = "0x426410"
+name = "terrain_lower_to_zero"
 size = 17
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
 addr = "0x426430"
+name = "terrain_smooth_or_flatten"
 size = 42
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
 addr = "0x426460"
+name = "terrain_raise_drag"
 size = 20
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
 addr = "0x426480"
+name = "terrain_elevation_brush"
 size = 1358
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -9039,9 +9044,10 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x426d30"
+name = "terrain_coast_cleanup"
 size = 800
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -9110,9 +9116,10 @@ manual = true
 
 [[function]]
 addr = "0x428630"
+name = "cells_toggle_reserved"
 size = 103
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -9149,37 +9156,42 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x429920"
+name = "river_neighbour_links"
 size = 192
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
 addr = "0x4299e0"
+name = "river_flow_propagate"
 size = 762
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
 addr = "0x429ce0"
+name = "river_orient"
 size = 332
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
 addr = "0x429e30"
+name = "tile_set_road"
 size = 104
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
 addr = "0x429ea0"
+name = "tile_set_river"
 size = 276
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -9260,9 +9272,10 @@ manual = true
 
 [[function]]
 addr = "0x42c320"
+name = "territory_paint_rect"
 size = 181
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -9353,9 +9366,10 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x42f630"
+name = "place_create_at"
 size = 108
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -9367,16 +9381,18 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x42f6f0"
+name = "place_init"
 size = 337
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
 addr = "0x42f850"
+name = "place_remove"
 size = 186
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -9440,7 +9456,7 @@ addr = "0x430540"
 size = 1271
 category = "sim"
 status = "verified"
-why = "growth/town_update (world-growth.md 3.3)"
+why = "le 0x570713 vivo a cada avaliacao (predios criados/demolidos pelos lugares anteriores): Example semente 4, 20 dias"
 manual = true
 
 [[function]]
@@ -9471,8 +9487,8 @@ manual = true
 addr = "0x430da0"
 size = 106
 category = "sim"
-status = "spec"
-why = "growth/town_building_unlink (3.6)"
+status = "verified"
+why = "zera +2/+4 do predio (o slot reaproveitado herda os bytes): Example semente 1/4, 20 dias"
 manual = true
 
 [[function]]
@@ -9582,9 +9598,10 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x433eb0"
+name = "place_setup_dialog"
 size = 429
 category = "ui"
-status = "unknown"
+status = "named"
 why = "string:cityset.win"
 
 [[function]]
@@ -9773,7 +9790,7 @@ addr = "0x438170"
 size = 631
 category = "sim"
 status = "verified"
-why = "company_remove (liquidacao com f = 0) [V via snapshot fincmd merger_human]"
+why = "company_liquidate f=0 completo (trens, industrias, estacoes): placar Liquidate; f!=0 (efeito 189) com estacoes/trilho destruidos nao portado"
 manual = true
 
 [[function]]
@@ -10199,7 +10216,7 @@ addr = "0x43c760"
 size = 4254
 category = "sim"
 status = "verified"
-why = "company.rs annual_review_matches_original"
+why = "demissao (news_post + 0x438900) e liquidacao ao fim da revisao: placar Fire/Liquidate"
 manual = true
 
 [[function]]
@@ -12714,9 +12731,10 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x477040"
+name = "map_save_overview"
 size = 1269
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -13193,9 +13211,10 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x48cc00"
+name = "terrain_paint_mixed"
 size = 2856
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -13238,16 +13257,18 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x490490"
+name = "terrain_fill_adjacent"
 size = 1849
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
 addr = "0x490bd0"
+name = "terrain_fill_all"
 size = 720
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -13999,8 +14020,8 @@ why = "no-evidence"
 addr = "0x4a4d00"
 size = 1379
 category = "sim"
-status = "spec"
-why = "world-tick.md 3.4"
+status = "verified"
+why = "item 17: 0x573e02 += max((0x573d9e - pct) * 0.05, 1) quando abaixo da base (0x4a50f2): placar TheftYear"
 manual = true
 
 [[function]]
@@ -14250,8 +14271,8 @@ manual = true
 addr = "0x4a8af0"
 size = 1192
 category = "sim"
-status = "spec"
-why = "docs/spec/ai.md"
+status = "verified"
+why = "ai_person_trade_stocks: tick/fincmd.rs ai_trade_stocks, depois da fase das pessoas; placar Stocks (10 negocios em 60 dias) e Liquidate"
 manual = true
 
 [[function]]
@@ -14928,7 +14949,7 @@ addr = "0x4bf450"
 size = 136
 category = "sim"
 status = "spec"
-why = "cargo.md 7.6"
+why = "lot_return_or_free portado (trainstep/arrive.rs lot_back_to_industry); ramo de devolucao ainda sem caso"
 manual = true
 
 [[function]]
@@ -15212,9 +15233,10 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x4c6e70"
+name = "territory_setup_window"
 size = 3910
 category = "ui"
-status = "unknown"
+status = "named"
 why = "string:eagled.imb"
 
 [[function]]
@@ -15226,16 +15248,18 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x4c8440"
+name = "territory_alloc"
 size = 40
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
 addr = "0x4c8470"
+name = "territory_init"
 size = 168
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -15424,7 +15448,7 @@ addr = "0x4cdd50"
 size = 426
 category = "sim"
 status = "verified"
-why = "train_delete via efeito de cenario 235 (trens pre-colocados de #05 aposentados no inicio): igual ao original"
+why = "remocao do destroco em train_step e liquidacao: placar Crash, CrashHuman, Liquidate"
 manual = true
 
 [[function]]
@@ -15455,8 +15479,8 @@ manual = true
 addr = "0x4ce730"
 size = 724
 category = "sim"
-status = "spec"
-why = "acidente (classificado audio pelo som); docs/spec/trains.md 5.3"
+status = "verified"
+why = "train_crash: placar Crash/CrashHuman (Example preparado, 30/60 dias; trainstep/motion.rs)"
 manual = true
 
 [[function]]
@@ -15469,9 +15493,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4ceaa0"
 size = 977
-category = "audio"
-status = "unknown"
-why = "string:ENROB61m.raw"
+category = "sim"
+status = "verified"
+why = "train_theft: placar Theft (Example preparado, 0x573e02 = 3000, 30/60 dias)"
+manual = true
 
 [[function]]
 addr = "0x4cf030"
@@ -15486,7 +15511,7 @@ addr = "0x4cf390"
 size = 1247
 category = "sim"
 status = "verified"
-why = "docs/spec/trains.md 10; save oracle Example 1 dia identico (crates/rt2-sim/tests/worldloop.rs)"
+why = "ramo do roubo com 0x42fa30 + int_dist e a prisao (bit 0 do ladrao, news_post, 0x573e02/3): placar Theft/Arrest"
 manual = true
 
 [[function]]
@@ -15595,7 +15620,7 @@ addr = "0x4d0fa0"
 size = 295
 category = "sim"
 status = "verified"
-why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs"
+why = "lote do carro removido (0x4bf450 na estacao do lote, senao 0x466a60): placar Liquidate"
 manual = true
 
 [[function]]
@@ -15871,8 +15896,8 @@ why = "no-evidence"
 addr = "0x4d4e90"
 size = 1037
 category = "sim"
-status = "spec"
-why = "docs/spec/terrain-track.md 10: crates/rt2-sim/src/build, tests/build_snapshots.rs e ai_snapshots dl0_rich_c5"
+status = "verified"
+why = "ramo no trilho (0x413500 por carro, locomotiva nova na posicao da antiga por 0x414220/0x413550, 0x4d14b0): placar Engine"
 manual = true
 
 [[function]]

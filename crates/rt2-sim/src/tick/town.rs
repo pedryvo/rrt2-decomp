@@ -100,6 +100,11 @@ impl TownWorld<'_> {
 }
 
 impl TownEnv for TownWorld<'_> {
+    /// `0x430540` reads the global `0x570713` at each evaluation.
+    fn industry_count(&mut self) -> Option<i32> {
+        Some(i32_at(&self.s.save.state, ST_INDUSTRY_COUNT))
+    }
+
     /// `town_building_stats` (`0x430400`).
     fn stats(&mut self) -> crate::growth::BuildingStats {
         let refs: Vec<BuildingRef> = self
@@ -504,7 +509,7 @@ impl SimState {
     /// `0x4072c0(building)`: links a new building to every station whose catchment reaches it
     /// (`station_catchment_test` `0x407030`): one `pool_58` record per station, chained from
     /// the building (`+0x2f`) and from the station (`+0x3d`).
-    pub(super) fn link_building(&mut self, b: usize) {
+    pub(crate) fn link_building(&mut self, b: usize) {
         let Some(br) = pool::record(&self.save.objects, b) else {
             return;
         };
@@ -567,7 +572,7 @@ impl SimState {
     }
 
     /// `building_destroy(b, 1)` (`0x40adb0`, world-growth.md 3.6).
-    fn building_destroy(&mut self, rng: &mut GameRng, slot: usize) {
+    pub(crate) fn building_destroy(&mut self, rng: &mut GameRng, slot: usize) {
         let Some(rec) = pool::record(&self.save.objects, slot) else {
             return;
         };
@@ -602,6 +607,12 @@ impl SimState {
                 }
                 cur = nx;
             }
+        }
+        // `0x430da0` clears the building's place and next fields; the freed record keeps them
+        // for the next allocation of the slot.
+        if let Some(r) = pool::record_mut(&mut self.save.objects, slot) {
+            put_u16(&mut r.data, BD_PLACE, 0);
+            put_u16(&mut r.data, BD_NEXT, 0);
         }
         // The lots of the pile that no station took are freed.
         let mut lot = pile;

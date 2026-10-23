@@ -5429,3 +5429,178 @@ name = "ui_calendar_tick"
 kind = "function"
 comment = "porteiro da interface: motores novos (0x469320 tipo 5), noticias pendentes (0x4a34d0), viradas de mes (setembro: eventos historicos com janela modal 0x4510a0; fevereiro de 1920/1958/1840/1880: noticias) e 0x5704fe..0x570504 = data atual; fora do sim_advance; [S]"
 spec = "docs/fidelity-status.md"
+
+[[symbol]]
+addr = "0x426480"
+name = "terrain_elevation_brush"
+kind = "function"
+comment = "fastcall(x,y,modo,raio,quantidade): 0 sobe, 1 baixa ate o nivel, 2 alisa (aneis, media dos 4 vizinhos), 3 (via 0x426430) nivela; cantos limitados a -255..510; [V portado em editor::elevation_brush]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x426460"
+name = "terrain_raise_drag"
+kind = "function"
+comment = "fastcall(x,y,raio,delta): modo 0 de 0x426480, chamado pelo arrasto da ferramenta 1 (0x48d730); [V]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x426430"
+name = "terrain_smooth_or_flatten"
+kind = "function"
+comment = "fastcall(x,y,raio,nivelar): ferramenta 2; nivelar usa modo 3 (forca 0xf), senao modo 2 (forca 0x2d); [V]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x426410"
+name = "terrain_lower_to_zero"
+kind = "function"
+comment = "fastcall(x,y,raio): ferramenta 3, modo 1 de 0x426480 com nivel 0 e forca 0x14; [V]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x426d30"
+name = "terrain_coast_cleanup"
+kind = "function"
+comment = "fastcall(x0,y0,x1,y1): tiles de terra (nem praia nem agua) vizinhos de agua na caixa viram praia (0x42a3e0 forcado) sem vegetacao nem arvores; [V portado em editor::coast_cleanup]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x490490"
+name = "terrain_fill_adjacent"
+kind = "function"
+comment = "fastcall(x,y,classe,modo,previa,nivel): preenchimento por inundacao de 4 vizinhos; modo 0 soma dos cantos >= a do tile inicial, 1 <=, 2 mesma classe; com agua (18) nivela os cantos na media; ferramenta 10 e inundacao de territorio; [V portado em editor::fill]"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x490bd0"
+name = "terrain_fill_all"
+kind = "function"
+comment = "fastcall(x,y,classe,modo,previa): como 0x490490 sobre o mapa inteiro sem conectividade; ferramenta 0xb; [V]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x48cc00"
+name = "terrain_paint_mixed"
+kind = "function"
+comment = "fastcall(x,y,larg,alt,mistura): w*h/12 sementes (x, y, classe por pesos 18x19 na pilha), tiles das classes 1..7 recebem a classe da semente mais proxima; ferramenta 0xc; [V portado em editor::paint_mixed]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x42c320"
+name = "territory_paint_rect"
+kind = "function"
+comment = "fastcall(x,y,larg,alt,regiao): byte 9 dos tiles = regiao e refaz as fronteiras (0x42bf90); ferramenta 0x12; [V]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x428630"
+name = "cells_toggle_reserved"
+kind = "function"
+comment = "fastcall(x,y,raio): inverte o bit 3 do byte 0 dos tiles do quadrado (celulas reservadas); ferramenta 0x10; [V]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x429e30"
+name = "tile_set_road"
+kind = "function"
+comment = "fastcall(x,y,ligar): bit 5 do byte 3 do tile, flags de terreno e rede de estradas (0x428fe0); ferramenta 0x13; [V]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x429ea0"
+name = "tile_set_river"
+kind = "function"
+comment = "fastcall(x,y,ligar,redesenhar): bit 0 do byte 0 do tile; reorienta os rios vizinhos (0x429ce0) e propaga o sentido da corrente (0x4299e0); ferramenta 0xf; [V portado em editor::lay_river]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x429ce0"
+name = "river_orient"
+kind = "function"
+comment = "fastcall(x,y,extra): gira o sentido do rio (bits 1-2 do byte 0) ate apontar para um vizinho possivel; [V]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x429920"
+name = "river_neighbour_links"
+kind = "function"
+comment = "fastcall(x,y,&flags[4],&n): vizinhos N,L,S,O que sao rio ou borda do mapa; normaliza n==1 e n==0; [V]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x4299e0"
+name = "river_flow_propagate"
+kind = "function"
+comment = "fastcall(x,y,&x0,&y0,&x1,&y1): propaga o sentido da corrente pelos tiles de rio ligados e devolve a caixa tocada; [V]"
+spec = "docs/spec/commands.md"
+
+[[symbol]]
+addr = "0x42f630"
+name = "place_create_at"
+kind = "function"
+comment = "fastcall(x,y): aloca um lugar (0x42f6f0 inicializa) e poe o marcador (estrutura tipo 5) no tile; ferramenta 0xd; [V portado em World::editor_place_add]"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x42f6f0"
+name = "place_init"
+kind = "function"
+comment = "thiscall(lugar,id,x,y): caixa = mapa todo, tipo cidade, estilo +0x11 = 1, tamanho 2, crescimento 100, intensidade rng(0x50,0x78), 53 pesos = 100, nome LNG 0x1d; [V]"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x42f850"
+name = "place_remove"
+kind = "function"
+comment = "fastcall(lugar): predios do lugar perdem lugar e proximo, marcador sai do tile (0x42e320 tipo 5); [V portado em World::editor_place_remove]"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x433eb0"
+name = "place_setup_dialog"
+kind = "function"
+comment = "fastcall(lugar): janela cityset.win (nome +0x16 via 0x814f, tipo +0x10 0x8157, tamanho +0x2c 0x815d, estilo +0x11 0x8163 (4 vira 5), tendencia +0x49 0x8151 (valor-2), pesos u16 +0x4a abas 0x8172/0x8173); devolve 0 se Cancelar; [V]"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x4c8470"
+name = "territory_init"
+kind = "function"
+comment = "thiscall(territorio,id): nome LNG 0x1d, +0x2a = id, +0x23/+0x24/+0x25 = 1, +0x26..29 e +0x44..47 = 1, u16 +0x3b.. = 50, resto zero; [V portado em World::editor_territory_add]"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x4c8440"
+name = "territory_alloc"
+kind = "function"
+comment = "devolve o id de um territorio novo (pool 0x574ca8) inicializado por 0x4c8470; [V]"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x4c6e70"
+name = "territory_setup_window"
+kind = "function"
+comment = "janela Territory Setup: nome +4, goodwill padrao u16 +0x4e (x100), borda visivel +0x24, remapeia +0x2a e botao direito +0x25, direitos separados +0x43, direitos padrao +0x26..29 e a venda +0x44..47; [S]"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x477040"
+name = "map_save_overview"
+kind = "function"
+comment = "fastcall(destino,mapa): ramo de mapa (0x570233 != 0) gera 170x170 bytes (0 vazio, 1 costa/fronteira/borda, 2 agua, 3 terra em xadrez) a 0x567ebf; igual byte a byte nos .MP2 salvos pelo editor (tests/editor.rs); o outro ramo e a imagem 117x117 da tela do jogo; [V]"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x4ceaa0"
+name = "train_theft"
+kind = "function"
+comment = "thiscall(train; force): libera os lotes de passageiros/correio (classe +0x30 <= 1, 0x466a60); se houve: +0x69 = 0, +0xbc = 1, rng_range(30,60) dias, +0xa8 = 20, penalidade 2000/(n^0.66+4) (+0x4229, territorio); sorteia o ladrao (rng_range(0,n-1)) entre as entradas elegiveis de 0x573db7; mensagem LNG 0x8b0/0x8b1 so na empresa da interface"
+spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x413500"
+name = "vehicle_lift"
+kind = "function"
+comment = "fastcall(car): +0x2a = 0 e, sem +0x45, tira a estrutura do carro do tile (0x42e320 tipo 2)"
+spec = "docs/spec/trains.md"

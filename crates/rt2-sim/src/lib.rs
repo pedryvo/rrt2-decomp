@@ -37,6 +37,7 @@ pub mod command;
 pub mod company_record;
 pub mod convert;
 pub mod data;
+pub mod editor;
 pub mod effects;
 pub mod exe;
 pub mod fields;

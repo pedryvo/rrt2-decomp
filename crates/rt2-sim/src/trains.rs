@@ -485,8 +485,9 @@ pub enum TheftOutcome {
     None,
     /// The cargo is stolen (`0x4ceaa0`).
     Theft,
-    /// The thieves are arrested: `0x573e02` becomes `new_pct`.
-    Arrested { new_pct: i16 },
+    /// The thieves are arrested: `0x573e02` becomes `new_pct`; `pick` is the index of the
+    /// named thief among the eligible entries (`None` without any).
+    Arrested { new_pct: i16, pick: Option<i32> },
 }
 
 /// The theft branch of `train_breakdown_check` (`0x4cf390`, trains.md 6.4) [V as part of
@@ -523,11 +524,12 @@ pub fn theft_roll(rng: &mut GameRng, cells: f32, t: &TheftInput) -> TheftOutcome
     if a * f64::from(100.0f32) <= f64::from(rng.range(0, 100)) {
         return TheftOutcome::Theft;
     }
-    if t.eligible_thieves > 0 {
-        // picks which thief is named in the message
-        rng.range(0, t.eligible_thieves - 1);
+    // picks which thief is named in the message (and marked as arrested)
+    let pick = (t.eligible_thieves > 0).then(|| rng.range(0, t.eligible_thieves - 1));
+    TheftOutcome::Arrested {
+        new_pct: t.pct / 3,
+        pick,
     }
-    TheftOutcome::Arrested { new_pct: t.pct / 3 }
 }
 
 /// Inputs of [`breakdown_check`].
@@ -552,7 +554,7 @@ pub enum CheckOutcome {
     Breakdown,
     Crash,
     Theft,
-    Arrested { new_pct: i16 },
+    Arrested { new_pct: i16, pick: Option<i32> },
 }
 
 /// `train_breakdown_check` (`0x4cf390`, trains.md 5.1, 6.4) [V]: halving for the AI, the breakdown
@@ -574,7 +576,7 @@ pub fn breakdown_check(rng: &mut GameRng, i: &CheckInput) -> CheckOutcome {
         BreakdownOutcome::None => match theft_roll(rng, cells, &i.theft) {
             TheftOutcome::None => CheckOutcome::Idle,
             TheftOutcome::Theft => CheckOutcome::Theft,
-            TheftOutcome::Arrested { new_pct } => CheckOutcome::Arrested { new_pct },
+            TheftOutcome::Arrested { new_pct, pick } => CheckOutcome::Arrested { new_pct, pick },
         },
     }
 }

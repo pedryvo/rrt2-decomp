@@ -11,7 +11,8 @@ Opcoes por cenario: `preseed = K` (RNG do jogo e do CRT = K antes da carga, `adv
 `new_game = "SET:IDX:GSEED:RSEED"` (o original inicia o cenario da campanha por 0x410de0; o clone
 roda `World::new_game` com as opcoes lidas da saida de 0 dias do original; `campaign_name` = nome
 da tabela 0x552430); `skip_choices = true` (advance_save.py --skip-choices) para mapas com escolhas
-modais de regras de cenario.
+modais de regras de cenario; `prepared = "~/.cache/rrt2/rare/X.GAM"` no lugar de `save`: um save
+preparado (eventos raros, gerado por re/scripts/wine/prepare_rare.py; fica fora do repositorio).
   4. rt2-savediff --json orig_N clone  ->  iguais / N campos / principais grupos
 e reescreve a tabela de docs/fidelity-status.md entre <!-- fidelity:begin --> e <!-- fidelity:end -->.
 Sai com 1 se algum caso que estava IGUAL no placar anterior regrediu.
@@ -168,7 +169,16 @@ def main():
     for sc in scenarios:
         if args.only and sc["name"] not in args.only:
             continue
-        src = os.path.join(INSTALL, sc["save"])
+        if "prepared" in sc:
+            src = os.path.expanduser(sc["prepared"])
+            if not os.path.isfile(src):
+                print("== %s: falta %s (rode re/scripts/wine/prepare_rare.py)" % (sc["name"], src))
+                for days in sc["days"]:
+                    rows.append({"name": sc["name"], "desc": sc.get("desc", sc["name"]),
+                                 "days": days, "error": "save preparado ausente"})
+                continue
+        else:
+            src = os.path.join(INSTALL, sc["save"])
         seed = sc.get("seed", 1234)
         tag = "%s__%s__s%d" % (re.sub(r"\W+", "_", sc["name"]), sha256(src)[:8], seed)
         extra, clone_src, clone_extra = [], None, []
@@ -181,7 +191,7 @@ def main():
         if sc.get("new_game"):
             extra += ["--new-game", sc["new_game"]]
             tag += "__ng" + re.sub(r"\W+", "_", sc["new_game"])
-        print("== %s (%s)" % (sc["name"], sc["save"]), flush=True)
+        print("== %s (%s)" % (sc["name"], sc.get("save") or sc["prepared"]), flush=True)
         base = os.path.join(cache, tag + "__d0.GAM")
         err = original(args, sb, src, 0, seed, base, extra)
         if sc.get("new_game"):

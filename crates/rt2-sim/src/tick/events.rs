@@ -678,8 +678,17 @@ impl ScenarioWorld for ScWorld<'_> {
             crate::ai::Ai::new(ts).territory_confiscate(company, territory, what, destroy);
         });
     }
-    fn deactivate_company(&mut self, _company: i32) {
-        self.skip("scenario_deactivate_company", "company_liquidate 0x438170");
+    fn deactivate_company(&mut self, company: i32) {
+        // Effect 189: `0x438170(company, 1)`.
+        if pool::record(&self.s.save.companies, company as usize).is_none() {
+            return;
+        }
+        let minutes = self.minutes;
+        let crt = &mut *self.crt;
+        // Nothing in it draws from the game RNG (train_delete, owners, holdings).
+        let mut rng = GameRng::new(0);
+        self.s
+            .company_liquidate(minutes, &mut rng, crt, company as usize, true);
     }
     fn eliminate_player(&mut self, person: i32) {
         let minutes = self.minutes;

@@ -18,6 +18,14 @@ use super::mem::{P, Ts, ring};
 use crate::fp::ftol;
 use crate::trains::{SpeedMods, engine_max_speed};
 
+/// State offsets (`0x5704e8 + off`): theft percentage `0x573e02` (i16), the thief table
+/// `0x573da2` (4 entries of 0x18 bytes: name, flags `+0x15`, first year `+0x16`), the news flag
+/// `0x5707bd` and counter `0x5707be`.
+const ST_THEFT_PCT: usize = 0x391a;
+const ST_THIEVES: usize = 0x38ba;
+const ST_NEWS_FLAG: usize = 0x2d5;
+const ST_NEWS_COUNTER: usize = 0x2d6;
+
 /// `(vehicle +0x06 & ~1) << 15`: half the coupling length of vehicle type `t`, in 16.16 units.
 fn half_len(ts: &Ts<'_>, t: u8) -> i32 {
     (i32::from(ts.vt16(t, 6)) & !1) << 15
@@ -82,12 +90,8 @@ impl Ts<'_> {
     /// `train_step(train, dt, flag)` (`0x4d0ce0`, trains.md 10.3).
     pub fn train_step(&mut self, t: i32, dt: i32, update_speed: bool) {
         if self.u8(P::Train, t, 0xf2) != 0 && self.u32(P::Train, t, 0xee) <= self.now {
-            todo_hook!(
-                self.log,
-                "train_delete",
-                "train_delete 0x4cdd50 (crashed train expires)",
-                "trains.md 5.3"
-            );
+            // The wreck is cleared: `train_delete` (`0x4cdd50`, trains.md 5.3 and 11).
+            crate::ai::Ai::new(self).train_delete(t);
             return;
         }
         let mut on = self.u8(P::Train, t, 0x9c) != 0;
@@ -1527,12 +1531,22 @@ impl Ts<'_> {
     /// the tile structure, and reserves the step. Needs `train.+0x9d != 0` (set by command
     /// `0x2c`, or by the AI when it buys a train).
     pub(crate) fn place_head_car(&mut self, t: i32) {
+        self.place_head_car_at(t, None);
+    }
+
+    /// The head branch of `vehicle_place(head, x, y, step)` (`0x413550`): with `at` =
+    /// `Some((x, y, step))` the locomotive goes to that tile and route step (the engine swap of
+    /// a train on the track, `0x4d4e90`), else to the current stop as in [`Self::place_head_car`].
+    pub(crate) fn place_head_car_at(&mut self, t: i32, at: Option<(i16, i16, i16)>) {
         let car = self.first_car(t);
         if self.u8(P::Train, t, 0x9d) == 0 {
             return;
         }
         let k = self.cur_stop(t);
-        if self.stop8(t, k, 3) & 8 == 0 {
+        if let Some((x, y, _)) = at {
+            self.set16(P::Car, car, 9, x as u16);
+            self.set16(P::Car, car, 0xb, y as u16);
+        } else if self.stop8(t, k, 3) & 8 == 0 {
             let st = i32::from(self.stop16(t, k, 0));
             let id = self.u16(P::Station, st, 0);
             self.set16(P::Train, t, 0x9e, id);
@@ -1546,7 +1560,7 @@ impl Ts<'_> {
             self.set16(P::Car, car, 0xb, x);
         }
         self.set8(P::Train, t, 0x9c, 1);
-        let idx = 0;
+        let idx = at.map_or(0, |(_, _, step)| i32::from(step));
         self.set16(P::Car, car, 0x11, idx as u16);
         let stop_before = self.u8(P::Train, t, 0x3c);
         let has_route = if self.i32(P::Train, t, 0x65) == 0
@@ -1784,18 +1798,40 @@ impl Ts<'_> {
         ) as f32;
         self.set16(P::Train, t, 0xa0, 0);
         let st = &self.s.state;
-        let pct = i16::from_le_bytes([st[0x391a], st[0x391b]]);
-        if pct != 0 {
-            todo_hook!(
-                self.log,
-                "theft_town_search",
-                "0x42fa30 nearest town for the theft roll (0x573e02 != 0)",
-                "trains.md 6.4"
+        let pct = i16::from_le_bytes([st[ST_THEFT_PCT], st[ST_THEFT_PCT + 1]]);
+        // `0x42fa30` + `int_dist` (`0x4f0cd0`) from the locomotive's tile, only when the theft
+        // roll can pass its first test (`c > 1e-5`, trains.md 6.4).
+        let half = if human {
+            cells as f32
+        } else {
+            (f64::from(cells as f32) * 0.5) as f32
+        };
+        let c0 = (f64::from(half) * 0.0005 * (f64::from(pct) * 0.01)) as f32;
+        let nearby_excess = if f64::from(c0) > 1e-5 {
+            let (hx, hy) = (
+                i32::from(self.i16(P::Car, head, 9)),
+                i32::from(self.i16(P::Car, head, 0xb)),
             );
-        }
+            let town = crate::ai::Ai::new(self).nearest_town(hx, hy);
+            if town > 0 {
+                let (px, py) = (
+                    i32::from(self.i16(P::Place, town, 4)),
+                    i32::from(self.i16(P::Place, town, 6)),
+                );
+                let lvl = self.u8(P::Place, town, 0x2c);
+                Some(crate::trains::town_excess(
+                    crate::ai::Ai::dist(hx, hy, px, py),
+                    lvl,
+                ))
+            } else {
+                None
+            }
+        } else {
+            None
+        };
         let theft = crate::trains::TheftInput {
             pct,
-            nearby_excess: None,
+            nearby_excess,
             theft_mod: self.effect(0x21, company, 0, terr),
             caboose: self.u8(P::Train, t, 0xbb) & 2 != 0,
             carries_people: !self
@@ -1803,7 +1839,7 @@ impl Ts<'_> {
                     ts.i32(P::Car, c, 0x2d) != 0 && ts.vt8(ts.u8(P::Car, c, 8), 0x30) <= 1
                 })
                 .is_empty(),
-            eligible_thieves: 0,
+            eligible_thieves: self.eligible_thieves(),
         };
         let out = crate::trains::breakdown_check(
             self.rng,
@@ -1819,18 +1855,181 @@ impl Ts<'_> {
         match out {
             crate::trains::CheckOutcome::Idle => {}
             crate::trains::CheckOutcome::Breakdown => self.train_breakdown(t),
-            crate::trains::CheckOutcome::Crash => todo_hook!(
+            crate::trains::CheckOutcome::Crash => self.train_crash(t),
+            crate::trains::CheckOutcome::Theft => self.train_theft(t),
+            crate::trains::CheckOutcome::Arrested { new_pct, pick } => {
+                self.thieves_arrested(new_pct, pick)
+            }
+        }
+    }
+
+    /// Entries of the thief table (`0x573db7`, 4 x 0x18 bytes) that can be named: flags `& 2`,
+    /// not yet arrested (`& 1 == 0`), first year (`+1`, i16) not after the current year.
+    fn eligible_thieves_list(&self) -> Vec<usize> {
+        let st = &self.s.state;
+        (0..4)
+            .filter(|&i| {
+                let o = ST_THIEVES + i * 0x18;
+                let f = st[o + 0x15];
+                let y = i16::from_le_bytes([st[o + 0x16], st[o + 0x17]]);
+                f & 2 != 0 && f & 1 == 0 && i32::from(y) <= i32::from(self.year)
+            })
+            .collect()
+    }
+
+    fn eligible_thieves(&self) -> i32 {
+        self.eligible_thieves_list().len() as i32
+    }
+
+    /// The arrest branch of `0x4cf390` after the thief pick ([`crate::trains::theft_roll`]):
+    /// the picked thief (`rng_range(0, n-1) + 1`-th eligible entry) gets flag bit 0; the
+    /// newspaper story (LNG 0x8b2/0x8b3 with 0x8b4, `news_post` `0x4a42f0`: one CRT draw,
+    /// `0x5707bd = 1`, `0x5707be += 1`) and `0x573e02 /= 3`.
+    fn thieves_arrested(&mut self, new_pct: i16, pick: Option<i32>) {
+        self.log.ran("thieves_arrested");
+        let list = self.eligible_thieves_list();
+        if let Some(&i) = pick.and_then(|k| list.get(k as usize)) {
+            self.s.state[ST_THIEVES + i * 0x18 + 0x15] |= 1;
+        }
+        let _ = self.crt.range(0, 10000);
+        self.s.state[ST_NEWS_FLAG] = 1;
+        let n = u32::from_le_bytes([
+            self.s.state[ST_NEWS_COUNTER],
+            self.s.state[ST_NEWS_COUNTER + 1],
+            self.s.state[ST_NEWS_COUNTER + 2],
+            self.s.state[ST_NEWS_COUNTER + 3],
+        ])
+        .wrapping_add(1);
+        self.s.state[ST_NEWS_COUNTER..ST_NEWS_COUNTER + 4].copy_from_slice(&n.to_le_bytes());
+        self.s.state[ST_THEFT_PCT..ST_THEFT_PCT + 2].copy_from_slice(&new_pct.to_le_bytes());
+    }
+
+    /// The reputation penalty of a breakdown, crash or theft (`0x4ce4c0`, `0x4ce730`,
+    /// `0x4ceaa0`): `num / (trains^0.66 + 4)` (`num` = the f64 at `num_va`) off `+0x4229`
+    /// (floor 0) and off the territory value `+0x47a + terr*0x1ed` (floor -10000; territory of
+    /// the locomotive's tile, 1 off the track).
+    fn incident_penalty(&mut self, t: i32, num_va: u32) {
+        let head = self.first_car(t);
+        let company = self.i32(P::Train, t, 0x41);
+        let terr = if self.u8(P::Train, t, 0x9c) == 0 || self.u8(P::Car, head, 0x2a) == 0 {
+            1
+        } else {
+            i32::from(self.t8(
+                i32::from(self.i16(P::Car, head, 9)),
+                i32::from(self.i16(P::Car, head, 0xb)),
+                9,
+            ))
+        };
+        let n = f64::from(self.i32(P::Company, company, 0x27));
+        let p = self.img.f64(num_va)
+            / (crate::fp::pow(n, self.img.f64(0x0053_5b70)) + self.img.f64(0x0053_5138));
+        let v = ftol(f64::from(self.i32(P::Company, company, 0x4229)) - p);
+        self.seti32(P::Company, company, 0x4229, if v < 1 { 0 } else { v });
+        let o = (0x47a + terr * 0x1ed) as usize;
+        let v = ftol(f64::from(self.i16(P::Company, company, o)) - p) as i16;
+        self.set16(P::Company, company, o, v.max(-10000) as u16);
+    }
+
+    /// `train_crash` (`0x4ce730`, train, 0, trains.md 5.3): wrecked (`+0xf2 = 1`) for
+    /// `rng_range(30, 45)` days, then deleted by `train_step`; priority 20, the locomotive's
+    /// puff clock restarts and the company pays `8000 / (trains^0.66 + 4)`. For the company of
+    /// the interface: message LNG 0x8af, the crash sound, the train view and game speed capped
+    /// at 4 (a queued command).
+    pub fn train_crash(&mut self, t: i32) {
+        if self.u8(P::Train, t, 0xed) != 0
+            || self.u8(P::Train, t, 0xf2) != 0
+            || self.u8(P::Train, t, 0xbc) != 0
+        {
+            return;
+        }
+        self.log.ran("train_crash");
+        self.set8(P::Train, t, 0xbc, 0);
+        self.set8(P::Train, t, 0xed, 0);
+        self.set8(P::Train, t, 0xf2, 1);
+        let days = self.rng.range(0x1e, 0x2d);
+        self.set32(
+            P::Train,
+            t,
+            0xee,
+            (days as u32).wrapping_mul(0x5a0).wrapping_add(self.now),
+        );
+        self.set8(P::Train, t, 0xa8, 0x14);
+        let head = self.first_car(t);
+        self.set32(P::Car, head, 0x3d, self.now.wrapping_sub(500));
+        self.incident_penalty(t, 0x0053_5510);
+        let company = self.i32(P::Train, t, 0x41);
+        if self.is_ui_company_pub(company) {
+            // The sound handle `+0xab` is released (bit 0x10 of `+0xbb` cleared) before the
+            // crash sound; the rest is interface (message box, `0x4d0870`, `0x45cd60`) and the
+            // speed command.
+            if self.i32(P::Train, t, 0xab) != 0 {
+                self.seti32(P::Train, t, 0xab, 0);
+                let b = self.u8(P::Train, t, 0xbb) & 0xef;
+                self.set8(P::Train, t, 0xbb, b);
+            }
+            todo_hook!(
                 self.log,
-                "train_crash",
-                "train_crash 0x4ce730 (rng_range(30,45) days, penalty)",
+                "crash_message",
+                "0x4ce730 message, sound, view and speed cap for the viewed company",
                 "trains.md 5.3"
-            ),
-            _ => todo_hook!(
+            );
+        }
+    }
+
+    /// `train_theft` (`0x4ceaa0`, train, 0, trains.md 6.4): the passenger and mail lots of the
+    /// cars (vehicle class `+0x30` 0 or 1) are freed (`lot_free` `0x466a60`); if one was, the
+    /// train stops (`+0x69 = 0`, `+0xbc = 1`) for `rng_range(30, 60)` days, priority 20, the
+    /// company pays `2000 / (trains^0.66 + 4)`, and a thief is picked
+    /// (`rng_range(0, n - 1)` over the eligible entries of `0x573db7`) for the message
+    /// (LNG 0x8b0/0x8b1, interface company only).
+    pub fn train_theft(&mut self, t: i32) {
+        if self.u8(P::Train, t, 0xed) != 0
+            || self.u8(P::Train, t, 0xf2) != 0
+            || self.u8(P::Train, t, 0xbc) != 0
+        {
+            return;
+        }
+        self.set8(P::Train, t, 0xbc, 0);
+        self.set8(P::Train, t, 0xf2, 0);
+        self.set8(P::Train, t, 0xed, 0);
+        let mut stolen = false;
+        let mut c = self.first_car(t);
+        while c != 0 {
+            let lot = self.i32(P::Car, c, 0x2d);
+            if lot != 0 && self.vt8(self.u8(P::Car, c, 8), 0x30) <= 1 {
+                self.lot_free(lot);
+                self.seti32(P::Car, c, 0x2d, 0);
+                stolen = true;
+            }
+            c = self.car_next(c);
+        }
+        if !stolen {
+            return;
+        }
+        self.log.ran("train_theft");
+        self.seti32(P::Train, t, 0x69, 0);
+        self.set8(P::Train, t, 0xbc, 1);
+        let days = self.rng.range(0x1e, 0x3c);
+        self.set32(
+            P::Train,
+            t,
+            0xee,
+            (days as u32).wrapping_mul(0x5a0).wrapping_add(self.now),
+        );
+        self.set8(P::Train, t, 0xa8, 0x14);
+        self.incident_penalty(t, 0x0053_5690);
+        let n = self.eligible_thieves();
+        if n != 0 {
+            self.rng.range(0, n - 1);
+        }
+        let company = self.i32(P::Train, t, 0x41);
+        if self.is_ui_company_pub(company) {
+            todo_hook!(
                 self.log,
-                "train_theft",
-                "train_theft 0x4ceaa0 / arrest (thief names 0x573db7)",
+                "theft_message",
+                "0x4ceaa0 message LNG 0x8b0/0x8b1 and sound for the viewed company",
                 "trains.md 6.4"
-            ),
+            );
         }
     }
 
@@ -1858,24 +2057,8 @@ impl Ts<'_> {
         self.set8(P::Train, t, 0xa8, 0x14);
         let head = self.first_car(t);
         self.set32(P::Car, head, 0x3d, self.now.wrapping_sub(500));
+        self.incident_penalty(t, 0x0053_5690);
         let company = self.i32(P::Train, t, 0x41);
-        let terr = if self.u8(P::Train, t, 0x9c) == 0 || self.u8(P::Car, head, 0x2a) == 0 {
-            1
-        } else {
-            i32::from(self.t8(
-                i32::from(self.i16(P::Car, head, 9)),
-                i32::from(self.i16(P::Car, head, 0xb)),
-                9,
-            ))
-        };
-        let n = f64::from(self.i32(P::Company, company, 0x27));
-        let p = self.img.f64(0x0053_5690)
-            / (crate::fp::pow(n, self.img.f64(0x0053_5b70)) + self.img.f64(0x0053_5138));
-        let v = ftol(f64::from(self.i32(P::Company, company, 0x4229)) - p);
-        self.seti32(P::Company, company, 0x4229, if v < 1 { 0 } else { v });
-        let o = (0x47a + terr * 0x1ed) as usize;
-        let v = ftol(f64::from(self.i16(P::Company, company, o)) - p) as i16;
-        self.set16(P::Company, company, o, v.max(-10000) as u16);
         if self.is_ui_company_pub(company) {
             todo_hook!(
                 self.log,

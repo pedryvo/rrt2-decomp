@@ -431,7 +431,7 @@ impl SimState {
     /// `towns_recompute_extent` (`0x430e70`): each place's land tile count (`+0x32`, not water
     /// nor class 8) and bounding box (`+8..+0xe`) over the tiles it owns (`place_at(x, y, 1)`);
     /// a place without tiles gets the whole map.
-    fn towns_recompute_extent(&mut self) {
+    pub(crate) fn towns_recompute_extent(&mut self) {
         if self.save.places.count == 0 {
             return;
         }
@@ -491,7 +491,7 @@ impl SimState {
 
     /// `territories_recount_land` (`0x4c8970`): land tiles per region (tile byte 9) into each
     /// territory's `+0x48` (by its id at `+0`) and their total into `0x573e04`.
-    fn territories_recount_land(&mut self) {
+    pub(crate) fn territories_recount_land(&mut self) {
         let tb = rt2_formats::terrain::tables();
         let mut n = [0i32; 32];
         for t in &self.save.map.tiles {

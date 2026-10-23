@@ -380,6 +380,53 @@ impl Ts<'_> {
         }
     }
 
+    /// `0x4bf450(lot)`: a lot unloaded back at its own station while still fresh (age below
+    /// half its cargo's life, `0x5404b9 + 0x21*cargo`) returns to its industry: the
+    /// industry's waiting count for that output (`+0x8b + 2*k`, `k` from `0x40b1b0`) grows,
+    /// the lot forgets its station and car (`+3..+6`, `+0xb..+0xe`) and every linked station
+    /// counts it again (`0x468af0`); otherwise it is freed (`0x466a60`).
+    pub fn lot_back_to_industry(&mut self, lot: i32) {
+        let cargo = self.i8(P::Lot, lot, 0);
+        let age = self.now.wrapping_sub(self.u32(P::Lot, lot, 7));
+        let life = (self
+            .img
+            .i32(0x0054_04b9u32.wrapping_add((i32::from(cargo) * 0x21) as u32))
+            >> 1) as u32;
+        let ind = i32::from(self.u16(P::Lot, lot, 1));
+        if age < life && ind != 0 && self.exists(P::Industry, ind) {
+            let set = u32::from(
+                self.s
+                    .header
+                    .get((0x0057_04ac - crate::ai::HDR_BASE) as usize)
+                    .copied()
+                    .unwrap_or(0),
+            );
+            let ty = u32::from(self.u8(P::Industry, ind, 7));
+            let base = 0x0054_1ae5 + (set * 0x35 + ty) * 0x90;
+            let k = (0..4u32)
+                .find(|&k| self.img.u8(base + 0x20 * k) == cargo as u8)
+                .map_or(-1, |k| k as i32);
+            let o = (0x8b + 2 * k) as usize;
+            let v = self.i16(P::Industry, ind, o).wrapping_add(1);
+            self.set16(P::Industry, ind, o, v as u16);
+            for off in [3usize, 4, 5, 6, 0xb, 0xc, 0xd, 0xe] {
+                self.set8(P::Lot, lot, off, 0);
+            }
+            let n = i32::from(self.i8(P::Industry, ind, 0x33));
+            let mut link = self.i32(P::Industry, ind, 0x2f);
+            for _ in 0..n {
+                let st = i32::from(self.u16(P::Link, link, 2));
+                let o = (0x61 + 2 * i32::from(cargo)) as usize;
+                let v = self.i16(P::Station, st, o).wrapping_add(1);
+                self.set16(P::Station, st, o, v as u16);
+                link = self.i32(P::Link, link, 6);
+            }
+            self.log.ran("lot_back_to_industry");
+        } else {
+            self.lot_free(lot);
+        }
+    }
+
     /// `lot_free` (`0x466a60`): unlinks the lot from its industry pile, its station list and
     /// its car, and frees it.
     pub fn lot_free(&mut self, lot: i32) {

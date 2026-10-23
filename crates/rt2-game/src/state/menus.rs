@@ -32,6 +32,8 @@ use crate::text::id as lng;
 pub(super) const A_SINGLE: u32 = 400;
 pub(super) const A_MULTI: u32 = 401;
 pub(super) const A_EDITOR: u32 = 402;
+pub(super) const A_ED_NEW: u32 = 414;
+pub(super) const A_ED_LOAD: u32 = 415;
 pub(super) const A_SCORES: u32 = 403;
 pub(super) const A_CREDITS: u32 = 404;
 pub(super) const A_SUB_NEW_CAMPAIGN: u32 = 410;
@@ -73,6 +75,8 @@ const INSET: Color = Color(0x0c, 0x0f, 0x0c, 0xd0);
 pub(super) enum Page {
     Main,
     Single,
+    /// The Editor entry: New Map and Load Map.
+    Editor,
     /// New Scenario: the Game Setup dialog (with the Map or Options dialog beside it).
     NewScenario,
     NewCampaign,
@@ -283,7 +287,10 @@ impl AppState {
         }
         match action {
             A_SINGLE => self.open_page(Page::Single),
-            A_MULTI | A_EDITOR => {}
+            A_MULTI => {}
+            A_EDITOR => self.open_page(Page::Editor),
+            A_ED_NEW => self.editor_enter(false),
+            A_ED_LOAD => self.editor_enter(true),
             A_SCORES => self.open_page(Page::Scores),
             A_CREDITS => self.open_page(Page::Credits),
             A_SUB_NEW_CAMPAIGN => self.open_page(Page::NewCampaign),
@@ -572,6 +579,10 @@ impl AppState {
                 self.build_nav(ui, layer, cw, ch, z, logo_bottom, Some(A_SINGLE), &mut tips);
                 self.build_sub(ui, layer, cw, ch, z, logo_bottom, &mut tips);
             }
+            Page::Editor => {
+                self.build_nav(ui, layer, cw, ch, z, logo_bottom, Some(A_EDITOR), &mut tips);
+                self.build_editor_sub(ui, layer, cw, ch, z, logo_bottom, &mut tips);
+            }
             Page::NewScenario => {
                 let side_open = self.menu_side() != Side::None;
                 if wide && !side_open {
@@ -646,7 +657,7 @@ impl AppState {
                 A_EDITOR,
                 1679,
                 "Create or edit a map.",
-                false,
+                true,
             ),
             (
                 t.get(1680, "High Scores"),
@@ -739,6 +750,40 @@ impl AppState {
                 at(x2, top + i as f32 * (bh + gap), w, bh),
             );
             tips.push((n, t.get(tip_id, tip_en)));
+        }
+    }
+
+    /// The Editor submenu column: New Map and Load Map (L1 of docs/reference/screens.md).
+    #[allow(clippy::too_many_arguments)]
+    fn build_editor_sub(
+        &self,
+        ui: &mut Ui,
+        layer: NodeId,
+        cw: f32,
+        ch: f32,
+        z: f32,
+        logo_bottom: f32,
+        tips: &mut Vec<(NodeId, String)>,
+    ) {
+        let t = &self.texts;
+        let (x, top, w, bh, gap) = Self::nav_geometry(cw, ch, z, logo_bottom);
+        let f = mfont(2, z * 0.95);
+        let x2 = x + w + 14.0 * z;
+        let items = [
+            (t.a("New Map"), A_ED_NEW, t.a("Start a new, empty map.")),
+            (
+                t.a("Load Map"),
+                A_ED_LOAD,
+                t.a("Open an existing map or scenario to edit it."),
+            ),
+        ];
+        for (i, (text, action, tip)) in items.into_iter().enumerate() {
+            let n = ui.add(
+                layer,
+                button(&text, f, action, None),
+                at(x2, top + i as f32 * (bh + gap), w, bh),
+            );
+            tips.push((n, tip));
         }
     }
 

@@ -87,13 +87,10 @@ impl Ai<'_, '_> {
         r
     }
 
-    /// `ai_person_trade_stocks` (`0x4a8af0`, ai.md 9.2): no RNG of the game.
-    pub fn trade_stocks(&mut self, _p: i32) {
-        todo_hook!(
-            self.ts.log,
-            "ai_person_trade_stocks",
-            "ai_person_trade_stocks 0x4a8af0 (greedy 1000-share lots)",
-            "ai.md 9.2"
-        );
+    /// `ai_person_trade_stocks` (`0x4a8af0`, ai.md 9.2): no RNG of the game. Queued in
+    /// [`Ai::traders`]; the world loop runs it with the finance commands
+    /// (`SimState::ai_trade_stocks`) after the persons' phase.
+    pub fn trade_stocks(&mut self, p: i32) {
+        self.traders.push(p);
     }
 }

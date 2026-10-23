@@ -181,7 +181,8 @@ impl AppState {
     }
 
     pub(super) fn tool_active(&self) -> bool {
-        self.game().is_some_and(|g| g.build.tool.is_some())
+        self.game()
+            .is_some_and(|g| g.build.tool.is_some() || g.editor.is_some())
     }
 
     pub(super) fn tool_kind(&self) -> Option<ToolKind> {
@@ -1100,7 +1101,7 @@ impl AppState {
     }
 
     /// Logical rectangle of a tile: the diamond's bounding box, shrunk by `shrink`.
-    fn tile_rect(
+    pub(super) fn tile_rect(
         &self,
         g: &GameState,
         map: &Map,

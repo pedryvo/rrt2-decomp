@@ -12,6 +12,8 @@ use crate::growth::{RatingInput, computer_owner_rating, industry_rating};
 
 const ST_ENGINE_ALLOWED: usize = 0x17F; // 0x570667 u8[66]
 const ST_REF_SPEED: usize = 0x3920; // 0x573e08
+const ST_THEFT_PCT: usize = 0x391A; // 0x573e02 i16
+const ST_THEFT_BASE: usize = 0x38B6; // 0x573d9e i32
 const ST_CARGO_ON: usize = 0xED; // 0x5705d5
 const ST_GROWTH: usize = 0xE9; // 0x5705d1 f32
 const ST_YEAR_START: usize = 0x20; // 0x570508
@@ -108,9 +110,14 @@ impl SimState {
             );
             return;
         }
+        let (traders, mut cmds) = self.with_trainstep(w, crate::ai::monthly_turn_persons);
+        for p in traders {
+            self.ai_trade_stocks(w, p as usize);
+        }
         let triggers = self.with_trainstep(w, |ts| {
+            cmds.extend(crate::ai::monthly_turn_companies(ts));
             let mut triggers = Vec::new();
-            for cmd in crate::ai::monthly_turn(ts) {
+            for cmd in cmds {
                 if let crate::ai::AiCommand::FireTrigger(k) = cmd {
                     triggers.push(k);
                 } else {
@@ -388,12 +395,18 @@ impl SimState {
         for o in 0..12 {
             self.save.state[ST_YEAR_COUNTERS + o] = 0;
         }
-        todo_hook!(
-            self.log,
-            "year_counter_573e02",
-            "0x573e02 = ftol(...) when below 0x573d9e (formula not specified)",
-            "world-tick.md 3.4 item 17"
-        );
+        // The theft percentage `0x573e02` (i16) creeps back to the scenario's `0x573d9e` (read as
+        // an i32): `+= max((base - pct) * 0.05, 1.0)`, truncated (`0x4a50f2`, world-tick.md 3.4
+        // item 17).
+        let st = &mut self.save.state;
+        let pct = i32::from(i16::from_le_bytes([st[ST_THEFT_PCT], st[ST_THEFT_PCT + 1]]));
+        let base = i32_at(st, ST_THEFT_BASE);
+        if pct < base {
+            let d = (f64::from(base.wrapping_sub(pct)) * 0.05).max(1.0);
+            let v = crate::fp::ftol(f64::from(pct) + d) as i16;
+            st[ST_THEFT_PCT..ST_THEFT_PCT + 2].copy_from_slice(&v.to_le_bytes());
+        }
+        self.log.ran("year_theft_pct");
     }
 
     // ---- buildings ----------------------------------------------------------------------

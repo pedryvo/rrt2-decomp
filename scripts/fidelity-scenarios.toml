@@ -458,3 +458,76 @@ preseed = 1234
 new_game = "1:17:4321:777"
 campaign_name = "#E18CAMP"
 desc = "#E18 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777"
+
+# Eventos raros: saves preparados (re/scripts/wine/prepare_rare.py, em ~/.cache/rrt2/rare/) a
+# partir da conversao do Example pelo original; a semente escolhe o desfecho dos dados.
+
+[[scenario]]
+name = "Crash"
+prepared = "~/.cache/rrt2/rare/crash.GAM"
+days = [30, 60]
+seed = 1
+desc = "Example preparado: acidente de trem da IA (0x4ce730) e remoção do destroço (0x4cdd50)"
+
+[[scenario]]
+name = "Theft"
+prepared = "~/.cache/rrt2/rare/theft.GAM"
+days = [30, 60]
+seed = 4
+desc = "Example preparado: roubo de trem (0x4ceaa0, 0x42fa30), 0x573e02 = 3000"
+
+[[scenario]]
+name = "Arrest"
+prepared = "~/.cache/rrt2/rare/theft.GAM"
+days = [60]
+seed = 2
+desc = "Example preparado: ladrões presos (0x4cf390, notícia, 0x573e02 / 3)"
+
+[[scenario]]
+name = "TheftYear"
+prepared = "~/.cache/rrt2/rare/theftyear.GAM"
+days = [30]
+seed = 1234
+desc = "Example preparado: 0x573e02 abaixo de 0x573d9e na virada do ano (sim_year_end 0x4a50f2)"
+
+[[scenario]]
+name = "Fire"
+prepared = "~/.cache/rrt2/rare/fire.GAM"
+days = [30]
+seed = 1234
+desc = "Example preparado: a diretoria demite o chairman da IA na revisão anual (0x438900)"
+
+[[scenario]]
+name = "Liquidate"
+prepared = "~/.cache/rrt2/rare/liquidate.GAM"
+days = [30, 60]
+seed = 1234
+desc = "Example preparado: os credores liquidam a empresa da IA na revisão anual (0x438170)"
+
+[[scenario]]
+name = "Stocks"
+prepared = "~/.cache/rrt2/rare/stocks.GAM"
+days = [7, 60]
+seed = 1234
+desc = "Example preparado: a pessoa da IA com $5 milhões compra ações (0x4a8af0)"
+
+[[scenario]]
+name = "Engine"
+prepared = "~/.cache/rrt2/rare/engine.GAM"
+days = [16, 60]
+seed = 2
+desc = "Example preparado: a IA troca a locomotiva de dois trens nos trilhos (0x4d4e90, 0x413550)"
+
+[[scenario]]
+name = "CrashHuman"
+prepared = "~/.cache/rrt2/rare/crashhuman.GAM"
+days = [30, 60]
+seed = 7
+desc = "Example preparado: dois acidentes de trens do jogador (empresa da interface, 0x4ce730)"
+
+[[scenario]]
+name = "FieldDemolition"
+prepared = "~/.cache/rrt2/rare/engine.GAM"
+days = [30]
+seed = 1234
+desc = "Example preparado: demolição de uma fazenda no fim do ano (0x4091f0, repintura dos campos)"

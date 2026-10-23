@@ -186,6 +186,11 @@ pub trait TownEnv {
     fn add_building(&mut self, rng: &mut GameRng, house: bool) -> bool;
     /// `0x4302c0(town, house)`.
     fn remove_worst(&mut self, rng: &mut GameRng, house: bool);
+    /// The live `0x570713` (buildings created or destroyed by the places grown before change
+    /// it during the year step); `None` uses [`GrowthWorld::industry_count`].
+    fn industry_count(&mut self) -> Option<i32> {
+        None
+    }
 }
 
 /// World values read by the growth step.
@@ -291,8 +296,9 @@ pub fn town_growth_step(
             };
             last_houses = st.houses;
             last_others = n_ind;
-            let x1 = if w.industry_count != 0 {
-                f64::from(st.houses + n_ind) / f64::from(w.industry_count)
+            let industry_count = env.industry_count().unwrap_or(w.industry_count);
+            let x1 = if industry_count != 0 {
+                f64::from(st.houses + n_ind) / f64::from(industry_count)
             } else {
                 0.0
             };
