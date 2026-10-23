@@ -28,6 +28,8 @@ serde = { version = "1", features = ["derive"] }
 toml = "0.8"
 dirs = "6"
 jiff = { version = "0.2", default-features = false, features = ["std", "tz-system"] }
+resvg = { version = "=0.48.1", default-features = false, features = ["text"] }
+rfd = "=0.17.2"
 
 # Icon and version metadata of `rrt2.exe` (build.rs, docs/packaging.md). Host-gated: only a
 # Windows build machine compiles it (it calls rc.exe / windres).

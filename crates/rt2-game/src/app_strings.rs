@@ -585,6 +585,30 @@ pub static APP_EN: &[&str] = &[
     "%1 events",
     "Click an event to center the map on it.",
     "No location for this event.",
+    "Game folder",
+    "rrt2 needs the files of your own copy of Railroad Tycoon II Platinum. Pick its folder below or browse for it; nothing is copied or changed there.",
+    "Installations found",
+    "No installation found. Choose the folder yourself.",
+    "Choose folder...",
+    "Play",
+    "Quit",
+    "Game folder...",
+    "Looks good: this is a Railroad Tycoon II install.",
+    "Not a usable install. Missing: %1",
+    "Cannot save the choice: %1",
+    "Select the Railroad Tycoon II folder",
+    "Choosing a folder...",
+    "incomplete",
+    "Current setting",
+    "Steam library",
+    "GOG",
+    "Heroic (GOG)",
+    "Lutris",
+    "Wine prefix",
+    "Windows folder",
+    "Chosen by you",
+    "Pick an installation from the list or choose the folder yourself.",
+    "Cannot load the game from this folder: %1",
 ];
 
 /// The id of an English default.
@@ -613,6 +637,7 @@ mod tests {
             include_str!("state/build_ui.rs"),
             include_str!("state/build_dialogs.rs"),
             include_str!("state/dialogs/fin.rs"),
+            include_str!("gamedir.rs"),
             include_str!("text.rs"),
         ] {
             for call in [".a(\"", ".af(\""] {

@@ -4,6 +4,7 @@ use anyhow::{Context, Result};
 use rt2_render::Renderer;
 use rt2_ui::{Skin, UiRenderer};
 
+use crate::gamedir::GameDirScreen;
 use crate::state::AppState;
 
 pub struct Gfx {
@@ -13,6 +14,9 @@ pub struct Gfx {
     size: (u32, u32),
     ui: UiRenderer,
     map: Option<Renderer>,
+    /// The renderer of the game-folder screen (its own flat skin with the logo), built on demand
+    /// and kept next to the game's, so the screen can open over a running game.
+    setup_ui: Option<UiRenderer>,
 }
 
 /// Menu background while no art is loaded behind it (linear colour).
@@ -39,6 +43,7 @@ impl Gfx {
             size,
             ui,
             map: None,
+            setup_ui: None,
         }
     }
 
@@ -106,6 +111,46 @@ impl Gfx {
     }
 }
 
+/// Behind the game-folder screen (linear colour): the logo's navy.
+const SETUP_CLEAR: wgpu::Color = wgpu::Color {
+    r: 0.005,
+    g: 0.008,
+    b: 0.013,
+    a: 1.0,
+};
+
+impl Gfx {
+    /// Draws the game-folder screen (no map, no original art).
+    pub fn draw_setup(&mut self, screen: &mut GameDirScreen, target: &wgpu::TextureView) {
+        if let Some(art) = screen.take_art() {
+            self.setup_ui = Some(UiRenderer::new(
+                &self.device,
+                &self.queue,
+                self.format,
+                art.skin,
+            ));
+        }
+        let Some(ui) = &mut self.setup_ui else {
+            return;
+        };
+        ui.set_script(screen.script());
+        ui.render(
+            &self.device,
+            &self.queue,
+            target,
+            self.size,
+            &mut screen.ui,
+            Some(SETUP_CLEAR),
+        );
+    }
+
+    /// A new game replaces the UI skin and the map (another install: other art).
+    pub fn replace_skin(&mut self, skin: Skin) {
+        self.ui = UiRenderer::new(&self.device, &self.queue, self.format, skin);
+        self.map = None;
+    }
+}
+
 /// A headless device (software or hardware adapter).
 pub fn headless_device() -> Result<(wgpu::Device, wgpu::Queue)> {
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
@@ -117,6 +162,23 @@ pub fn headless_device() -> Result<(wgpu::Device, wgpu::Queue)> {
 
 /// Renders one frame of `state` offscreen and returns tightly packed RGBA8 (sRGB) pixels.
 pub fn render_offscreen(gfx: &mut Gfx, state: &mut AppState, size: (u32, u32)) -> Result<Vec<u8>> {
+    render_with(gfx, size, |g, view| g.draw(state, view, 0))
+}
+
+/// Like [`render_offscreen`] for the game-folder screen.
+pub fn render_setup_offscreen(
+    gfx: &mut Gfx,
+    screen: &mut GameDirScreen,
+    size: (u32, u32),
+) -> Result<Vec<u8>> {
+    render_with(gfx, size, |g, view| g.draw_setup(screen, view))
+}
+
+fn render_with(
+    gfx: &mut Gfx,
+    size: (u32, u32),
+    draw: impl FnOnce(&mut Gfx, &wgpu::TextureView),
+) -> Result<Vec<u8>> {
     gfx.resize(size);
     let texture = gfx.device.create_texture(&wgpu::TextureDescriptor {
         label: Some("screenshot"),
@@ -133,7 +195,7 @@ pub fn render_offscreen(gfx: &mut Gfx, state: &mut AppState, size: (u32, u32)) -
         view_formats: &[],
     });
     let view = texture.create_view(&Default::default());
-    gfx.draw(state, &view, 0);
+    draw(gfx, &view);
 
     let padded_row = (size.0 * 4).next_multiple_of(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
     let readback = gfx.device.create_buffer(&wgpu::BufferDescriptor {

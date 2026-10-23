@@ -90,16 +90,16 @@ RT2_DIR=~/Games/railroad-tycoon-2 cargo nextest run
 
 ## 📦 Installation
 
-1. Lade das Archiv für dein System von der [Releases-Seite](https://github.com/pedryvo/rrt2-decomp/releases) herunter (Linux x86_64 `.tar.gz`, `.AppImage` oder `.flatpak`; Windows x86_64 Installer `-setup.exe` oder portables `.zip`; macOS Apple Silicon oder Intel `.dmg` mit `RRT2.app`, oder `.tar.gz`). Der Windows-Installer braucht keine Administratorrechte, legt eine Startmenü-Verknüpfung und ein Deinstallationsprogramm an und kann sich den Spielordner merken; die Pakete sind nicht codesigniert, daher warnen Windows SmartScreen und der macOS-Gatekeeper beim ersten Start (unter macOS: Rechtsklick → Öffnen, oder `xattr -dr com.apple.quarantine /Applications/RRT2.app`). Das AppImage läuft direkt; das Flatpak hat keinen Zugriff auf deine Dateien, bis du Lesezugriff auf den Spielordner gewährst, siehe [docs/packaging.md](docs/packaging.md). Jeder Push auf `main` erzeugt außerdem Entwicklungs-Builds, die als Artefakte der "Release"-Workflow-Läufe im Actions-Tab liegen.
+1. Lade das Archiv für dein System von der [Releases-Seite](https://github.com/pedryvo/rrt2-decomp/releases) herunter (Linux x86_64 `.tar.gz`, `.AppImage` oder `.flatpak`; Windows x86_64 Installer `-setup.exe` oder portables `.zip`; macOS Apple Silicon oder Intel `.dmg` mit `RRT2.app`, oder `.tar.gz`). Der Windows-Installer braucht keine Administratorrechte, legt eine Startmenü-Verknüpfung und ein Deinstallationsprogramm an und kann sich den Spielordner merken; die Pakete sind nicht codesigniert, daher warnen Windows SmartScreen und der macOS-Gatekeeper beim ersten Start (unter macOS: Rechtsklick → Öffnen, oder `xattr -dr com.apple.quarantine /Applications/RRT2.app`). Das AppImage läuft direkt; das Flatpak sieht keine deiner Dateien und braucht keine Einrichtung: Der Ordnerdialog des Startbildschirms gibt ihm Zugriff auf den Spielordner, siehe [docs/packaging.md](docs/packaging.md). Jeder Push auf `main` erzeugt außerdem Entwicklungs-Builds, die als Artefakte der "Release"-Workflow-Läufe im Actions-Tab liegen.
 2. Entpacke es irgendwo (oder starte den Windows-Installer, oder ziehe `RRT2.app` aus dem `.dmg` in den Programme-Ordner). Das Paket enthält nur `rrt2` (Schriften und Übersetzungen sind eingebaut), die Dokumentation und die Schriftlizenzen. **Das Originalspiel ist nicht enthalten**: Du brauchst deine eigene Kopie von Railroad Tycoon II (GOG, Steam oder CD-Installation).
-3. Sage dem Spiel beim ersten Start, wo das Original installiert ist. Der Pfad wird in `config.toml` gespeichert:
+3. Beim ersten Start öffnet `rrt2` einen Einrichtungsbildschirm, der deine Installation sucht (Steam, GOG, Lutris, Wine, die üblichen Windows-Ordner) oder dich den Ordner wählen lässt; danach klickst du auf Spielen. Die Wahl wird in `config.toml` gespeichert, und Optionen > "Spielordner..." öffnet den Bildschirm erneut. Im Terminal kannst du sie stattdessen so setzen:
 
 ```bash
 ./rrt2 set-path ~/Games/railroad-tycoon-2     # Windows: rrt2.exe set-path "C:\Games\Railroad Tycoon II"
 ./rrt2
 ```
 
-`rrt2 --version` zeigt Version und Git-Commit. Statt `set-path` kannst du auch `--game-dir <Ordner>` übergeben oder `RT2_DIR` setzen.
+`rrt2 --version` zeigt Version und Git-Commit. Statt des Einrichtungsbildschirms oder `set-path` kannst du auch `--game-dir <Ordner>` übergeben oder `RT2_DIR` setzen.
 
 | | Linux | Windows | macOS |
 |---|---|---|---|

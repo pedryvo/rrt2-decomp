@@ -1,10 +1,9 @@
 # Flatpak of rrt2 (docs/packaging.md). Built from this checkout by the release workflow:
 #   flatpak-builder --user --install-deps-from=flathub --force-clean \
 #       ~/.cache/rrt2/flatpak-build packaging/flatpak/io.github.pedryvo.rrt2.yml
-# No original game asset is packaged. The sandbox has no access to the host files by default:
-# the player grants read-only access to their own install, e.g.
-#   flatpak override --user --filesystem="$HOME/Games/railroad-tycoon-2":ro io.github.pedryvo.rrt2
-#   flatpak run io.github.pedryvo.rrt2 set-path "$HOME/Games/railroad-tycoon-2"
+# No original game asset is packaged. The sandbox has no access to the host files by default and
+# needs no override: the first-run screen of rrt2 opens the folder chooser through the
+# xdg-desktop-portal FileChooser (rfd), and the portal grants access to the chosen folder.
 app-id: io.github.pedryvo.rrt2
 runtime: org.freedesktop.Platform
 runtime-version: "26.08"

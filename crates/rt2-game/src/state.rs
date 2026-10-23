@@ -105,6 +105,9 @@ pub enum Effect {
     /// Something in the configuration changed: write it to `config.toml`. Only the last one of a
     /// batch matters.
     SaveConfig(Box<Config>),
+    /// Options, "Game folder...": open the game-folder screen over the game (the configuration
+    /// it starts from).
+    ChooseGameFolder(Box<Config>),
 }
 
 /// A screen over the menu or the game: Options, or the Save / Load dialogs.

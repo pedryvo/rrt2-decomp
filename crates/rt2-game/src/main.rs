@@ -1,7 +1,8 @@
 //! `rrt2`: the playable Railroad Tycoon II clone (docs/ui.md).
 //!
 //! ```text
-//! rrt2 set-path <folder>        remember the original game's install folder
+//! rrt2 set-path <folder>        remember the original game's install folder (optional: without
+//!                               one, `rrt2` opens the game-folder screen)
 //! rrt2                          main menu
 //! rrt2 <file.GAM|file.MAP>      open a save or a scenario map directly
 //! rrt2 --screenshot out.png     render the menu (or --screen game) offscreen and exit
@@ -15,11 +16,14 @@ mod campaign;
 mod catalog;
 mod config;
 mod founding;
+mod gamedir;
 mod gfx;
 mod hiscore;
 mod info;
+mod install_detect;
 mod keys;
 mod locales;
+mod logo;
 mod notices;
 mod options;
 mod overview;
@@ -168,6 +172,8 @@ enum Screen {
     Info,
     /// The map editor over a map (`--page` is the tool group, `--tool` the dialog; see docs/ui.md).
     Editor,
+    /// The game-folder screen (first-run setup), which needs no install.
+    Setup,
 }
 
 #[derive(Subcommand)]
@@ -205,15 +211,51 @@ fn main() -> Result<()> {
     if args.language.is_some() {
         config.language.clone_from(&args.language);
     }
-    let install = paths::resolve_install(args.game_dir.clone(), &config)?;
+    if args.screenshot.is_some() && matches!(args.screen, Screen::Setup) {
+        return setup_screenshot(&args, config, config_path);
+    }
+    let install = match paths::resolve_install(args.game_dir.clone(), &config) {
+        Ok(install) => install,
+        // An explicit --game-dir / RT2_DIR that is wrong is an error to report; a missing or
+        // moved configured folder opens the game-folder screen instead (docs/ui.md).
+        Err(e) if args.game_dir.is_some() || args.screenshot.is_some() => return Err(e),
+        Err(_) => {
+            let params = gamedir::Params {
+                config,
+                config_path,
+                can_cancel: false,
+                roots: None,
+            };
+            return app::run(app::Boot::Setup(Box::new(params)), args.file, args.ui_scale);
+        }
+    };
+    let (init, skin) = build_init(install, config, args.ui_scale, args.size)?;
+    match &args.screenshot {
+        Some(out) => screenshot(init, skin, &args, out),
+        None => app::run(
+            app::Boot::Game(Box::new(init), Box::new(skin)),
+            args.file,
+            args.ui_scale,
+        ),
+    }
+}
+
+/// Opens the install and builds everything the game needs from it: the assets, the art and the
+/// initial UI state. Also used when the game-folder screen picks another install while running.
+pub fn build_init(
+    install: PathBuf,
+    config: Config,
+    ui_scale: Option<u32>,
+    viewport: (u32, u32),
+) -> Result<(Init, rt2_ui::Skin)> {
     let assets = Arc::new(
         GameAssets::open(&install)
             .with_context(|| format!("opening the game in {}", install.display()))?,
     );
     let art = artwork::load(&assets);
-    let pinned = args.ui_scale.or(config.ui_scale);
+    let pinned = ui_scale.or(config.ui_scale);
     let init = Init {
-        install: install.clone(),
+        install,
         assets,
         backdrop: art.backdrop,
         icons: art.icons.clone(),
@@ -221,12 +263,44 @@ fn main() -> Result<()> {
         config,
         scale: pinned.map_or(UiScale::default(), UiScale::from_percent),
         scale_pinned: pinned.is_some(),
-        viewport: args.size,
+        viewport,
     };
-    match &args.screenshot {
-        Some(out) => screenshot(init, art.skin, &args, out),
-        None => app::run(init, art.skin, args.file),
+    Ok((init, art.skin))
+}
+
+/// `--screenshot --screen setup`: the game-folder screen as it looks on this machine.
+fn setup_screenshot(args: &Args, config: Config, config_path: Option<PathBuf>) -> Result<()> {
+    let out = args.screenshot.as_deref().context("--screenshot")?;
+    let (device, queue) = gfx::headless_device()?;
+    let mut gfx = gfx::Gfx::new(
+        device,
+        queue,
+        gfx::SCREENSHOT_FORMAT,
+        args.size,
+        rt2_ui::Skin::flat(),
+    );
+    let dpi = args.ui_scale.map_or(1.0, |p| f64::from(p) / 100.0);
+    let mut config = config;
+    if args.ui_scale.is_some() {
+        config.ui_scale = args.ui_scale;
     }
+    let mut screen = gamedir::GameDirScreen::new(
+        gamedir::Params {
+            config,
+            config_path,
+            can_cancel: false,
+            roots: None,
+        },
+        args.size,
+        dpi,
+    );
+    let pixels = gfx::render_setup_offscreen(&mut gfx, &mut screen, args.size)?;
+    if let Some(dir) = out.parent() {
+        std::fs::create_dir_all(dir)?;
+    }
+    rt2_render::write_png(out, args.size, &pixels)?;
+    eprintln!("wrote {}", out.display());
+    Ok(())
 }
 
 fn set_path(dir: &std::path::Path, config_path: Option<PathBuf>) -> Result<()> {
@@ -290,6 +364,9 @@ fn screenshot(init: Init, skin: rt2_ui::Skin, args: &Args, out: &std::path::Path
                 bail!("unknown editor dialog {d:?}");
             }
             state.update(0.0);
+        }
+        Screen::Setup => {
+            bail!("--screen setup needs no install and is handled before one is opened")
         }
         Screen::NewGame => state.show_new_game(),
         Screen::LoadGame => state.show_load_game(),

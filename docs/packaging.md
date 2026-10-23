@@ -1,8 +1,9 @@
 # Empacotamento
 
 Como o `rrt2` é distribuído e como cada pacote é gerado. Nenhum pacote contém arquivos do jogo
-original: o jogador aponta o `rrt2` para a própria instalação (`rrt2 set-path`, `--game-dir` ou
-`RT2_DIR`), que é só lida.
+original: na primeira execução o `rrt2` abre a tela de pasta do jogo (detecta Steam, GOG, Lutris,
+Wine e deixa escolher a pasta; também há `rrt2 set-path`, `--game-dir` e `RT2_DIR`), e a
+instalação é só lida.
 
 ## 1. O que o binário precisa em tempo de execução
 
@@ -57,7 +58,8 @@ funcionam:
 
 ```bash
 chmod +x rrt2-0.3.0-x86_64.AppImage
-./rrt2-0.3.0-x86_64.AppImage set-path ~/Games/railroad-tycoon-2   # uma vez
+./rrt2-0.3.0-x86_64.AppImage                                      # a primeira execução pergunta a pasta
+./rrt2-0.3.0-x86_64.AppImage set-path ~/Games/railroad-tycoon-2   # ou, sem a tela, uma vez
 ./rrt2-0.3.0-x86_64.AppImage
 ```
 
@@ -78,21 +80,25 @@ exigiria vendorizar as crates (`flatpak-cargo-generator`). No CI, o job `flatpak
 manifesto antes do build (`rrt2 --version`).
 
 Permissões (`finish-args`): `wayland`, `fallback-x11`, `ipc`, `dri` e `pulseaudio` (o runtime
-encaminha o ALSA para o PulseAudio/PipeWire). **Nenhum acesso a arquivos do host por padrão.** O
-`rrt2` ainda não tem seletor de pasta na interface, então o portal de arquivos não se aplica; o
-mínimo é liberar, só leitura, a pasta do jogo que o jogador escolher:
+encaminha o ALSA para o PulseAudio/PipeWire). **Nenhum acesso a arquivos do host, e nenhum
+`flatpak override` é preciso.** A tela de pasta do jogo abre o seletor nativo pelo
+`org.freedesktop.portal.FileChooser` (crate `rfd` com o backend `xdg-portal`, sem GTK), que o
+sandbox já alcança; o portal libera o acesso à pasta escolhida e devolve um caminho estável em
+`/run/user/<uid>/doc/...`, que o `rrt2` grava no `config.toml`. Dentro do sandbox a detecção
+automática só enxerga o que o sandbox enxerga (em geral nada), então a lista vem vazia e o
+caminho é "Escolher pasta...".
 
 ```bash
 flatpak install --user rrt2-0.3.0-x86_64.flatpak     # puxa o runtime do Flathub se faltar
-flatpak override --user --filesystem="$HOME/Games/railroad-tycoon-2":ro io.github.pedryvo.rrt2
-flatpak run io.github.pedryvo.rrt2 set-path "$HOME/Games/railroad-tycoon-2"
-flatpak run io.github.pedryvo.rrt2                   # ou pelo menu de aplicativos
+flatpak run io.github.pedryvo.rrt2                   # ou pelo menu de aplicativos; escolha a pasta do jogo
 ```
 
-A pasta aparece no mesmo caminho dentro do sandbox, então o `set-path` grava o caminho de verdade.
-Para revogar: `flatpak override --user --reset io.github.pedryvo.rrt2`. Instalação do Steam:
-use o caminho da pasta do jogo dentro de `steamapps/common`. Configuração e saves ficam em
+Para revogar o acesso: `flatpak permission-reset io.github.pedryvo.rrt2` (ou o app Flatseal /
+as configurações do portal do ambiente de desktop). Instalação do Steam: escolha a pasta do jogo
+dentro de `steamapps/common`. Configuração e saves ficam em
 `~/.var/app/io.github.pedryvo.rrt2/config/rrt2` e `~/.var/app/io.github.pedryvo.rrt2/data/rrt2`.
+Quem prefere o terminal ainda pode usar `flatpak override --user --filesystem=<pasta>:ro` com
+`set-path`.
 
 Para compilar localmente (pesado, compila o projeto inteiro):
 
@@ -106,8 +112,8 @@ Lacunas conhecidas:
 - O runtime não traz os programas `ffmpeg`/`ffprobe`/`ffplay`, então o Flatpak não toca os vídeos
   (intro, vitória e derrota); o resto do jogo funciona. Resolver exige um módulo de ffmpeg mínimo
   (decodificador Smacker, `ffplay` com SDL2) no manifesto.
-- Sem seletor de pasta, a primeira execução pelo menu sem `set-path` só mostra o erro no terminal.
-  Um seletor via `org.freedesktop.portal.FileChooser` (modo pasta) dispensaria o `override`.
+- A permissão do portal vale por pasta escolhida: se o jogador mover a pasta do jogo, a tela
+  abre de novo e ele escolhe outra vez.
 - A janela não define `app_id`, então alguns docks Wayland podem não associar a janela ao ícone
   (o `.desktop` declara `StartupWMClass=rrt2`).
 

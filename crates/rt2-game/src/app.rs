@@ -1,7 +1,9 @@
 //! The window loop (winit): creates the window and surface, feeds input to the [`AppState`] and
 //! draws it every frame.
 
+use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::mpsc;
 use std::time::Instant;
 
 use anyhow::{Context, Result, bail};
@@ -13,9 +15,18 @@ use winit::window::{Fullscreen, Window, WindowId};
 
 use rt2_ui::Skin;
 
+use crate::config::Config;
+use crate::gamedir::{self, GameDirScreen};
 use crate::gfx::Gfx;
 use crate::sound::SoundSystem;
 use crate::state::{AppState, Effect, Init};
+
+/// How the window starts: straight into the game, or on the game-folder screen (no usable install
+/// is configured).
+pub enum Boot {
+    Game(Box<Init>, Box<Skin>),
+    Setup(Box<gamedir::Params>),
+}
 
 struct Surface {
     window: Arc<Window>,
@@ -26,13 +37,22 @@ struct Surface {
 
 pub struct App {
     state: Option<AppState>,
-    init: Option<(Init, Skin)>,
-    open: Option<std::path::PathBuf>,
+    boot: Option<Boot>,
+    /// The game-folder screen: on top of everything while it is `Some`.
+    setup: Option<GameDirScreen>,
+    /// The folder chooser running on its own thread.
+    pick: Option<mpsc::Receiver<Option<PathBuf>>>,
+    /// The install of the running game (a new folder from the setup screen reloads the game).
+    installed: Option<PathBuf>,
+    /// `--ui-scale`, for a game loaded after the window exists.
+    ui_scale_arg: Option<u32>,
+    shift: bool,
+    open: Option<PathBuf>,
     surface: Option<Surface>,
     started: Instant,
     last: Instant,
     error: Option<String>,
-    sound: SoundSystem,
+    sound: Option<SoundSystem>,
 }
 
 impl Surface {
@@ -92,11 +112,19 @@ impl Surface {
     }
 
     fn draw(&mut self, state: &mut AppState, water_frame: u32) {
+        self.draw_with(|gfx, view| gfx.draw(state, view, water_frame));
+    }
+
+    fn draw_setup(&mut self, screen: &mut GameDirScreen) {
+        self.draw_with(|gfx, view| gfx.draw_setup(screen, view));
+    }
+
+    fn draw_with(&mut self, f: impl FnOnce(&mut Gfx, &wgpu::TextureView)) {
         use wgpu::CurrentSurfaceTexture as Cst;
         let frame = match self.surface.get_current_texture() {
-            Cst::Success(f) => f,
-            Cst::Suboptimal(f) => {
-                self.present(f, state, water_frame);
+            Cst::Success(frame) => frame,
+            Cst::Suboptimal(frame) => {
+                self.present(frame, f);
                 self.surface.configure(&self.gfx.device, &self.config);
                 return;
             }
@@ -110,12 +138,16 @@ impl Surface {
                 return;
             }
         };
-        self.present(frame, state, water_frame);
+        self.present(frame, f);
     }
 
-    fn present(&mut self, frame: wgpu::SurfaceTexture, state: &mut AppState, water_frame: u32) {
+    fn present(
+        &mut self,
+        frame: wgpu::SurfaceTexture,
+        f: impl FnOnce(&mut Gfx, &wgpu::TextureView),
+    ) {
         let view = frame.texture.create_view(&Default::default());
-        self.gfx.draw(state, &view, water_frame);
+        f(&mut self.gfx, &view);
         self.window.pre_present_notify();
         self.gfx.queue.present(frame);
     }
@@ -161,20 +193,23 @@ fn apply_display(window: &Window, d: &crate::config::Display, event_loop: &Activ
 }
 
 /// Runs the game window until it is closed.
-pub fn run(init: Init, skin: Skin, open: Option<std::path::PathBuf>) -> Result<()> {
-    // Audio is optional: without a device this logs once and the game runs silent.
-    let sound = SoundSystem::open(&init.install, init.config.audio.clone());
+pub fn run(boot: Boot, open: Option<PathBuf>, ui_scale_arg: Option<u32>) -> Result<()> {
     let event_loop = EventLoop::new()?;
     event_loop.set_control_flow(ControlFlow::Poll);
     let mut app = App {
         state: None,
-        init: Some((init, skin)),
+        boot: Some(boot),
+        setup: None,
+        pick: None,
+        installed: None,
+        ui_scale_arg,
+        shift: false,
         open,
         surface: None,
         started: Instant::now(),
         last: Instant::now(),
         error: None,
-        sound,
+        sound: None,
     };
     event_loop.run_app(&mut app)?;
     match app.error {
@@ -183,15 +218,202 @@ pub fn run(init: Init, skin: Skin, open: Option<std::path::PathBuf>) -> Result<(
     }
 }
 
+impl App {
+    /// A game over the current surface: the state, the sound and the first screen.
+    fn start_game(&mut self, event_loop: &ActiveEventLoop, mut init: Init) {
+        let Some(surface) = &self.surface else {
+            return;
+        };
+        let size = surface.window.inner_size();
+        init.viewport = (size.width.max(1), size.height.max(1));
+        let dpi = surface.window.scale_factor();
+        if !init.scale_pinned {
+            init.scale = rt2_ui::UiScale::from_dpi(dpi);
+        }
+        self.installed = Some(init.install.clone());
+        // Audio is optional: without a device this logs once and the game runs silent.
+        self.sound = Some(SoundSystem::open(&init.install, init.config.audio.clone()));
+        let mut state = AppState::new(init);
+        state.dpi_changed(dpi);
+        state.set_monitors(monitor_names(event_loop));
+        // The real game: choices wait for the player, autosaves are written.
+        state.set_interactive_choices(true);
+        state.set_persistence(true);
+        // Clips of the original (intro, end of a scenario) play in the real game only.
+        state.set_videos(true);
+        // Each real game gets its own seed (the original seeds from the clock); the
+        // simulation never sees the clock, only this number.
+        state.set_seed(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(1, |d| (d.as_millis() % 0xffff_ffff) as u32),
+        );
+        if !state.invalid_keys().is_empty() {
+            eprintln!(
+                "unknown key names in config.toml: {:?}",
+                state.invalid_keys()
+            );
+        }
+        if let Some(path) = self.open.take() {
+            if let Err(e) = state.start(&path) {
+                self.error = Some(format!("{e:#}"));
+                event_loop.exit();
+                return;
+            }
+        } else {
+            state.play_intro();
+        }
+        self.state = Some(state);
+        self.last = Instant::now();
+    }
+
+    /// Opens the folder chooser on its own thread (the portal or the system dialog blocks).
+    fn spawn_pick(&mut self, start: Option<PathBuf>, title: String) {
+        let (tx, rx) = mpsc::channel();
+        let mut dialog = rfd::FileDialog::new().set_title(title);
+        if let Some(dir) = start.filter(|d| d.is_dir()) {
+            dialog = dialog.set_directory(dir);
+        }
+        if let Some(surface) = &self.surface {
+            dialog = dialog.set_parent(&*surface.window);
+        }
+        std::thread::spawn(move || {
+            let _ = tx.send(dialog.pick_folder());
+        });
+        self.pick = Some(rx);
+    }
+
+    /// The game-folder screen over the running game (Options, "Game folder...").
+    fn open_setup(&mut self, config: Config) {
+        let Some(surface) = &self.surface else {
+            return;
+        };
+        let size = surface.window.inner_size();
+        self.setup = Some(GameDirScreen::new(
+            gamedir::Params {
+                config,
+                config_path: crate::paths::config_file(),
+                can_cancel: true,
+                roots: None,
+            },
+            (size.width, size.height),
+            surface.window.scale_factor(),
+        ));
+        if let Some(state) = &mut self.state {
+            state.focus_lost();
+        }
+    }
+
+    /// What the game-folder screen asked for.
+    fn setup_effects(&mut self, event_loop: &ActiveEventLoop) {
+        let Some(setup) = &mut self.setup else {
+            return;
+        };
+        for e in setup.take_effects() {
+            match e {
+                gamedir::Effect::Browse { start, title } => self.spawn_pick(start, title),
+                gamedir::Effect::Leave => {
+                    if self.state.is_some() {
+                        self.setup = None;
+                        self.last = Instant::now();
+                    } else {
+                        event_loop.exit();
+                    }
+                    return;
+                }
+                gamedir::Effect::Play { path, config } => {
+                    if self.state.is_some() && self.installed.as_deref() == Some(path.as_path()) {
+                        self.setup = None;
+                        self.last = Instant::now();
+                        return;
+                    }
+                    let Some(surface) = &self.surface else {
+                        return;
+                    };
+                    let size = surface.window.inner_size();
+                    match crate::build_init(
+                        path,
+                        *config,
+                        self.ui_scale_arg,
+                        (size.width, size.height),
+                    ) {
+                        Ok((init, skin)) => {
+                            if let Some(s) = &mut self.surface {
+                                s.gfx.replace_skin(skin);
+                            }
+                            self.state = None;
+                            self.setup = None;
+                            self.start_game(event_loop, init);
+                        }
+                        Err(e) => {
+                            if let Some(setup) = &mut self.setup {
+                                setup.failed(&format!("{e:#}"));
+                            }
+                        }
+                    }
+                    return;
+                }
+            }
+        }
+    }
+
+    fn setup_event(&mut self, event_loop: &ActiveEventLoop, event: WindowEvent) {
+        let (Some(setup), Some(surface)) = (&mut self.setup, &mut self.surface) else {
+            return;
+        };
+        match event {
+            WindowEvent::CloseRequested => event_loop.exit(),
+            WindowEvent::Resized(size) => {
+                surface.resize(size.width, size.height);
+                setup.resize((size.width, size.height));
+            }
+            WindowEvent::ScaleFactorChanged { scale_factor, .. } => setup.dpi_changed(scale_factor),
+            WindowEvent::ModifiersChanged(m) => self.shift = m.state().shift_key(),
+            WindowEvent::KeyboardInput { event, .. } => {
+                if let PhysicalKey::Code(code) = event.physical_key {
+                    setup.key(
+                        code,
+                        event.state == ElementState::Pressed,
+                        event.repeat,
+                        self.shift,
+                    );
+                }
+            }
+            WindowEvent::CursorMoved { position, .. } => {
+                setup.cursor_moved(position.x as f32, position.y as f32);
+            }
+            WindowEvent::CursorLeft { .. } => setup.cursor_left(),
+            WindowEvent::MouseInput {
+                state: s, button, ..
+            } => setup.mouse_button(button == MouseButton::Left, s == ElementState::Pressed),
+            WindowEvent::MouseWheel { delta, .. } => {
+                setup.wheel(match delta {
+                    MouseScrollDelta::LineDelta(_, y) => y,
+                    MouseScrollDelta::PixelDelta(p) => p.y as f32 / 50.0,
+                });
+            }
+            WindowEvent::RedrawRequested => {
+                setup.update(0.0);
+                surface.draw_setup(setup);
+            }
+            _ => {}
+        }
+        self.setup_effects(event_loop);
+    }
+}
+
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         if self.surface.is_some() {
             return;
         }
-        let Some((mut init, skin)) = self.init.take() else {
+        let Some(boot) = self.boot.take() else {
             return;
         };
-        let display = init.config.display.clone();
+        let (display, skin, init, params) = match boot {
+            Boot::Game(init, skin) => (init.config.display.clone(), *skin, Some(*init), None),
+            Boot::Setup(p) => (p.config.display.clone(), Skin::flat(), None, Some(*p)),
+        };
         let mut attrs = Window::default_attributes()
             .with_title("Railroad Tycoon II (rrt2)")
             .with_inner_size(winit::dpi::PhysicalSize::new(
@@ -213,45 +435,16 @@ impl ApplicationHandler for App {
             }
         };
         let size = window.inner_size();
-        init.viewport = (size.width.max(1), size.height.max(1));
-        if !init.scale_pinned {
-            init.scale = rt2_ui::UiScale::from_dpi(window.scale_factor());
-        }
         let dpi = window.scale_factor();
         match Surface::new(window, skin, display.vsync) {
             Ok(s) => {
-                let mut state = AppState::new(init);
-                state.dpi_changed(dpi);
-                state.set_monitors(monitor_names(event_loop));
-                // The real game: choices wait for the player, autosaves are written.
-                state.set_interactive_choices(true);
-                state.set_persistence(true);
-                // Clips of the original (intro, end of a scenario) play in the real game only.
-                state.set_videos(true);
-                // Each real game gets its own seed (the original seeds from the clock); the
-                // simulation never sees the clock, only this number.
-                state.set_seed(
-                    std::time::SystemTime::now()
-                        .duration_since(std::time::UNIX_EPOCH)
-                        .map_or(1, |d| (d.as_millis() % 0xffff_ffff) as u32),
-                );
-                if !state.invalid_keys().is_empty() {
-                    eprintln!(
-                        "unknown key names in config.toml: {:?}",
-                        state.invalid_keys()
-                    );
-                }
-                if let Some(path) = self.open.take() {
-                    if let Err(e) = state.start(&path) {
-                        self.error = Some(format!("{e:#}"));
-                        event_loop.exit();
-                        return;
-                    }
-                } else {
-                    state.play_intro();
-                }
-                self.state = Some(state);
                 self.surface = Some(s);
+                if let Some(init) = init {
+                    self.start_game(event_loop, init);
+                }
+                if let Some(params) = params {
+                    self.setup = Some(GameDirScreen::new(params, (size.width, size.height), dpi));
+                }
             }
             Err(e) => {
                 self.error = Some(format!("{e:#}"));
@@ -261,6 +454,10 @@ impl ApplicationHandler for App {
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
+        if self.setup.is_some() {
+            self.setup_event(event_loop, event);
+            return;
+        }
         let (Some(state), Some(surface)) = (&mut self.state, &mut self.surface) else {
             return;
         };
@@ -309,7 +506,9 @@ impl ApplicationHandler for App {
                 let dt = (now - self.last).as_secs_f32() * 1000.0;
                 self.last = now;
                 state.update(dt);
-                self.sound.update();
+                if let Some(sound) = &mut self.sound {
+                    sound.update();
+                }
                 // The ocean animates at about 8 frames per second.
                 let frame = (self.started.elapsed().as_millis() / 125) as u32;
                 surface.draw(state, frame);
@@ -317,8 +516,11 @@ impl ApplicationHandler for App {
             _ => {}
         }
         for cue in state.take_cues() {
-            self.sound.apply(cue);
+            if let Some(sound) = &mut self.sound {
+                sound.apply(cue);
+            }
         }
+        let mut open_setup = None;
         for e in state.take_effects() {
             match e {
                 Effect::Quit => event_loop.exit(),
@@ -327,11 +529,28 @@ impl ApplicationHandler for App {
                     surface.set_vsync(d.vsync);
                 }
                 Effect::SaveConfig(c) => save_config(&c),
+                Effect::ChooseGameFolder(c) => open_setup = Some(*c),
             }
+        }
+        if let Some(config) = open_setup {
+            self.open_setup(config);
         }
     }
 
     fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
+        if let Some(rx) = &self.pick {
+            let answer = match rx.try_recv() {
+                Ok(p) => Some(p),
+                Err(mpsc::TryRecvError::Empty) => None,
+                Err(mpsc::TryRecvError::Disconnected) => Some(None),
+            };
+            if let Some(p) = answer {
+                self.pick = None;
+                if let Some(setup) = &mut self.setup {
+                    setup.picked(p);
+                }
+            }
+        }
         if let Some(s) = &self.surface {
             s.window.request_redraw();
         }

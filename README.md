@@ -90,16 +90,16 @@ RT2_DIR=~/Games/railroad-tycoon-2 cargo nextest run
 
 ## 📦 Installing
 
-1. Download the archive for your system from the [Releases page](https://github.com/pedryvo/rrt2-decomp/releases) (Linux x86_64 `.tar.gz`, `.AppImage` or `.flatpak`; Windows x86_64 installer `-setup.exe` or portable `.zip`; macOS Apple Silicon or Intel `.dmg` with `RRT2.app`, or `.tar.gz`). The Windows installer needs no admin rights, adds a Start menu shortcut and an uninstaller, and can remember the game folder; the builds are not code-signed, so Windows SmartScreen and the macOS Gatekeeper warn on first launch (on macOS: right click → Open, or `xattr -dr com.apple.quarantine /Applications/RRT2.app`). The AppImage runs as is; the Flatpak has no access to your files until you grant read access to the game folder, see [docs/packaging.md](docs/packaging.md). Every push to `main` also produces development builds, found as artifacts of the "Release" workflow runs in the Actions tab.
+1. Download the archive for your system from the [Releases page](https://github.com/pedryvo/rrt2-decomp/releases) (Linux x86_64 `.tar.gz`, `.AppImage` or `.flatpak`; Windows x86_64 installer `-setup.exe` or portable `.zip`; macOS Apple Silicon or Intel `.dmg` with `RRT2.app`, or `.tar.gz`). The Windows installer needs no admin rights, adds a Start menu shortcut and an uninstaller, and can remember the game folder; the builds are not code-signed, so Windows SmartScreen and the macOS Gatekeeper warn on first launch (on macOS: right click → Open, or `xattr -dr com.apple.quarantine /Applications/RRT2.app`). The AppImage runs as is; the Flatpak sees none of your files and needs no setup: the folder chooser of the first-run screen grants it access to the game folder, see [docs/packaging.md](docs/packaging.md). Every push to `main` also produces development builds, found as artifacts of the "Release" workflow runs in the Actions tab.
 2. Unpack it anywhere (or run the Windows installer, or drag `RRT2.app` from the `.dmg` to Applications). The package holds only `rrt2` (fonts and translations are built in), the docs and the font licences. **It does not contain the original game**: you need your own copy of Railroad Tycoon II (GOG, Steam or CD install).
-3. First run, tell the game where the original is installed. This is remembered in `config.toml`:
+3. First run: `rrt2` opens a setup screen that looks for your install (Steam, GOG, Lutris, Wine, the usual Windows folders) or lets you choose the folder, then click Play. The choice is remembered in `config.toml`, and Options > "Game folder..." opens the screen again. From a terminal you can set it instead:
 
 ```bash
 ./rrt2 set-path ~/Games/railroad-tycoon-2     # Windows: rrt2.exe set-path "C:\Games\Railroad Tycoon II"
 ./rrt2
 ```
 
-`rrt2 --version` prints the version and git commit. You can also pass `--game-dir <folder>` or set `RT2_DIR` instead of `set-path`.
+`rrt2 --version` prints the version and git commit. You can also pass `--game-dir <folder>` or set `RT2_DIR` instead of the setup screen or `set-path`.
 
 | | Linux | Windows | macOS |
 |---|---|---|---|

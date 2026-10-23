@@ -23,6 +23,8 @@ use rt2_ui::Ui;
 
 pub(super) const A_OPT_CLOSE: u32 = 8000;
 pub(super) const A_OPT_RESET: u32 = 8001;
+/// Opens the game-folder screen (docs/ui.md "Tela de pasta do jogo").
+pub(super) const A_OPT_GAMEDIR: u32 = 8002;
 pub(super) const A_OPT_TAB: u32 = 8010;
 pub(super) const A_OPT_TOGGLE: u32 = 8100;
 pub(super) const A_OPT_DEC: u32 = 8200;
@@ -373,6 +375,10 @@ impl AppState {
         let tab = o.tab;
         match a {
             A_OPT_CLOSE => self.close_overlay(),
+            A_OPT_GAMEDIR => {
+                self.effects
+                    .push(Effect::ChooseGameFolder(Box::new(self.config.clone())));
+            }
             A_OPT_RESET => {
                 if tab == Tab::Keys {
                     self.config.keys = crate::config::Keys::default();
@@ -560,6 +566,16 @@ impl AppState {
                 panel,
                 button(&reset_text, fbtn, A_OPT_RESET),
                 at(pad, foot_y, 190.0 * u.max(0.85), foot_h),
+            );
+        }
+        // Between the two: the install folder (shown on every tab).
+        let folder_w = 190.0 * u.max(0.85);
+        let folder_x = pad + 190.0 * u.max(0.85) + 10.0;
+        if folder_x + folder_w + 140.0 * u.max(0.85) + pad + 10.0 <= pw {
+            ui.add(
+                panel,
+                button(&t.a("Game folder..."), fbtn, A_OPT_GAMEDIR),
+                at(folder_x, foot_y, folder_w, foot_h),
             );
         }
         ui.add(

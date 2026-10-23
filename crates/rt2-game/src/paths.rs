@@ -23,15 +23,30 @@ pub fn saves_dir() -> Option<PathBuf> {
     dirs::data_dir().map(|d| d.join("rrt2").join("saves"))
 }
 
-/// A folder is an install if it has the base archive and the executable.
+/// The files an install must have, relative to its folder: the base archive (every graphic and
+/// the maps' terrain), the executable (the cars, engines and tables the clone reads from it) and
+/// `default2.lng` (every text of the game). The other archives, `maps/`, `games/` and `anim/` are
+/// optional: without them only the matching lists are empty. See docs/ui.md "Tela de pasta do jogo".
+pub const REQUIRED: [&str; 3] = ["data/RT2.PK2", "RT2_PLAT.EXE", "default2.lng"];
+
+/// The required files `dir` lacks (empty for a usable install).
+pub fn missing_files(dir: &Path) -> Vec<&'static str> {
+    REQUIRED
+        .iter()
+        .copied()
+        .filter(|need| !dir.join(need).is_file())
+        .collect()
+}
+
+/// A folder is an install if it has every required file.
 pub fn validate_install(dir: &Path) -> Result<()> {
-    for need in ["data/RT2.PK2", "RT2_PLAT.EXE"] {
-        if !dir.join(need).is_file() {
-            bail!(
-                "{} does not look like a Railroad Tycoon II install (missing {need})",
-                dir.display()
-            );
-        }
+    let missing = missing_files(dir);
+    if !missing.is_empty() {
+        bail!(
+            "{} does not look like a Railroad Tycoon II install (missing {})",
+            dir.display(),
+            missing.join(", ")
+        );
     }
     Ok(())
 }
@@ -75,6 +90,8 @@ mod tests {
         assert!(validate_install(&dir).is_err());
         std::fs::write(dir.join("data/RT2.PK2"), b"x").unwrap();
         std::fs::write(dir.join("RT2_PLAT.EXE"), b"x").unwrap();
+        assert_eq!(missing_files(&dir), vec!["default2.lng"]);
+        std::fs::write(dir.join("default2.lng"), b"x").unwrap();
         assert!(validate_install(&dir).is_ok());
         assert_eq!(
             resolve_install(
