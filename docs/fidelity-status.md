@@ -13,7 +13,7 @@ Compara o clone com o original rodando no Wine (`re/scripts/wine/advance_save.py
 | Tutorial (sem trens, sem estações) | 30 | **igual** | 0 |  |
 | Example save game (9 trens, 11 estações) | 1 | **igual** | 0 |  |
 | Example save game (9 trens, 11 estações) | 7 | **igual** | 0 |  |
-| Example save game (9 trens, 11 estações) | 30 | diferente | 7 | `companies` (5), `persons` (2) |
+| Example save game (9 trens, 11 estações) | 30 | **igual** | 0 |  |
 | Mapa Alaska.MP2 | 1 | **igual** | 0 |  |
 | Mapa Alaska.MP2 | 7 | **igual** | 0 |  |
 | Mapa Alaska.MP2 | 30 | **igual** | 0 |  |
@@ -42,8 +42,72 @@ Compara o clone com o original rodando no Wine (`re/scripts/wine/advance_save.py
 | #04 Silver iniciado pela campanha (0x410de0), game_seed 4321, RNG 777 | 7 | **igual** | 0 |  |
 | #07 Birmingham iniciado pela campanha (0x410de0), game_seed 4321, RNG 777 | 0 | **igual** | 0 |  |
 | #07 Birmingham iniciado pela campanha (0x410de0), game_seed 4321, RNG 777 | 7 | **igual** | 0 |  |
+| #03 Bridges iniciado pela campanha (0x410de0), game_seed 4321, RNG 777 | 0 | **igual** | 0 |  |
+| #03 Bridges iniciado pela campanha (0x410de0), game_seed 4321, RNG 777 | 7 | **igual** | 0 |  |
+| #05 White iniciado pela campanha (0x410de0), game_seed 4321, RNG 777 | 0 | **igual** | 0 |  |
+| #05 White iniciado pela campanha (0x410de0), game_seed 4321, RNG 777 | 7 | **igual** | 0 |  |
+| #06 Cross iniciado pela campanha (0x410de0), game_seed 4321, RNG 777 | 0 | **igual** | 0 |  |
+| #06 Cross iniciado pela campanha (0x410de0), game_seed 4321, RNG 777 | 7 | **igual** | 0 |  |
+| #08 Orient iniciado pela campanha (0x410de0), game_seed 4321, RNG 777 | 0 | **igual** | 0 |  |
+| #08 Orient iniciado pela campanha (0x410de0), game_seed 4321, RNG 777 | 7 | **igual** | 0 |  |
+| #09 iniciado pela campanha (0x410de0), game_seed 4321, RNG 777 | 0 | **igual** | 0 |  |
+| #09 iniciado pela campanha (0x410de0), game_seed 4321, RNG 777 | 7 | **igual** | 0 |  |
+| #10 iniciado pela campanha (0x410de0), game_seed 4321, RNG 777 | 0 | **igual** | 0 |  |
+| #10 iniciado pela campanha (0x410de0), game_seed 4321, RNG 777 | 7 | **igual** | 0 |  |
+| #11 iniciado pela campanha (0x410de0), game_seed 4321, RNG 777 | 0 | **igual** | 0 |  |
+| #11 iniciado pela campanha (0x410de0), game_seed 4321, RNG 777 | 7 | **igual** | 0 |  |
+| #12 iniciado pela campanha (0x410de0), game_seed 4321, RNG 777 | 0 | **igual** | 0 |  |
+| #12 iniciado pela campanha (0x410de0), game_seed 4321, RNG 777 | 7 | **igual** | 0 |  |
+| #13 iniciado pela campanha (0x410de0), game_seed 4321, RNG 777 | 0 | **igual** | 0 |  |
+| #13 iniciado pela campanha (0x410de0), game_seed 4321, RNG 777 | 7 | **igual** | 0 |  |
+| #14 iniciado pela campanha (0x410de0), game_seed 4321, RNG 777 | 0 | **igual** | 0 |  |
+| #14 iniciado pela campanha (0x410de0), game_seed 4321, RNG 777 | 7 | **igual** | 0 |  |
+| #15 iniciado pela campanha (0x410de0), game_seed 4321, RNG 777 | 0 | **igual** | 0 |  |
+| #15 iniciado pela campanha (0x410de0), game_seed 4321, RNG 777 | 7 | **igual** | 0 |  |
+| #16 iniciado pela campanha (0x410de0), game_seed 4321, RNG 777 | 0 | **igual** | 0 |  |
+| #16 iniciado pela campanha (0x410de0), game_seed 4321, RNG 777 | 7 | **igual** | 0 |  |
+| #17 iniciado pela campanha (0x410de0), game_seed 4321, RNG 777 | 0 | **igual** | 0 |  |
+| #17 iniciado pela campanha (0x410de0), game_seed 4321, RNG 777 | 7 | **igual** | 0 |  |
+| #18 iniciado pela campanha (0x410de0), game_seed 4321, RNG 777 | 0 | **igual** | 0 |  |
+| #18 iniciado pela campanha (0x410de0), game_seed 4321, RNG 777 | 7 | **igual** | 0 |  |
+| #E01 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777 | 0 | **igual** | 0 |  |
+| #E01 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777 | 7 | **igual** | 0 |  |
+| #E02 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777 | 0 | **igual** | 0 |  |
+| #E02 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777 | 7 | **igual** | 0 |  |
+| #E03 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777 | 0 | **igual** | 0 |  |
+| #E03 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777 | 7 | **igual** | 0 |  |
+| #E04 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777 | 0 | **igual** | 0 |  |
+| #E04 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777 | 7 | **igual** | 0 |  |
+| #E05 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777 | 0 | **igual** | 0 |  |
+| #E05 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777 | 7 | **igual** | 0 |  |
+| #E06 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777 | 0 | **igual** | 0 |  |
+| #E06 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777 | 7 | **igual** | 0 |  |
+| #E07 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777 | 0 | diferente | 1 | `state` (1) |
+| #E07 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777 | 7 | diferente | 1 | `state` (1) |
+| #E08 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777 | 0 | diferente | 31840 | `objects` (21799), `pool_7c` (9751), `rules` (216) |
+| #E08 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777 | 7 | diferente | 31988 | `objects` (21860), `pool_7c` (9838), `rules` (216) |
+| #E09 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777 | 0 | diferente | 452 | `trains` (323), `pool_70` (82), `pool_80` (14) |
+| #E09 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777 | 7 | diferente | 458 | `trains` (323), `pool_70` (82), `structures` (18) |
+| #E10 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777 | 0 | **igual** | 0 |  |
+| #E10 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777 | 7 | **igual** | 0 |  |
+| #E11 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777 | 0 | diferente | 19265 | `objects` (12586), `pool_7c` (6544), `places` (135) |
+| #E11 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777 | 7 | diferente | 19518 | `objects` (12651), `pool_7c` (6732), `places` (135) |
+| #E12 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777 | 0 | **igual** | 0 |  |
+| #E12 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777 | 7 | **igual** | 0 |  |
+| #E13 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777 | 0 | diferente | 1 | `state` (1) |
+| #E13 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777 | 7 | diferente | 1 | `state` (1) |
+| #E14 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777 | 0 | **igual** | 0 |  |
+| #E14 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777 | 7 | **igual** | 0 |  |
+| #E15 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777 | 0 | diferente | 1142 | `trains` (963), `pool_70` (122), `pool_80` (26) |
+| #E15 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777 | 7 | diferente | 1142 | `trains` (963), `pool_70` (122), `pool_80` (26) |
+| #E16 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777 | 0 | **igual** | 0 |  |
+| #E16 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777 | 7 | **igual** | 0 |  |
+| #E17 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777 | 0 | **igual** | 0 |  |
+| #E17 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777 | 7 | **igual** | 0 |  |
+| #E18 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777 | 0 | **igual** | 0 |  |
+| #E18 (expansão) iniciado pela campanha (0x410de0, conjunto 1), game_seed 4321, RNG 777 | 7 | **igual** | 0 |  |
 
-<!-- fidelity:state {"Alaska|1": {"equal": true}, "Alaska|30": {"equal": true}, "Alaska|7": {"equal": true}, "Atlantis|1": {"equal": true}, "Atlantis|30": {"equal": true}, "Atlantis|7": {"equal": true}, "Austria|1": {"equal": true}, "Austria|30": {"equal": true}, "Austria|7": {"equal": true}, "B&O New Game|0": {"equal": true}, "B&O New Game|7": {"equal": true}, "B&O.MAP (carga)|0": {"equal": true}, "B&O.MAP (carga)|7": {"equal": true}, "Birmingham New Game|0": {"equal": true}, "Birmingham New Game|7": {"equal": true}, "Brazil|1": {"equal": true}, "Brazil|30": {"equal": true}, "Brazil|7": {"equal": true}, "Britain.MAP (carga)|0": {"equal": true}, "Britain.MAP (carga)|7": {"equal": true}, "Example (conversao)|0": {"equal": true}, "Example (conversao)|7": {"equal": true}, "Example|1": {"equal": true}, "Example|30": {"equal": false}, "Example|7": {"equal": true}, "Hannibal New Game|0": {"equal": true}, "Hannibal New Game|7": {"equal": true}, "Silver New Game|0": {"equal": true}, "Silver New Game|7": {"equal": true}, "Tutorial (conversao)|0": {"equal": true}, "Tutorial (conversao)|7": {"equal": true}, "Tutorial|1": {"equal": true}, "Tutorial|30": {"equal": true}, "Tutorial|7": {"equal": true}} -->
+<!-- fidelity:state {"#09 New Game|0": {"equal": true}, "#09 New Game|7": {"equal": true}, "#10 New Game|0": {"equal": true}, "#10 New Game|7": {"equal": true}, "#11 New Game|0": {"equal": true}, "#11 New Game|7": {"equal": true}, "#12 New Game|0": {"equal": true}, "#12 New Game|7": {"equal": true}, "#13 New Game|0": {"equal": true}, "#13 New Game|7": {"equal": true}, "#14 New Game|0": {"equal": true}, "#14 New Game|7": {"equal": true}, "#15 New Game|0": {"equal": true}, "#15 New Game|7": {"equal": true}, "#16 New Game|0": {"equal": true}, "#16 New Game|7": {"equal": true}, "#17 New Game|0": {"equal": true}, "#17 New Game|7": {"equal": true}, "#18 New Game|0": {"equal": true}, "#18 New Game|7": {"equal": true}, "#E01 New Game|0": {"equal": true}, "#E01 New Game|7": {"equal": true}, "#E02 New Game|0": {"equal": true}, "#E02 New Game|7": {"equal": true}, "#E03 New Game|0": {"equal": true}, "#E03 New Game|7": {"equal": true}, "#E04 New Game|0": {"equal": true}, "#E04 New Game|7": {"equal": true}, "#E05 New Game|0": {"equal": true}, "#E05 New Game|7": {"equal": true}, "#E06 New Game|0": {"equal": true}, "#E06 New Game|7": {"equal": true}, "#E07 New Game|0": {"equal": false}, "#E07 New Game|7": {"equal": false}, "#E08 New Game|0": {"equal": false}, "#E08 New Game|7": {"equal": false}, "#E09 New Game|0": {"equal": false}, "#E09 New Game|7": {"equal": false}, "#E10 New Game|0": {"equal": true}, "#E10 New Game|7": {"equal": true}, "#E11 New Game|0": {"equal": false}, "#E11 New Game|7": {"equal": false}, "#E12 New Game|0": {"equal": true}, "#E12 New Game|7": {"equal": true}, "#E13 New Game|0": {"equal": false}, "#E13 New Game|7": {"equal": false}, "#E14 New Game|0": {"equal": true}, "#E14 New Game|7": {"equal": true}, "#E15 New Game|0": {"equal": false}, "#E15 New Game|7": {"equal": false}, "#E16 New Game|0": {"equal": true}, "#E16 New Game|7": {"equal": true}, "#E17 New Game|0": {"equal": true}, "#E17 New Game|7": {"equal": true}, "#E18 New Game|0": {"equal": true}, "#E18 New Game|7": {"equal": true}, "Alaska|1": {"equal": true}, "Alaska|30": {"equal": true}, "Alaska|7": {"equal": true}, "Atlantis|1": {"equal": true}, "Atlantis|30": {"equal": true}, "Atlantis|7": {"equal": true}, "Austria|1": {"equal": true}, "Austria|30": {"equal": true}, "Austria|7": {"equal": true}, "B&O New Game|0": {"equal": true}, "B&O New Game|7": {"equal": true}, "B&O.MAP (carga)|0": {"equal": true}, "B&O.MAP (carga)|7": {"equal": true}, "Birmingham New Game|0": {"equal": true}, "Birmingham New Game|7": {"equal": true}, "Brazil|1": {"equal": true}, "Brazil|30": {"equal": true}, "Brazil|7": {"equal": true}, "Bridges New Game|0": {"equal": true}, "Bridges New Game|7": {"equal": true}, "Britain.MAP (carga)|0": {"equal": true}, "Britain.MAP (carga)|7": {"equal": true}, "Cross New Game|0": {"equal": true}, "Cross New Game|7": {"equal": true}, "Example (conversao)|0": {"equal": true}, "Example (conversao)|7": {"equal": true}, "Example|1": {"equal": true}, "Example|30": {"equal": true}, "Example|7": {"equal": true}, "Hannibal New Game|0": {"equal": true}, "Hannibal New Game|7": {"equal": true}, "Orient New Game|0": {"equal": true}, "Orient New Game|7": {"equal": true}, "Silver New Game|0": {"equal": true}, "Silver New Game|7": {"equal": true}, "Tutorial (conversao)|0": {"equal": true}, "Tutorial (conversao)|7": {"equal": true}, "Tutorial|1": {"equal": true}, "Tutorial|30": {"equal": true}, "Tutorial|7": {"equal": true}, "White New Game|0": {"equal": true}, "White New Game|7": {"equal": true}} -->
 <!-- fidelity:end -->
 
 As saídas do original para o Example foram geradas com `trace_save.py` (sem breakpoints) a partir de `base_ex.GAM`, semente 1234 para o RNG do jogo **e** para o rand do CRT (que sorteia a fumaça gravada em `pool_78`; `rt2-advance` aplica `Command::SeedCrtRng`). `rt2-savediff` mascara os bits 4-15 das flags dos passos de rota, que o pathfinder do original preenche com memória de `malloc` não inicializada (`trains.md` 10.7). Testes: `example_one_day_is_equal` e `example_seven_days` em `crates/rt2-sim/tests/worldloop.rs` (precisam de `base_ex.GAM`, `orig_ex_1.GAM`, `orig_ex_7.GAM` em `RT2_FIDELITY_DIR`).
