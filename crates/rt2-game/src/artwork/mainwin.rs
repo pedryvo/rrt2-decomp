@@ -22,9 +22,9 @@ pub const ROW1_CUT: (usize, usize) = (520, 633);
 /// Sprites of the main window chrome (each `None` without the install art).
 #[derive(Clone, Copy, Debug, Default)]
 pub struct MainArt {
-    /// `mwfrme.imb` 0, 1: the left and right rails.
+    /// `mwfrme.imb` 0: the left rail. Record 1 (a right rail) is not drawn: the original's main
+    /// window has nothing on the right edge above the bottom frame.
     pub rail_left: Option<SpriteId>,
-    pub rail_right: Option<SpriteId>,
     /// `mwfrme.imb` 2, 3 cut in [left, filler, right].
     pub row0: Option<[SpriteId; 3]>,
     pub row1: Option<[SpriteId; 3]>,
@@ -32,6 +32,9 @@ pub struct MainArt {
     pub shade: Option<[SpriteId; 3]>,
     /// The mustard texture of the center box (a crop of the ground strip of row 1).
     pub olive: Option<SpriteId>,
+    /// The recessed black strip of the cash and date boxes (a slice of row 1), stretched over the
+    /// widened bottom frame between the date box and the tab strip.
+    pub tab_fill: Option<SpriteId>,
     /// `maintab.imb` 0..3: the tab strip with the tab `i` lit.
     pub tabs: Option<[SpriteId; 4]>,
     /// `compass.imb`: the compass for the four view rotations (arrow plus the four plates).
@@ -105,17 +108,29 @@ fn compass_image(assets: &GameAssets, k: usize) -> Option<RgbaImage> {
 
 pub(super) fn load(assets: &GameAssets, b: &mut SkinBuilder) -> MainArt {
     let mut art = MainArt::default();
-    if let Some(rail) = ui_record(assets, "mwfrme.imb", 0) {
+    if let Some(mut rail) = ui_record(assets, "mwfrme.imb", 0) {
+        // The original shows only the thin pole above the first tool plate (design y 6..80):
+        // the tank outline of the unused first plate is not drawn, the map shows there.
+        let (w, rows) = (rail.width, 74.min(rail.height));
+        for y in 0..rows {
+            for x in 14..w {
+                rail.rgba[(y * w + x) * 4 + 3] = 0;
+            }
+        }
         art.rail_left = Some(b.add(to_skin_image(&scale2x(&rail), 2)));
-    }
-    if let Some(rail) = ui_record(assets, "mwfrme.imb", 1) {
-        art.rail_right = Some(b.add(to_skin_image(&scale2x(&rail), 2)));
     }
     if let Some(r) = ui_record(assets, "mwfrme.imb", 2) {
         art.row0 = row_pieces(b, &r, ROW0_CUT);
     }
     if let Some(r) = ui_record(assets, "mwfrme.imb", 3) {
         art.row1 = row_pieces(b, &r, ROW1_CUT);
+        if r.height >= 258 && r.width == 1024 {
+            // x 400..470 of the date box: uniform black between the two bezels, so it can be
+            // stretched sideways without a seam.
+            let big = scale2x(&r);
+            let q = crop(&big, 800, 179 * 2, 140, 45 * 2);
+            art.tab_fill = Some(b.add(to_skin_image(&q, 2)));
+        }
         // The olive ground strip below the boxes: a 64x16 crop mirrored on both axes, so the
         // tile repeats without a visible seam (the strip has a large-scale gradient).
         if r.height >= 258 && r.width >= 400 {

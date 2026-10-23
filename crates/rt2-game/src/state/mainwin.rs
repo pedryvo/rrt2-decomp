@@ -152,13 +152,11 @@ pub(super) struct NewsItem {
 const DESIGN: (f32, f32) = (1024.0, 768.0);
 
 /// Left rail plates of the tool icons (`mwfrme.imb` 0 and 2: 44x34 holes at x 16): design y of
-/// the nine plates and the plate of each of the eight tools (the fifth plate stays empty).
+/// the nine plates and the plate of each of the eight tools (the first plate, at the top, stays
+/// empty and shows the map, as in the original).
 const PLATE_X: f32 = 16.0;
 const PLATE_Y: [f32; 9] = [40.0, 85.0, 130.0, 175.0, 220.0, 272.0, 317.0, 362.0, 407.0];
-const TOOL_PLATE: [usize; 8] = [0, 1, 2, 3, 5, 6, 7, 8];
-/// Empty plates of the right rail (`mwfrme.imb` 1 at 954,63: 44x34 holes at x 10).
-const RIGHT_PLATE_X: f32 = 964.0;
-const RIGHT_PLATE_Y: [f32; 6] = [131.0, 176.0, 221.0, 273.0, 318.0, 363.0];
+pub(super) const TOOL_PLATE: [usize; 8] = [1, 2, 3, 4, 5, 6, 7, 8];
 /// The four tab bars over the tab strip (`mainwin.win` bars 257, 258, 260, 259).
 const TAB_X: [f32; 4] = [490.0, 542.0, 594.0, 646.0];
 const TAB_W: [f32; 4] = [52.0, 52.0, 51.0, 52.0];
@@ -419,19 +417,14 @@ impl AppState {
         let center = gm.center();
         solid(ui, radar_rect, metal);
         solid(ui, act_rect, Color(0x12, 0x14, 0x34, 0xff));
-        for (i, y) in PLATE_Y.iter().enumerate() {
-            let _ = i;
+        for y in &PLATE_Y[1..] {
             solid(ui, gm.rl(PLATE_X, *y, 44.0, 34.0), dark);
-        }
-        for y in RIGHT_PLATE_Y {
-            solid(ui, gm.rr(RIGHT_PLATE_X, y, 44.0, 34.0), dark);
         }
         // Small gaps of the frame, the tab strip left of the tabs and the strip over the center.
         solid(ui, gm.rl(135.0, 433.0, 34.0, 9.0), dark);
         solid(ui, gm.rr(931.0, 419.0, 34.0, 17.0), dark);
         solid(ui, gm.rr(756.0, 445.0, 24.0, 26.0), dark);
         solid(ui, gm.span(402.0, 625.0, 502.0, 6.0), dark);
-        solid(ui, gm.span(490.0, 490.0, 687.0, 43.0), dark);
         solid(ui, gm.rr(700.0, 692.0, 38.0, 36.0), dark);
         let overlay = self.overview_open() || self.tool_active();
         match art.olive {
@@ -615,12 +608,6 @@ impl AppState {
             gm.rl(0.0, 6.0, 85.0, 397.0),
             Fit::Stretch,
         );
-        image(
-            ui,
-            art.rail_right,
-            gm.rr(954.0, 63.0, 70.0, 340.0),
-            Fit::Stretch,
-        );
         for (row, y, h, cut) in [
             (art.row0, 403.0, 105.0, crate::artwork::mainwin::ROW0_CUT),
             (art.row1, 508.0, 260.0, crate::artwork::mainwin::ROW1_CUT),
@@ -635,6 +622,13 @@ impl AppState {
 
         // ---- the tab strip with cash and date -------------------------------------------------
         let strip = gm.rr(490.0, 687.0, 207.0, 45.0);
+        // Widened frames leave a gap between the date box and the tab strip: the box's own strip.
+        image(
+            ui,
+            art.tab_fill,
+            gm.span(488.0, 490.0, 687.0, 45.0),
+            Fit::Stretch,
+        );
         let tab_art = art.tabs.map(|t| t[center_tab.min(3)]);
         image(ui, tab_art, strip, Fit::Stretch);
         let tab_tips = [1800u32, 1801, 1802, 1803];

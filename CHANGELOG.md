@@ -28,6 +28,7 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Improved: map names are larger, cream-yellow Copperplate with a dark drop shadow, like the original.
 - Change: the message history moved into the activity box (click the logo box; Briefing and Close buttons there); the center box opens on the Companies tab; the tabs show a tooltip with their name.
 - Docs: docs/ui.md "Janela principal" and docs/reference/screens.md C1/C2 describe the layout, the art banks and the responsive scheme.
+- Fix: main window: no duplicate station name under the city name, tool icons without the empty plate, no stray right rail, widened frame filled between date box and tabs
 
 ## v0.3.0 — 2026-10-23
 - Fix: Lay Track drag now starts and ends on a station when pressed on its building (snap to the station's tile), so dragging from one station to another works as in the original

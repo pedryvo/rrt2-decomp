@@ -21,6 +21,11 @@ pub const MIN_ZOOM_CITIES: f32 = 0.07;
 /// Station names appear once the view is this close.
 pub const MIN_ZOOM_STATIONS: f32 = 0.6;
 
+/// The original's map writes only the names of cities and regions, never of the stations (the
+/// station next to "Baltimore" has no caption, docs/ui.md "Janela principal"). Station names are a
+/// modern overlay, off by default; the placement code below still handles them.
+pub const SHOW_STATION_NAMES: bool = false;
+
 /// A name that wants a place on the map.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Cand {
@@ -157,7 +162,7 @@ pub fn candidates(
             label: kind == 2,
         });
     }
-    for s in save.stations.ordered() {
+    for s in save.stations.ordered().filter(|_| SHOW_STATION_NAMES) {
         let d = &s.data;
         let x = i32::from_le_bytes([d[0xa], d[0xb], d[0xc], d[0xd]]);
         let y = i32::from_le_bytes([d[0xe], d[0xf], d[0x10], d[0x11]]);

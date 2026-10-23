@@ -234,3 +234,10 @@ fn the_chrome_works_on_the_widest_and_the_smallest_canvases() {
         assert_eq!(game(&s).camera.rotation, (rot + 3) % 4, "{vp:?} @{scale}");
     }
 }
+
+#[test]
+fn tool_icons_fill_plates_one_to_eight_and_stations_are_not_named_on_the_map() {
+    // The first plate stays empty; the eight tools take the rest with no gap (the original).
+    assert_eq!(TOOL_PLATE, [1, 2, 3, 4, 5, 6, 7, 8]);
+    const { assert!(!maplabels::SHOW_STATION_NAMES) };
+}
