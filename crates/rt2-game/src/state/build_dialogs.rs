@@ -6,9 +6,8 @@
 //! Every action is a command of `rt2_sim::build::cmd::BuildCmd` (`0x17`..`0x20`, `0x2a`, `0x2d`)
 //! sent with `World::apply_build`; what the original's windows check before sending is checked
 //! here (permissions `0x5706b4`..`0x5706b9`, cash, availability: docs/spec/commands.md 3.3 to
-//! 3.7). Gaps (marked TODO): the picture of a station shows the purchased improvements as
-//! labelled chips because the overlay art of the improvements is not catalogued
-//! (docs/formats/sprite-catalog.md); the stop commands `0x1a`, `0x1b`, `0x1c`, `0x21` and `0x2f`
+//! 3.7). The picture of a station is composed from the original's overlay art
+//! (`stationview.rs`, docs/formats/sprite-catalog.md 6.1). Gaps (marked TODO): the stop commands `0x1a`, `0x1b`, `0x1c`, `0x21` and `0x2f`
 //! (next stop, wait mode, cargo per stop, class, sell mode) are not in `rt2-sim` yet, so the
 //! route list shows the wait mode and cargo but cannot change them.
 
@@ -291,81 +290,55 @@ impl AppState {
         let top = 40.0 * dz;
         let foot = 44.0 * dz;
         let (lw, body_h) = (w * 0.44, h - top - foot - pad);
-        // The composite picture: the building, then one chip per purchased improvement.
+        // The picture keeps the art's 1024x569 aspect.
+        let pic_h = (lw * crate::stationview::VIEW_H as f32 / crate::stationview::VIEW_W as f32)
+            .min(body_h * 0.7);
         let pic = ui.add(
             root,
             Kind::Panel {
                 fill: Fill::Solid(INSET),
             },
-            at(pad, top, lw, body_h * 0.6),
+            at(pad, top, lw, pic_h),
         );
-        let (shape, mask, owner, place) = match &self.screen {
+        // The picture: backdrop and overlays composed by `stationview.rs` into the reserved
+        // sprite (docs/formats/sprite-catalog.md 6.1).
+        let (style, site, mask) = match &self.screen {
             Screen::Game(g) => g
                 .world
                 .save_ref()
                 .and_then(|s| {
                     let st = bt::rec(&s.stations, station)?;
                     let b = bt::rec(&s.objects, st.i32(4))?;
+                    let (double, electrified) = bt::station_track_flags(s, station);
                     Some((
-                        usize::from(b.u8(6)),
-                        st.u32(0x49),
-                        st.i32(0x39),
-                        (st.i32(0xa), st.i32(0xe)),
+                        b.u8(0x52),
+                        st.i32(0x4d),
+                        crate::stationview::derive_mask(st.u32(0x49), double, electrified),
                     ))
                 })
                 .unwrap_or_default(),
             Screen::Menu(_) => Default::default(),
         };
-        let _ = (owner, place);
-        if let Some(Some(sprite)) = self.dialog_art.stations.get(shape) {
+        if let Some(sprite) = self.dialog_art.station_view {
+            let key = (style, site, mask);
+            if *self.station_view_key.borrow() != Some(key)
+                && let Some(rgba) = crate::stationview::compose(&self.assets, site, style, mask)
+            {
+                self.sprite_uploads.borrow_mut().push((sprite, rgba));
+                *self.station_view_key.borrow_mut() = Some(key);
+            }
             ui.add(
                 pic,
                 Kind::Image {
-                    sprite: *sprite,
+                    sprite,
                     fit: Fit::Contain,
                 },
-                Layout::fill().offset(6.0, 6.0),
-            );
-        }
-        // Improvement chips along the bottom of the picture box.
-        let chip_h = 18.0 * dz;
-        let mut cx = 6.0 * dz;
-        let mut cy = body_h * 0.6 - chip_h - 4.0 * dz;
-        for row in 3..30u32 {
-            if mask & (1 << row) == 0 || matches!(row, 12..=14) {
-                continue;
-            }
-            let name = t.get(1043 + row, &format!("Improvement {row}"));
-            let cw = (name.chars().count() as f32 * 7.0 * dz * 0.85 + 12.0 * dz).min(lw - 12.0);
-            if cx + cw > lw - 6.0 {
-                cx = 6.0 * dz;
-                cy -= chip_h + 3.0 * dz;
-            }
-            let chip = ui.add(
-                pic,
-                Kind::Panel {
-                    fill: Fill::Solid(Color(0x2c, 0x44, 0x2c, 0xe0)),
-                },
-                at(cx, cy, cw, chip_h),
-            );
-            ui.add(
-                chip,
-                lbl(&name, fnt(1, dz * 0.7), TEXT, Align::Center),
                 Layout::fill(),
             );
-            cx += cw + 4.0 * dz;
         }
         // Facts under the picture.
         let left_facts: Vec<Block> = page.left.iter().take(1).cloned().collect();
-        self.blocks(
-            ui,
-            root,
-            &left_facts,
-            pad,
-            top + body_h * 0.6 + 4.0 * dz,
-            lw,
-            dz,
-        );
+        self.blocks(ui, root, &left_facts, pad, top + pic_h + 4.0 * dz, lw, dz);
         // Supply / demand on the right.
         let rx = pad * 2.0 + lw;
         let rw = w - rx - pad;

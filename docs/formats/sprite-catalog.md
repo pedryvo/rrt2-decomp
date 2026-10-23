@@ -137,6 +137,50 @@ Registros não usados por máscara: 14-18, 33-36, 47-49, 60-62.
 
 `bl{rot+1}st{estilo}{NN}.imb` (só `bl`): `NN` = `sta10..sta17` (pequenas), `sta20..sta27` (médias), `sta30..sta37` (grandes), 8 projetos por tamanho (os registros 0..23 de `building_type_table`, `terrain-track.md` 3.1); `estilo` = V, C, M, T ou K (6 letras na tabela, B não tem arte). 4 paletas por banco. 1 registro, 2 grupos (prédio, camada esparsa). O formato de cada registro é de um prédio de 1 a 3 tiles (pequena 59-113 x 49-73, grande até 184x131).
 
+### 6.1 A vista da estação (`statndtl.win`): fundo e camadas das melhorias
+
+Os 43 bancos `scenery-vignette` e os 13 `picture-landscape` da tabela de categorias **são** a arte da janela de detalhe da estação. A janela monta uma cena pré-renderizada de **1024x569** pixels, de trás para a frente: um fundo e uma camada por prédio ou melhoria que a estação tem. Todas as imagens guardam a posição absoluta na cena (`x, y` do registro, ex. `SDCSTAT1`: 362x164 em (190, 306)); nenhuma precisa de âncora. 1 registro, 1 grupo, 1 imagem por banco; 3 paletas (o clone usa a primeira; a vista não anima).
+
+Origem (decompilação, `0x4c0c00`, `0x4c0ed0`, `0x4c1da0`, `0x4c0a50`; conferido pelos 55 hashes presentes no PK2):
+
+- **Fundo**: `sdmbkg{N}.imb`, `N = estação +0x4d + 1` (1..13; `+0x4d` é a classe do sítio, `0x4be430`). Um banco por classe, paisagem 1024x569 (`sdmbkg1` = RT2/1462 ... `sdmbkg13` = RT2/1474).
+- **Camadas**: para cada linha `i` da tabela de melhorias (`terrain-track.md` 3.4; `i` é o bit de `estação+0x49`) na ordem de desenho abaixo, se o bit está ligado desenha `SD{L}{CHAVE}.imb` (a chave é a de `0x55b238`, 5 letras; o nome é `sprintf("SD%s%s.imb", L, chave)` em `0x55b3a8`).
+- **Letra `L`**: nas três linhas de tamanho (0..2) é a letra do estilo da estação (`"VCMTBK"[objeto +0x52]`, seção 5); nos dois restaurantes (5, 6) é `M` se o estilo é 2 (Mission) ou 5 (Kyoto), senão `V`; em todo o resto é `V`. O estilo `B` não tem banco `SD`: as linhas de tamanho dele não existem no PK2 (o clone usa `V`).
+
+Ordem de desenho, de trás para a frente (`0x55b218`, 30 bytes): 29, 26, 27, 22, 21, 20, 19, 18, 17, 16, 15, 25, 12, 0, 1, 28, 2, 11, 23, 14, 13, 24, 10, 9, 8, 7, 5, 6, 4, 3.
+
+| Linha (bit) | Chave | Melhoria / uso | Bancos (RT2/índice do PK2) |
+|---|---|---|---|
+| 0, 1, 2 | `STAT1..3` | prédio da estação pequena, média, grande, um por estilo | `SD{V,C,M,T,K}STAT1`: RT2/1505, 1475, 1483, 1486, 1478; `STAT2`: 1506, 1476, 1484, 1487, 1479; `STAT3`: 1507, 1477, 1485, 1488, 1480 (15 bancos, de 264x184 a 755x523) |
+| 3 | `PHONE` | Telephone Poles | `SDVPHONE` (RT2/1495; 370x198 em 654,371) |
+| 4 | `GRAPH` | Telegraph Poles | `SDVGRAPH` (1513) |
+| 5, 6 | `RESTS`, `RESTB` | Small / Large Restaurant | `SDVRESTS` 1499, `SDMRESTS` 1482, `SDVRESTB` 1498, `SDMRESTB` 1481 |
+| 7 | `SALOO` | Saloon | `SDVSALOO` (1503) |
+| 8 | `POSTO` | Post Office | `SDVPOSTO` (1496) |
+| 9 | `CUSTM` | Customs House | `SDVCUSTM` (1489) |
+| 10 | `SANDT` | Sanding Tower | `SDVSANDT` (1504) |
+| 11 | `WATER` | Water Tower | `SDVWATER` (1512) |
+| 12 | `TURNT` | Turntable (**derivada**: roundhouse ou engine shop) | `SDVTURNT` (1510) |
+| 13 | `TRAK2` | segunda via (**derivada**: trilho duplo sob a âncora) | `SDVTRAK2` (1509) |
+| 14 | `TRAK1` | via principal (**derivada**: sempre ligada) | `SDVTRAK1` (1508) |
+| 15, 16 | `HOTLB`, `HOTLS` | Large / Small Hotel | `SDVHOTLB` 1492, `SDVHOTLS` 1493 |
+| 17 | `LIQID` | Liquid Storage | `SDVLIQID` (1494) |
+| 18 | `REFRG` | Refrigerated Storage | `SDVREFRG` (1497) |
+| 19 | `GRAIN` | Grain Silo | `SDVGRAIN` (1491) |
+| 20 | `WAREH` | Warehouse | `SDVWAREH` (1511) |
+| 21 | `ROUND` | Roundhouse | `SDVROUND` (1502) |
+| 22 | `ENGIN` | Engine Shop (desligada no jogo, arte existe) | `SDVENGIN` (1490) |
+| 23, 24, 25 | `ELEC1..3` | catenária: via principal, segunda via, turntable (**derivadas**, só com trilho eletrificado) | `SDVELEC1..3` (1515, 1516, 1517; 1024 de largura) |
+| 26, 27 | `ROAD_`, `ROADB` | estrada sob restaurantes/saloon/correio/alfândega e sob os hotéis (**derivadas**) | `SDVROAD_` 1501, `SDVROADB` 1500 |
+| 28 | `trees` | árvores; o bit nunca é ligado em jogo (só o editor) | `SDVtrees` (1514) |
+| 29 | (sem chave) | nunca ligado | - |
+
+(As linhas 12 a 14 e 23 a 28 existem na tabela de melhorias como "desligadas" ou sem uso, `terrain-track.md` 3.4; aqui se vê o que são: peças da vista.)
+
+**Bits derivados** (`0x4c1da0` e `0x4c0a50`, rodam toda vez que a janela abre e gravam na estação; o clone os calcula só para desenhar, `rt2-game/src/stationview.rs`): com `P` = a peça de trilho do tile da âncora (`peça +0x23`: bit 0 = via dupla, bit 4 = eletrificada): bit 14 sempre; bit 13 se `P` é dupla; bit 23 se `P` eletrificada; bit 24 se dupla e eletrificada; bit 26 se há algum dos bits 5..9; bit 27 se há algum dos 15..16; bit 12 se há algum dos bits 21..22 (roundhouse, engine shop), e então bit 25 se `P` é eletrificada. Depois "o maior apaga o menor": bit 2 apaga 0 e 1, bit 1 apaga 0, bit 6 apaga 5, bit 15 apaga 16, bit 3 apaga 4.
+
+Os 43 bancos de camada ficam nos ordinais 1305..1347 da lista de `rt2-sheet` e os 13 fundos em 1292..1304 (os números `RT2/N` acima são o índice no `RT2.PK2`); os nomes acima casam com os hashes (`pk2_hash.py`), então o TSV pode passar a usar os nomes `SD...`/`sdmbkg...` (os arquivos em `re/names/` ainda não os trazem).
+
 ## 7. Indústrias e prédios
 
 Dois bancos por prédio e rotação (`bn` estático, `bl` com animação, ver 1). Classe = tipo da indústria em `industry_type_table` (`cargo.md` 7.1, LNG `920 + classe`); o registro de `building_type_table` (`0x5457e8`, passo 0x154, +0x10 = classe, +0..4 = nome do sprite) liga o nome do banco à classe. Tipos repetidos (4 `grain`, 4 `cottn`, 4 `coffe`, 4 `prodc`, 4 `rubbr`, 4 `sugar`, 4 `port_`) são estágios visuais do mesmo prédio (`port_` tem 5 registros: partes do porto).

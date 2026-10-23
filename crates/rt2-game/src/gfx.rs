@@ -54,6 +54,9 @@ impl Gfx {
 
     pub fn draw(&mut self, state: &mut AppState, target: &wgpu::TextureView, water_frame: u32) {
         self.ui.set_script(state.script());
+        for (id, rgba) in state.take_sprite_uploads() {
+            self.ui.upload_sprite(&self.queue, id, &rgba);
+        }
         if let Some(scene) = state.take_scene() {
             match &mut self.map {
                 Some(m) => m.replace_scene(&self.device, scene),

@@ -25,6 +25,7 @@ mod scenario_info;
 mod setup;
 mod sound;
 mod state;
+mod stationview;
 mod text;
 
 use std::path::PathBuf;

@@ -5331,3 +5331,38 @@ name = "ui_merger_dialog_open"
 kind = "function"
 comment = "fastcall(x, y): monta o dialogo de fusao: lista de empresas ativas (alvo, LNG 529), preco por acao (LNG 530, inicio = cotacao + 1), ações, total e fundos (LNG 159..163); faixa do controle de preco nao decodificada; [S]"
 spec = "docs/spec/finance.md"
+
+[[symbol]]
+addr = "0x4c0c00"
+name = "statndtl_add_improvement_overlays"
+kind = "function"
+comment = "para cada linha de melhoria (ordem 0x55b218, bit em estacao+0x49) cria o item SD<estilo><chave>.imb (0x55b3a8) da vista da estacao; estilo da estacao nas linhas 0..2, M nos restaurantes de estilo 2/5, V no resto; [S]"
+spec = "docs/formats/sprite-catalog.md"
+
+[[symbol]]
+addr = "0x4c0ed0"
+name = "statndtl_add_backdrop"
+kind = "function"
+comment = "fundo sdmbkg<estacao+0x4d + 1>.imb (0x55b3b4) da vista da estacao; [S]"
+spec = "docs/formats/sprite-catalog.md"
+
+[[symbol]]
+addr = "0x4c1da0"
+name = "statndtl_refresh"
+kind = "function"
+comment = "atualiza a janela do detalhe da estacao: liga 0x4000, deriva 13/23/24 da peca de trilho da ancora (+0x23 bit 0 dupla, bit 4 eletrificada), chama 0x4c0a50, 0x4c0ed0, 0x4c0c00; [S]"
+spec = "docs/formats/sprite-catalog.md"
+
+[[symbol]]
+addr = "0x55b218"
+name = "statndtl_draw_order"
+kind = "global"
+comment = "30 bytes: ordem de desenho (tras para a frente) das linhas de melhoria na vista da estacao; [D]"
+spec = "docs/formats/sprite-catalog.md"
+
+[[symbol]]
+addr = "0x55b238"
+name = "statndtl_overlay_keys"
+kind = "global"
+comment = "29 ponteiros para as chaves de 5 letras dos arquivos SD<estilo><chave>.imb (STAT1..ROADB, trees); [D]"
+spec = "docs/formats/sprite-catalog.md"

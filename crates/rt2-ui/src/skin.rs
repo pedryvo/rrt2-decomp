@@ -106,6 +106,19 @@ impl Skin {
         self.atlas_size
     }
 
+    /// The pixel rectangle `(x, y, width, height)` of a sprite in the atlas, for sprites whose
+    /// pixels the application replaces while running (see [`UiRenderer::upload_sprite`]).
+    pub fn sprite_rect(&self, id: SpriteId) -> Option<(u32, u32, u32, u32)> {
+        let s = self.sprite(id)?;
+        let (aw, ah) = (self.atlas_size.0 as f32, self.atlas_size.1 as f32);
+        let (x, y) = ((s.uv[0] * aw).round(), (s.uv[1] * ah).round());
+        let (w, h) = (
+            ((s.uv[2] - s.uv[0]) * aw).round(),
+            ((s.uv[3] - s.uv[1]) * ah).round(),
+        );
+        Some((x as u32, y as u32, w as u32, h as u32))
+    }
+
     pub(crate) fn sprite(&self, id: SpriteId) -> Option<&Sprite> {
         self.sprites.get(id.0 as usize).filter(|s| s.valid)
     }
@@ -134,6 +147,18 @@ impl SkinBuilder {
     pub fn add(&mut self, image: SkinImage) -> SpriteId {
         self.images.push(image);
         SpriteId(self.images.len() as u32 - 1)
+    }
+
+    /// Reserves a blank `width` x `height` sprite (original pixels, no bake) whose pixels the
+    /// application fills later with [`UiRenderer::upload_sprite`]: a picture composed at run
+    /// time, such as the station view.
+    pub fn reserve(&mut self, width: u32, height: u32) -> SpriteId {
+        self.add(SkinImage {
+            width,
+            height,
+            rgba: vec![0; (width * height * 4) as usize],
+            bake: 1,
+        })
     }
 
     /// Packs the images (shelf packing, tallest first is not needed: images are few and big).

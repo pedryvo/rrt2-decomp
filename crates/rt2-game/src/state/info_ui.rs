@@ -26,6 +26,9 @@ pub(super) const A_PREV_CO: u32 = 112;
 pub(super) const A_NEXT_CO: u32 = 113;
 pub(super) const A_ROW: u32 = 120;
 pub(super) const A_TOOL: u32 = 130;
+/// Per-row Buy / Sell buttons of the stock list (row = action - base, 60 rows each).
+pub(super) const A_STOCK_BUY: u32 = 6200;
+pub(super) const A_STOCK_SELL: u32 = 6260;
 
 const TEXT: Color = Color::rgb(0xee, 0xe4, 0xc8);
 const HEAD: Color = Color::rgb(0xe6, 0xc2, 0x6a);
@@ -118,7 +121,7 @@ pub(super) struct InfoState {
     pub day: i32,
 }
 
-enum Content {
+pub(super) enum Content {
     List(ListPage),
     Page(Page),
 }
@@ -359,7 +362,7 @@ pub(super) fn draw_blocks(
 }
 
 impl AppState {
-    fn info_content(&self, screen: InfoScreen) -> Option<Content> {
+    pub(super) fn info_content(&self, screen: InfoScreen) -> Option<Content> {
         let Screen::Game(g) = &self.screen else {
             return None;
         };
@@ -613,6 +616,10 @@ impl AppState {
                 };
                 return self.fin_book_activated(a, company);
             }
+            a if (A_STOCK_BUY..A_STOCK_SELL + 60).contains(&a) => {
+                let row = (a - A_STOCK_BUY) % 60;
+                self.stock_trade_row(row as usize);
+            }
             A_ROW => {
                 // Enter on the selected row of a list.
                 if let Some(row) = self.ui.focused().and_then(|f| self.ui.selected(f)) {
@@ -631,6 +638,25 @@ impl AppState {
             return true;
         }
         false
+    }
+
+    /// The Buy / Sell button of a visible row of the stock list: opens the trade dialog of that
+    /// company (the same one the company report's Trade button opens).
+    fn stock_trade_row(&mut self, row: usize) {
+        let Some(InfoState { screen, scroll, .. }) = (match &self.screen {
+            Screen::Game(g) => g.info,
+            Screen::Menu(_) => None,
+        }) else {
+            return;
+        };
+        let Some(Content::List(list)) = self.info_content(screen) else {
+            return;
+        };
+        if let Some(&id) = list.table.ids.get(scroll + row)
+            && id != TOTAL
+        {
+            self.fin_act(super::dialogs::fin::FinAct::Trade, id as i32);
+        }
     }
 
     /// A list row was clicked (or entered): open its detail page.
@@ -924,6 +950,12 @@ impl AppState {
             i.scroll = first;
         }
         let shown = visible.min(n - first);
+        // The stock list gets a Buy and a Sell button per row (they open the trade dialog).
+        let trade = matches!(screen, InfoScreen::Stock)
+            .then(|| self.human_person())
+            .flatten();
+        let btn_w = if trade.is_some() { rowh * 6.2 } else { 0.0 };
+        let w = w - btn_w;
         // Inset behind the table, header, then the click targets and the cells over them.
         ui.add(
             panel,
@@ -970,6 +1002,55 @@ impl AppState {
             visible,
             false,
         );
+        if let Some(person) = trade {
+            let (buy_t, sell_t) = (
+                self.texts.get(305, "Buy").replace('&', ""),
+                self.texts.get(307, "Sell").replace('&', ""),
+            );
+            let bw = (btn_w - 8.0) / 2.0;
+            for r in 0..shown {
+                let Some(&id) = list.table.ids.get(first + r) else {
+                    continue;
+                };
+                if id == TOTAL {
+                    continue;
+                }
+                let (can_buy, can_sell) = match &self.screen {
+                    Screen::Game(g) => g
+                        .world
+                        .fin_trade_quote(person, id as i32)
+                        .map_or((false, false), |q| {
+                            (q.can_buy || q.can_buy_margin, q.can_sell || q.can_short)
+                        }),
+                    Screen::Menu(_) => (false, false),
+                };
+                let ry = y + 2.0 + (rowh + 2.0) + r as f32 * rowh + 1.0;
+                for (k, (text, action, on)) in [
+                    (&buy_t, A_STOCK_BUY, can_buy),
+                    (&sell_t, A_STOCK_SELL, can_sell),
+                ]
+                .into_iter()
+                .enumerate()
+                {
+                    ui.add(
+                        panel,
+                        Kind::Button {
+                            text: text.clone(),
+                            font: font(size * 0.9),
+                            action: action + r as u32,
+                            enabled: on,
+                            hotkey: None,
+                        },
+                        at(
+                            x + w + 4.0 + k as f32 * (bw + 0.0),
+                            ry,
+                            bw - 2.0,
+                            rowh - 2.0,
+                        ),
+                    );
+                }
+            }
+        }
         // Position text under the table.
         let last = (first + shown).min(n);
         let txt = if n == 0 {

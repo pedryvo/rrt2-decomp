@@ -9,6 +9,7 @@
 //! not an axis-aligned box.
 
 use rt2_formats::map::Map;
+use rt2_formats::terrain::{CLASS_COUNT, TerrainGrid, WATER_CLASS, tables};
 use rt2_render::Camera;
 use rt2_ui::Color;
 
@@ -37,21 +38,40 @@ fn lerp(a: Color, b: Color, t: f32) -> Color {
     Color::rgb(m(a.0, b.0), m(a.1, b.1), m(a.2, b.2))
 }
 
-/// Land colour for a mean corner elevation: green lowlands, olive and tan hills, grey-white
-/// peaks. The elevation unit is the original's (`height_scale` in `rt2-render`); typical land
-/// is 0..~60, mountains above.
-fn land_color(elev: f32) -> Color {
-    const LOW: Color = Color::rgb(0x4c, 0x7a, 0x3c);
-    const MID: Color = Color::rgb(0x8a, 0x8c, 0x4a);
-    const HIGH: Color = Color::rgb(0xa8, 0x8c, 0x68);
-    const PEAK: Color = Color::rgb(0xe8, 0xe4, 0xdc);
-    let e = elev.max(0.0);
-    if e < 60.0 {
-        lerp(LOW, MID, e / 60.0)
-    } else if e < 180.0 {
-        lerp(MID, HIGH, (e - 60.0) / 120.0)
+/// Base colour of each terrain class 0..=17 (`terrain-track.md` 2: beach, desert, wasteland,
+/// dirt, dry grass, grass, lush grass, swamp, snow, wheat, cotton, sugar cane, mountain, then the
+/// four rock classes and rock with coast); class 18 is water and has its own ramp.
+const CLASS_COLOR: [Color; 18] = [
+    Color::rgb(0xd8, 0xc8, 0x88), // 0 beach
+    Color::rgb(0xd0, 0xa8, 0x60), // 1 desert
+    Color::rgb(0x8c, 0x7c, 0x64), // 2 wasteland
+    Color::rgb(0x8c, 0x64, 0x3c), // 3 dirt
+    Color::rgb(0xa8, 0xa0, 0x54), // 4 dry grass
+    Color::rgb(0x58, 0x8c, 0x40), // 5 grass
+    Color::rgb(0x2c, 0x6c, 0x34), // 6 lush grass
+    Color::rgb(0x40, 0x68, 0x58), // 7 swamp
+    Color::rgb(0xf0, 0xf0, 0xf4), // 8 snow
+    Color::rgb(0xcc, 0xb4, 0x44), // 9 wheat
+    Color::rgb(0xb8, 0xc8, 0x9c), // 10 cotton
+    Color::rgb(0x70, 0xa8, 0x48), // 11 sugar cane
+    Color::rgb(0x7c, 0x78, 0x74), // 12 mountain
+    Color::rgb(0x58, 0x4c, 0x44), // 13 dark rock
+    Color::rgb(0x74, 0x54, 0x3c), // 14 brown rock
+    Color::rgb(0x90, 0x8c, 0x88), // 15 grey rock
+    Color::rgb(0xb4, 0xa4, 0x84), // 16 beige rock
+    Color::rgb(0x9c, 0x90, 0x78), // 17 rock with coast
+];
+
+/// Land colour of a terrain class lit by the mean corner elevation: higher ground reads lighter,
+/// low ground a little darker. The elevation unit is the original's (`height_scale` in
+/// `rt2-render`); typical land is 0..~60, mountains above.
+fn land_color(class: u8, elev: f32) -> Color {
+    let base = CLASS_COLOR[usize::from(class).min(CLASS_COLOR.len() - 1)];
+    let shade = ((elev.max(0.0) - 40.0) / 400.0).clamp(-0.12, 0.25);
+    if shade >= 0.0 {
+        lerp(base, Color::rgb(0xff, 0xff, 0xff), shade)
     } else {
-        lerp(HIGH, PEAK, ((e - 180.0) / 240.0).min(1.0))
+        lerp(base, Color::rgb(0, 0, 0), -shade)
     }
 }
 
@@ -63,10 +83,13 @@ impl Radar {
         let step = (w.max(h) as f32 / MAX_CELLS as f32).max(1.0);
         let cols = ((w as f32 / step).ceil() as usize).max(1);
         let rows = ((h as f32 / step).ceil() as usize).max(1);
+        // The terrain class comes from the terrain id the loader builds (old `0x233C` files
+        // store older ids), never from the raw ground byte: that is what the map view draws.
+        let grid = rt2_render::build_grid(map);
         let mut base = Vec::with_capacity(cols * rows);
         for j in 0..rows {
             for i in 0..cols {
-                base.push(Self::cell_color(map, step, i, j));
+                base.push(Self::cell_color(map, &grid, step, i, j));
             }
         }
         Radar {
@@ -80,7 +103,7 @@ impl Radar {
     }
 
     /// Mean of the tiles of one cell: the share of water decides between water and land.
-    fn cell_color(map: &Map, step: f32, i: usize, j: usize) -> Color {
+    fn cell_color(map: &Map, grid: &TerrainGrid, step: f32, i: usize, j: usize) -> Color {
         let x0 = (i as f32 * step) as usize;
         let y0 = (j as f32 * step) as usize;
         let x1 = (((i + 1) as f32 * step).ceil() as usize)
@@ -90,12 +113,16 @@ impl Radar {
             .min(map.height)
             .max(y0 + 1);
         let (mut water, mut n) = (0u32, 0u32);
+        let mut classes = [0u32; CLASS_COUNT];
         let mut elev = 0.0f32;
         for y in y0..y1.min(map.height) {
             for x in x0..x1.min(map.width) {
                 n += 1;
-                if map.tile(x, y).is_water() {
+                let class = tables().class_of_id(grid.cell(x, y).id());
+                if class == WATER_CLASS {
                     water += 1;
+                } else {
+                    classes[usize::from(class).min(CLASS_COUNT - 1)] += 1;
                 }
                 elev += f32::from(map.corner(x, y));
             }
@@ -109,7 +136,14 @@ impl Radar {
             // Deeper sea floor reads darker.
             lerp(WATER_SHALLOW, WATER_DEEP, (-mean / 40.0).clamp(0.0, 1.0))
         } else {
-            let land = land_color(mean);
+            // The most common land class of the cell (ties to the lowest class).
+            let mut best = 0;
+            for (c, &k) in classes.iter().enumerate() {
+                if k > classes[best] {
+                    best = c;
+                }
+            }
+            let land = land_color(best as u8, mean);
             if share > 0.0 {
                 lerp(land, WATER_SHALLOW, share)
             } else {
@@ -252,7 +286,7 @@ mod tests {
 
     #[test]
     fn elevation_changes_the_land_colour() {
-        assert_ne!(land_color(0.0), land_color(50.0));
-        assert_ne!(land_color(50.0), land_color(200.0));
+        assert_ne!(land_color(5, 0.0), land_color(5, 200.0));
+        assert_ne!(land_color(5, 40.0), land_color(1, 40.0), "classes differ");
     }
 }

@@ -5,7 +5,7 @@
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
 # Classificadas (categoria != unknown): 1293 (43.9%)
 # Por categoria: lib=258, platform=114, render=11, audio=56, ui=272, sim=582, unknown=1652
-# Por estado:   unknown=2371, named=122, spec=180, verified=272
+# Por estado:   unknown=2368, named=125, spec=180, verified=272
 # Entradas manuais: 540
 # sim spec coverage: 71.0% (413 de 582 funcoes sim em spec/verified)
 
@@ -14979,9 +14979,10 @@ manual = true
 
 [[function]]
 addr = "0x4c0c00"
+name = "statndtl_add_improvement_overlays"
 size = 494
 category = "ui"
-status = "unknown"
+status = "named"
 why = "string:SD%s%s.imb"
 
 [[function]]
@@ -15002,9 +15003,10 @@ manual = true
 
 [[function]]
 addr = "0x4c0ed0"
+name = "statndtl_add_backdrop"
 size = 234
 category = "ui"
-status = "unknown"
+status = "named"
 why = "string:sdmbkg%s.imb"
 
 [[function]]
@@ -15037,9 +15039,10 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x4c1da0"
+name = "statndtl_refresh"
 size = 428
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]

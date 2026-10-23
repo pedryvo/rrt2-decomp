@@ -70,6 +70,13 @@ const E_BUTTON_Y: f32 = 188.0;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Act {
     Close,
+    /// A button of a scenario Choice message (`scenarios.md` 2.4): `button` 0 or 1 answers the
+    /// rule with `trigger`. The answer is queued in `AppState::choice_answers`; `rt2-sim` still
+    /// runs the effect set of button 0 itself (`message.rs`), see `answer_choice`.
+    Choice {
+        trigger: u8,
+        button: u8,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -268,6 +275,39 @@ impl AppState {
                     buttons: vec![(self.texts.get(lng::OK, "OK"), Act::Close)],
                 })
             }
+            // Screenshots: a scenario Choice message (two buttons), from the scenario's own when it
+            // has one, else a sample.
+            "choice" => {
+                let sm = events
+                    .iter()
+                    .find(|e| e.kind == rt2_sim::scenario::MessageKind::Choice);
+                Dialog::Message(Message {
+                    title: String::new(),
+                    body: sm.map_or_else(
+                        || {
+                            "The town council offers you a gift. Take the cash now, or the land?"
+                                .to_owned()
+                        },
+                        |e| e.text.clone(),
+                    ),
+                    buttons: vec![
+                        (
+                            "Take the cash".to_owned(),
+                            Act::Choice {
+                                trigger: 2,
+                                button: 0,
+                            },
+                        ),
+                        (
+                            "Take the land".to_owned(),
+                            Act::Choice {
+                                trigger: 2,
+                                button: 1,
+                            },
+                        ),
+                    ],
+                })
+            }
             "win-gold" | "win-silver" | "win-bronze" | "lose" => {
                 let medal = match name {
                     "win-gold" => Medal::Gold,
@@ -387,20 +427,29 @@ impl AppState {
                     sub: sm.label1.clone(),
                     body: String::new(),
                 },
-                // The engine takes the effects of button 0 (`message.rs`): the choice cannot be
-                // answered yet, so only that button is offered.
-                MessageKind::Choice => Dialog::Message(Message {
-                    title: String::new(),
-                    body: sm.text.clone(),
-                    buttons: vec![(
+                // Two buttons (`scenarios.md` 2.4); a rule with a single label offers just that one.
+                MessageKind::Choice => {
+                    let first = |button| Act::Choice {
+                        trigger: sm.trigger,
+                        button,
+                    };
+                    let mut buttons = vec![(
                         if sm.label1.is_empty() {
                             ok
                         } else {
                             sm.label1.clone()
                         },
-                        Act::Close,
-                    )],
-                }),
+                        first(0),
+                    )];
+                    if !sm.label2.is_empty() {
+                        buttons.push((sm.label2.clone(), first(1)));
+                    }
+                    Dialog::Message(Message {
+                        title: String::new(),
+                        body: sm.text.clone(),
+                        buttons,
+                    })
+                }
                 MessageKind::Dialog => Dialog::Message(Message {
                     title: String::new(),
                     body: sm.text.clone(),
@@ -574,6 +623,20 @@ impl AppState {
 
     // ---- actions ----------------------------------------------------------------------------
 
+    /// The player's answer to a scenario Choice message. The simulation has no way to take it yet
+    /// (the engine runs the effect set of button 0 the moment it raises the message, `message.rs`
+    /// and `scenario/engine.rs`), so the answer is only queued here for the day `rt2-sim` gets
+    /// an `AnswerChoice` command (docs/ui.md "Mensagens Choice").
+    fn answer_choice(&mut self, trigger: u8, button: u8) {
+        self.choice_answers.push((trigger, button));
+    }
+
+    /// Answers given to Choice messages and not yet handed to the simulation, `(trigger, button)`.
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub fn take_choice_answers(&mut self) -> Vec<(u8, u8)> {
+        std::mem::take(&mut self.choice_answers)
+    }
+
     /// Handles a dialog button; true if `action` belonged to the dialog layer.
     pub(super) fn dialog_activated(&mut self, action: u32) -> bool {
         match action {
@@ -586,6 +649,10 @@ impl AppState {
                 };
                 match act {
                     Some(Act::Close) => self.close_dialog(),
+                    Some(Act::Choice { trigger, button }) => {
+                        self.close_dialog();
+                        self.answer_choice(trigger, button);
+                    }
                     None => {}
                 }
             }
@@ -958,10 +1025,11 @@ impl AppState {
                 at(bx, by, bw, bh),
             );
             if up.is_some() {
+                // Inside the plate's bevel; a long caption shrinks to fit (rt2-ui text shrink).
                 ui.add(
                     fr.root,
                     label(text, f, BROWN, Align::Center),
-                    at(bx, by, bw, bh),
+                    at(bx + bw * 0.13, by, bw * 0.74, bh),
                 );
             }
         }

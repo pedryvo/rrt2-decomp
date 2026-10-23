@@ -181,6 +181,16 @@ Lacunas (marcadas TODO na tela): lucro do trem e estado da programação; popula
 - Qual empresa é a do jogador não está decodificado; o caixa mostrado é a conta 0 da empresa do primeiro humano ativo (`finance.md` 2), e nada antes de a empresa existir.
 - Opções da tela de configuração sem gancho na simulação: ver "Fluxo de jogo".
 
+## Polimento da interface (2026-10-22)
+
+Resolvidos nesta passada (capturas em `~/.cache/rrt2/shots/polish/`, antes e depois):
+
+- **Minimapa (radar)**: a cor de cada célula vem da classe de terreno do mapa montado pelo carregador (`rt2_render::build_grid`, `class_of_id`), não do byte de chão cru: água = classe 18 (era `GROUND_WATER`, que não vale para os mapas de ids novos como "Africa After the Flood"), 17 classes de terra com cor própria (praia, deserto, ..., rochas) e um sombreado leve pela elevação. Conferido em Africa After the Flood, Britain, Europe, Atlantis e France (`radar.rs`).
+- **Texto que não cabe**: o `rt2-ui` encolhe o texto de uma linha até 55 % do tamanho para caber na caixa e, abaixo disso, corta com reticências (cabeçalhos "IMPROVEMENTS" e "CARGO WAITING" da lista central, rótulos de botão, células). Vale em qualquer escala e nas seis línguas.
+- **Detalhe da estação**: a imagem é a cena original de 1024x569 (fundo da classe do sítio mais uma camada por prédio e melhoria, `stationview.rs`; mapeamento dos 55 bancos em `formats/sprite-catalog.md` 6.1). As camadas são compostas na CPU num sprite reservado do atlas (`SkinBuilder::reserve`, `UiRenderer::upload_sprite`) quando a estação, o estilo ou as melhorias mudam.
+- **Lista da bolsa (`M`)**: botões Buy e Sell por linha, ativos conforme a cotação (`fin_trade_quote`), que abrem o diálogo de negociação da empresa (o mesmo do botão Trade do relatório).
+- **Mensagens Choice dos cenários**: o diálogo mostra os dois botões (rótulos 1 e 2 da regra) e fila a resposta em `AppState::take_choice_answers()`. **Pendente na simulação**: o motor ainda roda o conjunto de efeitos do botão 0 no instante em que levanta a mensagem (`scenario/engine.rs`, `show_message` retorna 0), então apertar o botão 2 só registra a resposta. Falta um `Command::AnswerChoice { message_id, button }` e adiar o efeito até a resposta (ver o relatório do polimento).
+
 ## Pendências de revisão (coordenador, 2026-10-22)
 
 - Tela de finanças, Example 0x2348 após 30 dias: o patrimônio (book value, $3.493.896) supera os ativos ($3.434.896) em $59.000 com dívida zero. Conferir a fórmula de valor contábil contra `finance.md`: o original pode incluir um item não listado na tela (participações, terrenos?) ou a tela soma algo errado.
@@ -188,8 +198,5 @@ Lacunas (marcadas TODO na tela): lucro do trem e estado da programação; popula
 - A barra de atalhos abaixo do HUD fica parcialmente atrás do painel aberto.
 - A altura da fumaça foi tratada como pixels de sprite; a spec não dá a unidade.
 - Trens com vagões "empilhados" (Example, curva da estação, verificado em 2026-10-22): não é bug de desenho. A direção de mapa diagonal (d3, d7) é vertical na tela (`sprite-catalog.md` 8), os vagões espaçam 24 unidades ao longo dela, e os trens 1 e 10 ocupam as duas vias (lado 1/2, ±0,27 tile) de uma via dupla; a posição lida do save (`tile + sub/64`, sub pode passar de 63 em curva) bate com `trains.md` 10.1/10.2.
-- **Tela de detalhe da estação** (screenshot do usuário, 2026-10-22): vista pré-renderizada da estação com os prédios de apoio comprados (restaurante, rotunda, caixa d'água...) compostos por camadas sobre o prédio principal (tamanho e estilo), painel de oferta e demanda e botão Buy para os prédios de apoio. Hoje a nossa tela de estação é só uma lista: reproduzir a composição a partir dos bancos de sprite de estação (`sprite-catalog.md`, 480 bancos `sta*`) e da tabela de melhorias `0x5500c8`.
-- Lista central da janela principal: cabeçalhos de coluna truncados ("IMPROVEMEN", "CARGO WAITI") em 1080p.
 
 - ~~Start New Company "You buy" maior que o investimento~~: correto. O original arredonda as ações do fundador para o milhar mais próximo; a UI deve usar `rt2_sim::found::founding_preview`.
-- Minimapa (radar) num New Game de "Africa After the Flood": aparece como mancha bege, sem o contorno do mapa. Conferir a cor por classe de terreno e o tratamento da água nesse mapa.

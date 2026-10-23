@@ -24,6 +24,9 @@ struct Vertex {
     color: [f32; 4],
 }
 
+/// Smallest share of the font size a one-line text shrinks to when it does not fit its box.
+const MIN_SHRINK: f32 = 0.55;
+
 #[derive(Clone, PartialEq)]
 struct TextKey {
     text: String,
@@ -65,6 +68,7 @@ struct Layer {
 
 pub struct UiRenderer {
     skin: Skin,
+    atlas_texture: wgpu::Texture,
     linear: bool,
     pipeline: wgpu::RenderPipeline,
     globals: wgpu::Buffer,
@@ -240,6 +244,7 @@ impl UiRenderer {
         };
         let atlas = TextAtlas::with_color_mode(device, queue, &cache, format, mode);
         UiRenderer {
+            atlas_texture: texture,
             skin,
             linear,
             pipeline,
@@ -262,6 +267,36 @@ impl UiRenderer {
     /// layouts are keyed by family, so they rebuild by themselves.
     pub fn set_script(&mut self, script: font::Script) {
         self.script = script;
+    }
+
+    /// Replaces the pixels of a sprite reserved with `SkinBuilder::reserve` (straight-alpha RGBA8,
+    /// exactly the sprite's size). Does nothing when the size does not match.
+    pub fn upload_sprite(&self, queue: &wgpu::Queue, id: crate::SpriteId, rgba: &[u8]) {
+        let Some((x, y, w, h)) = self.skin.sprite_rect(id) else {
+            return;
+        };
+        if rgba.len() != (w * h * 4) as usize {
+            return;
+        }
+        queue.write_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: &self.atlas_texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d { x, y, z: 0 },
+                aspect: wgpu::TextureAspect::All,
+            },
+            rgba,
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(w * 4),
+                rows_per_image: Some(h),
+            },
+            wgpu::Extent3d {
+                width: w,
+                height: h,
+                depth_or_array_layers: 1,
+            },
+        );
     }
 
     pub fn skin(&self) -> &Skin {
@@ -460,15 +495,6 @@ impl UiRenderer {
             c.used = frame;
             return;
         }
-        let line = (job.font.size * 1.25).round();
-        let em = job.font.size * job.font.face.size_factor(self.script);
-        let mut buffer = Buffer::new(&mut self.font_system, Metrics::new(em, line));
-        buffer.set_wrap(if job.wrap {
-            Wrap::WordOrGlyph
-        } else {
-            Wrap::None
-        });
-        buffer.set_size(Some(job.rect.w), Some(job.rect.h.max(line)));
         let attrs = Attrs::new()
             .family(Family::Name(job.font.face.family_for(self.script)))
             .weight(glyphon::Weight(job.font.weight));
@@ -477,8 +503,47 @@ impl UiRenderer {
             Align::Center => cosmic_text::Align::Center,
             Align::Right => cosmic_text::Align::End,
         };
-        buffer.set_text(&job.text, &attrs, Shaping::Advanced, Some(align));
-        buffer.shape_until_scroll(&mut self.font_system, false);
+        let full_em = job.font.size * job.font.face.size_factor(self.script);
+        // One line that is too wide for its box shrinks to fit (down to `MIN_SHRINK` of the size)
+        // instead of being clipped: column headers and buttons in long translations. What still
+        // does not fit at that size is cut with an ellipsis.
+        let mut text = job.text.clone();
+        let mut factor = 1.0_f32;
+        let shape = |this: &mut Self, text: &str, factor: f32| {
+            let em = full_em * factor;
+            let line = (job.font.size * factor * 1.25).round();
+            let mut buffer = Buffer::new(&mut this.font_system, Metrics::new(em, line));
+            buffer.set_wrap(if job.wrap {
+                Wrap::WordOrGlyph
+            } else {
+                Wrap::None
+            });
+            buffer.set_size(Some(job.rect.w), Some(job.rect.h.max(line)));
+            buffer.set_text(text, &attrs, Shaping::Advanced, Some(align));
+            buffer.shape_until_scroll(&mut this.font_system, false);
+            let width = buffer
+                .layout_runs()
+                .map(|r| r.line_w)
+                .fold(0.0_f32, f32::max);
+            (buffer, line, width)
+        };
+        let fits = |width: f32| job.wrap || width <= job.rect.w || job.rect.w <= 0.0;
+        let (mut buffer, mut line, width) = shape(self, &text, factor);
+        if !fits(width) {
+            factor = (job.rect.w / width * 0.98).clamp(MIN_SHRINK, 1.0);
+            let (b, l, mut width) = shape(self, &text, factor);
+            (buffer, line) = (b, l);
+            let mut chars: Vec<char> = text.chars().collect();
+            while !fits(width) && chars.len() > 1 {
+                chars.pop();
+                while chars.last() == Some(&' ') {
+                    chars.pop();
+                }
+                text = chars.iter().collect::<String>() + "\u{2026}";
+                let (b, l, w) = shape(self, &text, factor);
+                (buffer, line, width) = (b, l, w);
+            }
+        }
         let lines = buffer.layout_runs().count().max(1);
         self.texts.insert(
             job.slot,

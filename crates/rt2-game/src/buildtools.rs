@@ -618,6 +618,26 @@ pub fn station_tile(save: &Save, station: i32) -> Option<(i32, i32)> {
     rec(&save.stations, station).map(|s| (s.i32(0xa), s.i32(0xe)))
 }
 
+/// Whether the track piece under a station's anchor tile is double and electrified (`piece +0x23`
+/// bits 0 and 4; the station window's derived bits, `stationview.rs`).
+pub fn station_track_flags(save: &Save, station: i32) -> (bool, bool) {
+    let Some((x, y)) = station_tile(save, station) else {
+        return (false, false);
+    };
+    let (w, h) = (save.map.width as i32, save.map.height as i32);
+    if x < 0 || y < 0 || x >= w || y >= h {
+        return (false, false);
+    }
+    let id = i32::from(save.map.tile(x as usize, y as usize).track_id);
+    match rec(&save.track_pieces, id) {
+        Some(p) => {
+            let f = p.u8(0x23);
+            (f & 1 != 0, f & 0x10 != 0)
+        }
+        None => (false, false),
+    }
+}
+
 /// A stop of a train's route (`train+0x37`, 14 bytes each; trains.md 10, commands.md 2.1).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Stop {

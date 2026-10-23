@@ -188,6 +188,12 @@ pub struct AppState {
     backdrop: Option<SpriteId>,
     icons: crate::artwork::Icons,
     dialog_art: crate::artwork::DialogArt,
+    /// Sprites to re-upload to the renderer's atlas (the composed station picture), and the key
+    /// of what the station sprite holds now. Built from `&self` while the windows are laid out.
+    /// Answers to scenario Choice messages, queued for the simulation (`answer_choice`).
+    choice_answers: Vec<(u8, u8)>,
+    sprite_uploads: std::cell::RefCell<Vec<(SpriteId, Vec<u8>)>>,
+    station_view_key: std::cell::RefCell<Option<(u8, i32, u32)>>,
     texts: Texts,
     binds: Bindings,
     data: Option<GameData>,
@@ -262,6 +268,9 @@ impl AppState {
             backdrop: init.backdrop,
             icons: init.icons,
             dialog_art: init.dialogs,
+            choice_answers: Vec::new(),
+            sprite_uploads: Default::default(),
+            station_view_key: Default::default(),
             texts,
             binds,
             data: None,
@@ -317,6 +326,11 @@ impl AppState {
 
     pub fn invalid_keys(&self) -> &[String] {
         &self.binds.invalid
+    }
+
+    /// Pixels the renderer must write into reserved sprites before drawing (the station picture).
+    pub fn take_sprite_uploads(&mut self) -> Vec<(SpriteId, Vec<u8>)> {
+        std::mem::take(&mut *self.sprite_uploads.borrow_mut())
     }
 
     /// A new scene for the renderer: a freshly opened game, or the same one with its static

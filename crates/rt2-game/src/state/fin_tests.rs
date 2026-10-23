@@ -238,3 +238,41 @@ fn a_merger_vote_reaches_the_human_shareholder() {
     );
     assert!(game(&s).world.pending_votes().is_empty());
 }
+
+#[test]
+fn the_stock_list_rows_open_the_trade_dialog_of_their_company() {
+    let Some(mut s) = state() else {
+        return;
+    };
+    s.open_info(info_ui::InfoScreen::Stock);
+    // Row 3 is the company of the fourth line of the list; Buy and Sell both open its dialog.
+    let ids = {
+        let Some(info_ui::Content::List(l)) = s.info_content(info_ui::InfoScreen::Stock) else {
+            panic!("no stock list");
+        };
+        l.table.ids
+    };
+    for base in [info_ui::A_STOCK_BUY, info_ui::A_STOCK_SELL] {
+        assert!(s.info_activated(base + 3));
+        let Some(Dialog::Fin(FinDlg::Trade { company })) = top(&s).cloned() else {
+            panic!("no trade dialog");
+        };
+        assert_eq!(company as u32, ids[3]);
+        s.close_dialog();
+    }
+}
+
+#[test]
+fn a_choice_message_offers_two_buttons_and_queues_the_answer() {
+    let Some(mut s) = state() else {
+        return;
+    };
+    assert!(s.show_dialog("choice"));
+    let Some(Dialog::Message(m)) = top(&s).cloned() else {
+        panic!("no message");
+    };
+    assert_eq!(m.buttons.len(), 2);
+    assert!(s.dialog_activated(super::dialogs::A_DLG_BTN + 1));
+    assert!(top(&s).is_none_or(|d| !matches!(d, Dialog::Message(_))));
+    assert_eq!(s.take_choice_answers(), vec![(2, 1)]);
+}
