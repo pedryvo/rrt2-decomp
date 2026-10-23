@@ -50,7 +50,9 @@ fn parse_rule(spec: &str) -> anyhow::Result<rt2_formats::map::Rule> {
         let (k, v) = e.split_once('=').context("effect must be E=V")?;
         let k: usize = k.trim().parse()?;
         let v = parse_num(v.trim())? as i8;
-        *rule.effects[0].get_mut(k).context("effect index out of range")? = v;
+        *rule.effects[0]
+            .get_mut(k)
+            .context("effect index out of range")? = v;
     }
     Ok(rule.to_file())
 }
