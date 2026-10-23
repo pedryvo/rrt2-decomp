@@ -87,6 +87,26 @@ cargo build --release
 RT2_DIR=~/Games/railroad-tycoon-2 cargo nextest run
 ```
 
+## 📦 Установка
+
+1. Скачайте архив для своей системы на [странице Releases](https://github.com/pedryvo/rrt2-decomp/releases) (Linux x86_64 `.tar.gz`, Windows x86_64 `.zip`, macOS Apple Silicon или Intel `.tar.gz`). Каждый push в `main` также создаёт сборки для разработки: они лежат в артефактах запусков workflow "Release" на вкладке Actions.
+2. Распакуйте куда угодно. В пакете только `rrt2` (шрифты и переводы встроены), документация и лицензии шрифтов. **Оригинальной игры в нём нет**: нужна ваша собственная копия Railroad Tycoon II (GOG, Steam или установка с CD).
+3. При первом запуске укажите, где установлен оригинал. Путь сохраняется в `config.toml`:
+
+```bash
+./rrt2 set-path ~/Games/railroad-tycoon-2     # Windows: rrt2.exe set-path "C:\Games\Railroad Tycoon II"
+./rrt2
+```
+
+`rrt2 --version` показывает версию и коммит git. Вместо `set-path` можно передать `--game-dir <папка>` или задать `RT2_DIR`.
+
+| | Linux | Windows | macOS |
+|---|---|---|---|
+| Настройки и клавиши (`config.toml`) | `~/.config/rrt2` | `%APPDATA%\rrt2` | `~/Library/Application Support/rrt2` |
+| Сохранения | `~/.local/share/rrt2/saves` | `%APPDATA%\rrt2\saves` | `~/Library/Application Support/rrt2/saves` |
+
+`RRT2_CONFIG` и `RRT2_SAVES` переопределяют эти два места. Сборки для macOS и Windows создаются в CI, автор их пока не проверял.
+
 ## 🎮 Запуск игры (ранний предпросмотр)
 
 ```bash

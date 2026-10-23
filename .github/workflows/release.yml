@@ -1,0 +1,88 @@
+name: Release
+
+# Tags v*: build, then publish a GitHub Release with the CHANGELOG section as the body.
+# Every push to main: the same builds as workflow artifacts (nightly-style dev builds).
+# rt2-oracle (Unicorn, needs the original EXE) is never built here: only `-p rt2-game`.
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x86_64
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - platform: windows-x86_64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - platform: macos-aarch64
+            os: macos-latest
+            target: aarch64-apple-darwin
+          # Cross-compiled on the Apple Silicon runner (Intel runners are being retired).
+          - platform: macos-x86_64
+            os: macos-latest
+            target: x86_64-apple-darwin
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y mold clang libxkbcommon-dev libwayland-dev libx11-dev libxcursor-dev libxi-dev libxrandr-dev libvulkan-dev libasound2-dev pkg-config
+      - run: rustup show
+      - run: rustup target add ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release-${{ matrix.target }}
+      - name: Label (tag version, or nightly-<commit>)
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "LABEL=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+          else
+            echo "LABEL=nightly-${GITHUB_SHA::9}" >> "$GITHUB_ENV"
+          fi
+          echo "RRT2_GIT_COMMIT=${GITHUB_SHA::9}" >> "$GITHUB_ENV"
+      - name: Build
+        shell: bash
+        run: cargo build --release --locked -p rt2-game --target ${{ matrix.target }}
+      - name: Package
+        shell: bash
+        run: scripts/package-release.sh "${{ matrix.platform }}" "$LABEL" "target/${{ matrix.target }}/release" dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rrt2-${{ matrix.platform }}
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Release notes from CHANGELOG.md
+        run: |
+          scripts/changelog-section.sh "$GITHUB_REF_NAME" > notes.md
+          if [[ ! -s notes.md ]]; then echo "No CHANGELOG.md section for $GITHUB_REF_NAME" >&2; exit 1; fi
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --title "$GITHUB_REF_NAME" --notes-file notes.md --verify-tag

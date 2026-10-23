@@ -228,3 +228,6 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Improved: scenario Choice messages now wait for the player: the dialog shows the rule's two buttons and the answer goes to the simulation as Command::AnswerChoice (headless runs keep answering button 0).
 - Improved: window size, mode, monitor and vsync are remembered; the mute key and Ctrl +/- UI scale are saved too.
 - Docs: docs/ui.md "Opções e saves" and the J1/J3/J5/A6/A7 rows of docs/reference/screens.md.
+- Feature: release packaging: `.github/workflows/release.yml` builds `rrt2` for Linux, Windows and macOS (Apple Silicon and Intel) on every push to main (workflow artifacts) and on `v*` tags (GitHub Release with the CHANGELOG section as notes); `scripts/package-release.sh` stages the archive.
+- Feature: `rrt2 --version` prints the crate version and git commit, and the main menu footer shows it.
+- Docs: `scripts/cut-release.sh <version>` turns "Unreleased" into a dated `## v<version>` section and bumps the workspace version; "Installing" section in the six READMEs.

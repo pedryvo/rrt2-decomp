@@ -758,7 +758,7 @@ impl AppState {
         let version = self.texts.af(
             "rrt2 %1   |   UI scale %2%  (Ctrl +/- to change)   |   %3",
             &[
-                env!("CARGO_PKG_VERSION").to_owned(),
+                crate::version::LONG.to_owned(),
                 self.scale.percent().to_string(),
                 self.install.display().to_string(),
             ],

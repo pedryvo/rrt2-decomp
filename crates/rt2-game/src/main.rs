@@ -29,6 +29,7 @@ mod sound;
 mod state;
 mod stationview;
 mod text;
+mod version;
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -43,7 +44,8 @@ use crate::state::{AppState, Init};
 
 #[derive(Parser)]
 #[command(
-    version,
+    name = "rrt2",
+    version = version::LONG,
     about = "Railroad Tycoon II, rebuilt: menu, map view and simulation"
 )]
 struct Args {

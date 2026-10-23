@@ -87,6 +87,26 @@ Tests that read the original game data run when `RT2_DIR` points at your install
 RT2_DIR=~/Games/railroad-tycoon-2 cargo nextest run
 ```
 
+## 📦 Installing
+
+1. Download the archive for your system from the [Releases page](https://github.com/pedryvo/rrt2-decomp/releases) (Linux x86_64 `.tar.gz`, Windows x86_64 `.zip`, macOS Apple Silicon or Intel `.tar.gz`). Every push to `main` also produces development builds, found as artifacts of the "Release" workflow runs in the Actions tab.
+2. Unpack it anywhere. The package holds only `rrt2` (fonts and translations are built in), the docs and the font licences. **It does not contain the original game**: you need your own copy of Railroad Tycoon II (GOG, Steam or CD install).
+3. First run, tell the game where the original is installed. This is remembered in `config.toml`:
+
+```bash
+./rrt2 set-path ~/Games/railroad-tycoon-2     # Windows: rrt2.exe set-path "C:\Games\Railroad Tycoon II"
+./rrt2
+```
+
+`rrt2 --version` prints the version and git commit. You can also pass `--game-dir <folder>` or set `RT2_DIR` instead of `set-path`.
+
+| | Linux | Windows | macOS |
+|---|---|---|---|
+| Settings and key bindings (`config.toml`) | `~/.config/rrt2` | `%APPDATA%\rrt2` | `~/Library/Application Support/rrt2` |
+| Saves | `~/.local/share/rrt2/saves` | `%APPDATA%\rrt2\saves` | `~/Library/Application Support/rrt2/saves` |
+
+`RRT2_CONFIG` and `RRT2_SAVES` override the two locations. The macOS and Windows builds come from CI and are untested by the author so far.
+
 ## 🎮 Running the game (early preview)
 
 ```bash
