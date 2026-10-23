@@ -3,11 +3,11 @@
 # Ver docs/re-workflow.md.
 #
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
-# Classificadas (categoria != unknown): 1318 (44.8%)
-# Por categoria: lib=258, platform=114, render=11, audio=54, ui=283, sim=598, unknown=1627
-# Por estado:   unknown=2300, named=168, spec=176, verified=301
-# Entradas manuais: 571
-# sim spec coverage: 71.7% (429 de 598 funcoes sim em spec/verified)
+# Classificadas (categoria != unknown): 1421 (48.3%)
+# Por categoria: lib=258, platform=180, render=11, audio=53, ui=298, sim=621, unknown=1524
+# Por estado:   unknown=2176, named=161, spec=307, verified=301
+# Entradas manuais: 696
+# sim spec coverage: 73.4% (456 de 621 funcoes sim em spec/verified)
 
 [[function]]
 addr = "0x401005"
@@ -2119,9 +2119,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x401884"
 size = 5
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "teclado: atalhos de depuracao so fora de rede (multiplayer.md 3.5)"
+manual = true
 
 [[function]]
 addr = "0x401889"
@@ -5564,9 +5565,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x402635"
 size = 5
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "relogio da interface: tambem sonda a rede (multiplayer.md 1.2)"
+manual = true
 
 [[function]]
 addr = "0x40263a"
@@ -7782,15 +7784,16 @@ addr = "0x405540"
 size = 1556
 category = "sim"
 status = "spec"
-why = "time.md 5"
+why = "game_frame_update: dt em rede, horizonte, sem pausa por dialogo (multiplayer.md 1.5, 3.1)"
 manual = true
 
 [[function]]
 addr = "0x405b70"
 size = 128
 category = "ui"
-status = "unknown"
-why = "string:[C1]"
+status = "spec"
+why = "aviso de novo predio: 5 s em rede (multiplayer.md 3.2)"
+manual = true
 
 [[function]]
 addr = "0x405c50"
@@ -7802,16 +7805,17 @@ why = "no-evidence"
 [[function]]
 addr = "0x405ec0"
 size = 406
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "fila de mensagens por maquina: tempo de 8 s em rede (multiplayer.md 3.2)"
+manual = true
 
 [[function]]
 addr = "0x406080"
 size = 969
 category = "ui"
-status = "named"
-why = "porteiro da interface (nao roda no sim_advance); eventos historicos de setembro sao janelas modais"
+status = "spec"
+why = "fila de mensagens e avisos anuais: so fora de rede (multiplayer.md 3.2)"
 manual = true
 
 [[function]]
@@ -10226,7 +10230,7 @@ addr = "0x43c760"
 size = 4254
 category = "sim"
 status = "verified"
-why = "demissao (news_post + 0x438900) e liquidacao ao fim da revisao: placar Fire/Liquidate"
+why = "falencia: trilho so e removido fora de rede (multiplayer.md 3.4)"
 manual = true
 
 [[function]]
@@ -10234,7 +10238,7 @@ addr = "0x43d800"
 size = 1170
 category = "sim"
 status = "verified"
-why = "company_year_end: zera tambem o u16 +0x572 de cada territorio e posta o desdobramento como noticia para a empresa da interface (0x5706ab); Example 365 e NewJapan 365 iguais"
+why = "noticia de empresa nova: popup so fora de rede (multiplayer.md 3.2)"
 manual = true
 
 [[function]]
@@ -10646,86 +10650,98 @@ why = "string:credits.win"
 [[function]]
 addr = "0x44eba0"
 size = 89
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; dp_provider_available"
+manual = true
 
 [[function]]
 addr = "0x44ec10"
 size = 669
 category = "platform"
-status = "unknown"
-why = "api:OLE32!CoCreateInstance,OLE32!CoInitialize"
+status = "spec"
+why = "multiplayer.md; dp_init"
+manual = true
 
 [[function]]
 addr = "0x44eeb0"
 size = 173
 category = "platform"
-status = "unknown"
-why = "api:OLE32!CoUninitialize"
+status = "spec"
+why = "multiplayer.md; dp_shutdown"
+manual = true
 
 [[function]]
 addr = "0x44ef60"
 size = 947
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; dp_select_provider"
+manual = true
 
 [[function]]
 addr = "0x44f3e0"
 size = 531
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; dp_enum_sessions"
+manual = true
 
 [[function]]
 addr = "0x44f600"
 size = 296
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; dp_lock_session"
+manual = true
 
 [[function]]
 addr = "0x44f730"
 size = 851
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; dp_create_session"
+manual = true
 
 [[function]]
 addr = "0x44fa90"
 size = 41
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; dp_close_session"
+manual = true
 
 [[function]]
 addr = "0x44fac0"
 size = 528
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; dp_join_session"
+manual = true
 
 [[function]]
 addr = "0x44fda0"
 size = 97
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; dp_send"
+manual = true
 
 [[function]]
 addr = "0x44fe10"
 size = 414
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; dp_receive_pump"
+manual = true
 
 [[function]]
 addr = "0x44ffb0"
 size = 191
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; dp_register_host_player"
+manual = true
 
 [[function]]
 addr = "0x450070"
@@ -10773,8 +10789,9 @@ why = "no-evidence"
 addr = "0x4510a0"
 size = 3172
 category = "ui"
-status = "unknown"
-why = "string:helpd.win"
+status = "spec"
+why = "multiplayer.md; ui_message_box"
+manual = true
 
 [[function]]
 addr = "0x451d20"
@@ -10793,9 +10810,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x452410"
 size = 55
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "multiplayer.md; message_queue_choice_box"
+manual = true
 
 [[function]]
 addr = "0x452620"
@@ -10912,7 +10930,7 @@ addr = "0x455e70"
 size = 182
 category = "sim"
 status = "verified"
-why = "rule_show_message: jornal -> news_post; New Game #E13 igual ao original"
+why = "multiplayer.md; event_show_message"
 manual = true
 
 [[function]]
@@ -10920,7 +10938,7 @@ addr = "0x455f30"
 size = 6432
 category = "sim"
 status = "verified"
-why = "ramo do buffer [0x5665e0] (anexa antes do teste de fim de jogo); (TRIGGER_TF) = LNG 3317/3318 'True'/'False'; jogador/empresa locais = primeira pessoa humana"
+why = "rule_evaluate: Game Over em rede (LNG 2691, eliminacao de jogador) (multiplayer.md 3.3)"
 manual = true
 
 [[function]]
@@ -11394,9 +11412,10 @@ why = "symbol:game_init_paths"
 [[function]]
 addr = "0x4658f0"
 size = 1484
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "menu Debug: Network Debug Mode (+0x2c) e Network Ignore Heartbeats (+0x28)"
+manual = true
 
 [[function]]
 addr = "0x465ec0"
@@ -11975,9 +11994,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x469320"
 size = 124
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "multiplayer.md; message_queue_push"
+manual = true
 
 [[function]]
 addr = "0x4694f0"
@@ -12047,7 +12067,7 @@ addr = "0x46a010"
 size = 853
 category = "sim"
 status = "verified"
-why = "economy_state_step: manchete como news_post (CRT, flag e contador) fora do editor e com 0x570238/0x57023a zerados; NewJapan.MP2 1995-09 igual"
+why = "jornal de economia: popup so fora de rede (multiplayer.md 3.2)"
 manual = true
 
 [[function]]
@@ -12178,22 +12198,24 @@ addr = "0x46ae50"
 size = 21
 category = "sim"
 status = "spec"
-why = "time.md 5"
+why = "net_player_count"
 manual = true
 
 [[function]]
 addr = "0x46ae70"
 size = 36
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "multiplayer.md; net_profile_of"
+manual = true
 
 [[function]]
 addr = "0x46aea0"
 size = 72
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "multiplayer.md; net_local_player_index"
+manual = true
 
 [[function]]
 addr = "0x46aef0"
@@ -12328,22 +12350,25 @@ why = "no-evidence"
 addr = "0x46c0b0"
 size = 608
 category = "ui"
-status = "unknown"
-why = "string:{[HJL]%s:  %s}"
+status = "spec"
+why = "multiplayer.md; chat_show_line"
+manual = true
 
 [[function]]
 addr = "0x46c310"
 size = 388
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "multiplayer.md; chat_expire_lines"
+manual = true
 
 [[function]]
 addr = "0x46c4a0"
 size = 419
 category = "ui"
-status = "unknown"
-why = "string:chat.win"
+status = "spec"
+why = "multiplayer.md; chat_open_input"
+manual = true
 
 [[function]]
 addr = "0x46c650"
@@ -12357,8 +12382,8 @@ manual = true
 addr = "0x46c680"
 size = 458
 category = "sim"
-status = "named"
-why = "rng.md 2.4; checksum de sincronia"
+status = "spec"
+why = "net_sync_checksum_build: registro de 26 bytes (multiplayer.md 1.8)"
 manual = true
 
 [[function]]
@@ -12371,9 +12396,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x46c8a0"
 size = 1103
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "multiplayer.md; cheat_codes"
+manual = true
 
 [[function]]
 addr = "0x46ccf0"
@@ -12553,7 +12579,7 @@ addr = "0x473590"
 size = 1001
 category = "sim"
 status = "verified"
-why = "players_setup: nomes e biografias do LNG (strncpy 0x1e/0xfa), player_remove nas vagas livres, 0x43ddb0 por empresa; New Game #01..#18 iguais em 0 e 7 dias"
+why = "players_setup: humanos viram pessoas (multiplayer.md 2.6)"
 manual = true
 
 [[function]]
@@ -12588,30 +12614,34 @@ why = "no-evidence"
 [[function]]
 addr = "0x475470"
 size = 101
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_provider_init_ipx"
+manual = true
 
 [[function]]
 addr = "0x4754e0"
 size = 15
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_ipx_close"
+manual = true
 
 [[function]]
 addr = "0x4754f0"
 size = 5
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_ipx_enum_sessions"
+manual = true
 
 [[function]]
 addr = "0x475500"
 size = 5
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_ipx_create_session"
+manual = true
 
 [[function]]
 addr = "0x475510"
@@ -12630,9 +12660,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x475530"
 size = 13
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_ipx_send"
+manual = true
 
 [[function]]
 addr = "0x475540"
@@ -12644,9 +12675,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x475550"
 size = 5
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_ipx_lock_session"
+manual = true
 
 [[function]]
 addr = "0x4755a0"
@@ -12762,7 +12794,7 @@ addr = "0x477540"
 size = 1301
 category = "sim"
 status = "spec"
-why = "map-gam.md 9.4: convert::saver_refresh (contagens de jogadores, campos do cabecalho)"
+why = "game_save_file: +0x54d = identidade do humano (multiplayer.md 5.3)"
 manual = true
 
 [[function]]
@@ -12785,7 +12817,7 @@ addr = "0x479710"
 size = 579
 category = "sim"
 status = "spec"
-why = "carga por nome"
+why = "game_load_by_name: carregar em rede casa pessoas por identidade (multiplayer.md 5.3)"
 manual = true
 
 [[function]]
@@ -13112,9 +13144,9 @@ manual = true
 [[function]]
 addr = "0x48b2f0"
 size = 445
-category = "sim"
+category = "ui"
 status = "spec"
-why = "docs/spec/commands.md 2.1 (0x22)"
+why = "voto de fusao: sem tempo (multiplayer.md 3.2)"
 manual = true
 
 [[function]]
@@ -13151,9 +13183,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x48c1b0"
 size = 383
-category = "platform"
-status = "unknown"
-why = "string:.GAM"
+category = "ui"
+status = "spec"
+why = "carregar jogo: bloqueado em rede (LNG 2738) (multiplayer.md 3.5)"
+manual = true
 
 [[function]]
 addr = "0x48c330"
@@ -13166,36 +13199,41 @@ why = "no-evidence"
 addr = "0x48c370"
 size = 1048
 category = "ui"
-status = "unknown"
-why = "string:fileopt.win"
+status = "spec"
+why = "briefing/reiniciar: bloqueado em rede (LNG 2745) (multiplayer.md 3.5)"
+manual = true
 
 [[function]]
 addr = "0x48c950"
 size = 101
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_provider_init_modem"
+manual = true
 
 [[function]]
 addr = "0x48c9c0"
 size = 15
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_modem_close"
+manual = true
 
 [[function]]
 addr = "0x48c9d0"
 size = 5
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_modem_enum_sessions"
+manual = true
 
 [[function]]
 addr = "0x48c9e0"
 size = 5
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_modem_create_session"
+manual = true
 
 [[function]]
 addr = "0x48c9f0"
@@ -13214,9 +13252,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x48ca10"
 size = 13
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_modem_send"
+manual = true
 
 [[function]]
 addr = "0x48ca20"
@@ -13228,9 +13267,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x48ca30"
 size = 5
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_modem_lock_session"
+manual = true
 
 [[function]]
 addr = "0x48caa0"
@@ -13538,212 +13578,241 @@ why = "no-evidence"
 [[function]]
 addr = "0x49c730"
 size = 30
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_session_table_clear"
+manual = true
 
 [[function]]
 addr = "0x49c770"
 size = 287
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_shutdown"
+manual = true
 
 [[function]]
 addr = "0x49c8b0"
 size = 72
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_refresh_sessions"
+manual = true
 
 [[function]]
 addr = "0x49c910"
 size = 6
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_session_count"
+manual = true
 
 [[function]]
 addr = "0x49c920"
 size = 34
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_session_at"
+manual = true
 
 [[function]]
 addr = "0x49c950"
 size = 6
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_roster_count"
+manual = true
 
 [[function]]
 addr = "0x49c960"
 size = 26
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_roster_at"
+manual = true
 
 [[function]]
 addr = "0x49c980"
 size = 18
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_provider_id"
+manual = true
 
 [[function]]
 addr = "0x49c9a0"
 size = 263
-category = "ui"
-status = "unknown"
-why = "string:chat.win"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_start_provider"
+manual = true
 
 [[function]]
 addr = "0x49cac0"
 size = 369
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_join_session"
+manual = true
 
 [[function]]
 addr = "0x49cc50"
 size = 43
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_create_session"
+manual = true
 
 [[function]]
 addr = "0x49cc90"
 size = 6
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_is_host"
+manual = true
 
 [[function]]
 addr = "0x49ccb0"
 size = 41
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_close_session"
+manual = true
 
 [[function]]
 addr = "0x49cd00"
 size = 19
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_show_chat_line"
+manual = true
 
 [[function]]
 addr = "0x49cd20"
 size = 58
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_send_chat"
+manual = true
 
 [[function]]
 addr = "0x49cdb0"
 size = 50
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_lock_session"
+manual = true
 
 [[function]]
 addr = "0x49ce00"
 size = 74
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_grace_timeouts"
+manual = true
 
 [[function]]
 addr = "0x49ce50"
 size = 985
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "multiplayer.md; net_heartbeat"
+manual = true
 
 [[function]]
 addr = "0x49d240"
 size = 298
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "multiplayer.md; net_roster_add"
+manual = true
 
 [[function]]
 addr = "0x49d370"
 size = 129
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_session_add"
+manual = true
 
 [[function]]
 addr = "0x49d400"
 size = 59
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "multiplayer.md; net_roster_find"
+manual = true
 
 [[function]]
 addr = "0x49d440"
 size = 36
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_session_index"
+manual = true
 
 [[function]]
 addr = "0x49d4a0"
 size = 56
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_session_find"
+manual = true
 
 [[function]]
 addr = "0x49d4e0"
 size = 13
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_on_receive"
+manual = true
 
 [[function]]
 addr = "0x49d4f0"
 size = 6
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_local_id"
+manual = true
 
 [[function]]
 addr = "0x49d510"
 size = 109
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_host_id"
+manual = true
 
 [[function]]
 addr = "0x49d580"
 size = 188
 category = "platform"
-status = "unknown"
-why = "api:WSOCK32!Ordinal_11,WSOCK32!Ordinal_52,WSOCK32!Ordinal_57"
+status = "spec"
+why = "multiplayer.md; net_local_address"
+manual = true
 
 [[function]]
 addr = "0x49d680"
 size = 109
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_ping_all"
+manual = true
 
 [[function]]
 addr = "0x49d6f0"
 size = 551
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "multiplayer.md; net_player_exit"
+manual = true
 
 [[function]]
 addr = "0x49d920"
 size = 69
 category = "sim"
 status = "spec"
-why = "time.md 7.4"
+why = "net_min_peer_version: sempre 9012 entre copias do clone"
 manual = true
 
 [[function]]
@@ -13751,29 +13820,31 @@ addr = "0x49d970"
 size = 534
 category = "sim"
 status = "spec"
-why = "docs/spec/commands.md 2.2"
+why = "net_player_left: pessoas humanas viram IA (multiplayer.md 5.1)"
 manual = true
 
 [[function]]
 addr = "0x49db90"
 size = 307
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "multiplayer.md; net_host_changed"
+manual = true
 
 [[function]]
 addr = "0x49de20"
 size = 583
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "multiplayer.md; net_sync_check"
+manual = true
 
 [[function]]
 addr = "0x49e0b0"
 size = 209
 category = "sim"
-status = "named"
-why = "time.md 7.2; protocolo de rede nao especificado"
+status = "spec"
+why = "net_time_sync: so dia 1 do mes sem Network Debug Mode (multiplayer.md 1.8)"
 manual = true
 
 [[function]]
@@ -13865,93 +13936,106 @@ why = "no-evidence"
 [[function]]
 addr = "0x49f990"
 size = 286
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_ack_partial"
+manual = true
 
 [[function]]
 addr = "0x49fe80"
 size = 1142
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_send_fragment"
+manual = true
 
 [[function]]
 addr = "0x4a0320"
 size = 230
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_queue_reliable"
+manual = true
 
 [[function]]
 addr = "0x4a0410"
 size = 294
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_send"
+manual = true
 
 [[function]]
 addr = "0x4a0540"
 size = 1504
-category = "platform"
-status = "unknown"
-why = "string:games\\"
+category = "sim"
+status = "spec"
+why = "multiplayer.md; net_dispatch"
+manual = true
 
 [[function]]
 addr = "0x4a0ec0"
 size = 388
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_note_complete"
+manual = true
 
 [[function]]
 addr = "0x4a1050"
 size = 143
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_prune_completed"
+manual = true
 
 [[function]]
 addr = "0x4a10e0"
 size = 290
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_resend_pending"
+manual = true
 
 [[function]]
 addr = "0x4a1210"
 size = 540
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_reply_status"
+manual = true
 
 [[function]]
 addr = "0x4a1430"
 size = 340
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_prune_incoming"
+manual = true
 
 [[function]]
 addr = "0x4a1590"
 size = 1432
-category = "ui"
-status = "unknown"
-why = "string:[n1][hjr]"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_stats_overlay"
+manual = true
 
 [[function]]
 addr = "0x4a1b30"
 size = 576
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_transport_tick"
+manual = true
 
 [[function]]
 addr = "0x4a1d80"
 size = 2475
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_recv_packet"
+manual = true
 
 [[function]]
 addr = "0x4a33c0"
@@ -13992,8 +14076,9 @@ why = "no-evidence"
 addr = "0x4a4050"
 size = 466
 category = "ui"
-status = "unknown"
-why = "string:paper.win"
+status = "spec"
+why = "popup de jornal: auto-fecha em 6 s em rede (multiplayer.md 3.2)"
+manual = true
 
 [[function]]
 addr = "0x4a42f0"
@@ -14085,7 +14170,7 @@ addr = "0x4a5cb0"
 size = 1706
 category = "sim"
 status = "spec"
-why = "world-tick.md 2"
+why = "sim_advance: horizonte, RNG diario, trens diarios em rede (multiplayer.md 1.6)"
 manual = true
 
 [[function]]
@@ -14327,8 +14412,9 @@ why = "string:{[HJC]%s}\n"
 addr = "0x4a9510"
 size = 2004
 category = "ui"
-status = "unknown"
-why = "string:{[HJC]%s}\n"
+status = "spec"
+why = "detalhe da pessoa: botao Change so fora de rede (multiplayer.md 3.2)"
+manual = true
 
 [[function]]
 addr = "0x4aa010"
@@ -14419,7 +14505,7 @@ addr = "0x4af2d0"
 size = 63
 category = "sim"
 status = "spec"
-why = "time.md 5.1"
+why = "cmd_queue_next_time: carimbo +8 do primeiro comando em rede"
 manual = true
 
 [[function]]
@@ -14427,15 +14513,16 @@ addr = "0x4af3d0"
 size = 239
 category = "sim"
 status = "spec"
-why = "time.md 5.1"
+why = "cmd_queue_run: em lobby desvia para net_game_start (multiplayer.md 2.3)"
 manual = true
 
 [[function]]
 addr = "0x4af500"
 size = 296
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "multiplayer.md; net_host_receive_command"
+manual = true
 
 [[function]]
 addr = "0x4af630"
@@ -14456,7 +14543,7 @@ addr = "0x4af6d0"
 size = 448
 category = "sim"
 status = "spec"
-why = "docs/spec/commands.md 1.1; recorder em tests/commands.rs"
+why = "cmd_send em rede: cliente manda a mensagem 7 ao anfitriao (multiplayer.md 1.5)"
 manual = true
 
 [[function]]
@@ -14464,59 +14551,64 @@ addr = "0x4af890"
 size = 42
 category = "sim"
 status = "verified"
-why = "docs/spec/commands.md 1.1; tests/commands.rs packet_init_zeroes_and_stamps_the_header e packet_ids_and_sizes_match_spec"
+why = "cmd_packet_init"
 manual = true
 
 [[function]]
 addr = "0x4af8c0"
 size = 660
 category = "sim"
-status = "named"
-why = "docs/spec/commands.md 1.1 (formato de rede)"
+status = "spec"
+why = "cmd_net_flush: lote (seq, carimbo, horizonte) e formula do horizonte (multiplayer.md 1.5)"
 manual = true
 
 [[function]]
 addr = "0x4afb60"
 size = 17
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "multiplayer.md; net_seq_reset"
+manual = true
 
 [[function]]
 addr = "0x4afba0"
 size = 69
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "multiplayer.md; net_seq_remember"
+manual = true
 
 [[function]]
 addr = "0x4afc80"
 size = 193
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "multiplayer.md; net_batch_receive"
+manual = true
 
 [[function]]
 addr = "0x4afd50"
 size = 387
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "multiplayer.md; net_batch_apply"
+manual = true
 
 [[function]]
 addr = "0x4afee0"
 size = 15
 category = "sim"
 status = "spec"
-why = "time.md 5"
+why = "time_horizon"
 manual = true
 
 [[function]]
 addr = "0x4afef0"
 size = 7
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "multiplayer.md; net_set_horizon"
+manual = true
 
 [[function]]
 addr = "0x4b0210"
@@ -14529,30 +14621,34 @@ manual = true
 [[function]]
 addr = "0x4b1330"
 size = 101
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_provider_init_serial"
+manual = true
 
 [[function]]
 addr = "0x4b13a0"
 size = 15
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_serial_close"
+manual = true
 
 [[function]]
 addr = "0x4b13b0"
 size = 5
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_serial_enum_sessions"
+manual = true
 
 [[function]]
 addr = "0x4b13c0"
 size = 5
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_serial_create_session"
+manual = true
 
 [[function]]
 addr = "0x4b13d0"
@@ -14571,9 +14667,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4b13f0"
 size = 13
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_serial_send"
+manual = true
 
 [[function]]
 addr = "0x4b1400"
@@ -14585,9 +14682,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4b1410"
 size = 5
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_serial_lock_session"
+manual = true
 
 [[function]]
 addr = "0x4b1460"
@@ -14620,16 +14718,18 @@ why = "string:settings.win"
 [[function]]
 addr = "0x4b34c0"
 size = 165
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "multiplayer.md; net_barrier_loaded"
+manual = true
 
 [[function]]
 addr = "0x4b3640"
 size = 1011
-category = "platform"
-status = "unknown"
-why = "string:games\\"
+category = "sim"
+status = "spec"
+why = "multiplayer.md; net_send_map_file"
+manual = true
 
 [[function]]
 addr = "0x4b3ac0"
@@ -14642,30 +14742,33 @@ manual = true
 [[function]]
 addr = "0x4b3e00"
 size = 87
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "multiplayer.md; setup_apply_difficulty"
+manual = true
 
 [[function]]
 addr = "0x4b3ec0"
 size = 543
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "multiplayer.md; setup_refresh_players"
+manual = true
 
 [[function]]
 addr = "0x4b4360"
 size = 586
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "multiplayer.md; setup_pick_personas"
+manual = true
 
 [[function]]
 addr = "0x4b45b0"
 size = 1352
-category = "platform"
+category = "sim"
 status = "spec"
-why = "world-tick.md 10 (montagem das opcoes nao portada)"
+why = "setup_assign_player_slots: limites e vagas (multiplayer.md 2.4)"
 manual = true
 
 [[function]]
@@ -14678,73 +14781,82 @@ why = "no-evidence"
 [[function]]
 addr = "0x4b4de0"
 size = 805
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "multiplayer.md; setup_refresh_options"
+manual = true
 
 [[function]]
 addr = "0x4b51e0"
 size = 4523
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "multiplayer.md; setup_set_page"
+manual = true
 
 [[function]]
 addr = "0x4b6420"
 size = 354
 category = "ui"
-status = "unknown"
-why = "string:{[HJL]  %s}{[HJR]%s %s  }"
+status = "spec"
+why = "multiplayer.md; net_fill_server_list"
+manual = true
 
 [[function]]
 addr = "0x4b65d0"
 size = 273
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "multiplayer.md; net_create_server_ui"
+manual = true
 
 [[function]]
 addr = "0x4b66f0"
 size = 135
 category = "ui"
-status = "unknown"
-why = "string:{[HJL]%s:  %s}"
+status = "spec"
+why = "multiplayer.md; lobby_show_chat_line"
+manual = true
 
 [[function]]
 addr = "0x4b68a0"
 size = 257
-category = "platform"
-status = "unknown"
-why = "string:.MAP"
+category = "sim"
+status = "spec"
+why = "multiplayer.md; setup_load_map_info"
+manual = true
 
 [[function]]
 addr = "0x4b69b0"
 size = 2496
 category = "sim"
-status = "named"
-why = "rng.md 2.4; inicio de partida em rede"
+status = "spec"
+why = "net_game_start: comandos de lobby 1..9 e inicio (multiplayer.md 2.3, 2.6)"
 manual = true
 
 [[function]]
 addr = "0x4b73a0"
 size = 232
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "multiplayer.md; net_host_or_guest"
+manual = true
 
 [[function]]
 addr = "0x4b74f0"
 size = 183
-category = "audio"
-status = "unknown"
-why = "string:horse61m.raw"
+category = "ui"
+status = "spec"
+why = "multiplayer.md; setup_toggle_approval"
+manual = true
 
 [[function]]
 addr = "0x4b75b0"
 size = 7845
-category = "platform"
-status = "unknown"
-why = "api:KERNEL32!WinExec"
+category = "ui"
+status = "spec"
+why = "multiplayer.md; setup_win_handler"
+manual = true
 
 [[function]]
 addr = "0x4b96b0"
@@ -14756,30 +14868,34 @@ why = "no-evidence"
 [[function]]
 addr = "0x4b9990"
 size = 1107
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "multiplayer.md; setup_draw_player_row"
+manual = true
 
 [[function]]
 addr = "0x4b9df0"
 size = 197
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "multiplayer.md; setup_show_revenue_mods"
+manual = true
 
 [[function]]
 addr = "0x4b9f80"
 size = 109
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "multiplayer.md; net_send_setup_block"
+manual = true
 
 [[function]]
 addr = "0x4b9ff0"
 size = 887
 category = "ui"
-status = "unknown"
-why = "string:[c7]%1 %2"
+status = "spec"
+why = "multiplayer.md; setup_open_multiplayer_setup"
+manual = true
 
 [[function]]
 addr = "0x4ba370"
@@ -15205,30 +15321,34 @@ why = "string:page261m.raw"
 [[function]]
 addr = "0x4c6850"
 size = 101
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_provider_init_tcp"
+manual = true
 
 [[function]]
 addr = "0x4c68c0"
 size = 15
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_tcp_close"
+manual = true
 
 [[function]]
 addr = "0x4c68d0"
 size = 5
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_tcp_enum_sessions"
+manual = true
 
 [[function]]
 addr = "0x4c68e0"
 size = 5
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_tcp_create_session"
+manual = true
 
 [[function]]
 addr = "0x4c68f0"
@@ -15247,9 +15367,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4c6910"
 size = 13
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_tcp_send"
+manual = true
 
 [[function]]
 addr = "0x4c6920"
@@ -15261,9 +15382,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x4c6930"
 size = 5
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "multiplayer.md; net_tcp_lock_session"
+manual = true
 
 [[function]]
 addr = "0x4c6e70"
@@ -15537,7 +15659,7 @@ addr = "0x4cf030"
 size = 863
 category = "sim"
 status = "verified"
-why = "probabilidade de quebra; tests/trains.rs breakdown_chance_matches_original"
+why = "velocidade de trem: multiplicador de cheat so com 1 jogador (multiplayer.md 3.5)"
 manual = true
 
 [[function]]
@@ -16352,7 +16474,7 @@ addr = "0x4e3620"
 size = 762
 category = "ui"
 status = "spec"
-why = "docs/spec/commands.md 3.6"
+why = "caixa da industria: 8 s em rede (multiplayer.md 3.2)"
 manual = true
 
 [[function]]
@@ -16478,9 +16600,9 @@ why = "string:winlose.win"
 [[function]]
 addr = "0x4e9280"
 size = 945
-category = "ui"
+category = "sim"
 status = "spec"
-why = "scenarios/game_over_screen (5)"
+why = "game_over_screen: em rede so avisa LNG 2862 e continua (multiplayer.md 3.3)"
 manual = true
 
 [[function]]
@@ -16733,18 +16855,19 @@ manual = true
 
 [[function]]
 addr = "0x4ef4d0"
-name = "buffer_checksum"
 size = 79
-category = "unknown"
-status = "named"
-why = "no-evidence"
+category = "platform"
+status = "spec"
+why = "CRC16 dos pacotes de rede"
+manual = true
 
 [[function]]
 addr = "0x4ef520"
 size = 66
 category = "platform"
-status = "unknown"
-why = "api:KERNEL32!GlobalMemoryStatus"
+status = "spec"
+why = "memoria fisica em MB (coluna da lista de jogadores)"
+manual = true
 
 [[function]]
 addr = "0x4ef570"
@@ -16792,8 +16915,8 @@ why = "no-evidence"
 addr = "0x4efd50"
 size = 322
 category = "platform"
-status = "named"
-why = "rng.md 4; id de sessao"
+status = "spec"
+why = "multiplayer.md; net_session_init"
 manual = true
 
 [[function]]
@@ -16801,7 +16924,7 @@ addr = "0x4efea0"
 size = 33
 category = "platform"
 status = "spec"
-why = "time.md 4; clock_ms"
+why = "clock_ms: tambem sonda a rede (multiplayer.md 1.2)"
 manual = true
 
 [[function]]
@@ -18321,9 +18444,10 @@ why = "only-called-by-lib:0x464f60"
 [[function]]
 addr = "0x501ce0"
 size = 1305
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "multiplayer.md; ui_modal_run"
+manual = true
 
 [[function]]
 addr = "0x502200"

@@ -5947,3 +5947,1081 @@ name = "map_set_size"
 kind = "function"
 comment = "fastcall(largura, altura): define o tamanho do mapa (0x55e7a4/a0) e monta as tabelas de extremos de tela por zoom 2..7 e rotacao (0x57422c, 0x574700), pools e buffers"
 spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x44ec10"
+name = "dp_init"
+kind = "function"
+comment = "carrega dplayx.dll, DirectPlayLobbyCreateA, CoCreateInstance(IDirectPlay4); erros LNG 2932/2259/2919; DAT_00574b70 != 0 desvia para 0x450080 [S]"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x44eba0"
+name = "dp_provider_available"
+kind = "function"
+comment = "fastcall(provedor 2..5): o provedor TCP/IPX/Modem/Serial esta disponivel"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x44eeb0"
+name = "dp_shutdown"
+kind = "function"
+comment = "libera os objetos DirectPlay e CoUninitialize"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x44ef60"
+name = "dp_select_provider"
+kind = "function"
+comment = "fastcall(provedor, texto): escolhe o GUID de servico (2 TCP com IP, 3 IPX, 4 modem, 5 serial) e cria a conexao DirectPlay"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x44f3e0"
+name = "dp_enum_sessions"
+kind = "function"
+comment = "EnumSessions do DirectPlay com o GUID da aplicacao; preenche a tabela de sessoes 0x577e2b (registros 0x4f); [S]"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x44f730"
+name = "dp_create_session"
+kind = "function"
+comment = "fastcall(nome): cria a sessao (MIGRATEHOST, 32 jogadores) e o registro do anfitriao no roster (id de rede aleatorio, versao 0x2334); [S]"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x44fa90"
+name = "dp_close_session"
+kind = "function"
+comment = "fecha a sessao/provedor ativo"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x44fac0"
+name = "dp_join_session"
+kind = "function"
+comment = "fastcall(registro de sessao): entra na sessao e cria o registro do jogador local"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x44fda0"
+name = "dp_send"
+kind = "function"
+comment = "fastcall(destino, dados, tamanho): IDirectPlay4::Send flags 0 (nao garantido); 0x7fffffcf = todos"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x44fe10"
+name = "dp_receive_pump"
+kind = "function"
+comment = "IDirectPlay4::Receive em laco; descarta o que veio de si; entrega a net_recv_packet 0x4a1d80 com o id de rede do remetente"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x44ffb0"
+name = "dp_register_host_player"
+kind = "function"
+comment = "registra o anfitrião da sessao em que se entrou (nome DPServer) na tabela de sessoes"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4c6850"
+name = "net_provider_init_tcp"
+kind = "function"
+comment = "fastcall(IP): dp_init + dp_provider_available(2) + dp_select_provider(2); erro LNG 457"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x475470"
+name = "net_provider_init_ipx"
+kind = "function"
+comment = "provedor 3 (IPX); erro LNG 372"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x48c950"
+name = "net_provider_init_modem"
+kind = "function"
+comment = "provedor 4 (modem); erro LNG 382"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4b1330"
+name = "net_provider_init_serial"
+kind = "function"
+comment = "provedor 5 (serial); erro LNG 383"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x49c730"
+name = "net_session_table_clear"
+kind = "function"
+comment = "zera a tabela de sessoes (0x577dbc/0x577e2b)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x49c770"
+name = "net_shutdown"
+kind = "function"
+comment = "sai da rede: fecha o chat, manda a mensagem 0xc (saindo), limpa a fila, fecha o provedor e zera as tabelas"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x49c8b0"
+name = "net_refresh_sessions"
+kind = "function"
+comment = "zera a tabela de sessoes e reenumera pelo provedor ativo"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x49c910"
+name = "net_session_count"
+kind = "function"
+comment = "numero de sessoes encontradas (0x577dbc)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x49c920"
+name = "net_session_at"
+kind = "function"
+comment = "fastcall(i 1-based): registro de sessao (0x4f bytes) ou 0"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x49c950"
+name = "net_roster_count"
+kind = "function"
+comment = "numero de jogadores no roster (0x577dc0); net_player_count devolve max(1, isto)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x49c960"
+name = "net_roster_at"
+kind = "function"
+comment = "fastcall(i 1-based): registro de jogador (0x147 bytes) em 0x577e2f"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x49c980"
+name = "net_provider_id"
+kind = "function"
+comment = "id do provedor ativo (2..5) se a rede esta ativa, senao 0"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x49c9a0"
+name = "net_start_provider"
+kind = "function"
+comment = "fastcall(provedor, texto): inicia a rede (zera 0x577db8.., cria a janela de chat, 0x578b08 = 1)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x49cac0"
+name = "net_join_session"
+kind = "function"
+comment = "fastcall(id da sessao): entra e manda o registro do jogador (mensagem 5) ate 6 vezes com espera de 5 s; LNG 381 se falha"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x49cc50"
+name = "net_create_session"
+kind = "function"
+comment = "fastcall(nome): cria a sessao como anfitriao"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x49cc90"
+name = "net_is_host"
+kind = "function"
+comment = "DAT_00577dc8 != 0"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x49ccb0"
+name = "net_close_session"
+kind = "function"
+comment = "fecha a sessao pelo provedor ativo (dp_close_session)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x49cd00"
+name = "net_show_chat_line"
+kind = "function"
+comment = "fastcall(id, texto): mostra a linha de chat (lobby 0x4b66f0 se modo 0xb, senao 0x46c0b0)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x49cd20"
+name = "net_send_chat"
+kind = "function"
+comment = "fastcall(texto): mensagem 4 a todos e mostra localmente"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x49cdb0"
+name = "net_lock_session"
+kind = "function"
+comment = "fecha a sessao a novos jogadores (net_provider_lock_session)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x49ce00"
+name = "net_grace_timeouts"
+kind = "function"
+comment = "+45000 ms no 'ultimo ouvido' de todos os outros jogadores (carga lenta)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x49ce50"
+name = "net_heartbeat"
+kind = "function"
+comment = "a cada >= 100 ms: 0xd se nada enviado ha 10 s; sonda 0xe se nada ouvido ha 23 s; remove o jogador com 90001 ms de silencio (anfitriao para todos, convidado so para o anfitriao); migracao do anfitriao; cmd 1 se 3+ jogadores"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x49d240"
+name = "net_roster_add"
+kind = "function"
+comment = "fastcall(registro 0x147): insere no roster ordenado por id crescente; refaz vagas (0x4b45b0, 0x4b4360) e a lista (0x4b3ec0)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x49d370"
+name = "net_session_add"
+kind = "function"
+comment = "fastcall(registro 0x4f): acrescenta a tabela de sessoes"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x49d400"
+name = "net_roster_find"
+kind = "function"
+comment = "fastcall(id de rede): registro 0x147 ou 0"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x49d440"
+name = "net_session_index"
+kind = "function"
+comment = "fastcall(id): indice na tabela de sessoes ou -1"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x49d4a0"
+name = "net_session_find"
+kind = "function"
+comment = "fastcall(id): registro 0x4f ou 0"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x49d4e0"
+name = "net_on_receive"
+kind = "function"
+comment = "fastcall(id de rede, dados, tamanho): chama net_recv_packet"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x49d4f0"
+name = "net_local_id"
+kind = "function"
+comment = "id de rede do jogador local (0x577dc4)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x49d510"
+name = "net_host_id"
+kind = "function"
+comment = "id de rede do anfitriao (sessoes[host].+4) ou -1"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x49d580"
+name = "net_local_address"
+kind = "function"
+comment = "fastcall(buffer, tamanho): nome/IP da maquina (winsock) para a tela K1"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x49d680"
+name = "net_ping_all"
+kind = "function"
+comment = "no lobby, a cada 5 s: marca +0x14 e manda a mensagem 0xa a todos"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x49d6f0"
+name = "net_player_exit"
+kind = "function"
+comment = "fastcall(id): trata a saida de um jogador (mensagem 0xc): migra o anfitriao se era ele e remove (direto com < 3 jogadores, senao cmd 1)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x49db90"
+name = "net_host_changed"
+kind = "function"
+comment = "fastcall(novo anfitriao): mensagem 9; ajusta 0x577dc8/0x579230 e zera os temporizadores"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x49de20"
+name = "net_sync_check"
+kind = "function"
+comment = "fastcall(remetente, registro): guarda o registro de checksum (tabela 0x577e38) e compara com os do mesmo minuto; reacao (LNG 2320, cmd 0x2b, cmd 0xb pausa) so com Network Debug Mode"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x49f990"
+name = "net_ack_partial"
+kind = "function"
+comment = "mensagem 2: reenvia os fragmentos que o par ainda nao recebeu"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x49fe80"
+name = "net_send_fragment"
+kind = "function"
+comment = "envia um fragmento (cabecalho 7 bytes, CRC16, msg id, indice); opcoes de perda/atraso simulados"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4a0320"
+name = "net_queue_reliable"
+kind = "function"
+comment = "registra a mensagem confiavel para reenvio (lista 0x578e40); expande 0x7fffffcf"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4a0410"
+name = "net_send"
+kind = "function"
+comment = "fastcall(tipo, destino, dados, tamanho): fragmenta em 248 bytes e envia; confiavel se 0x55a9ac[tipo]"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4a0540"
+name = "net_dispatch"
+kind = "function"
+comment = "despacha as mensagens de rede 1..0x13 (ver docs/spec/multiplayer.md 1.3)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4a0ec0"
+name = "net_note_complete"
+kind = "function"
+comment = "guarda a mensagem completa recebida na lista de duplicatas (0x578e44)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4a1050"
+name = "net_prune_completed"
+kind = "function"
+comment = "a cada 60 s apaga da lista de duplicatas as mensagens com mais de 120 s"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4a10e0"
+name = "net_resend_pending"
+kind = "function"
+comment = "a cada 1 s: reenvia mensagens confiaveis sem ack apos 3 s (consulta de estado se tem varios fragmentos)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4a1210"
+name = "net_reply_status"
+kind = "function"
+comment = "mensagem 3: responde ack (1) ou mapa de bits (2)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4a1430"
+name = "net_prune_incoming"
+kind = "function"
+comment = "a cada 2 s: remonta/descarta montagens incompletas (30 min ou remetente ausente)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4a1590"
+name = "net_stats_overlay"
+kind = "function"
+comment = "contadores Messages/Packets/Bytes/BPS (opcao de depuracao opts+0x4c)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4a1b30"
+name = "net_transport_tick"
+kind = "function"
+comment = "chamado por net_heartbeat: 0x4a1430, 0x4a10e0, 0x4a1050, fila de pacotes atrasados, estatistica a cada 15 s"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4a1d80"
+name = "net_recv_packet"
+kind = "function"
+comment = "fastcall(id, pacote, tamanho): confere tamanho e CRC, remonta fragmentos, ack 1, entrega a net_dispatch"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4af500"
+name = "net_host_receive_command"
+kind = "function"
+comment = "fastcall(pacote): mensagem 7 no anfitriao: copia para a lista de saida 0x574c94, cmd_net_flush e executa a fila"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4afb60"
+name = "net_seq_reset"
+kind = "function"
+comment = "zera o anel de 100 sequencias aplicadas (0x579084)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4afba0"
+name = "net_seq_remember"
+kind = "function"
+comment = "fastcall(seq): grava no anel (primeira vaga ou a menor)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4afc80"
+name = "net_batch_receive"
+kind = "function"
+comment = "fastcall(tamanho, lote): mensagem 8: aplica em ordem de seq (seq == 0 ou seq-1 no anel), senao guarda em 0x574c90"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4afd50"
+name = "net_batch_apply"
+kind = "function"
+comment = "fastcall(tamanho, lote): grava horizonte 0x579220, desmonta os registros (id u8, tam u16) em pacotes com +8 = carimbo e enfileira em cmd_queue; cmd 0xb executa na hora"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4afef0"
+name = "net_set_horizon"
+kind = "function"
+comment = "fastcall(h): 0x579220 = h"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4b34c0"
+name = "net_barrier_loaded"
+kind = "function"
+comment = "barreira de carga: manda 0x11, marca o bit 3 e espera (LNG 2692) ate todos terem o bit 3 (pergunta 0x13)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4b3640"
+name = "net_send_map_file"
+kind = "function"
+comment = "anfitriao: compacta o mapa/jogo e manda a mensagem 0x10 a quem nao tem (LNG 2695/2696)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4b3e00"
+name = "setup_apply_difficulty"
+kind = "function"
+comment = "fastcall(cavalo 0..4): aplica modelos (0 basico, 1 avancado, 2/3 expert) e modificadores de receita 0x55af5c/0x55af60; cavalo em 0x574841"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4b3ec0"
+name = "setup_refresh_players"
+kind = "function"
+comment = "revalida os limites e redesenha a lista de jogadores (humanos e computadores) da tela K3"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4b4360"
+name = "setup_pick_personas"
+kind = "function"
+comment = "fastcall(refazer): copia as personas das vagas e sorteia as vagas sem persona com rng_hash_range(game_seed) entre as livres de 0x567d40"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4b4de0"
+name = "setup_refresh_options"
+kind = "function"
+comment = "cavalo vira Custom se difere da predefinicao; formula do Difficulty Rating (oculta em rede); botoes de modelo, sandbox e modificadores"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4b51e0"
+name = "setup_set_page"
+kind = "function"
+comment = "fastcall(pagina): estados de setup.win (menu, multiplayer K1/K2/K3, mapa, opcoes)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4b66f0"
+name = "lobby_show_chat_line"
+kind = "function"
+comment = "fastcall(id, texto): linha de chat no lobby (controle 0xc97)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4b6420"
+name = "net_fill_server_list"
+kind = "function"
+comment = "preenche a lista de servidores (0xc91) com 'nome  N Player(s)'"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4b65d0"
+name = "net_create_server_ui"
+kind = "function"
+comment = "Create: pergunta o nome do servidor (LNG 517), confirma largar o anterior (LNG 373) e cria a sessao"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4b68a0"
+name = "setup_load_map_info"
+kind = "function"
+comment = "fastcall(nome, tipo, jogo): le o cabecalho do mapa/jogo escolhido, refaz as vagas e a lista"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4b73a0"
+name = "net_host_or_guest"
+kind = "function"
+comment = "fastcall(host): modem/serial: Host cria RT2_Host e espera o convidado (LNG 518); Guest tenta entrar a cada 3 s"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4b74f0"
+name = "setup_toggle_approval"
+kind = "function"
+comment = "fastcall(linha): clique na luz de aprovacao; so a propria linha (LNG 2212), so com configuracao valida (LNG 2213); manda o cmd de lobby 8"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4b75b0"
+name = "setup_win_handler"
+kind = "function"
+comment = "tratador de eventos de setup.win: menu, K1..K3, Start (cmd 6), +/- computadores (cmd 3), dificuldade (cmd 2), modelos (cmd 7), chat, sair"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4b9990"
+name = "setup_draw_player_row"
+kind = "function"
+comment = "desenha a linha de jogador: luz de aprovacao, luz de arquivo, nome, MB, ping"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4b9df0"
+name = "setup_show_revenue_mods"
+kind = "function"
+comment = "texto dos modificadores de receita: LNG 188 'None' ou sinal + 5*|v-5| + '%'"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4b9f80"
+name = "net_send_setup_block"
+kind = "function"
+comment = "anfitriao: manda o bloco de configuracao inteiro (cmd de lobby 5, 0xc2 bytes) ao convidado novo"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4b9ff0"
+name = "setup_open_multiplayer_setup"
+kind = "function"
+comment = "entra na tela K3 como anfitriao: zera o bloco 0x574840, sorteia game_seed, escolhe o primeiro mapa, mostra perfil"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x46c0b0"
+name = "chat_show_line"
+kind = "function"
+comment = "fastcall(id, texto): linha de chat sobre o mapa (ate 6, 14 s) com o nome do remetente"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x46c310"
+name = "chat_expire_lines"
+kind = "function"
+comment = "apaga as linhas de chat com mais de 14 s"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x46c4a0"
+name = "chat_open_input"
+kind = "function"
+comment = "abre chat.win (controle 0x1325); com 2+ jogadores manda o texto como chat, senao como codigo de cheat"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x46c8a0"
+name = "cheat_codes"
+kind = "function"
+comment = "fastcall(texto): codigos de trapaca (LNG 2722..2731: bigfoot, bobo, king of the hill...); retorna sem fazer nada com 2+ jogadores"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x46ae70"
+name = "net_profile_of"
+kind = "function"
+comment = "fastcall(indice 1-based): perfil (nome, retrato, descricao) do jogador: opts+0x80 sem rede, senao roster.+0x2b"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x46aea0"
+name = "net_local_player_index"
+kind = "function"
+comment = "indice 0-based do jogador local no roster (0 se sem rede, -1 se ausente)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4510a0"
+name = "ui_message_box"
+kind = "function"
+comment = "caixa de mensagem generica (fastcall(x, y), ...); o ultimo parametro e o tempo em ms, so honrado com opts+0x1c3 ou 2+ jogadores"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x501ce0"
+name = "ui_modal_run"
+kind = "function"
+comment = "fastcall(janela, idle, ...): laco modal; param_6 = tempo em ms; estourar devolve 0; interacao (eventos 2, 4, 7) cancela o tempo"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4c68c0"
+name = "net_tcp_close"
+kind = "function"
+comment = "copia por provedor (tcp): zera o flag do provedor e chama dp_shutdown"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4c68d0"
+name = "net_tcp_enum_sessions"
+kind = "function"
+comment = "copia por provedor (tcp) de dp_enum_sessions: EnumSessions e preenche as sessoes (LNG 456 enquanto procura)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4c68e0"
+name = "net_tcp_create_session"
+kind = "function"
+comment = "copia por provedor (tcp) de dp_create_session: Open(CREATE) com MIGRATEHOST e 32 jogadores, ids aleatorios e registro do anfitriao no roster"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4c6910"
+name = "net_tcp_send"
+kind = "function"
+comment = "copia por provedor (tcp): chama dp_send"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4c6930"
+name = "net_tcp_lock_session"
+kind = "function"
+comment = "copia por provedor (tcp) de dp_lock_session: SetSessionDesc com JOINDISABLED"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4754e0"
+name = "net_ipx_close"
+kind = "function"
+comment = "copia por provedor (ipx): zera o flag do provedor e chama dp_shutdown"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4754f0"
+name = "net_ipx_enum_sessions"
+kind = "function"
+comment = "copia por provedor (ipx) de dp_enum_sessions: EnumSessions e preenche as sessoes (LNG 456 enquanto procura)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x475500"
+name = "net_ipx_create_session"
+kind = "function"
+comment = "copia por provedor (ipx) de dp_create_session: Open(CREATE) com MIGRATEHOST e 32 jogadores, ids aleatorios e registro do anfitriao no roster"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x475530"
+name = "net_ipx_send"
+kind = "function"
+comment = "copia por provedor (ipx): chama dp_send"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x475550"
+name = "net_ipx_lock_session"
+kind = "function"
+comment = "copia por provedor (ipx) de dp_lock_session: SetSessionDesc com JOINDISABLED"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x48c9c0"
+name = "net_modem_close"
+kind = "function"
+comment = "copia por provedor (modem): zera o flag do provedor e chama dp_shutdown"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x48c9d0"
+name = "net_modem_enum_sessions"
+kind = "function"
+comment = "copia por provedor (modem) de dp_enum_sessions: EnumSessions e preenche as sessoes (LNG 456 enquanto procura)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x48c9e0"
+name = "net_modem_create_session"
+kind = "function"
+comment = "copia por provedor (modem) de dp_create_session: Open(CREATE) com MIGRATEHOST e 32 jogadores, ids aleatorios e registro do anfitriao no roster"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x48ca10"
+name = "net_modem_send"
+kind = "function"
+comment = "copia por provedor (modem): chama dp_send"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x48ca30"
+name = "net_modem_lock_session"
+kind = "function"
+comment = "copia por provedor (modem) de dp_lock_session: SetSessionDesc com JOINDISABLED"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4b13a0"
+name = "net_serial_close"
+kind = "function"
+comment = "copia por provedor (serial): zera o flag do provedor e chama dp_shutdown"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4b13b0"
+name = "net_serial_enum_sessions"
+kind = "function"
+comment = "copia por provedor (serial) de dp_enum_sessions: EnumSessions e preenche as sessoes (LNG 456 enquanto procura)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4b13c0"
+name = "net_serial_create_session"
+kind = "function"
+comment = "copia por provedor (serial) de dp_create_session: Open(CREATE) com MIGRATEHOST e 32 jogadores, ids aleatorios e registro do anfitriao no roster"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4b13f0"
+name = "net_serial_send"
+kind = "function"
+comment = "copia por provedor (serial): chama dp_send"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4b1410"
+name = "net_serial_lock_session"
+kind = "function"
+comment = "copia por provedor (serial) de dp_lock_session: SetSessionDesc com JOINDISABLED"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x44f600"
+name = "dp_lock_session"
+kind = "function"
+comment = "SetSessionDesc com JOINDISABLED (0x20): fecha a sessao a novos jogadores; cinco copias por provedor (net_*_lock_session)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x452410"
+name = "message_queue_choice_box"
+kind = "function"
+comment = "fastcall(a, b, c): caixa da fila de mensagens tipo 2 com tempo de 4000 ms (honrado so em rede ou com opts+0x1c3)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x469320"
+name = "message_queue_push"
+kind = "function"
+comment = "fastcall(texto, tipo, a, b, c, d): acrescenta um registro de 0x1c bytes ao fim da fila de mensagens da maquina (0x574c1c); tipos 0/4 dialogo, 1 info de industria, 2 caixa, 3, 5 motor novo, 6 acidente"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x578b08"
+name = "net_active"
+kind = "global"
+comment = "u32: rede ativa (provedor iniciado)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x578b00"
+name = "net_game_started"
+kind = "global"
+comment = "u32: 0 = lobby (cmd_queue_run desvia para net_game_start), 1 = partida em curso"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x578b04"
+name = "world_built"
+kind = "global"
+comment = "u32: mundo montado por 0x474280; com isso o cmd 0xb executa na hora (sem fila)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x578b0c"
+name = "net_busy_depth"
+kind = "global"
+comment = "u32: profundidade de reentrada de net_shutdown"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x577db8"
+name = "net_provider"
+kind = "global"
+comment = "u32: provedor ativo 2 TCP, 3 IPX, 4 modem, 5 serial (0 = nenhum)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x577dbc"
+name = "net_session_n"
+kind = "global"
+comment = "u32: numero de sessoes (registros de 0x4f bytes em 0x577e2b)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x577e2b"
+name = "net_sessions"
+kind = "global"
+comment = "ptr: tabela de sessoes DirectPlay (+0 id, +4 id de rede do dono, +0x2c jogadores, +0x30 nome)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x577dc0"
+name = "net_roster_n"
+kind = "global"
+comment = "u32: numero de jogadores humanos conectados"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x577e2f"
+name = "net_roster"
+kind = "global"
+comment = "ptr: roster de jogadores, registros de 0x147 bytes ordenados por id (ver multiplayer.md 1.4)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x577dc4"
+name = "net_local_net_id"
+kind = "global"
+comment = "u32: id de rede do jogador local"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x577dc8"
+name = "net_host_flag"
+kind = "global"
+comment = "u32: != 0 = esta maquina e o anfitriao (id da sessao)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x577dcc"
+name = "net_host_session_id"
+kind = "global"
+comment = "u32: id da sessao do anfitriao"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x577dd0"
+name = "net_join_ack"
+kind = "global"
+comment = "u32: 1 quando o anfitriao respondeu a mensagem 6 durante o Join"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x578e40"
+name = "net_out_reliable"
+kind = "global"
+comment = "ptr lista: mensagens confiaveis aguardando ack"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x578e44"
+name = "net_done_list"
+kind = "global"
+comment = "ptr lista: mensagens recebidas completas (duplicatas, 120 s)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x578e48"
+name = "net_in_fragments"
+kind = "global"
+comment = "ptr lista: montagens de mensagens incompletas"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x578dec"
+name = "net_frag_size"
+kind = "global"
+comment = "u32: 0xf8 = bytes de payload por fragmento"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x55a9ac"
+name = "net_msg_reliable"
+kind = "table"
+comment = "u8[0x14]: 1 = mensagem confiavel (tipos 7, 8, 9, 0x10, 0x11, 0x12)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x55aa4c"
+name = "net_lag_table"
+kind = "table"
+comment = "i32[6]: vazao simulada B/s (opcao de depuracao): 999999, 14375, 5625, 2750, 1500, 0"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x579220"
+name = "net_horizon"
+kind = "global"
+comment = "u32: horizonte de tempo recebido do anfitriao (minutos de jogo); 0 = nenhum ainda"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x579214"
+name = "net_host_horizon"
+kind = "global"
+comment = "u32: ultimo horizonte emitido (anfitriao); carimbo do proximo lote"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x579080"
+name = "net_catchup_floor"
+kind = "global"
+comment = "u32: piso de avanco apos o jogador mandar comando (corre ate o horizonte)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x579224"
+name = "net_cmd_pending"
+kind = "global"
+comment = "u32: 1 enquanto o comando do cliente nao voltou em lote"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x57921c"
+name = "net_batch_seq"
+kind = "global"
+comment = "u32: numero de sequencia do ultimo lote emitido"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x579218"
+name = "net_last_flush"
+kind = "global"
+comment = "u32: clock_ms do ultimo lote"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x579230"
+name = "net_host_just_changed"
+kind = "global"
+comment = "u32: 1 apos assumir como anfitriao: proximo horizonte ganha folga de 8 s"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x579084"
+name = "net_seq_ring"
+kind = "table"
+comment = "u32[100]: ultimas sequencias de lote aplicadas"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x574c90"
+name = "net_batch_wait"
+kind = "global"
+comment = "ptr lista: lotes recebidos fora de ordem"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x574c18"
+name = "world_ready"
+kind = "global"
+comment = "u32: mundo pronto (0x474280/0x479710); libera os lotes do anfitriao"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x574c04"
+name = "world_loading"
+kind = "global"
+comment = "u32: 1 enquanto 0x479b20 carrega o mundo (bloqueia quadros e lotes)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x577e38"
+name = "net_sync_table"
+kind = "table"
+comment = "100 x 32 bytes: (valido, indice, minuto, registro de 26 bytes) do checksum de sincronia"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x578af8"
+name = "net_sync_table_valid"
+kind = "global"
+comment = "u32: 1 apos zerar a tabela de checksums"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x57b400"
+name = "net_session_cfg"
+kind = "global"
+comment = "ptr: bloco de sessao de 0x48 bytes (+0x28 Network Ignore Heartbeats, +0x2c Network Debug Mode, +0x3c identidade persistente)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x574840"
+name = "setup_block"
+kind = "global"
+comment = "bloco de configuracao do jogo (0xb6 bytes): computadores, cavalo, mapa, limites, game_seed, modelos, modificadores, 32 vagas; viaja no cmd de lobby 5 e no save (map-gam.md)"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x574872"
+name = "setup_options"
+kind = "global"
+comment = "u8: bits 0..2 modelo industrial, 3..5 financeiro, 6 sandbox"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x55af58"
+name = "setup_status"
+kind = "global"
+comment = "u32: 0 ok, 1 mapa invalido, 3 numero de jogadores invalido"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x55af5c"
+name = "setup_rev_human_by_difficulty"
+kind = "table"
+comment = "u8[5]: modificador de receita dos humanos por cavalo: 9, 5, 3, 1, 3"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x55af60"
+name = "setup_rev_computer_by_difficulty"
+kind = "table"
+comment = "u8[5]: modificador de receita dos computadores por cavalo: 3, 5, 7, 9, 0x2e"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x535ab0"
+name = "net_app_guid"
+kind = "table"
+comment = "GUID da aplicacao DirectPlay {84E7A1A0-D548-11D2-8757-00104BCAB3FB}"
+spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x574d50"
+name = "chat_line_count"
+kind = "global"
+comment = "u32: linhas de chat visiveis (ate 6)"
+spec = "docs/spec/multiplayer.md"

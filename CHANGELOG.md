@@ -38,6 +38,7 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Feature: AppImage and Flatpak builds on each release
 - Feature: event history window (activity box, History button) with category filters, game date and click-to-center on the event place; per-category notification options (Options, Notices tab, config.toml [notices]) that hide the message line and pop-up; six languages
 - Feature: Windows installer with Start menu shortcut, and macOS .app in a .dmg
+- RE: multiplayer rules of the original specified in docs/spec/multiplayer.md: host-sequenced deterministic lockstep (command batches stamped with a game minute and a time horizon), lobby commands 1..9, desync checksum (reaction only in debug mode), disconnect handling (host migration, human persons handed to the AI, no late join), and every rule that changes with several humans (dialogs never pause time and auto-close, daily train steps, no newspapers, victory ends the game for all).
 
 ## v0.3.0 — 2026-10-23
 - Fix: Lay Track drag now starts and ends on a station when pressed on its building (snap to the station's tile), so dragging from one station to another works as in the original
