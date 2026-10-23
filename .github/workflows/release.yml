@@ -56,17 +56,52 @@ jobs:
       - name: Package
         shell: bash
         run: scripts/package-release.sh "${{ matrix.platform }}" "$LABEL" "target/${{ matrix.target }}/release" dist
+      # AppImage (docs/packaging.md): same binary, appimagetool and runtime pinned by sha256.
+      - name: AppImage
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get install -y desktop-file-utils appstream
+          desktop-file-validate packaging/linux/io.github.pedryvo.rrt2.desktop
+          appstreamcli validate --no-net packaging/linux/io.github.pedryvo.rrt2.metainfo.xml
+          scripts/package-appimage.sh "$LABEL" "target/${{ matrix.target }}/release" dist
       - uses: actions/upload-artifact@v4
         with:
           name: rrt2-${{ matrix.platform }}
           path: |
             dist/*.tar.gz
             dist/*.zip
+            dist/*.AppImage
           if-no-files-found: error
+
+  # Flatpak bundle built from source in the freedesktop SDK (packaging/flatpak, docs/packaging.md).
+  flatpak:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-26.08
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v4
+      - name: Label and commit
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "LABEL=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+          else
+            echo "LABEL=nightly-${GITHUB_SHA::9}" >> "$GITHUB_ENV"
+          fi
+          sed -i "s/RRT2_GIT_COMMIT: \"\"/RRT2_GIT_COMMIT: \"${GITHUB_SHA::9}\"/" packaging/flatpak/io.github.pedryvo.rrt2.yml
+          grep -q "RRT2_GIT_COMMIT: \"${GITHUB_SHA::9}\"" packaging/flatpak/io.github.pedryvo.rrt2.yml
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6.8
+        with:
+          manifest-path: packaging/flatpak/io.github.pedryvo.rrt2.yml
+          bundle: rrt2-${{ env.LABEL }}-x86_64.flatpak
+          artifact-name: rrt2-flatpak
+          cache: false
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: build
+    needs: [build, flatpak]
     runs-on: ubuntu-latest
     permissions:
       contents: write

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- AppStream metadata shared by the AppImage and the Flatpak (docs/packaging.md). -->
+<component type="desktop-application">
+  <id>io.github.pedryvo.rrt2</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>RRT2</name>
+  <summary>Open-source clone of Railroad Tycoon II</summary>
+  <developer id="io.github.pedryvo">
+    <name>Pedro Ivo Rocha</name>
+  </developer>
+  <description>
+    <p>
+      A modern, open-source reimplementation of the railway strategy game Railroad Tycoon II
+      Platinum, written in Rust. The simulation is reverse-engineered from the original
+      executable so that the mechanics stay identical to the original.
+    </p>
+    <p>
+      This package does not contain the original game. You need your own copy of Railroad
+      Tycoon II (GOG, Steam or the CD install); its maps, graphics and sounds are read from your
+      installation, which is never modified.
+    </p>
+  </description>
+  <launchable type="desktop-id">io.github.pedryvo.rrt2.desktop</launchable>
+  <provides>
+    <binary>rrt2</binary>
+  </provides>
+  <categories>
+    <category>Game</category>
+    <category>StrategyGame</category>
+    <category>Simulation</category>
+  </categories>
+  <url type="homepage">https://github.com/pedryvo/rrt2-decomp</url>
+  <url type="bugtracker">https://github.com/pedryvo/rrt2-decomp/issues</url>
+  <url type="vcs-browser">https://github.com/pedryvo/rrt2-decomp</url>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </supports>
+  <content_rating type="oars-1.1"/>
+</component>

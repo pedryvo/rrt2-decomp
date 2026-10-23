@@ -90,7 +90,7 @@ RT2_DIR=~/Games/railroad-tycoon-2 cargo nextest run
 
 ## 📦 Instalação
 
-1. Baixe o arquivo do seu sistema na [página de Releases](https://github.com/pedryvo/rrt2-decomp/releases) (Linux x86_64 `.tar.gz`, Windows x86_64 `.zip`, macOS Apple Silicon ou Intel `.tar.gz`). Cada push na `main` também gera builds de desenvolvimento, nos artefatos das execuções do workflow "Release" na aba Actions.
+1. Baixe o arquivo do seu sistema na [página de Releases](https://github.com/pedryvo/rrt2-decomp/releases) (Linux x86_64 `.tar.gz`, `.AppImage` ou `.flatpak`, Windows x86_64 `.zip`, macOS Apple Silicon ou Intel `.tar.gz`). O AppImage roda direto; o Flatpak não acessa seus arquivos até você liberar a leitura da pasta do jogo, veja [docs/packaging.md](docs/packaging.md). Cada push na `main` também gera builds de desenvolvimento, nos artefatos das execuções do workflow "Release" na aba Actions.
 2. Descompacte onde quiser. O pacote contém apenas o `rrt2` (fontes e traduções já vão embutidas), a documentação e as licenças das fontes. **Ele não inclui o jogo original**: você precisa da sua própria cópia de Railroad Tycoon II (GOG, Steam ou instalação em CD).
 3. Na primeira execução, informe onde o original está instalado. O caminho fica guardado no `config.toml`:
 

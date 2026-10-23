@@ -1,0 +1,57 @@
+# Flatpak of rrt2 (docs/packaging.md). Built from this checkout by the release workflow:
+#   flatpak-builder --user --install-deps-from=flathub --force-clean \
+#       ~/.cache/rrt2/flatpak-build packaging/flatpak/io.github.pedryvo.rrt2.yml
+# No original game asset is packaged. The sandbox has no access to the host files by default:
+# the player grants read-only access to their own install, e.g.
+#   flatpak override --user --filesystem="$HOME/Games/railroad-tycoon-2":ro io.github.pedryvo.rrt2
+#   flatpak run io.github.pedryvo.rrt2 set-path "$HOME/Games/railroad-tycoon-2"
+app-id: io.github.pedryvo.rrt2
+runtime: org.freedesktop.Platform
+runtime-version: "26.08"
+sdk: org.freedesktop.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: rrt2
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  # Sound: the runtime routes ALSA (cpal) through PulseAudio/PipeWire.
+  - --socket=pulseaudio
+modules:
+  - name: rrt2
+    buildsystem: simple
+    build-options:
+      append-path: /usr/lib/sdk/rust-stable/bin
+      # Dependencies are fetched by cargo during the build (no vendored cargo-sources.json),
+      # so the build needs the network. Fine for our own bundle; Flathub would need vendoring.
+      build-args:
+        - --share=network
+      env:
+        CARGO_HOME: /run/build/rrt2/cargo
+        # Filled with the short commit by the release workflow (empty: "unknown", no .git here).
+        RRT2_GIT_COMMIT: ""
+    build-commands:
+      # .cargo/config.toml links with clang + mold and caps jobs for the workstation; the SDK
+      # has neither tool. This deletes the copy in the build dir only, not the checkout.
+      - rm -f .cargo/config.toml
+      - cargo build --release --locked -p rt2-game
+      - install -Dm755 target/release/rrt2 /app/bin/rrt2
+      - install -Dm644 packaging/linux/io.github.pedryvo.rrt2.desktop /app/share/applications/io.github.pedryvo.rrt2.desktop
+      - install -Dm644 packaging/linux/io.github.pedryvo.rrt2.metainfo.xml /app/share/metainfo/io.github.pedryvo.rrt2.metainfo.xml
+      - install -Dm644 docs/assets/logo.svg /app/share/icons/hicolor/scalable/apps/io.github.pedryvo.rrt2.svg
+      - install -Dm644 -t /app/share/doc/rrt2 README.md CHANGELOG.md LICENSE
+      - install -Dm644 -t /app/share/doc/rrt2/licenses assets/fonts/OFL-*.txt
+    sources:
+      - type: dir
+        path: ../..
+        skip:
+          - target
+          - .git
+          - re
+          - assets-extracted
+          - dist
+          - .flatpak-builder
+          - flatpak_app
+          - repo

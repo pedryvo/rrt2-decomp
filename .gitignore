@@ -7,3 +7,5 @@ __pycache__/
 /re/db
 /re/pending
 /dist
+/.flatpak-builder
+/flatpak_app

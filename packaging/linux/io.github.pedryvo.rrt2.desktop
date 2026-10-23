@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=RRT2
+GenericName=Railway strategy game
+Comment=Open-source clone of Railroad Tycoon II (needs your own copy of the original game)
+Exec=rrt2
+Icon=io.github.pedryvo.rrt2
+Terminal=false
+Categories=Game;StrategyGame;Simulation;
+Keywords=railroad;railway;train;tycoon;economy;
+StartupWMClass=rrt2

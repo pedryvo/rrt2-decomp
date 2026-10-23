@@ -90,7 +90,7 @@ RT2_DIR=~/Games/railroad-tycoon-2 cargo nextest run
 
 ## 📦 安装
 
-1. 从 [Releases 页面](https://github.com/pedryvo/rrt2-decomp/releases) 下载适合你系统的压缩包（Linux x86_64 `.tar.gz`、Windows x86_64 `.zip`、macOS Apple Silicon 或 Intel `.tar.gz`）。每次推送到 `main` 也会生成开发版构建，位于 Actions 页中 "Release" 工作流运行的构建产物里。
+1. 从 [Releases 页面](https://github.com/pedryvo/rrt2-decomp/releases) 下载适合你系统的压缩包（Linux x86_64 `.tar.gz`、`.AppImage` 或 `.flatpak`，Windows x86_64 `.zip`、macOS Apple Silicon 或 Intel `.tar.gz`）。AppImage 可直接运行；Flatpak 在你授予游戏文件夹的读取权限之前无法访问你的文件，见 [docs/packaging.md](docs/packaging.md)。每次推送到 `main` 也会生成开发版构建，位于 Actions 页中 "Release" 工作流运行的构建产物里。
 2. 解压到任意位置。压缩包只包含 `rrt2`（字体和翻译已内置）、文档和字体许可证。**它不包含原版游戏**：你需要自己的 Railroad Tycoon II 副本（GOG、Steam 或光盘安装）。
 3. 首次运行时，告诉游戏原版安装在哪里。路径会保存到 `config.toml`：
 
