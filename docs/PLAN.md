@@ -270,12 +270,13 @@ O usuário decidiu que todos os itens abaixo entram na 1.0, inclusive o multipla
 - [ ] Guia do jogador (instalação, primeiros passos, diferenças em relação ao original, recursos modernos) nos seis idiomas
 
 **Multiplayer** (entre cópias do clone; não conversa com o DirectPlay do original)
-- [ ] Engenharia reversa das regras de multiplayer do original: opções da partida (K3), o que muda na simulação com vários humanos (pessoa e empresa locais, `0x467bd0`/`0x467fd0`, pausa, velocidade, aprovação do anfitrião), mensagens de rede e chat; spec em `docs/spec/multiplayer.md`
-- [ ] Lockstep determinístico: só comandos trafegam, agendados alguns ticks à frente; checksum do estado periódico e detecção de dessincronização com dump do diff de estado
-- [ ] Rede: anfitrião e clientes por TCP (ou QUIC), conexão direta por IP e porta; tolerância a atraso e perda; desconexão sem derrubar a partida (a IA ou o anfitrião assume a empresa)
+- [x] Engenharia reversa das regras de multiplayer do original: opções da partida (K3), o que muda na simulação com vários humanos (pessoa e empresa locais, `0x467bd0`/`0x467fd0`, pausa, velocidade, aprovação do anfitrião), mensagens de rede e chat; spec em `docs/spec/multiplayer.md`
+- [x] Lockstep determinístico: só comandos trafegam, agendados alguns ticks à frente; checksum do estado periódico e detecção de dessincronização com dump do diff de estado (`crates/rt2-net`, `rt2_sim::net`, `docs/spec/multiplayer.md` seção 10, `docs/net-protocol.md`; fase 1, sem interface)
+- [x] Rede: anfitrião e clientes por TCP (ou QUIC), conexão direta por IP e porta; tolerância a atraso e perda; desconexão sem derrubar a partida (a IA ou o anfitrião assume a empresa) (TCP com std + threads, transporte abstrato com implementação em memória, migração de anfitrião; NAT e descoberta de servidores ficam com a interface)
 - [ ] Telas K1–K3 e H3: menu multiplayer, conexão, preparação com aprovação e ping por jogador, escolha do personagem; chat dentro do jogo
-- [ ] Entrar no meio da partida e reconectar (o anfitrião envia o save e os comandos pendentes); salvar e carregar partidas multiplayer
-- [ ] Testes: duas ou mais instâncias headless na mesma máquina jogando um replay e terminando com checksums idênticos, no CI; teste com perda e atraso simulados
+- [x] Entrar no meio da partida e reconectar (o anfitrião envia o save e os comandos pendentes)
+- [ ] Salvar e carregar partidas multiplayer (a simulação já grava a identidade `+0x54d` e atribui as pessoas por identidade ao carregar, `World::net_assign_humans`; falta o fluxo de lobby e interface da fase 2)
+- [x] Testes: duas ou mais instâncias headless na mesma máquina jogando um replay e terminando com checksums idênticos, no CI; teste com perda e atraso simulados (`crates/rt2-net/tests/`: memória e TCP em localhost, 2 e 3 instâncias, perda, atraso, jitter e duplicação, desconexão, migração, entrada no meio, reconexão; mais `real_game.rs` com os dados do jogo, local; os comandos jogados são uma sequência de comandos, não um arquivo de replay)
 
 **Qualidade**
 - [ ] Rodada de testes de jogo do usuário com campanhas de ponta a ponta, e os bugs encontrados corrigidos

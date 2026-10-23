@@ -53,6 +53,12 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Improved: clicar numa industria da lista abre a caixa de aguia (eagled.win) com Buy, como a janela do mapa
 - Fix: recusa de compra de trem por falta de caixa usa a mensagem LNG 353 e a de melhorias a LNG 345, como o original
 - RE: matriz de velocidade da janela de compra (0x4e3f90), posicionamento do trem na imagem, linhas da lista (0x4d9bd0), toneladas por vagao por data (0x4e57c0) e regras de buildbuy.win (0x407540) documentadas em docs/ui.md
+- Feature: network mode of the simulation (`rt2_sim::net`): with two or more humans the RNG is re-seeded every day, trains move in daily steps of 1440 minutes (independent of the frame rate), the economy and stock-split news only join the message list, a human who leaves becomes a computer (`net_player_left`), and victory or defeat is recorded per player; single-player is untouched (all 134 fidelity cases equal)
+- Feature: `rt2-net` crate: host-sequenced lockstep (batches with sequence, stamp and horizon, 1 s heartbeat, 2 s horizon, in-order apply, speed and pause on arrival) over an abstract transport with an acknowledged layer, an in-memory transport with delay, jitter, loss and duplication, and a TCP transport; versioned binary messages with a protocol and rules hash handshake (`docs/net-protocol.md`)
+- Feature: multiplayer sessions survive trouble: 10 s heartbeat, 23 s probe and 90 s silence cut, host migration to the lowest id, player removal through the batch, last human plays on locally, join in progress and reconnect from a snapshot with the pending commands, same identity takes the same company
+- Feature: monthly full-state checksum with a reaction that is always on: the host names the groups that differ, writes a field-by-field diff dump (`desync-<minute>-p<id>.txt`) and resends its state to the diverged player
+- Docs: `docs/spec/multiplayer.md` section 10 (implementation in the clone, what was checked against the original, what is open) and `docs/net-protocol.md`
+- RE: `trains_advance` (`0x4a58f0`), the daily re-seed of `sim_advance`, `net_player_left` (`0x49d970`) and the news conditions of `0x46a010` and `0x43d800` read from the decompilation: the seed is `u32(T + game_seed)` plus the cash of person 0 of the player set, news in a network game never call `news_post`
 
 ## v0.3.0 — 2026-10-23
 - Fix: Lay Track drag now starts and ends on a station when pressed on its building (snap to the station's tile), so dragging from one station to another works as in the original

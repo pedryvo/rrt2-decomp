@@ -63,6 +63,7 @@ impl World {
                 crt: &mut self.crt,
                 choices: &mut self.choices,
                 sc: None,
+                network: self.net.as_ref().is_some_and(|n| n.roster.len() >= 2),
             };
             world.value(id, param, company, person, territory)
         };
@@ -110,6 +111,7 @@ impl SimState {
             crt: &mut w.crt,
             choices: &mut w.choices,
             sc: Some(sc),
+            network: w.net.as_ref().is_some_and(|n| n.roster.len() >= 2),
         };
         fire_trigger(code, &mut world, &mut w.rng);
         let sc = world.sc.take();
@@ -179,6 +181,8 @@ struct ScWorld<'a> {
     crt: &'a mut CrtRng,
     choices: &'a mut crate::choice::Choices,
     sc: Option<Scenario>,
+    /// `net_player_count() >= 2`.
+    network: bool,
 }
 
 impl ScWorld<'_> {
@@ -646,6 +650,19 @@ impl ScenarioWorld for ScWorld<'_> {
     }
     fn is_multiplayer(&self) -> bool {
         self.st_i32(ST_MULTIPLAYER) != 0
+    }
+    fn network_active(&self) -> bool {
+        self.network
+    }
+    fn record_net_outcome(&mut self, person: i32, state: u8, other_won: bool) {
+        let list = &mut self.s.net_outcomes;
+        if !list.iter().any(|o| o.person == person) {
+            list.push(crate::net::NetOutcome {
+                person,
+                state,
+                other_won,
+            });
+        }
     }
     fn person_name(&self, _person: i32) -> String {
         String::new()

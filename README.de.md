@@ -51,12 +51,13 @@ _Der Klassiker von 1998, den Sie kennen, aus derselben isometrischen Perspektive
 | Spielbare Simulation | 🟡 | Weltschleife `rt2-sim` mit Zügen, Bahnhöfen, Wirtschaft, Finanzen, Stadtwachstum, Szenarioregeln und der KI-Konkurrenz: Im Klon fortgeschriebene Original-Spielstände sind in **allen 131** Fällen, von 1 Tag bis zu 2 Spieljahren, einschließlich seltener Ereignisse (Unfälle, Diebstahl, Liquidationen, KI-Aktienhandel) Feld für Feld **identisch mit dem Original** (Tutorial, Example mit Zügen, vier .MP2-Karten sowie beim Laden konvertierte alte Spielstände und Karten); einschließlich neuer Spiele aller 18 Szenarien der Originalkampagne; und aller 18 Second-Century-Szenarien · [Treue-Tabelle](docs/fidelity-status.md) |
 | Spieloberfläche | 🟡 | App `rrt2`: Hauptmenü mit Originalgrafik, Szenario- und Spielstandlisten, HUD im Spiel mit Datum und Geschwindigkeitsregelung, gestochen scharfer Vektortext mit OFL-Schriften, die den Originalen nachempfunden sind, UI-Skalierung 100–300 % · [docs](docs/ui.md) |
 | Karten- und Szenario-Editor | 🟡 | Gelände, Bäume, Gebiete, Gebäude, Orte, Flüsse und Straßen; Kartenoptionen, Ziele und ein Regeleditor mit Live-Prüfung; Speichern erhält alle mitgelieferten Karten unverändert. PCX-Import und einige Optionsseiten fehlen noch |
+| Mehrspieler (Kern) | 🟡 | `rt2-net`: vom Host sequenzierter Lockstep über TCP oder im Speicher, mit den Netzwerkregeln des Originals in `rt2-sim` (täglich neu gesetzter RNG, Züge in Tagesschritten, ein ausscheidender Mensch wird zum Computer), monatliche Zustandsprüfsumme mit Diff-Dump, Host-Wechsel, Einstieg ins laufende Spiel und Wiederverbinden; noch ohne Bildschirme · [Spec](docs/spec/multiplayer.md) · [Protokoll](docs/net-protocol.md) |
 
 <sub>✅ fertig · 🟡 teilweise · 🔍 in Analyse · ⏳ geplant</sub>
 
 **Originaltreue:** Klon und Original schreiben denselben Spielstand fort, und die Ergebnisse werden Feld für Feld verglichen. Aktuelle Wertung: [`docs/fidelity-status.md`](docs/fidelity-status.md).
 
-**Reverse Engineering:** 2945 Funktionen in der ausführbaren Datei (1837 ohne Linker-Thunks) · 853 Symbole in [`re/symbols.toml`](re/symbols.toml) · 1318 klassifiziert (44 %), 1627 noch nicht klassifiziert · 477 Funktionen spezifiziert (davon 429 Simulation), 301 bitgenau gegen das Original verifiziert ([`re/coverage.toml`](re/coverage.toml)). Ein Prozentwert für die Simulationsabdeckung wird veröffentlicht, sobald die Klassifizierung abgeschlossen ist.
+**Reverse Engineering:** 2945 Funktionen in der ausführbaren Datei (1837 ohne Linker-Thunks) · 1018 Symbole in [`re/symbols.toml`](re/symbols.toml) · 1428 klassifiziert (48 %), 1517 noch nicht klassifiziert · 616 Funktionen spezifiziert (davon 456 Simulation), 304 bitgenau gegen das Original verifiziert ([`re/coverage.toml`](re/coverage.toml)). Ein Prozentwert für die Simulationsabdeckung wird veröffentlicht, sobald die Klassifizierung abgeschlossen ist.
 
 ## 🧭 Fahrplan
 
@@ -138,6 +139,7 @@ python3 re/scripts/pk2_hash.py setup.imb
 crates/
   rt2-formats/   reine Parser für die Dateiformate des Spiels (PK2, LNG, …)
   rt2-sim/       deterministischer Simulationskern (keine E/A, kein Rendering)
+  rt2-net/       Lockstep-Mehrspieler: vom Host sequenzierte Befehlspakete über TCP oder Speicher
   rt2-render/    wgpu-Geländerenderer (Mesh, isometrische Kamera; keine Spiellogik)
   rt2-viewer/    `rt2-viewer <map>`: Fenster oder `--screenshot` als PNG
   rt2-oracle/    Umgebung für Differenzialtests (Original-EXE in Unicorn)

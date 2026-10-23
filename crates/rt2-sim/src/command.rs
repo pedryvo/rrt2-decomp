@@ -52,11 +52,29 @@ pub enum Command {
     /// Switches the optional fixes of original bugs ([`crate::ruleset`]); a replay starts with
     /// the ruleset of its header, and a change in the options screen is logged as this command.
     SetRuleset(crate::ruleset::Ruleset),
+    /// `0x01` `cmd_player_left` (docs/spec/multiplayer.md 5.1): the human with this network id
+    /// left; his persons become computers ([`World::net_player_left`]). Sent through the batch
+    /// so that it lands in the same game minute on every machine; idempotent.
+    NetPlayerLeft { net_id: u32 },
+    /// Clone extra (join in progress, docs/net-protocol.md): a player enters the roster and takes
+    /// `person`, a seat the host picked with [`World::net_free_seat`] (0 = no seat, a spectator).
+    NetPlayerJoined {
+        net_id: u32,
+        identity: u32,
+        person: i32,
+        name: [u8; 31],
+    },
 }
 
 impl World {
     /// Applies a command. Deterministic and free of I/O.
     pub fn apply(&mut self, cmd: Command) {
+        let minute = self.minutes;
+        if let Some(n) = self.net.as_mut()
+            && !matches!(cmd, Command::SetSpeed(_) | Command::TogglePause)
+        {
+            n.log_command(minute, &cmd);
+        }
         match cmd {
             Command::SetSpeed(change) => {
                 let new = match change {
@@ -89,6 +107,23 @@ impl World {
                 let _ = self.answer_choice(message_id, button);
             }
             Command::SetRuleset(r) => self.set_ruleset(r),
+            Command::NetPlayerLeft { net_id } => self.net_player_left(net_id),
+            Command::NetPlayerJoined {
+                net_id,
+                identity,
+                person,
+                name,
+            } => {
+                let end = name.iter().position(|&b| b == 0).unwrap_or(name.len());
+                self.net_player_joined(
+                    crate::net::NetPlayer {
+                        id: net_id,
+                        identity,
+                        name: name[..end].iter().map(|&b| b as char).collect(),
+                    },
+                    person,
+                );
+            }
         }
     }
 

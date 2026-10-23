@@ -3,11 +3,11 @@
 # Ver docs/re-workflow.md.
 #
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
-# Classificadas (categoria != unknown): 1428 (48.5%)
-# Por categoria: lib=258, platform=180, render=11, audio=53, ui=300, sim=626, unknown=1517
-# Por estado:   unknown=2170, named=159, spec=312, verified=304
-# Entradas manuais: 702
-# sim spec coverage: 72.8% (456 de 626 funcoes sim em spec/verified)
+# Classificadas (categoria != unknown): 1429 (48.5%)
+# Por categoria: lib=258, platform=180, render=11, audio=53, ui=300, sim=627, unknown=1516
+# Por estado:   unknown=2169, named=159, spec=313, verified=304
+# Entradas manuais: 703
+# sim spec coverage: 72.9% (457 de 627 funcoes sim em spec/verified)
 
 [[function]]
 addr = "0x401005"
@@ -12189,9 +12189,10 @@ manual = true
 [[function]]
 addr = "0x46adb0"
 size = 160
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "multiplayer.md 3.2 e 10.1: em rede o jornal vira mensagem, sem news_post"
+manual = true
 
 [[function]]
 addr = "0x46ae50"
@@ -12383,7 +12384,7 @@ addr = "0x46c680"
 size = 458
 category = "sim"
 status = "spec"
-why = "net_sync_checksum_build: registro de 26 bytes (multiplayer.md 1.8)"
+why = "multiplayer.md 1.8 e 10.1: registro de checksum; o clone usa um digest de estado completo (rt2_sim::net::Digest)"
 manual = true
 
 [[function]]
@@ -13820,7 +13821,7 @@ addr = "0x49d970"
 size = 534
 category = "sim"
 status = "spec"
-why = "net_player_left: pessoas humanas viram IA (multiplayer.md 5.1)"
+why = "multiplayer.md 5.1 e 10.1: net_player_left lido por inteiro; portado em rt2_sim::net (World::net_player_left)"
 manual = true
 
 [[function]]
@@ -14162,7 +14163,7 @@ addr = "0x4a58f0"
 size = 79
 category = "sim"
 status = "spec"
-why = "time.md 6"
+why = "multiplayer.md 10.1: trains_advance = train_step(trem, dt, 1) para cada trem da lista; portado em tick/net.rs"
 manual = true
 
 [[function]]

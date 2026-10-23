@@ -1,0 +1,15 @@
+[package]
+name = "rt2-net"
+description = "Lockstep multiplayer of the Railroad Tycoon II clone: host-sequenced command batches over an abstract transport (TCP and in-memory)"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+rt2-sim.workspace = true
+rt2-formats.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true

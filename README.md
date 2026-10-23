@@ -51,12 +51,13 @@ _The 1998 classic you know, from the same isometric viewpoint,<br>now native at 
 | Playable simulation | 🟡 | `rt2-sim` world loop with trains, stations, economy, finance, town growth, scenario rules and the competitor AI: original saves advanced in the clone are **identical to the original** field by field in **all 131** scoreboard cases, from 1 day up to 2 years of play and including rare events (crashes, theft, liquidations, AI stock trading) (Tutorial, Example with trains, four .MP2 maps, and old-layout saves and maps converted on load); including fresh New Games of all 18 original campaign scenarios; and all 18 Second Century scenarios · [fidelity scoreboard](docs/fidelity-status.md) |
 | Game UI | 🟡 | `rrt2` app: main menu with original art, scenario/save lists, in-game HUD with date and speed control, crisp vector text with OFL fonts matched to the originals, UI scale 100–300% · [docs](docs/ui.md) |
 | Map and scenario editor | 🟡 | Terrain, trees, territories, buildings, places, rivers and roads; map options, goals and a rules editor with live checking; saves round-trip all shipped maps. PCX import and some option pages pending |
+| Multiplayer (core) | 🟡 | `rt2-net`: host-sequenced lockstep over TCP or in memory, with the original's network rules in `rt2-sim` (daily RNG re-seed, daily train steps, a leaving human becomes a computer), monthly state checksum with diff dump, host migration, join in progress and reconnect; no screens yet · [spec](docs/spec/multiplayer.md) · [protocol](docs/net-protocol.md) |
 
 <sub>✅ done · 🟡 partial · 🔍 under analysis · ⏳ planned</sub>
 
 **Fidelity:** the clone and the original advance the same save and the results are diffed field by field. Current scoreboard: [`docs/fidelity-status.md`](docs/fidelity-status.md).
 
-**Reverse engineering:** 2945 functions in the executable (1837 excluding linker thunks) · 853 symbols in [`re/symbols.toml`](re/symbols.toml) · 1318 classified (44%), 1627 still unclassified · 477 functions specified (429 of them simulation), 301 verified bit-exact against the original ([`re/coverage.toml`](re/coverage.toml)). A simulation coverage percentage will be published once classification is complete.
+**Reverse engineering:** 2945 functions in the executable (1837 excluding linker thunks) · 1018 symbols in [`re/symbols.toml`](re/symbols.toml) · 1428 classified (48%), 1517 still unclassified · 616 functions specified (456 of them simulation), 304 verified bit-exact against the original ([`re/coverage.toml`](re/coverage.toml)). A simulation coverage percentage will be published once classification is complete.
 
 ## 🧭 Roadmap
 
@@ -138,6 +139,7 @@ python3 re/scripts/pk2_hash.py setup.imb
 crates/
   rt2-formats/   pure parsers for the game's file formats (PK2, LNG, …)
   rt2-sim/       deterministic simulation core (no I/O, no rendering)
+  rt2-net/       lockstep multiplayer: host-sequenced command batches over TCP or memory
   rt2-render/    wgpu terrain renderer (mesh, isometric camera; no game logic)
   rt2-viewer/    `rt2-viewer <map>`: window or `--screenshot` PNG
   rt2-oracle/    differential-test harness (original EXE in Unicorn)

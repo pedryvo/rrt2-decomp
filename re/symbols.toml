@@ -7102,3 +7102,10 @@ name = "buildbuy_row_checked"
 kind = "function"
 comment = "stdcall(linha): le o estado da caixa de selecao 0xd0c+linha; [S]"
 spec = "docs/ui.md"
+
+[[symbol]]
+addr = "0x46adb0"
+name = "message_list_add"
+kind = "function"
+comment = "fastcall(texto, tipo, a, b, c): sem popup: se [0x574c20] == 0 copia o texto num registro e chama message_box_post(1, 0x1a1, ..., prazo 9000 ms se c != 0); caminho do jornal da economia (0x46a010) e do desdobramento de acoes (0x43d800) quando opts+0x228 != 0 ou net_player_count() >= 2"
+spec = "docs/spec/multiplayer.md"

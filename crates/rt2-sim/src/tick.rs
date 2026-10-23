@@ -37,6 +37,7 @@ mod fincmd;
 mod flood;
 mod found;
 mod history;
+mod net;
 mod newgame;
 pub use newgame::NewGameOptions;
 mod review;
@@ -93,6 +94,8 @@ pub struct SimState {
     pub(crate) status_buf: Option<Vec<u8>>,
     /// The enabled fixes of original bugs (faithful by default, [`crate::ruleset`]).
     pub(crate) rules: crate::ruleset::Ruleset,
+    /// End of the game per person in a network game (multiplayer.md 3.3, [`crate::net`]).
+    pub(crate) net_outcomes: Vec<crate::net::NetOutcome>,
 }
 
 impl PartialEq for SimState {
@@ -173,6 +176,7 @@ impl World {
             track_cache: None,
             status_buf: None,
             rules: crate::ruleset::Ruleset::FAITHFUL,
+            net_outcomes: Vec::new(),
         };
         sim.rebuild_types(i32::from(save.date.year));
         w.sim = Some(Box::new(sim));
@@ -239,7 +243,15 @@ impl World {
     /// bronze/silver/gold, 4 defeat, scenarios.md 3.3), `None` while playing.
     pub fn game_over(&self) -> Option<crate::message::Outcome> {
         use crate::message::Outcome;
-        match self.sim.as_ref()?.scenario.as_ref()?.game_over.state {
+        // Network game: the outcome of the person this machine controls (multiplayer.md 3.3).
+        let state = if self.is_network() {
+            self.net_local_person()
+                .and_then(|p| self.net_outcome(p))
+                .map_or(0, |o| o.state)
+        } else {
+            self.sim.as_ref()?.scenario.as_ref()?.game_over.state
+        };
+        match state {
             1 => Some(Outcome::Bronze),
             2 => Some(Outcome::Silver),
             3 => Some(Outcome::Gold),
@@ -258,6 +270,12 @@ impl World {
 
     /// Defeat because another player won (LNG `0xa83`).
     pub fn game_over_other_won(&self) -> bool {
+        if self.is_network() {
+            return self
+                .net_local_person()
+                .and_then(|p| self.net_outcome(p))
+                .is_some_and(|o| o.other_won);
+        }
         self.sim
             .as_ref()
             .and_then(|s| s.scenario.as_ref())
@@ -279,7 +297,12 @@ impl World {
         if self.choices.pending.is_some() {
             return;
         }
-        if self.choices.interactive && self.sim.as_ref().is_some_and(|s| s.has_choice_rules()) {
+        // In a network game a choice is always button 0 and no dialog opens
+        // (multiplayer.md 3.2).
+        if self.choices.interactive
+            && !self.is_network()
+            && self.sim.as_ref().is_some_and(|s| s.has_choice_rules())
+        {
             let before = self.clone();
             self.choices.cursor = 0;
             self.choices.replayable = true;
@@ -310,7 +333,32 @@ impl World {
                 sim.sim_advance(self, dt);
                 self.sim = Some(sim);
             }
+            None if self.is_network() => self.advance_bare_net(dt),
             None => self.advance_minutes(dt),
+        }
+    }
+
+    /// The network day loop of a world without pools: only the clock, the checksum point and the
+    /// daily re-seed (the first person of the player set does not exist: cash 0).
+    fn advance_bare_net(&mut self, mut dt: i32) {
+        while dt > 0 {
+            let minute_of_day = self.minutes.rem_euclid(MINUTES_PER_DAY);
+            let to_midnight = MINUTES_PER_DAY - 1 - minute_of_day;
+            if dt <= to_midnight {
+                self.minutes = self.minutes.wrapping_add(dt);
+                return;
+            }
+            self.minutes = self.minutes.wrapping_add(to_midnight);
+            if date_of(self.minutes).day == 1 {
+                let cp = crate::net::checkpoint(None, self, false);
+                if let Some(n) = self.net.as_mut() {
+                    n.events.push(crate::net::NetEvent::Sync(Box::new(cp)));
+                }
+            }
+            let t = self.minutes.wrapping_add(self.game_seed as i32) as u32;
+            self.rng.seed(t);
+            self.minutes = self.minutes.wrapping_add(1);
+            dt -= to_midnight + 1;
         }
     }
 }
@@ -434,6 +482,7 @@ impl SimState {
             );
             return;
         }
+        let network = w.is_network();
         self.with_trainstep(w, |ts| {
             // Map animations, pool_78 in list order (pattern A).
             let mut id = ts.first_id(crate::trainstep::P::Anim);
@@ -443,8 +492,13 @@ impl SimState {
                 ts.log.ran("anim_object_step");
                 id = next;
             }
-            // Trains of the single local player, in list order (pattern A).
-            let mut id = ts.first_id(crate::trainstep::P::Train);
+            // Trains of the single local player, in list order (pattern A). In a network game
+            // they move once a day instead (`trains_advance`, multiplayer.md 1.6).
+            let mut id = if network {
+                0
+            } else {
+                ts.first_id(crate::trainstep::P::Train)
+            };
             while id != 0 {
                 let next = ts.next_id(crate::trainstep::P::Train, id);
                 ts.train_step(id, dt + extra, true);
@@ -524,6 +578,19 @@ impl SimState {
 
     /// The 23:59 step (`fim_de_dia`, world-tick.md 2 and 3.1) of a local game.
     fn day_end(&mut self, w: &mut World) {
+        let network = w.is_network();
+        if network {
+            // `net_time_sync` and the daily re-seed come first (multiplayer.md 1.6, 1.8).
+            self.net_day_start(w);
+        }
+        self.day_end_steps(w);
+        if network {
+            // After the date changed: `trains_advance(1440)` (`0x4a58f0`).
+            self.trains_advance(w, MINUTES_PER_DAY);
+        }
+    }
+
+    fn day_end_steps(&mut self, w: &mut World) {
         self.log.ran("day_end");
         let day = date_of(w.minutes).day;
         if day.is_multiple_of(7) {
@@ -780,7 +847,9 @@ impl SimState {
             // (`news_post` `0x4a42f0`: one CRT draw, news flag and counter); otherwise a message
             // box (`0x46aa90`, nothing saved but the interface view). Seen in NewJapan.MP2 at
             // 1995-09-01 (day 224 of the long-horizon scoreboard).
-            if self.hdr(HDR_570238) == 0 && self.hdr(HDR_57023A) == 0 {
+            // In a network game the headline only joins the message list (`0x46adb0`,
+            // `0x46a010` tests `net_player_count() < 2`, multiplayer.md 3.2).
+            if self.hdr(HDR_570238) == 0 && self.hdr(HDR_57023A) == 0 && !w.is_network() {
                 self.fc_news_post(w);
             }
             // Every company of the set quotes again (`0x43b410(0, 1)`, cargo.md 9, finance.md

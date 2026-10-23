@@ -104,6 +104,14 @@ pub trait ScenarioWorld: ScenarioEnv {
     /// `[0x570234]` and `[0x573f1c]`.
     fn is_campaign(&self) -> bool;
     fn is_multiplayer(&self) -> bool;
+    /// `net_player_count() >= 2` now (the flag above is written once, at the start).
+    fn network_active(&self) -> bool {
+        false
+    }
+    /// Records how the game ended for `person` in a network game (multiplayer.md 3.3): the
+    /// original keeps that as a local state per machine; the clone keeps it per person so every
+    /// machine computes the same. First record per person wins.
+    fn record_net_outcome(&mut self, _person: i32, _state: u8, _other_won: bool) {}
     /// `[0x5665f0]`: briefing window opened by the button (local evaluation, no effects).
     fn briefing_open(&self) -> bool {
         false
@@ -488,6 +496,27 @@ fn game_over_effect<W: ScenarioWorld>(world: &mut W, game_over: &mut GameOver, e
         } else {
             world.fallback_player()
         };
+    }
+    if world.network_active() {
+        // Network game (multiplayer.md 3.3): the same rule from every human's point of view.
+        // Defeat eliminates the target and the game goes on; a victory ends it for everyone,
+        // the target with the level, every other human with defeat (LNG 2691); the game itself
+        // continues afterwards (LNG 2862), `game_over.state` only marks that it was decided.
+        if e == 4 {
+            if target != 0 {
+                world.record_net_outcome(target, 4, false);
+                world.eliminate_player(target);
+            }
+        } else {
+            game_over.state = e as u8;
+            world.record_net_outcome(target, e as u8, false);
+            for p in world.indexed_persons() {
+                if p != target && world.is_human_person(p) {
+                    world.record_net_outcome(p, 4, true);
+                }
+            }
+        }
+        return;
     }
     let local = world.local_person();
     if e == 4 {

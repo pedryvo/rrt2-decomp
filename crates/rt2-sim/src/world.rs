@@ -29,6 +29,9 @@ pub struct World {
     pub(crate) votes: crate::fincmd::Votes,
     /// Answers to scenario choices (`crate::choice`); not part of a save.
     pub(crate) choices: crate::choice::Choices,
+    /// Network session (`None` = single player, the rules of the fidelity scoreboard); see
+    /// [`crate::net`].
+    pub(crate) net: Option<crate::net::NetSession>,
 }
 
 impl World {
@@ -45,6 +48,7 @@ impl World {
             speed_resume: DEFAULT_SPEED,
             votes: crate::fincmd::Votes::default(),
             choices: crate::choice::Choices::default(),
+            net: None,
         }
     }
 

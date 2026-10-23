@@ -22,6 +22,8 @@ struct Mock {
     messages: Vec<Message>,
     eliminated: Vec<i32>,
     crt: u32,
+    net: bool,
+    outcomes: Vec<(i32, u8, bool)>,
 }
 
 impl ScenarioEnv for Mock {
@@ -92,7 +94,13 @@ impl ScenarioWorld for Mock {
         false
     }
     fn is_multiplayer(&self) -> bool {
-        false
+        self.net
+    }
+    fn network_active(&self) -> bool {
+        self.net
+    }
+    fn record_net_outcome(&mut self, person: i32, state: u8, other_won: bool) {
+        self.outcomes.push((person, state, other_won));
     }
     fn person_name(&self, p: i32) -> String {
         format!("P{p}")
@@ -307,4 +315,35 @@ fn local_evaluation_uses_the_crt_generator_and_applies_no_effects() {
     assert_eq!(rng.state(), GameRng::new(9).state(), "game RNG untouched");
     assert_ne!(w.crt, 0, "CRT generator drawn");
     assert_eq!(w.economy, 0);
+}
+
+/// Network game (docs/spec/multiplayer.md 3.3): the first to reach the goal wins, every other
+/// human loses with "another player achieved the goals" (LNG 2691), and the outcome is kept per
+/// person so that every machine computes the same; a defeat eliminates only its target.
+#[test]
+fn network_victory_is_per_person_and_defeat_eliminates_only_the_target() {
+    let mut win = rule("True", trigger::YEAR_END);
+    win.effects[0][2] = 1; // Game Over - Win 2
+    let mut w = world(vec![win]);
+    w.net = true;
+    w.persons = vec![1, 2, 3];
+    // Person 1 is the only human of the mock; the rule has no person in its context, so the
+    // fallback target (person 0) wins and the human loses to it.
+    w.local_person = 1;
+    fire_trigger(trigger::YEAR_END, &mut w, &mut GameRng::new(1));
+    assert!(w.outcomes.contains(&(0, 2, false)), "{:?}", w.outcomes);
+    assert!(w.outcomes.contains(&(1, 4, true)), "{:?}", w.outcomes);
+    assert!(
+        !w.outcomes.iter().any(|&(p, _, _)| p == 3),
+        "computers have no outcome"
+    );
+    assert_ne!(w.sc.game_over.state, 0, "the game was decided once");
+
+    let mut lose = rule("True", trigger::YEAR_END);
+    lose.effects[0][4] = 1; // Game Over - Lose
+    let mut w = world(vec![lose]);
+    w.net = true;
+    w.persons = vec![1, 2];
+    fire_trigger(trigger::YEAR_END, &mut w, &mut GameRng::new(1));
+    assert_eq!(w.sc.game_over.state, 0, "the game goes on after a defeat");
 }

@@ -51,12 +51,13 @@ O **rrt2-decomp** estuda o executável original de _Railroad Tycoon II Platinum_
 | Simulação jogável | 🟡 | Laço do mundo do `rt2-sim` com trens, estações, economia, finanças, crescimento das cidades, regras de cenário e a IA dos concorrentes: saves originais avançados no clone ficam **idênticos ao original** campo a campo em **todos os 131** casos do placar, de 1 dia até 2 anos de jogo, incluindo eventos raros (acidentes, roubos, liquidações, a IA negociando ações) (Tutorial, Example com trens, quatro mapas .MP2 e saves e mapas antigos convertidos na carga); inclusive New Games dos 18 cenários da campanha original; e os 18 cenários da Second Century · [placar de fidelidade](docs/fidelity-status.md) |
 | Interface do jogo | 🟡 | App `rrt2`: menu principal com a arte original, listas de cenários e saves, HUD com data e controle de velocidade, texto vetorial nítido com fontes OFL equivalentes às originais, escala de UI de 100–300% · [docs](docs/ui.md) |
 | Editor de mapas e cenários | 🟡 | Terreno, árvores, territórios, prédios, lugares, rios e estradas; opções do mapa, metas e editor de regras com validação ao vivo; salvar preserva todos os mapas da instalação. Faltam importar PCX e algumas páginas de opções |
+| Multiplayer (núcleo) | 🟡 | `rt2-net`: lockstep sequenciado pelo anfitrião por TCP ou em memória, com as regras de rede do original no `rt2-sim` (RNG re-semeado por dia, trens em passos diários, humano que sai vira computador), checksum mensal do estado com dump do diff, migração de anfitrião, entrada no meio da partida e reconexão; ainda sem telas · [spec](docs/spec/multiplayer.md) · [protocolo](docs/net-protocol.md) |
 
 <sub>✅ pronto · 🟡 parcial · 🔍 em análise · ⏳ planejado</sub>
 
 **Fidelidade:** o clone e o original avançam o mesmo save e os resultados são comparados campo a campo. Placar atual: [`docs/fidelity-status.md`](docs/fidelity-status.md).
 
-**Engenharia reversa:** 2945 funções no executável (1837 sem os thunks do linker) · 853 símbolos em [`re/symbols.toml`](re/symbols.toml) · 1318 classificadas (44%), 1627 ainda sem classificação · 477 funções especificadas (429 delas de simulação), 301 verificadas bit a bit contra o original ([`re/coverage.toml`](re/coverage.toml)). O percentual de cobertura da simulação será publicado quando a classificação estiver completa.
+**Engenharia reversa:** 2945 funções no executável (1837 sem os thunks do linker) · 1018 símbolos em [`re/symbols.toml`](re/symbols.toml) · 1428 classificadas (48%), 1517 ainda sem classificação · 616 funções especificadas (456 delas de simulação), 304 verificadas bit a bit contra o original ([`re/coverage.toml`](re/coverage.toml)). O percentual de cobertura da simulação será publicado quando a classificação estiver completa.
 
 ## 🧭 Roteiro
 
@@ -138,6 +139,7 @@ python3 re/scripts/pk2_hash.py setup.imb
 crates/
   rt2-formats/   parsers puros dos formatos do jogo (PK2, LNG, …)
   rt2-sim/       núcleo determinístico da simulação (sem I/O, sem render)
+  rt2-net/       multiplayer lockstep: lotes de comandos sequenciados pelo anfitrião por TCP ou memória
   rt2-render/    renderizador de terreno em wgpu (malha, câmera isométrica; sem lógica de jogo)
   rt2-viewer/    `rt2-viewer <mapa>`: janela ou PNG com `--screenshot`
   rt2-oracle/    harness de teste diferencial (EXE original no Unicorn)

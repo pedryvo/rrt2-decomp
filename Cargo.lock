@@ -2421,6 +2421,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rt2-net"
+version = "0.3.0"
+dependencies = [
+ "rt2-formats",
+ "rt2-sim",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "rt2-oracle"
 version = "0.3.0"
 dependencies = [

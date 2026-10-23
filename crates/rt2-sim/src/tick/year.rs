@@ -354,6 +354,7 @@ impl SimState {
             if self.save.header.get(0x8700).copied().unwrap_or(0) == 0
                 && self.save.state.get(0x1c3).copied().unwrap_or(0) != 0
                 && self.local_player().1 == slot
+                && !w.is_network()
             {
                 self.fc_news_post(w);
             }

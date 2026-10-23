@@ -11,6 +11,7 @@ version = "0.3.0"
 [workspace.dependencies]
 rt2-formats = { path = "crates/rt2-formats" }
 rt2-sim = { path = "crates/rt2-sim" }
+rt2-net = { path = "crates/rt2-net" }
 rt2-audio = { path = "crates/rt2-audio" }
 anyhow = "1"
 thiserror = "2"
