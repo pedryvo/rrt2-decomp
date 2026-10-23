@@ -604,6 +604,96 @@ pub fn engine_rows(
     v
 }
 
+/// What the Purchase Train window shows of one engine (`0x4e3f90`, docs/spec/trains.md 6.3 and
+/// "Janela de compra"): the estimates of price, upkeep and fuel, the descriptive classes and the
+/// speed matrix.
+#[derive(Clone, Debug, PartialEq)]
+pub struct EngineDetail {
+    /// Vehicle type of the locomotive (`engine +0x2c`) and of its tender (`+0x2d`, if `+0x2b`).
+    pub vehicle: u8,
+    pub tender: Option<u8>,
+    /// Engine kind, 0 steam, 1 diesel, 2 electric.
+    pub kind: u8,
+    pub first_year: u16,
+    pub price: i32,
+    /// Estimated yearly maintenance and fuel (`0x4e3f90`; trains.md 6.3).
+    pub maintenance_year: f64,
+    pub fuel_year: f64,
+    /// Index of the acceleration text, `(accel + 1) / 5` limited to 0..=11 (LNG 1251 + index).
+    pub accel_class: usize,
+    /// Reliability class 0..=10 (LNG 2475 + index).
+    pub reliability: usize,
+    /// Top speed in mph (the table entry, before the tonnage).
+    pub top_mph: i32,
+    /// `speeds[g][c]`: top speed in mph of the engine hauling `c + 1` cars of `tons` tons on a
+    /// `2 * g` percent grade (`0x4e3f90`: `engine_max_speed(engine, (c+1)*tons + engine +0x2e,
+    /// g*0.02) >> 16`).
+    pub speeds: [[i32; 6]; 4],
+    /// Lengths of the locomotive and tender vehicles (vehicle +6), to place them in the picture.
+    pub lengths: (u32, u32),
+}
+
+/// The detail of engine `e` for `company`; `tons` is the weight per car of the matrix.
+pub fn engine_detail(
+    data: &GameData,
+    save: &Save,
+    company: i32,
+    e: i32,
+    tons: i32,
+) -> Option<EngineDetail> {
+    use rt2_sim::trains::{SpeedMods, engine_max_speed};
+    let en = data.engines.get(usize::try_from(e).ok()?)?;
+    let kind = usize::from(en.kind).min(2);
+    let o = 0x0053_cec0 + 0x3a * e as u32;
+    let vehicle = data.image.u8(o + 0x2c);
+    let tender = (data.image.u8(o + 0x2b) != 0).then(|| data.image.u8(o + 0x2d));
+    let eff = |id: usize| f64::from(effect(save, id, company, 0));
+    // `0x567d6d[kind]` (save header `+0x235 + kind`): the fuel and upkeep level of the kind of
+    // engine (1 = normal).
+    let level = usize::from(save.header.get(0x235 + kind).copied().unwrap_or(1)).min(2);
+    let m_price = eff(0x1a) * eff(0x1b + kind);
+    let mods = SpeedMods {
+        power_all: eff(0x2a),
+        power_kind: eff(0x2b + kind),
+        speed_all: eff(0x23),
+        speed_kind: eff(0x24 + kind),
+    };
+    let maintenance_year = eff(0x15)
+        * eff(0x1b + kind)
+        * f64::from(data.maintenance_levels[level])
+        * f64::from(en.maintenance);
+    // The fuel estimate runs at the standard throttle (85): `engine_fuel_speed` 0x4d6030.
+    let v = f64::from(engine_max_speed(en, en.base_tons + 120, 0.0002, false, 0, &mods) >> 16);
+    let fuel_speed = (v * f64::from(85.0f32 * 0.011_764_706f32) * 1.8).trunc();
+    let fuel_year = f64::from(en.fuel)
+        * f64::from(data.fuel_levels[level])
+        * eff(0x11)
+        * ((fuel_speed * 0.7 + 40.0) * 0.5 * eff(0x12 + kind));
+    let mut speeds = [[0; 6]; 4];
+    for (g, row) in speeds.iter_mut().enumerate() {
+        let grade = (g as f32) * 0.02f32;
+        for (c, cell) in row.iter_mut().enumerate() {
+            let w = (c as i32 + 1) * tons + en.base_tons;
+            *cell = engine_max_speed(en, w, grade, false, 0, &mods) >> 16;
+        }
+    }
+    let len = |v: u8| u32::from(data.image.u16(0x0053_ddb8 + u32::from(v) * 0x39 + 6));
+    Some(EngineDetail {
+        vehicle,
+        tender,
+        kind: en.kind,
+        first_year: engine_years(data, e).0,
+        price: rt2_sim::fp::ftol(m_price * f64::from(en.price)),
+        maintenance_year,
+        fuel_year,
+        accel_class: ((en.accel + 1) / 5).clamp(0, 11) as usize,
+        reliability: en.reliability_class.clamp(0, 10) as usize,
+        top_mph: en.top_mph,
+        speeds,
+        lengths: (len(vehicle), tender.map_or(0, len)),
+    })
+}
+
 /// Station slots owned by `company`, in list order (the stops a train of the company can use).
 pub fn company_stations(save: &Save, company: i32) -> Vec<i32> {
     save.stations

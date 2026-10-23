@@ -3,11 +3,11 @@
 # Ver docs/re-workflow.md.
 #
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
-# Classificadas (categoria != unknown): 1421 (48.3%)
-# Por categoria: lib=258, platform=180, render=11, audio=53, ui=298, sim=621, unknown=1524
-# Por estado:   unknown=2176, named=161, spec=304, verified=304
-# Entradas manuais: 696
-# sim spec coverage: 73.4% (456 de 621 funcoes sim em spec/verified)
+# Classificadas (categoria != unknown): 1428 (48.5%)
+# Por categoria: lib=258, platform=180, render=11, audio=53, ui=300, sim=626, unknown=1517
+# Por estado:   unknown=2170, named=159, spec=312, verified=304
+# Entradas manuais: 702
+# sim spec coverage: 72.8% (456 de 626 funcoes sim em spec/verified)
 
 [[function]]
 addr = "0x401005"
@@ -2317,7 +2317,7 @@ why = "no-evidence"
 [[function]]
 addr = "0x40194c"
 size = 5
-category = "ui"
+category = "sim"
 status = "unknown"
 why = "thunk->0x4e5810"
 
@@ -4843,9 +4843,9 @@ why = "thunk->0x4e3620"
 [[function]]
 addr = "0x402356"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4e57c0"
 
 [[function]]
 addr = "0x40235b"
@@ -5467,9 +5467,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x4025c7"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4e3eb0"
 
 [[function]]
 addr = "0x4025cc"
@@ -6226,9 +6226,9 @@ why = "no-evidence"
 [[function]]
 addr = "0x402900"
 size = 5
-category = "unknown"
+category = "sim"
 status = "unknown"
-why = "no-evidence"
+why = "thunk->0x4e55b0"
 
 [[function]]
 addr = "0x402905"
@@ -6627,7 +6627,7 @@ why = "no-evidence"
 [[function]]
 addr = "0x402aae"
 size = 5
-category = "ui"
+category = "sim"
 status = "unknown"
 why = "thunk->0x4e54f0"
 
@@ -7891,8 +7891,8 @@ why = "no-evidence"
 addr = "0x407e10"
 size = 97
 category = "ui"
-status = "named"
-why = "janela de melhorias: descricao do item"
+status = "spec"
+why = "painel/eventos da janela reproduzidos em rt2-game (docs/ui.md Janelas de compra)"
 manual = true
 
 [[function]]
@@ -13299,8 +13299,8 @@ why = "no-evidence"
 addr = "0x48d900"
 size = 4566
 category = "ui"
-status = "named"
-why = "docs/spec/commands.md 3.1 (pre-visualizacao; so os pacotes 0xa e 0x16 lidos)"
+status = "spec"
+why = "painel/eventos da janela reproduzidos em rt2-game (docs/ui.md Janelas de compra)"
 manual = true
 
 [[function]]
@@ -13391,7 +13391,7 @@ addr = "0x4941c0"
 size = 3370
 category = "ui"
 status = "spec"
-why = "docs/spec/commands.md 3.3 (paletas de estacao e de predio)"
+why = "painel/eventos da janela reproduzidos em rt2-game (docs/ui.md Janelas de compra)"
 manual = true
 
 [[function]]
@@ -16271,9 +16271,10 @@ manual = true
 [[function]]
 addr = "0x4d9a50"
 size = 384
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "layout e regras da janela de compra lidos e reproduzidos em rt2-game (docs/ui.md Janelas de compra)"
+manual = true
 
 [[function]]
 addr = "0x4d9d20"
@@ -16487,45 +16488,50 @@ why = "no-evidence"
 [[function]]
 addr = "0x4e3eb0"
 size = 213
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "layout e regras da janela de compra lidos e reproduzidos em rt2-game (docs/ui.md Janelas de compra)"
+manual = true
 
 [[function]]
 addr = "0x4e3f90"
 size = 5462
 category = "ui"
 status = "spec"
-why = "janela de compra de trem; estimativas em docs/spec/trains.md 6.3"
+why = "painel/eventos da janela reproduzidos em rt2-game (docs/ui.md Janelas de compra)"
 manual = true
 
 [[function]]
 addr = "0x4e54f0"
 size = 181
 category = "ui"
-status = "unknown"
-why = "string:cr1%s.imb"
+status = "spec"
+why = "layout e regras da janela de compra lidos e reproduzidos em rt2-game (docs/ui.md Janelas de compra)"
+manual = true
 
 [[function]]
 addr = "0x4e55b0"
 size = 64
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "layout e regras da janela de compra lidos e reproduzidos em rt2-game (docs/ui.md Janelas de compra)"
+manual = true
 
 [[function]]
 addr = "0x4e57c0"
 size = 80
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "layout e regras da janela de compra lidos e reproduzidos em rt2-game (docs/ui.md Janelas de compra)"
+manual = true
 
 [[function]]
 addr = "0x4e5810"
 size = 411
 category = "ui"
-status = "unknown"
-why = "string:cr1%s.imb"
+status = "spec"
+why = "layout e regras da janela de compra lidos e reproduzidos em rt2-game (docs/ui.md Janelas de compra)"
+manual = true
 
 [[function]]
 addr = "0x4e59b0"

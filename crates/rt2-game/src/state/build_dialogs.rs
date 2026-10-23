@@ -17,15 +17,12 @@ use rt2_ui::{Align, Anchor, Color, Fill, Fit, FontStyle, Kind, Layout, NodeId, U
 use super::dialogs::Dialog;
 use super::info_ui;
 use super::{AppState, Screen};
-use crate::buildtools::{self as bt, Trade};
+use crate::buildtools as bt;
 use crate::info::{Block, Table};
-use crate::text::id as lng;
 
 pub(super) const A_SD_BUY: u32 = 5100;
 pub(super) const A_SB_ITEM: u32 = 5110;
 pub(super) const A_SB_OK: u32 = 5140;
-pub(super) const A_TB_LIST: u32 = 5150;
-pub(super) const A_TB_COPY: u32 = 5151;
 pub(super) const A_TB_OK: u32 = 5152;
 pub(super) const A_TE_STOPS: u32 = 5160;
 pub(super) const A_TE_PICK: u32 = 5161;
@@ -35,29 +32,26 @@ pub(super) const A_TE_DELETE: u32 = 5164;
 pub(super) const A_TE_REPLACE: u32 = 5165;
 pub(super) const A_TE_SELL: u32 = 5166;
 pub(super) const A_TE_MAP: u32 = 5167;
-pub(super) const A_IN_BUY: u32 = 5170;
-pub(super) const A_IN_SELL: u32 = 5171;
-pub(super) const A_IN_DETAIL: u32 = 5172;
 pub(super) const A_RT_BUY: u32 = 5180;
 pub(super) const A_CLOSE: u32 = 5199;
 
-const TEXT: Color = Color::rgb(0xee, 0xe4, 0xc8);
-const MUTED: Color = Color::rgb(0xb4, 0xaa, 0x8e);
-const HEAD: Color = Color::rgb(0xe6, 0xc2, 0x6a);
-const BAD: Color = Color::rgb(0xf0, 0x8c, 0x7a);
+pub(super) const TEXT: Color = Color::rgb(0xee, 0xe4, 0xc8);
+pub(super) const MUTED: Color = Color::rgb(0xb4, 0xaa, 0x8e);
+pub(super) const HEAD: Color = Color::rgb(0xe6, 0xc2, 0x6a);
+pub(super) const BAD: Color = Color::rgb(0xf0, 0x8c, 0x7a);
 const GOOD: Color = Color::rgb(0x9a, 0xe0, 0x8a);
 const INSET: Color = Color(0x0c, 0x0f, 0x0c, 0xd8);
 
-fn fnt(n: u8, dz: f32) -> FontStyle {
+pub(super) fn fnt(n: u8, dz: f32) -> FontStyle {
     let f = game_font(n);
     f.with_size((f.size * dz).round())
 }
 
-fn at(x: f32, y: f32, w: f32, h: f32) -> Layout {
+pub(super) fn at(x: f32, y: f32, w: f32, h: f32) -> Layout {
     Layout::at(Anchor::TopLeft, w, h).offset(x, y)
 }
 
-fn lbl(text: &str, f: FontStyle, color: Color, align: Align) -> Kind {
+pub(super) fn lbl(text: &str, f: FontStyle, color: Color, align: Align) -> Kind {
     Kind::Label {
         text: text.to_owned(),
         font: f,
@@ -138,7 +132,7 @@ impl AppState {
     }
 
     /// Runs `f` with the save, the data tables and the player's company.
-    fn with_game<R>(
+    pub(super) fn with_game<R>(
         &self,
         f: impl FnOnce(&rt2_formats::map::Save, &rt2_sim::data::GameData, i32) -> R,
     ) -> Option<R> {
@@ -149,7 +143,7 @@ impl AppState {
         Some(f(g.world.save_ref()?, self.data.as_ref()?, co))
     }
 
-    fn engine_name(&self, data: &rt2_sim::data::GameData, e: i32) -> String {
+    pub(super) fn engine_name(&self, data: &rt2_sim::data::GameData, e: i32) -> String {
         self.texts
             .get(bt::engine_name_id(data, e), &format!("Engine {e}"))
     }
@@ -164,17 +158,19 @@ impl AppState {
                 station,
                 mask,
                 last,
-            } => self.build_station_buy(ui, *station, *mask, *last),
-            Dialog::TrainBuy { sel, copy, replace } => {
-                self.build_train_buy(ui, *sel, *copy, *replace)
-            }
+            } => self.build_station_buy_art(ui, *station, *mask, *last),
+            Dialog::TrainBuy {
+                sel,
+                scroll,
+                tons,
+                replace,
+            } => self.build_train_buy(ui, *sel, *scroll, *tons, *replace),
             Dialog::TrainEdit {
                 train,
                 sel,
                 pick,
                 confirm,
             } => self.build_train_edit(ui, *train, *sel, *pick, *confirm),
-            Dialog::Industry { building } => self.build_industry(ui, *building),
             Dialog::Rights { territory } => self.build_rights(ui, *territory),
             _ => return false,
         }
@@ -368,7 +364,7 @@ impl AppState {
 
     /// The price of the checked improvements: `ftol(m * cost + total)` per bit
     /// (terrain-track.md 3.4).
-    fn improvement_total(&self, station: i32, mask: u32) -> i32 {
+    pub(super) fn improvement_total(&self, station: i32, mask: u32) -> i32 {
         self.with_game(|s, data, _| {
             let Some(st) = bt::rec(&s.stations, station) else {
                 return 0;
@@ -386,287 +382,6 @@ impl AppState {
             total
         })
         .unwrap_or(0)
-    }
-
-    fn build_station_buy(&self, ui: &mut Ui, station: i32, mask: u32, last: u32) {
-        let Win {
-            root,
-            w,
-            h,
-            dz,
-            pad,
-        } = self.win(ui, 640.0, 560.0);
-        let t = &self.texts;
-        ui.add(
-            root,
-            lbl(
-                &t.a("Buy buildings").to_uppercase(),
-                fnt(3, dz * 0.8),
-                HEAD,
-                Align::Left,
-            ),
-            at(pad, pad * 0.6, w - 2.0 * pad, 30.0 * dz),
-        );
-        let (year, month) = self.date_ym();
-        let items = self
-            .with_game(|s, data, _| bt::improvements(data, s, station, year, month))
-            .unwrap_or_default();
-        let row_h = ((h - 150.0 * dz) / items.len().max(1) as f32).clamp(14.0, 26.0 * dz);
-        let f = fnt(1, dz * 0.85);
-        let mut y = 40.0 * dz;
-        for it in &items {
-            let usable = it.available && !it.owned && !it.excluded;
-            let name = t.get(1043 + it.row, &format!("Improvement {}", it.row));
-            let note = if it.owned {
-                t.a("built")
-            } else if it.excluded {
-                t.a("replaced")
-            } else if !it.available {
-                t.a("not yet available")
-            } else {
-                crate::info::money(f64::from(it.cost))
-            };
-            ui.add(
-                root,
-                Kind::Toggle {
-                    text: name,
-                    font: f,
-                    action: A_SB_ITEM + it.row,
-                    on: mask & (1 << it.row) != 0 || it.owned,
-                    enabled: usable,
-                },
-                at(pad, y, w * 0.58, row_h - 2.0),
-            );
-            ui.add(
-                root,
-                lbl(&note, f, if usable { HEAD } else { MUTED }, Align::Right),
-                at(pad + w * 0.58, y, w * 0.42 - 2.0 * pad, row_h),
-            );
-            y += row_h;
-        }
-        // Description of the last row touched, the total and the buttons.
-        let desc = t.get(1076 + last, "");
-        ui.add(
-            root,
-            Kind::Label {
-                text: desc,
-                font: fnt(8, dz * 0.6),
-                color: MUTED,
-                align: Align::Left,
-                wrap: true,
-            },
-            at(pad, y + 4.0, w - 2.0 * pad, 40.0 * dz),
-        );
-        let total = self.improvement_total(station, mask);
-        let cash = self
-            .with_game(|s, _, co| bt::cash(s, co))
-            .unwrap_or_default();
-        let over = f64::from(total) > cash;
-        let by = h - 44.0 * dz;
-        ui.add(
-            root,
-            lbl(
-                &t.af("Cost: %1", &[crate::info::money(f64::from(total))]),
-                fnt(1, dz),
-                if over { BAD } else { HEAD },
-                Align::Left,
-            ),
-            at(pad, by, w * 0.4, 30.0 * dz),
-        );
-        let bw = 120.0 * dz;
-        ui.add(
-            root,
-            button(
-                t.get(1912, "Purchase"),
-                fnt(1, dz),
-                A_SB_OK,
-                mask != 0 && !over,
-            ),
-            at(w - pad - 2.0 * bw - 8.0, by, bw, 30.0 * dz),
-        );
-        ui.add(
-            root,
-            button(t.get(lng::CANCEL, "Cancel"), fnt(1, dz), A_CLOSE, true),
-            at(w - pad - bw, by, bw, 30.0 * dz),
-        );
-    }
-
-    // ---- train purchase ---------------------------------------------------------------------
-
-    fn build_train_buy(&self, ui: &mut Ui, sel: usize, copy: usize, replace: Option<i32>) {
-        let Win {
-            root,
-            w,
-            h,
-            dz,
-            pad,
-        } = self.win(ui, 860.0, 540.0);
-        let t = &self.texts;
-        let (year, month) = self.date_ym();
-        let rows = self
-            .with_game(|s, data, co| bt::engine_rows(data, s, co, year, month))
-            .unwrap_or_default();
-        let title = if replace.is_some() {
-            t.get(429, "Replace")
-        } else {
-            t.get(1784, "Purchase a new train")
-        };
-        ui.add(
-            root,
-            lbl(&title.to_uppercase(), fnt(3, dz * 0.8), HEAD, Align::Left),
-            at(pad, pad * 0.6, w - 2.0 * pad, 30.0 * dz),
-        );
-        let top = 40.0 * dz;
-        let foot = 44.0 * dz;
-        let lw = w * 0.5;
-        let items: Vec<String> = self
-            .with_game(|_, data, _| {
-                rows.iter()
-                    .map(|r| {
-                        format!(
-                            "{}  {}  {}",
-                            self.engine_name(data, r.index),
-                            r.first_year,
-                            crate::info::money(f64::from(r.price))
-                        )
-                    })
-                    .collect()
-            })
-            .unwrap_or_default();
-        let list_h = h - top - foot - pad;
-        ui.add(
-            root,
-            Kind::List {
-                items: if items.is_empty() {
-                    vec![t.get(355, "There are currently no engines available for purchase")]
-                } else {
-                    items
-                },
-                selected: Some(sel.min(rows.len().saturating_sub(1))),
-                scroll: 0,
-                row_h: (22.0 * dz).round(),
-                font: fnt(1, dz * 0.85),
-                action: A_TB_LIST,
-            },
-            at(pad, top, lw - pad, list_h * 0.62),
-        );
-        // The route to copy.
-        let (trains, names) = self.copyable_trains();
-        let mut copies = vec![t.a("First two stations (default route)")];
-        copies.extend(names);
-        let copy = copy.min(copies.len() - 1);
-        if replace.is_none() {
-            ui.add(
-                root,
-                lbl(
-                    &t.a("Route of the new train"),
-                    fnt(1, dz * 0.8),
-                    MUTED,
-                    Align::Left,
-                ),
-                at(pad, top + list_h * 0.62 + 2.0, lw, 18.0 * dz),
-            );
-            ui.add(
-                root,
-                Kind::List {
-                    items: copies,
-                    selected: Some(copy),
-                    scroll: 0,
-                    row_h: (20.0 * dz).round(),
-                    font: fnt(1, dz * 0.8),
-                    action: A_TB_COPY,
-                },
-                at(
-                    pad,
-                    top + list_h * 0.62 + 20.0 * dz,
-                    lw - pad,
-                    list_h * 0.38 - 20.0 * dz,
-                ),
-            );
-        }
-        let _ = trains;
-        // Stats of the selected engine.
-        let rx = lw + pad;
-        let rw = w - rx - pad;
-        let f = fnt(1, dz * 0.9);
-        if let Some(r) = rows.get(sel) {
-            let name = self
-                .with_game(|_, data, _| self.engine_name(data, r.index))
-                .unwrap_or_default();
-            ui.add(
-                root,
-                lbl(&name, fnt(2, dz), HEAD, Align::Left),
-                at(rx, top, rw, 26.0 * dz),
-            );
-            let kinds = [t.a("Steam"), t.a("Diesel"), t.get(2504, "Electric")];
-            let facts = [
-                (t.a("Type"), kinds[usize::from(r.kind).min(2)].clone()),
-                (
-                    t.get(2334, "Purchase Price"),
-                    crate::info::money(f64::from(r.price)),
-                ),
-                (
-                    t.get(155, "Maintenance"),
-                    crate::info::money(f64::from(r.maintenance)),
-                ),
-                (t.get(157, "Fuel"), r.fuel.to_string()),
-                (t.get(441, "Top speed (mph)"), r.top_mph.to_string()),
-                (t.a("Power"), r.power.to_string()),
-                (t.get(2340, "Reliability"), r.reliability.to_string()),
-                (t.a("Available from"), r.first_year.to_string()),
-            ];
-            let mut y = top + 30.0 * dz;
-            for (k, v) in facts {
-                ui.add(
-                    root,
-                    lbl(&k, f, MUTED, Align::Left),
-                    at(rx, y, rw * 0.5, 22.0 * dz),
-                );
-                ui.add(
-                    root,
-                    lbl(&v, f, TEXT, Align::Left),
-                    at(rx + rw * 0.5, y, rw * 0.5, 22.0 * dz),
-                );
-                y += 22.0 * dz;
-            }
-            let _ = y;
-        }
-        let by = h - foot;
-        let bw = 140.0 * dz;
-        ui.add(
-            root,
-            button(
-                if replace.is_some() {
-                    t.get(429, "Replace")
-                } else {
-                    t.get(1912, "Purchase")
-                },
-                fnt(1, dz),
-                A_TB_OK,
-                !rows.is_empty(),
-            ),
-            at(w - pad - 2.0 * bw - 8.0, by, bw, 30.0 * dz),
-        );
-        ui.add(
-            root,
-            button(t.get(lng::CANCEL, "Cancel"), fnt(1, dz), A_CLOSE, true),
-            at(w - pad - bw, by, bw, 30.0 * dz),
-        );
-    }
-
-    /// The player's trains whose route a new train can copy: (slots, labels).
-    fn copyable_trains(&self) -> (Vec<i32>, Vec<String>) {
-        let slots = self
-            .with_game(|s, _, co| bt::company_trains(s, co))
-            .unwrap_or_default();
-        let names = slots
-            .iter()
-            .map(|&s| {
-                self.with_info(|i| i.train_page(s as u32).title)
-                    .unwrap_or_default()
-            })
-            .collect();
-        (slots, names)
     }
 
     // ---- train detail (editable) ------------------------------------------------------------
@@ -923,93 +638,6 @@ impl AppState {
 
     // ---- industry ---------------------------------------------------------------------------
 
-    fn build_industry(&self, ui: &mut Ui, building: i32) {
-        let Win {
-            root,
-            w,
-            h,
-            dz,
-            pad,
-        } = self.win(ui, 760.0, 520.0);
-        let t = &self.texts;
-        let Some(page) = self.with_info(|i| i.industry_page(building as u32)) else {
-            return;
-        };
-        ui.add(
-            root,
-            lbl(
-                &page.title.to_uppercase(),
-                fnt(3, dz * 0.8),
-                HEAD,
-                Align::Left,
-            ),
-            at(pad, pad * 0.6, w * 0.7, 30.0 * dz),
-        );
-        let top = 40.0 * dz;
-        let colw = (w - 3.0 * pad) / 2.0;
-        self.blocks(ui, root, &page.left, pad, top, colw, dz);
-        self.blocks(ui, root, &page.right, pad * 2.0 + colw, top, colw, dz);
-        // Buy / Sell (commands.md 3.6).
-        let (trade, price, cash) = self
-            .with_game(|s, data, co| {
-                (
-                    bt::industry_trade(data, s, co, building),
-                    bt::building_price(data, s, co, building),
-                    bt::cash(s, co),
-                )
-            })
-            .unwrap_or((Trade::None, 0, 0.0));
-        let by = h - 44.0 * dz;
-        let bw = 130.0 * dz;
-        let f = fnt(1, dz);
-        match trade {
-            Trade::Buy => {
-                ui.add(
-                    root,
-                    lbl(
-                        &format!(
-                            "{} {}",
-                            t.get(2334, "Purchase Price"),
-                            crate::info::money(f64::from(price))
-                        ),
-                        f,
-                        if f64::from(price) > cash { BAD } else { HEAD },
-                        Align::Left,
-                    ),
-                    at(pad, by, w * 0.4, 30.0 * dz),
-                );
-                ui.add(
-                    root,
-                    button(t.get(1912, "Purchase"), f, A_IN_BUY, true),
-                    at(w - pad - 3.0 * bw - 16.0, by, bw, 30.0 * dz),
-                );
-            }
-            Trade::Sell => {
-                ui.add(
-                    root,
-                    lbl(&t.get(2338, "Sell this building.  You will only receive half the purchase price if you sell."), fnt(8, dz * 0.55), MUTED, Align::Left),
-                    at(pad, by, w * 0.42, 30.0 * dz),
-                );
-                ui.add(
-                    root,
-                    button(t.get(2337, "Sell"), f, A_IN_SELL, true),
-                    at(w - pad - 3.0 * bw - 16.0, by, bw, 30.0 * dz),
-                );
-            }
-            Trade::None => {}
-        }
-        ui.add(
-            root,
-            button(t.a("Details"), f, A_IN_DETAIL, true),
-            at(w - pad - 2.0 * bw - 8.0, by, bw, 30.0 * dz),
-        );
-        ui.add(
-            root,
-            button(t.a("Close"), f, A_CLOSE, true),
-            at(w - pad - bw, by, bw, 30.0 * dz),
-        );
-    }
-
     // ---- territory rights -------------------------------------------------------------------
 
     fn build_rights(&self, ui: &mut Ui, territory: i32) {
@@ -1100,14 +728,14 @@ impl AppState {
 
     // ---- actions ----------------------------------------------------------------------------
 
-    fn top_build_dialog(&self) -> Option<Dialog> {
+    pub(super) fn top_build_dialog(&self) -> Option<Dialog> {
         match &self.screen {
             Screen::Game(g) => g.dialogs.last().cloned(),
             Screen::Menu(_) => None,
         }
     }
 
-    fn set_top(&mut self, d: Dialog) {
+    pub(super) fn set_top(&mut self, d: Dialog) {
         if let Screen::Game(g) = &mut self.screen
             && let Some(top) = g.dialogs.last_mut()
         {
@@ -1126,20 +754,6 @@ impl AppState {
             return false;
         };
         match (action, d) {
-            (A_TB_LIST, Dialog::TrainBuy { copy, replace, .. }) => {
-                self.set_top(Dialog::TrainBuy {
-                    sel: row,
-                    copy,
-                    replace,
-                });
-            }
-            (A_TB_COPY, Dialog::TrainBuy { sel, replace, .. }) => {
-                self.set_top(Dialog::TrainBuy {
-                    sel,
-                    copy: row,
-                    replace,
-                });
-            }
             (A_TE_STOPS, Dialog::TrainEdit { train, pick, .. }) => {
                 self.set_top(Dialog::TrainEdit {
                     train,
@@ -1225,25 +839,70 @@ impl AppState {
                 self.set_top(Dialog::StationBuy {
                     station,
                     mask: 0,
-                    last: 3,
+                    last: u32::MAX,
+                });
+            }
+            (
+                a,
+                Dialog::StationBuy {
+                    station,
+                    mask,
+                    last,
+                },
+            ) if (A_SB_ITEM..A_SB_ITEM + 30).contains(&a) => {
+                let row = a - A_SB_ITEM;
+                let mut mask = mask ^ (1 << row);
+                // `0x407540`: checking one of a pair clears the other (small/medium station,
+                // telephone/telegraph, small/large restaurant, large/small hotel).
+                if mask & (1 << row) != 0
+                    && let Some(&(_, other)) = [
+                        (1, 2),
+                        (2, 1),
+                        (3, 4),
+                        (4, 3),
+                        (5, 6),
+                        (6, 5),
+                        (15, 16),
+                        (16, 15),
+                    ]
+                    .iter()
+                    .find(|p| p.0 == row)
+                {
+                    mask &= !(1 << other);
+                }
+                self.set_top(Dialog::StationBuy {
+                    station,
+                    mask,
+                    last,
                 });
             }
             (a, Dialog::StationBuy { station, mask, .. })
-                if (A_SB_ITEM..A_SB_ITEM + 30).contains(&a) =>
+                if (super::buy_ui::A_SB_PICK..super::buy_ui::A_SB_PICK + 30).contains(&a) =>
             {
-                let row = a - A_SB_ITEM;
                 self.set_top(Dialog::StationBuy {
                     station,
-                    mask: mask ^ (1 << row),
-                    last: row,
+                    mask,
+                    last: a - super::buy_ui::A_SB_PICK,
                 });
             }
-            (A_SB_OK, Dialog::StationBuy { station, mask, .. }) => {
-                self.buy_improvements(station, mask)
+            (
+                A_SB_OK,
+                Dialog::StationBuy {
+                    station,
+                    mask,
+                    last,
+                },
+            ) => {
+                // `0x407540`: the row that is selected is bought with the checked ones.
+                let mask = if last < 30 { mask | (1 << last) } else { mask };
+                if mask == 0 {
+                    self.close_dialog();
+                } else {
+                    self.buy_improvements(station, mask);
+                }
             }
-            (A_TB_OK, Dialog::TrainBuy { sel, copy, replace }) => {
-                self.buy_train(sel, copy, replace)
-            }
+            (A_TB_OK, Dialog::TrainBuy { sel, replace, .. }) => self.buy_train(sel, replace),
+            (a, Dialog::TrainBuy { .. }) if self.train_buy_action(a) => {}
             (
                 A_TE_ADD | A_TE_INSERT,
                 Dialog::TrainEdit {
@@ -1284,11 +943,7 @@ impl AppState {
                 }
             }
             (A_TE_REPLACE, Dialog::TrainEdit { train, .. }) => {
-                self.push_dialog(Dialog::TrainBuy {
-                    sel: 0,
-                    copy: 0,
-                    replace: Some(train),
-                });
+                self.open_train_buy_dialog(Some(train));
             }
             (
                 A_TE_SELL,
@@ -1320,12 +975,6 @@ impl AppState {
                     }
                 }
             }
-            (A_IN_BUY, Dialog::Industry { building }) => self.trade_industry(building, true),
-            (A_IN_SELL, Dialog::Industry { building }) => self.trade_industry(building, false),
-            (A_IN_DETAIL, Dialog::Industry { building }) => {
-                self.close_dialog();
-                self.open_info(info_ui::InfoScreen::IndustryDetail(building as u32));
-            }
             (a, Dialog::Rights { territory }) if (A_RT_BUY..A_RT_BUY + 4).contains(&a) => {
                 self.buy_rights(territory, (a - A_RT_BUY) as usize);
             }
@@ -1342,9 +991,10 @@ impl AppState {
             })
             .unwrap_or(false);
         if !ok {
+            // `0x407540`: LNG 0x159.
             let m = self
                 .texts
-                .get(394, "Your company doesn't have enough money to build that!");
+                .get(345, "Your company doesn't have enough money to build that!");
             self.toast_text(m);
             return;
         }
@@ -1360,7 +1010,7 @@ impl AppState {
         }
     }
 
-    fn buy_train(&mut self, sel: usize, copy: usize, replace: Option<i32>) {
+    fn buy_train(&mut self, sel: usize, replace: Option<i32>) {
         let (year, month) = self.date_ym();
         let Some((rows, co, permitted, cash)) = self.with_game(|s, data, co| {
             (
@@ -1382,11 +1032,11 @@ impl AppState {
             self.toast_text(m);
             return;
         }
+        // `0x4d9a50`: the purchase is refused with LNG 0x161 when the price exceeds the cash.
         if cash <= 0.0 || f64::from(row.price) > cash {
-            let m = self.texts.get(
-                354,
-                "Your company doesn't have enough money to purchase another train!",
-            );
+            let m = self
+                .texts
+                .get(353, "Your company doesn't have enough money to build that!");
             self.toast_text(m);
             return;
         }
@@ -1403,17 +1053,11 @@ impl AppState {
             }
             return;
         }
-        let (slots, _) = self.copyable_trains();
-        let copy_from = if copy == 0 {
-            0
-        } else {
-            slots.get(copy - 1).copied().unwrap_or(0)
-        };
         match self.issue(BuildCmd::BuyTrain {
             company: co,
             station: 0,
             engine: row.index,
-            copy_from,
+            copy_from: 0,
         }) {
             Ok(train) => {
                 // A train only leaves once 0x2c marks it ready (commands.md). The original's window
@@ -1560,17 +1204,14 @@ impl AppState {
         };
         match refusal {
             Some(m) => self.toast_text(m),
-            None => self.push_dialog(Dialog::TrainBuy {
-                sel: 0,
-                copy: 0,
-                replace: None,
-            }),
+            None => self.open_train_buy_dialog(None),
         }
     }
 
-    /// A click on an industry: its window with Buy / Sell where the rules allow them.
+    /// A click on an industry: the information box of `eagled.win` (C3), with Buy where the
+    /// rules allow it (`bldinfo.rs`).
     pub(super) fn open_industry(&mut self, building: i32) {
-        self.push_dialog(Dialog::Industry { building });
+        self.bldinfo_industry(building, true);
     }
 
     /// Screenshots: opens one of these windows for the first suitable object; false if there is
@@ -1579,9 +1220,10 @@ impl AppState {
         let Some(co) = self.player() else {
             return false;
         };
+        let year = self.date_ym().0;
         let pick = |s: &rt2_formats::map::Save, name: &str| -> Option<Dialog> {
             Some(match name {
-                "station" | "station-buy" => {
+                "station" | "station-buy" | "station-buy-sel" => {
                     let station = bt::company_stations(s, co).into_iter().max_by_key(|&st| {
                         bt::rec(&s.stations, st).map_or(0, |r| r.u32(0x49).count_ones())
                     })?;
@@ -1591,13 +1233,14 @@ impl AppState {
                         Dialog::StationBuy {
                             station,
                             mask: 0,
-                            last: 3,
+                            last: u32::MAX,
                         }
                     }
                 }
                 "train-buy" => Dialog::TrainBuy {
                     sel: 0,
-                    copy: 1,
+                    scroll: 0,
+                    tons: super::buy_ui::default_tons(year),
                     replace: None,
                 },
                 "train-edit" => Dialog::TrainEdit {
@@ -1627,24 +1270,35 @@ impl AppState {
                         error: None,
                     }
                 }
-                "industry" => Dialog::Industry {
-                    building: s
-                        .objects
-                        .ordered()
-                        .find(|o| bt::Rec(&o.data).u8(7) == 9)
-                        .or_else(|| {
-                            s.objects.ordered().find(|o| {
-                                bt::Rec(&o.data).u8(7) > 0 && bt::Rec(&o.data).u8(7) != 0x12
-                            })
-                        })?
-                        .slot as i32,
-                },
                 "rights" => Dialog::Rights {
                     territory: s.territories.ordered().next()?.slot as i32,
                 },
                 _ => return None,
             })
         };
+        if name == "industry" {
+            let building = match &self.screen {
+                Screen::Game(g) => g.world.save_ref().and_then(|s| {
+                    s.objects
+                        .ordered()
+                        .find(|o| bt::Rec(&o.data).u8(7) == 9)
+                        .or_else(|| {
+                            s.objects.ordered().find(|o| {
+                                bt::Rec(&o.data).u8(7) > 0 && bt::Rec(&o.data).u8(7) != 0x12
+                            })
+                        })
+                        .map(|o| o.slot as i32)
+                }),
+                Screen::Menu(_) => None,
+            };
+            return match building {
+                Some(b) => {
+                    self.open_industry(b);
+                    true
+                }
+                None => false,
+            };
+        }
         let d = match &self.screen {
             Screen::Game(g) => g.world.save_ref().and_then(|s| pick(s, name)),
             Screen::Menu(_) => None,
@@ -1652,9 +1306,34 @@ impl AppState {
         match d {
             Some(d) => {
                 self.push_dialog(d);
+                if name == "station-buy-sel" {
+                    self.select_improvements_for_shot();
+                }
                 true
             }
             None => false,
+        }
+    }
+
+    /// Screenshots: the Buy dialog with the second listed row checked and the first selected.
+    fn select_improvements_for_shot(&mut self) {
+        let Some(Dialog::StationBuy { station, .. }) = self.top_build_dialog() else {
+            return;
+        };
+        let (year, month) = self.date_ym();
+        let rows: Vec<u32> = self
+            .with_game(|s, data, _| bt::improvements(data, s, station, year, month))
+            .unwrap_or_default()
+            .iter()
+            .filter(|i| i.available && !i.owned && !i.excluded)
+            .map(|i| i.row)
+            .collect();
+        if let [a, b, ..] = rows[..] {
+            self.set_top(Dialog::StationBuy {
+                station,
+                mask: 1 << b,
+                last: a,
+            });
         }
     }
 

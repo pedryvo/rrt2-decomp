@@ -37,6 +37,7 @@ mod sound;
 mod state;
 mod stationview;
 mod text;
+mod trainview;
 mod version;
 
 use std::path::PathBuf;

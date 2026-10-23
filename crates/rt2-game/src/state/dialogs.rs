@@ -109,10 +109,12 @@ pub(super) enum Dialog {
         mask: u32,
         last: u32,
     },
-    /// Purchase Train (or Replace engine of `replace`): selected engine and route to copy.
+    /// Purchase Train (or Replace engine of `replace`): the selected engine, the first visible
+    /// row of the list and the tons per car of the speed matrix (`0x579608`).
     TrainBuy {
         sel: usize,
-        copy: usize,
+        scroll: usize,
+        tons: i32,
         replace: Option<i32>,
     },
     /// The editable train detail.
@@ -121,9 +123,6 @@ pub(super) enum Dialog {
         sel: usize,
         pick: usize,
         confirm: bool,
-    },
-    Industry {
-        building: i32,
     },
     Rights {
         territory: i32,
@@ -1000,7 +999,6 @@ impl AppState {
             | Dialog::StationBuy { .. }
             | Dialog::TrainBuy { .. }
             | Dialog::TrainEdit { .. }
-            | Dialog::Industry { .. }
             | Dialog::Rights { .. }) => {
                 self.build_build_dialog(ui, &d);
             }

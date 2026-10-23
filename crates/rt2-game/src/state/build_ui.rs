@@ -54,7 +54,7 @@ pub(super) const STYLES: [(&str, i32); 6] = [
 const TEXT: Color = Color::rgb(0xee, 0xe4, 0xc8);
 const MUTED: Color = Color::rgb(0xb4, 0xaa, 0x8e);
 const HEAD: Color = Color::rgb(0xe6, 0xc2, 0x6a);
-const BAD: Color = Color::rgb(0xf0, 0x8c, 0x7a);
+pub(super) const BAD: Color = Color::rgb(0xf0, 0x8c, 0x7a);
 const GOOD: Color = Color::rgb(0x9a, 0xe0, 0x8a);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -94,6 +94,11 @@ pub(super) struct Plan {
     pub station: Option<(i32, i32, i32)>,
     /// Station: catchment radius.
     pub radius: i32,
+    /// Station: the anchor tile already has track (`0x48d900` case 0xe: the placement is green
+    /// with a connection to existing track, yellow without, red when invalid; the original's
+    /// flag is an output of `0x4087a0` that `rt2-sim` does not expose, so the clone tests the
+    /// anchor tile for track).
+    pub connected: bool,
 }
 
 impl Plan {
@@ -473,6 +478,18 @@ impl AppState {
                 let shape = b.size.shape(o);
                 plan.footprint = bt::station_footprint(data, shape, x, y);
                 plan.station = Some((x, y, o));
+                // A station stands beside its track: track on the anchor tile or one of the
+                // eight tiles around it counts as the connection.
+                plan.connected = (-1..=1).any(|dy| {
+                    (-1..=1).any(|dx| {
+                        let (tx, ty) = (x + dx, y + dy);
+                        tx >= 0
+                            && ty >= 0
+                            && (tx as usize) < save.map.width
+                            && (ty as usize) < save.map.height
+                            && save.map.tile(tx as usize, ty as usize).track_id != 0
+                    })
+                });
                 // The real price: the station plus the track the command lays under it.
                 plan.cost = if p.result.is_ok() {
                     p.cost
@@ -765,6 +782,12 @@ impl AppState {
         let Some(kind) = b.tool else {
             return;
         };
+        // `bpaddstn.win`: the Add Station palette in the original's own art, when the install has
+        // it.
+        if kind == ToolKind::Station && self.build_station_art_panel(ui, parent, (w, _h), dz, tips)
+        {
+            return;
+        }
         let t = &self.texts;
         let pad = 8.0 * dz;
         let row_h = (24.0 * dz).round();
@@ -1063,11 +1086,8 @@ impl AppState {
                     && let Some((sx, sy, _)) = p.station
                 {
                     // The catchment: tiles within the radius of the station's centre.
-                    let c = if ok {
-                        Color(0xf0, 0xe0, 0x50, 0x38)
-                    } else {
-                        Color(0xf0, 0x50, 0x40, 0x28)
-                    };
+                    // The manual: "a gold circle around them on the map".
+                    let c = Color(0xf0, 0xc8, 0x40, 0x38);
                     let r = p.radius;
                     let (cx, cy) = p
                         .footprint
@@ -1081,8 +1101,16 @@ impl AppState {
                             }
                         }
                     }
+                    // The station itself: green (connected to track), yellow (valid, no track
+                    // there yet) or red (invalid), as the manual's Build a New Station says.
+                    let yellow = Color(0xf0, 0xe0, 0x50, 0x90);
+                    let body = match (ok, p.connected) {
+                        (true, true) => good,
+                        (true, false) => yellow,
+                        (false, _) => bad,
+                    };
                     for &(x, y) in &p.footprint {
-                        tile(ui, x, y, if ok { good } else { bad }, 0.0);
+                        tile(ui, x, y, body, 0.0);
                     }
                 }
             }

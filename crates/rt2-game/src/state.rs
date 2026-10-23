@@ -32,6 +32,7 @@ use crate::text::Texts;
 mod bldinfo;
 mod build_dialogs;
 mod build_ui;
+mod buy_ui;
 mod campaign;
 mod companybook;
 mod credits;
@@ -229,6 +230,8 @@ pub struct AppState {
     choice_answers: Vec<(u32, u8)>,
     sprite_uploads: std::cell::RefCell<Vec<(SpriteId, Vec<u8>)>>,
     station_view_key: std::cell::RefCell<Option<(u8, i32, u32)>>,
+    /// The engine whose picture is in the Purchase Train window's reserved sprite.
+    buy_view_key: std::cell::RefCell<Option<i32>>,
     texts: Texts,
     binds: Bindings,
     data: Option<GameData>,
@@ -321,6 +324,7 @@ impl AppState {
             choice_answers: Vec::new(),
             sprite_uploads: Default::default(),
             station_view_key: Default::default(),
+            buy_view_key: Default::default(),
             texts,
             binds,
             data: None,
@@ -636,6 +640,7 @@ impl AppState {
             return;
         }
         if self.has_dialog() {
+            self.train_buy_wheel(notches);
             return;
         }
         if self.info_screen().is_none()
@@ -1553,6 +1558,8 @@ mod tests {
 
 #[cfg(test)]
 mod build_tests;
+#[cfg(test)]
+mod buy_tests;
 #[cfg(test)]
 mod editor_panel_tests;
 #[cfg(test)]

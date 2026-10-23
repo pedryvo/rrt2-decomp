@@ -7025,3 +7025,80 @@ name = "chat_line_count"
 kind = "global"
 comment = "u32: linhas de chat visiveis (ate 6)"
 spec = "docs/spec/multiplayer.md"
+
+[[symbol]]
+addr = "0x4d9bd0"
+name = "train_buy_row_draw"
+kind = "function"
+comment = "stdcall(item, ...): linha da lista de trainbuy.win: sprite lateral side11_8.imb registro (veiculo +0x27) em (x+7, y-39) e o nome (LNG 0x5534f4[motor]) em (x+10, y+41); [V visual]"
+spec = "docs/ui.md"
+
+[[symbol]]
+addr = "0x4d9a50"
+name = "train_buy_events"
+kind = "function"
+comment = "fastcall(msg): eventos de trainbuy.win: 0xca/0xcb item 0x6a5/0x6a9 = comprar (LNG 0x161 se preco > caixa), 0x83 = +5 t por vagao (max 100), 0x84 = -5 (min 5); [S]"
+spec = "docs/ui.md"
+
+[[symbol]]
+addr = "0x4d9cb0"
+name = "train_buy_select"
+kind = "function"
+comment = "fastcall(motor): seleciona o motor da lista (DAT_0055c5ec), recarrega as imagens (0x4e54f0) e redesenha o painel 0x4e3f90; [S]"
+spec = "docs/ui.md"
+
+[[symbol]]
+addr = "0x4e57c0"
+name = "train_buy_default_tons"
+kind = "function"
+comment = "void: toneladas por vagao iniciais da matriz pela data: < 1830 10, < 1850 20, < 1880 30, < 1910 40, senao 50 (chama 0x4e3eb0); [V]"
+spec = "docs/ui.md"
+
+[[symbol]]
+addr = "0x4e3eb0"
+name = "train_buy_set_tons"
+kind = "function"
+comment = "fastcall(t): grava as toneladas por vagao 0x579608 e reenvia os eventos 0x96 aos controles 0x6ab e 0x6f; [S]"
+spec = "docs/ui.md"
+
+[[symbol]]
+addr = "0x4e54f0"
+name = "train_buy_load_pictures"
+kind = "function"
+comment = "fastcall(veiculo): abre os bancos cr1<nome>.imb da locomotiva (DAT_0057963c) e do tender (DAT_00579640) da janela de compra; [V]"
+spec = "docs/ui.md"
+
+[[symbol]]
+addr = "0x4e5810"
+name = "train_buy_pictures_dialog"
+kind = "function"
+comment = "fastcall(...): variante de 0x4e54f0 para o detalhe de um veiculo avulso (vagao), abre a janela e libera os bancos; [S]"
+spec = "docs/ui.md"
+
+[[symbol]]
+addr = "0x4e55b0"
+name = "train_buy_free_pictures"
+kind = "function"
+comment = "void: libera os bancos de imagem 0x57963c/0x579640 da janela de compra; [V]"
+spec = "docs/ui.md"
+
+[[symbol]]
+addr = "0x407c70"
+name = "buildbuy_row_text"
+kind = "function"
+comment = "stdcall(item, ...): texto de uma linha de buildbuy.win: LNG 1043 + linha (0x5537e0) em (x+22, y+5), fonte 0xc; [V visual]"
+spec = "docs/ui.md"
+
+[[symbol]]
+addr = "0x407d10"
+name = "buildbuy_row_checkbox_create"
+kind = "function"
+comment = "cria o controle de caixa de selecao 0xd0c+linha (21x22, banco buildbuy.imb) de cada linha de buildbuy.win; [S]"
+spec = "docs/ui.md"
+
+[[symbol]]
+addr = "0x407cf0"
+name = "buildbuy_row_checked"
+kind = "function"
+comment = "stdcall(linha): le o estado da caixa de selecao 0xd0c+linha; [S]"
+spec = "docs/ui.md"

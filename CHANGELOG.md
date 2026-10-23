@@ -47,6 +47,12 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - RE: `industry_receive_cargo` (0x40b250) ported: a delivery of an input converts it into output lots (Example, day 3314); stations built in a grown building slot keep the heap fill at +0x38 (Example, slot 415); the end-of-game state [0x573d70] is saved (#01 B&O, 20 years).
 - RE: two runs of the original from the same save can differ in the smoke pool (`pool_78`) over long runs (Example, days 2540 and 3650): run-to-run noise of the original, documented in docs/fidelity-status.md.
 - Fix: a lot delivered back at its own station returns to its industry pile (0x4bf760, Example day 5215), and the lot life now uses the loader's minutes (`cargo.+8`), not the days of the static EXE image.
+- Improved: Purchase Train agora usa a arte e o layout de trainbuy.win: lista com a vista lateral de cada locomotiva, imagem do trem sobre a via, custo, manutencao e combustivel anuais, classes de aceleracao e confiabilidade, matriz de velocidade por rampa e numero de vagoes com toneladas por vagao ajustaveis
+- Improved: Buy improvements (buildbuy.win) lista so o que pode ser comprado, com caixas de selecao, a foto de cada estrutura (bm*.imb), descricao e custo arredondado ao milhar
+- Improved: Add Station usa o painel de bpaddstn.win (tres cartoes de tamanho com custo, estilos e direcoes) e o fantasma da estacao fica verde, amarelo (sem trilho) ou vermelho
+- Improved: clicar numa industria da lista abre a caixa de aguia (eagled.win) com Buy, como a janela do mapa
+- Fix: recusa de compra de trem por falta de caixa usa a mensagem LNG 353 e a de melhorias a LNG 345, como o original
+- RE: matriz de velocidade da janela de compra (0x4e3f90), posicionamento do trem na imagem, linhas da lista (0x4d9bd0), toneladas por vagao por data (0x4e57c0) e regras de buildbuy.win (0x407540) documentadas em docs/ui.md
 
 ## v0.3.0 — 2026-10-23
 - Fix: Lay Track drag now starts and ends on a station when pressed on its building (snap to the station's tile), so dragging from one station to another works as in the original

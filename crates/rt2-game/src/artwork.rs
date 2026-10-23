@@ -5,6 +5,7 @@
 use rt2_render::assets::{GameAssets, LoadedBank, RgbaImage};
 use rt2_render::atlas::scale2x;
 pub mod brand;
+pub mod buywin;
 pub mod mainwin;
 
 use rt2_ui::{NineSlice, Skin, SkinBuilder, SkinImage, SpriteId, Theme};
@@ -45,7 +46,7 @@ impl Icons {
 /// Dialog frames of the original windows (`eagled.win`, `paper.win`, `yearend.win`,
 /// `winlose.win`; `docs/formats/ui.md`), decoded with the UI image decoder. Each is a plain
 /// sprite the dialogs stretch to their size (never 9-sliced: the art has fixed borders).
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct DialogArt {
     /// `eagled.imb` 0, 1, 2: the eagle top (512x137), a repeatable 46 px strip and the bottom
     /// (513x256) of the generic dialog. Taller texts insert strips between top and bottom.
@@ -74,6 +75,8 @@ pub struct DialogArt {
     pub video_frame: Option<SpriteId>,
     /// The chrome of the in-game main window (`artwork/mainwin.rs`).
     pub main: mainwin::MainArt,
+    /// The purchase windows (`artwork/buywin.rs`).
+    pub buy: buywin::BuyArt,
 }
 
 /// Size of the video frame sprite (clips are scaled into it).
@@ -109,6 +112,10 @@ pub struct Artwork {
 /// Image 0 of record `rec` of a UI bank (`*.imb` of the `.win` windows), which uses the text
 /// drawer's token set rather than the map sprites' codec: indexed cells become opaque pixels,
 /// empty cells transparent.
+pub(crate) fn ui_record_pub(assets: &GameAssets, bank: &str, rec: usize) -> Option<RgbaImage> {
+    ui_record(assets, bank, rec)
+}
+
 fn ui_record(assets: &GameAssets, bank: &str, rec: usize) -> Option<RgbaImage> {
     let lad = assets.lad(bank)?;
     let r = lad.records.get(rec)?;
@@ -260,6 +267,7 @@ pub fn load(assets: &GameAssets) -> Artwork {
         hiscore_bg: None,
         video_frame: None,
         main: mainwin::MainArt::default(),
+        buy: buywin::BuyArt::default(),
     };
     let mut dialogs = dialogs;
     for (i, name) in EDITOR_PANELS.iter().enumerate() {
@@ -301,6 +309,7 @@ pub fn load(assets: &GameAssets) -> Artwork {
         });
     }
     dialogs.main = mainwin::load(assets, &mut b);
+    dialogs.buy = buywin::load(assets, &mut b);
     dialogs.video_frame = Some(b.reserve(VIDEO_FRAME.0, VIDEO_FRAME.1));
     if assets.contains("sdmbkg1.imb") {
         dialogs.station_view =
