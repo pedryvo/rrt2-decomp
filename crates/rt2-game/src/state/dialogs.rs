@@ -168,6 +168,8 @@ pub(super) enum Dialog {
         sel: Option<usize>,
         scroll: usize,
     },
+    /// The Reports screen (`reports_ui.rs`): charts, income by category, rankings, CSV export.
+    Reports(super::reports_ui::ReportsDlg),
     /// Change Company Name/Logo (`brand.rs`, screens.md G12).
     Brand {
         company: i32,
@@ -237,7 +239,7 @@ impl AppState {
         }
     }
 
-    /// Screenshots: opens a dialog by name (`dismiss[-N]` closes the top ones; `goals`, `history`, `founding`, `year-end[-1..-3]`, `news`,
+    /// Screenshots: opens a dialog by name (`dismiss[-N]` closes the top ones; `goals`, `history`, `reports[-TAB[-METRIC]]`, `founding`, `year-end[-1..-3]`, `news`,
     /// `dialog`, `win-gold`, `win-silver`, `win-bronze`, `lose`, `file`, `tool-0..7`, `fin-bond`, `fin-stock`, `fin-buyback`,
     /// `fin-dividend`, `fin-merger`, `fin-bankrupt`, `fin-repay`, `fin-manager`, `fin-resign`, `fin-trade`, `fin-assume`,
     /// `fin-election`, `fin-vote`); false for
@@ -259,6 +261,24 @@ impl AppState {
                 sel: None,
                 scroll: 0,
             },
+            n if n.starts_with("reports") => {
+                let mut it = n
+                    .split('-')
+                    .skip(1)
+                    .map(|v| v.parse::<usize>().unwrap_or(0));
+                let (tab, arg) = (it.next().unwrap_or(0).min(2), it.next().unwrap_or(0));
+                // The second number is the figure of the charts or the ranking of the rankings.
+                Dialog::Reports(super::reports_ui::ReportsDlg {
+                    tab,
+                    metric: if tab == 0 {
+                        arg.min(crate::reports::METRICS.len() - 1)
+                    } else {
+                        0
+                    },
+                    rank: if tab == 2 { arg.min(3) } else { 0 },
+                    ..Default::default()
+                })
+            }
             "founding" => {
                 let Some(d) = self.founding_dialog_any() else {
                     return false;
@@ -763,6 +783,7 @@ impl AppState {
                 self.fin_activated(a);
             }
             a if super::history::owns(a) => self.history_activated(a),
+            a if super::reports_ui::owns(a) => self.reports_activated(a),
             a if brand::owns(a) => self.brand_activated(a),
             a if super::train_panel::owns(a) => {
                 self.train_panel_activated(a);
@@ -1020,6 +1041,7 @@ impl AppState {
                 sel,
                 scroll,
             } => self.build_history(ui, filter, sel, scroll),
+            Dialog::Reports(r) => self.build_reports(ui, &r),
             Dialog::Brand {
                 name, logo, error, ..
             } => self.build_brand(ui, &name, logo, error.as_deref()),

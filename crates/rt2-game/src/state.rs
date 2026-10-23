@@ -50,6 +50,7 @@ mod maplabels;
 mod menus;
 mod options_ui;
 mod overview;
+mod reports_ui;
 mod saves_ui;
 mod ticker;
 mod train_panel;
@@ -165,6 +166,8 @@ struct GameState {
     build: build_ui::BuildState,
     /// Game year and month of the last autosave (or of the start).
     last_autosave: (u16, u8),
+    /// The monthly balances of the session for the Reports charts (`reports_ui.rs`).
+    reports: crate::reports::Samples,
     /// The map and scenario editor, when this game is the editor (`editor_ui.rs`).
     editor: Option<Box<editor_ui::EditorState>>,
     /// `(campaign set, scenario index)` when this game is a campaign scenario (medals).
@@ -275,6 +278,8 @@ pub struct AppState {
     dpi: f64,
     /// Our saves folder (`paths::saves_dir`); tests point it at a temporary folder.
     saves_dir: Option<PathBuf>,
+    /// Where the Reports CSV files go (`paths::reports_dir`); tests use a temporary folder.
+    reports_dir: Option<PathBuf>,
     /// Autosaves and other writes the player did not ask for in this very moment; off until the
     /// window loop enables them, so tests and screenshots never write into the user's folders.
     persist: bool,
@@ -361,6 +366,7 @@ impl AppState {
             monitors: Vec::new(),
             dpi: 1.0,
             saves_dir: paths::saves_dir(),
+            reports_dir: paths::reports_dir(),
             persist: false,
             ga: Default::default(),
             interactive_choices: false,
@@ -410,6 +416,12 @@ impl AppState {
     #[cfg(test)]
     pub fn set_saves_dir(&mut self, dir: Option<PathBuf>) {
         self.saves_dir = dir;
+    }
+
+    /// Where the Reports CSV files go (default `paths::reports_dir()`).
+    #[cfg(test)]
+    pub fn set_reports_dir(&mut self, dir: Option<PathBuf>) {
+        self.reports_dir = dir;
     }
 
     /// Pixels the renderer must write into reserved sprites before drawing (the station picture).
@@ -640,7 +652,9 @@ impl AppState {
             return;
         }
         if self.has_dialog() {
-            self.train_buy_wheel(notches);
+            if !self.reports_wheel(notches) {
+                self.train_buy_wheel(notches);
+            }
             return;
         }
         if self.info_screen().is_none()
@@ -824,6 +838,9 @@ impl AppState {
         if !ctrl && code == KeyCode::Escape && !self.has_dialog() && self.overview_cancel() {
             return;
         }
+        if !ctrl && self.reports_key(code) {
+            return;
+        }
         if !ctrl && self.mainwin_key(code) {
             return;
         }
@@ -986,6 +1003,7 @@ impl AppState {
         // Messages and the end of the game, after the steps (and once at the start).
         self.poll_world();
         self.autosave_tick();
+        self.sample_reports();
         let Screen::Game(g) = &mut self.screen else {
             return;
         };
@@ -1031,6 +1049,7 @@ impl AppState {
                     } else if a == mainwin::A_RADAR {
                         self.radar_pointer(fx, fy);
                     } else if !self.book_pointer(a, fx, fy)
+                        && !self.reports_pointer(a, fx)
                         && !(self.via_mouse && self.build_pointer(a, fx, fy))
                     {
                         // Neither the company book nor a build tool took the pointer.
@@ -1340,6 +1359,7 @@ impl AppState {
             scene_fp,
             build: build_ui::BuildState::default(),
             last_autosave: (last_year, world_month),
+            reports: Default::default(),
             editor: None,
             campaign: match &mode {
                 StartMode::Campaign(_, c) => Some((c.set, c.index)),
@@ -1362,14 +1382,20 @@ impl AppState {
 
     /// Advances the open game by `days` (screenshots, tests), like `rt2-advance`.
     pub fn advance_days(&mut self, days: u32) {
-        if let Screen::Game(g) = &mut self.screen {
+        if matches!(self.screen, Screen::Game(_)) {
             let total = i64::from(days) * 1440;
             let mut done = 0i64;
             while done < total {
                 let dt = 320.min(total - done) as i32;
-                g.world.advance(dt);
+                if let Screen::Game(g) = &mut self.screen {
+                    g.world.advance(dt);
+                }
+                // The Reports charts sample every game month, also while the days are skipped.
+                self.sample_reports();
                 done += i64::from(dt);
             }
+        }
+        if let Screen::Game(g) = &mut self.screen {
             // Years crossed here (screenshots, tests) do not offer a report.
             g.last_year = g.world.date().year;
             if let Some(save) = g.world.save_ref() {
@@ -1578,3 +1604,5 @@ mod mainwin_tests;
 mod options_tests;
 #[cfg(test)]
 mod play_tests;
+#[cfg(test)]
+mod reports_tests;

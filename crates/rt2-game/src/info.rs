@@ -17,7 +17,9 @@ use rt2_sim::finance::{self, Bond, Ctx};
 use crate::text::Texts;
 
 mod groupb;
+pub mod reports;
 pub use groupb::TerritoryRow;
+pub use reports::{CompanyReport, NCAT, Snapshot, StationRank, TrainRank};
 
 // ---- text tables ------------------------------------------------------------------------------
 
@@ -38,7 +40,7 @@ pub struct Table {
 }
 
 impl Table {
-    fn new(cols: &[(&str, f32, bool)]) -> Table {
+    pub(crate) fn new(cols: &[(&str, f32, bool)]) -> Table {
         Table {
             cols: cols
                 .iter()
@@ -53,7 +55,7 @@ impl Table {
         }
     }
 
-    fn push(&mut self, id: u32, row: Vec<String>) {
+    pub(crate) fn push(&mut self, id: u32, row: Vec<String>) {
         debug_assert_eq!(row.len(), self.cols.len());
         self.ids.push(id);
         self.rows.push(row);
@@ -263,7 +265,7 @@ fn company_from_record(r: &Rec) -> finance::Company {
 /// 972, 12 Misc 973.
 // TODO(finance.md 1): the LNG order of 971..973 vs the category index is inferred from the labels
 // and the sign of each category in the Example save; the original's table was not read.
-const CATEGORY_LABEL: [(u32, &str); 13] = [
+pub(crate) const CATEGORY_LABEL: [(u32, &str); 13] = [
     (961, "Passengers"),
     (962, "Freight"),
     (963, "Station"),

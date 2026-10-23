@@ -59,6 +59,7 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Feature: monthly full-state checksum with a reaction that is always on: the host names the groups that differ, writes a field-by-field diff dump (`desync-<minute>-p<id>.txt`) and resends its state to the diverged player
 - Docs: `docs/spec/multiplayer.md` section 10 (implementation in the clone, what was checked against the original, what is open) and `docs/net-protocol.md`
 - RE: `trains_advance` (`0x4a58f0`), the daily re-seed of `sim_advance`, `net_player_left` (`0x49d970`) and the news conditions of `0x46a010` and `0x43d800` read from the decompilation: the seed is `u32(T + game_seed)` plus the cash of person 0 of the player set, news in a network game never call `news_post`
+- Feature: Reports screen (Reports button of the company book): line charts of revenue, expenses, profit, cash, debt, equity, share price and the per-share figures for your company and the competitors, the income statement by category for the last years, rankings of trains (this year, last year, lifetime) and stations by volume that center the camera and open their window, and CSV export of what is on screen. Chart lines differ by colour, marker and dash pattern for colour-blind players.
 
 ## v0.3.0 — 2026-10-23
 - Fix: Lay Track drag now starts and ends on a station when pressed on its building (snap to the station's tile), so dragging from one station to another works as in the original

@@ -30,6 +30,7 @@ mod overview;
 mod paths;
 mod pick;
 mod radar;
+mod reports;
 mod saves;
 mod scenario_info;
 mod setup;
@@ -79,7 +80,7 @@ struct Args {
     screen: Screen,
     /// With `--screen menu`: the page (main, single, new-scenario, map, options, campaign, load,
     /// scores, credits). With `--screen dialog`: the dialog (goals, founding, year-end,
-    /// year-end-1..3, news, dialog, win-gold, win-silver, win-bronze, lose, file, tool-0..7).
+    /// year-end-1..3, reports[-TAB[-N]] (tab 0..2; N = figure 0..11 or ranking 0..3), news, dialog, win-gold, win-silver, win-bronze, lose, file, tool-0..7).
     #[arg(long)]
     page: Option<String>,
     /// With `--screen info`: finance, stock, trains, train, stations, station, cities, city,

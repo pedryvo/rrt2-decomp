@@ -155,7 +155,7 @@ impl AppState {
         true
     }
 
-    fn center_camera(&mut self, x: i32, y: i32) {
+    pub(super) fn center_camera(&mut self, x: i32, y: i32) {
         if let Screen::Game(g) = &mut self.screen {
             g.camera.target = rt2_render::camera::Vec2::new(x as f32 + 0.5, y as f32 + 0.5);
         }

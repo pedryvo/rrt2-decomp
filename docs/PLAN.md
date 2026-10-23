@@ -258,7 +258,7 @@ O usuário decidiu que todos os itens abaixo entram na 1.0, inclusive o multipla
 - [ ] Desfazer a última construção
 - [ ] Overlays de mapa: as camadas originais, mais oferta e demanda por carga, lucro por trecho e congestionamento
 - [ ] Gerenciador de frota: modelos de composição e troca de locomotiva em massa
-- [ ] Gráficos e relatórios financeiros mais completos
+- [x] Gráficos e relatórios financeiros mais completos
 - [x] Notificações configuráveis e histórico de eventos
 
 **Plataforma**

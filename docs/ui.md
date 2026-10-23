@@ -235,6 +235,37 @@ Recurso do clone, sem equivalente no original (que mostra todas as mensagens e n
 - **Persistência**: o histórico vive só na memória da sessão e não entra no save: o formato é o do original e não há lugar natural para ele; carregar um jogo recomeça o histórico (com a linha "Game started"). Só as opções de notificação persistem (`config.toml`).
 - **Testes** (`state/history_tests.rs`, eventos sintéticos de mouse e teclado sobre a UI montada): abrir o histórico pelo botão da caixa de atividade, filtrar, clicar numa entrada e ver a câmera ir ao tile, Show on map, Esc; desligar uma categoria pela aba Notices (clique no toggle), ver o `config.toml` pedido para gravar, e o briefing sem diálogo nem linha mas presente no histórico.
 
+## Relatórios e gráficos (2026-10-23)
+
+Recurso do clone sobre o original, sem mexer em regra nem em balanceamento. Abre pelo botão **Reports** da linha de seções do livro da empresa (Overview, Finances, Territories, Companies; `state/companybook.rs`), em `Dialog::Reports` (`state/reports_ui.rs`), com a moldura de painel do histórico de eventos. Três abas (teclas 1..3):
+
+- **Charts**: gráfico de linhas ao longo do tempo (eixo em anos de jogo, mês como fração de 1/12) com doze grandezas em dois renques de botões: Revenue, Expenses, Profit, Cash, Debt, Equity (LNG 984, 35, 36, 974, 979, 980), Share Price, Book/Revenue/Earnings/Dividend per share e 5 Year Weighted Return (LNG 1005..1010). Uma linha por empresa existente (a do jogador mais grossa); a legenda à direita liga e desliga cada empresa (o texto do original, LNG 421, serve de dica) e mostra o valor mais recente ou o do cursor. Clicar ou arrastar no gráfico põe o cursor na amostra mais próxima e a legenda passa a mostrar os valores daquela data (Left/Right movem o cursor).
+- **Income by category** (`Info::company_reports`): a demonstração de resultados por categoria (as 13 do livro, com os totais Revenue, Expenses e Profit) com as colunas Lifetime, This year e os cinco últimos anos do arquivo; as setas (botões ou Left/Right) trocam de empresa.
+- **Rankings**: trens por resultado este ano / ano passado / vida inteira e estações por lotes movidos. Clicar numa linha a seleciona e centra a câmera no trem ou na estação; um segundo clique, Enter ou o botão Open fecha o relatório e abre a janela que já existe (trem do jogador: o painel editável `TrainEdit`; trem de outra empresa: a página `TrainDetail`; estação própria: a janela da estação, de outra empresa: a página `StationDetail`). Page up/down, PgUp/PgDn, setas e a roda rolam.
+- **Export CSV**: grava o que a aba mostra em `<diretório de dados>/rrt2/reports/rrt2-<relatório>-<ano>-<mês>.csv` (`~/.local/share/rrt2/reports`, ou `$RRT2_REPORTS`) e mostra o caminho (ou o erro) no rodapé da janela e num aviso. Gráfico: `year,month,company,metric,value,year_to_date`, só as empresas visíveis; income: `company,category,lifetime,year_to_date,<anos>`; rankings: `rank,train|station,...`. Os cabeçalhos do CSV são sempre em inglês.
+
+De onde vêm as séries (`reports.rs`, `info/reports.rs`):
+
+| Série | Fonte |
+|---|---|
+| Revenue, Expenses, Profit | as 13 categorias do arquivo anual `+0x42ee` (`finance.md` 1 e 16.2; Revenue = categorias 0..4, Expenses = 5..12 mostradas como custo positivo) mais o ano corrente `+0x4286` como último ponto (marcador vazado). Com `year >= founded`, até 10 anos. |
+| Share Price, Book, Revenue, Earnings e Dividend per share, 5 Year Weighted Return | métricas arquivadas `+0x49b6` (`finance.md` 16.2: 0..5) mais o valor vivo (cotação, patrimônio/ação, receita/ação, lucro/ação, dividendo); o retorno ponderado só existe no arquivo (`0x43abc0` não está no `rt2-sim`). |
+| Cash, Debt, Equity e o preço entre os anos | **o save não guarda histórico**: o jogo amostra todas as empresas uma vez por mês de jogo (`AppState::sample_reports`, também durante `advance_days`), em memória; não entram no save (como o histórico de eventos) e carregar um jogo recomeça a série. Com menos de duas amostras o gráfico avisa. |
+| Trens | resultado = soma das quatro categorias do razão do trem (`trains.md` 6.2: `+0xfd` este ano, `+0x10d` ano passado, `+0x13d` acumulado desde a compra; `train_year_step` desloca os anos e não toca no acumulado). |
+| Estações | `+0x4b7` lotes despachados + `+0x4b9` recebidos no ano (`finance.md` 13.4), e `+0x4b5` lotes gerados para a estação. |
+
+Cores e formas: paleta Okabe-Ito (distinguível nas deficiências de cor comuns) e, além da cor, um marcador (círculo, quadrado, triângulo, losango, X, +) e um tracejado (cheio, traços, pontos) por empresa; as combinações só se repetem a cada 24 empresas. O gráfico é um raster de células (`Kind::Cells`, 400x250), desenhado por `reports::rasterize` sem relógio nem iteração sobre `HashMap`.
+
+**Lacunas e limites**:
+
+- O `rt2-sim` não guarda lucro por trem fora do razão do trem, nem receita por tipo de carga: a divisão da demonstração é a das 13 categorias do original (passageiros/correio e carga num só `Freight`, categorias `0`/`1`). Receita por tipo de carga ficaria para uma mudança no `rt2-sim`.
+- As faixas do razão do trem (`+0xfd..+0x14d`) do `Example save game.GAM` trazem bytes não inicializados (o padrão de heap de depuração `0xF00DBAAD` e palavras soltas nas faixas dos anos antigos e no acumulado), que a simulação só soma. Um resultado com alguma categoria fora do verossímil (acima de US$ 5 milhões num ano ou US$ 100 milhões desde a compra) aparece como `-` e vai para o fim da lista, em vez de bilhões. Num jogo novo (trens comprados no clone) os campos são zerados na compra e os três períodos aparecem.
+- G15 do original (Bolsa: Corporate, gráficos de 5 anos de preço, valor contábil, receita, lucro, dividendo e retorno ponderado): os mesmos dados estão na aba Charts (as seis séries por ação e as das concorrentes), mas **sem** a arte do `stockdtl.win`, porque a tela Bolsa inteira ainda é tabular (não há a prancheta do original).
+
+**Testes** (`state/reports_tests.rs`, `reports.rs`, `info/reports.rs`; eventos sintéticos de mouse e teclado sobre a UI montada, com o `Example save game.GAM`): abrir pelo livro da empresa, trocar de aba e de grandeza pelos botões, esconder uma empresa na legenda (o raster muda), clicar no gráfico e mover o cursor pelas setas, trocar de empresa na demonstração, clicar numa linha de trem e ver a câmera ir ao tile, segundo clique abrindo `TrainEdit`/`TrainDetail`, a estação pelo botão Open, teclas (1..3, setas, Enter, PgUp/PgDn, roda), exportar cada aba para um diretório temporário e conferir o conteúdo, erro de diretório; amostragem mensal durante `advance_days`; unitários da escala dos eixos, das séries, do raster (marcadores, cursor, vazado) e do CSV.
+
+Screenshots: `~/.cache/rrt2/shots/reports/` (`rrt2 --screen dialog --page reports[-aba[-N]] --days 400`; `N` = grandeza 0..11 nos gráficos ou ranking 0..3).
+
 ## Screenshots
 
 `rrt2 --screenshot out.png [--screen menu|new-game|load-game|game] [--size 3840x2160] [--ui-scale 200] [--days N] [arquivo]` renderiza fora da tela (sem janela). O `game` usa o `Example save game.GAM` e avança N dias simulados (semente de RNG fixa `1`).

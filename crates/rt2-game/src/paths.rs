@@ -23,6 +23,14 @@ pub fn saves_dir() -> Option<PathBuf> {
     dirs::data_dir().map(|d| d.join("rrt2").join("saves"))
 }
 
+/// The Reports CSV files: `$RRT2_REPORTS` or `<data dir>/rrt2/reports` (`~/.local/share/rrt2/reports`).
+pub fn reports_dir() -> Option<PathBuf> {
+    if let Some(p) = std::env::var_os("RRT2_REPORTS") {
+        return Some(PathBuf::from(p));
+    }
+    dirs::data_dir().map(|d| d.join("rrt2").join("reports"))
+}
+
 /// The files an install must have, relative to its folder: the base archive (every graphic and
 /// the maps' terrain), the executable (the cars, engines and tables the clone reads from it) and
 /// `default2.lng` (every text of the game). The other archives, `maps/`, `games/` and `anim/` are

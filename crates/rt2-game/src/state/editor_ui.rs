@@ -343,6 +343,7 @@ impl AppState {
             scene_fp,
             build: super::build_ui::BuildState::default(),
             last_autosave: (year, month),
+            reports: Default::default(),
             editor: Some(Box::new(ed)),
             campaign: None,
         }));

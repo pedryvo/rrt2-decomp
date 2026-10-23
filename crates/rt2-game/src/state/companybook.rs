@@ -171,7 +171,7 @@ impl AppState {
             _ => 3,
         };
         let gap = 6.0;
-        let bw = ((w - 3.0 * gap) / 4.0).min(190.0);
+        let bw = ((w - 4.0 * gap) / 5.0).min(190.0);
         for (i, n) in names.iter().enumerate() {
             ui.add(
                 panel,
@@ -185,6 +185,18 @@ impl AppState {
                 at(x + i as f32 * (bw + gap), y, bw, 28.0),
             );
         }
+        // The extra of the clone: charts, income by category, rankings and CSV export.
+        ui.add(
+            panel,
+            Kind::Button {
+                text: t.a("Reports"),
+                font: fnt(13.0),
+                action: super::reports_ui::A_REP_OPEN,
+                enabled: true,
+                hotkey: None,
+            },
+            at(x + 4.0 * (bw + gap), y, bw, 28.0),
+        );
     }
 
     /// Section buttons, mode buttons and the name / logo button.
