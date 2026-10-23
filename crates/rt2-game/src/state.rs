@@ -1282,7 +1282,8 @@ impl AppState {
         self.pending_scene = Some(Arc::new(scene));
         self.pending_live = Some((live_frame, true));
         self.live_alpha = 1.0;
-        let camera = self.fit_camera(map.width, map.height);
+        // The original opens a file with the view block it holds (docs/formats/map-gam.md 1.2).
+        let camera = self.camera_for_view(&live.view(), map.width, map.height);
         let scenario = Some(Box::new(crate::scenario_info::ScenarioInfo::from_save(
             &save,
             &raw,

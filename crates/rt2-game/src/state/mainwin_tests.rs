@@ -22,6 +22,10 @@ fn install() -> Option<PathBuf> {
 }
 
 fn state(viewport: (u32, u32), scale: u32) -> Option<AppState> {
+    state_for(viewport, scale, "maps/Africa After the Flood.MP2")
+}
+
+fn state_for(viewport: (u32, u32), scale: u32, file: &str) -> Option<AppState> {
     let install = install()?;
     let assets = Arc::new(GameAssets::open(&install).ok()?);
     let art = crate::artwork::load(&assets);
@@ -37,8 +41,7 @@ fn state(viewport: (u32, u32), scale: u32) -> Option<AppState> {
         viewport,
     };
     let mut s = AppState::new(init);
-    s.start(&install.join("maps/Africa After the Flood.MP2"))
-        .ok()?;
+    s.start(&install.join(file)).ok()?;
     s.update(0.0);
     while s.has_dialog() {
         s.close_dialog();
@@ -240,4 +243,135 @@ fn tool_icons_fill_plates_one_to_eight_and_stations_are_not_named_on_the_map() {
     // The first plate stays empty; the eight tools take the rest with no gap (the original).
     assert_eq!(TOOL_PLATE, [1, 2, 3, 4, 5, 6, 7, 8]);
     const { assert!(!maplabels::SHOW_STATION_NAMES) };
+}
+
+// ---- initial camera (docs/formats/map-gam.md 1.2) ------------------------------------------
+
+/// The saved view block of `file` and the map size, read straight from the install.
+fn file_view(file: &str) -> (rt2_formats::view::View, usize, usize) {
+    let raw = std::fs::read(install().unwrap().join(file)).unwrap();
+    let save = rt2_formats::map::Save::parse(&raw).unwrap();
+    (save.view(), save.map.width, save.map.height)
+}
+
+/// The ground point at the centre of the map area above the HUD frame.
+fn focus_of(s: &AppState) -> (f32, f32) {
+    let cam = game(s).camera;
+    let f = cam.target + cam.forward() * (s.hud_height() / cam.zoom);
+    (f.x, f.y)
+}
+
+#[test]
+fn a_saved_game_opens_where_the_save_was_looking() {
+    let file = "games/Tutorial.GAM";
+    let Some(s) = state_for((1600, 900), 100, file) else {
+        eprintln!("RT2_DIR is missing; skipping");
+        return;
+    };
+    let (view, w, h) = file_view(file);
+    let cam = game(&s).camera;
+    assert_eq!(i32::from(cam.rotation), view.rotation);
+    let native = rt2_render::NATIVE_ZOOM * rt2_formats::view::View::native_scale(view.zoom);
+    assert!(
+        (cam.zoom - native * s.scale.factor()).abs() < 1e-3,
+        "zoom {}",
+        cam.zoom
+    );
+    let (cx, cy) = view.center_tile(w, h);
+    let (fx, fy) = focus_of(&s);
+    assert!(
+        (fx - cx).abs() < 0.01 && (fy - cy).abs() < 0.01,
+        "({fx}, {fy}) vs ({cx}, {cy})"
+    );
+    // Through the picking path: the tile in the middle of the map area is the saved centre
+    // (elevation moves the picked tile a little).
+    let ph = s.hud_height();
+    let pos = (s.viewport.0 as f32 / 2.0, (s.viewport.1 as f32 - ph) / 2.0);
+    let save = s.save_with_camera().unwrap();
+    let (tx, ty) = crate::pick::screen_to_tile(&cam, s.viewport, pos, &save.map).unwrap();
+    let d = ((tx as f32 + 0.5 - cx).powi(2) + (ty as f32 + 0.5 - cy).powi(2)).sqrt();
+    assert!(d < 8.0, "picked ({tx}, {ty}), saved centre ({cx}, {cy})");
+}
+
+#[test]
+fn a_scenario_opens_focused_instead_of_on_the_whole_map() {
+    let Some(s) = state((1600, 900), 100) else {
+        eprintln!("RT2_DIR is missing; skipping");
+        return;
+    };
+    let (view, w, h) = file_view("maps/Africa After the Flood.MP2");
+    let cam = game(&s).camera;
+    let fit = s.fit_camera(w, h);
+    assert!(
+        cam.zoom > fit.zoom * 1.5,
+        "zoomed in on a region, not the whole map"
+    );
+    let (cx, cy) = view.center_tile(w, h);
+    let (fx, fy) = focus_of(&s);
+    assert!((fx - cx).abs() < 0.01 && (fy - cy).abs() < 0.01);
+}
+
+#[test]
+fn saving_writes_the_current_camera_and_reopening_restores_it() {
+    let file = "games/Tutorial.GAM";
+    let Some(mut s) = state_for((1600, 900), 100, file) else {
+        eprintln!("RT2_DIR is missing; skipping");
+        return;
+    };
+    // Move the camera through the real buttons, then save.
+    click(&mut s, A_ROTATE_RIGHT);
+    // Two clicks are a bit under one level (the original's levels double the scale).
+    click(&mut s, A_ZOOM_OUT);
+    click(&mut s, A_ZOOM_OUT);
+    let before = game(&s).camera;
+    let (fx, fy) = focus_of(&s);
+    let bytes = s.save_with_camera().unwrap().to_bytes();
+    let saved = rt2_formats::map::Save::parse(&bytes).unwrap();
+    let v = saved.view();
+    assert_eq!(v.rotation, i32::from(before.rotation));
+    assert_eq!(v.zoom, 4, "one level out from the file's level 5");
+    assert_eq!((v.width, v.height), (1024, 508));
+    assert_eq!((v.map_width, v.map_height), (300, 300));
+    let (cx, cy) = v.center_tile(300, 300);
+    assert!(
+        (cx - fx).abs() < 0.2 && (cy - fy).abs() < 0.2,
+        "({cx}, {cy}) vs ({fx}, {fy})"
+    );
+    // The fields the camera does not own are kept from the file.
+    let (orig, _, _) = file_view(file);
+    assert_eq!(
+        (v.head, v.person, v.company, v.tail),
+        (orig.head, orig.person, orig.company, orig.tail)
+    );
+    // Reopen: a fresh game from the written bytes has the same camera.
+    let cache = std::env::var_os("HOME")
+        .map(PathBuf::from)
+        .unwrap()
+        .join(".cache/rrt2");
+    std::fs::create_dir_all(&cache).unwrap();
+    let path = cache.join("camera-roundtrip.GAM");
+    std::fs::write(&path, &bytes).unwrap();
+    let mut t = state_for((1600, 900), 100, file).unwrap();
+    t.start(&path).unwrap();
+    t.update(0.0);
+    let after = game(&t).camera;
+    assert_eq!(after.rotation, before.rotation);
+    let level4 = rt2_render::NATIVE_ZOOM * 0.125 * t.scale.factor();
+    assert!(
+        (after.zoom - level4).abs() < 1e-3,
+        "the zoom snaps to the level"
+    );
+    let (ax, ay) = focus_of(&t);
+    assert!((ax - fx).abs() < 0.2 && (ay - fy).abs() < 0.2);
+    let _ = std::fs::remove_file(&path);
+}
+
+#[test]
+fn a_zeroed_or_out_of_range_block_falls_back_to_the_whole_map() {
+    let Some(s) = state((1600, 900), 100) else {
+        eprintln!("RT2_DIR is missing; skipping");
+        return;
+    };
+    let zero = rt2_formats::view::View::default();
+    assert_eq!(s.camera_for_view(&zero, 300, 300), s.fit_camera(300, 300));
 }

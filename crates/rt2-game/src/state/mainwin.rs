@@ -372,6 +372,76 @@ impl AppState {
         cam
     }
 
+    /// Screen pixels the HUD frame covers at the bottom of the window (the map is drawn above).
+    pub(super) fn hud_height(&self) -> f32 {
+        let k = self.scale.factor();
+        geometry(self.viewport.0 as f32 / k, self.viewport.1 as f32 / k).ph * k
+    }
+
+    /// The camera a file opens with: the saved view block of the original (zoom level, rotation
+    /// and the tile at the centre of its viewport; `0x477a60` re-applies the block through
+    /// `0x40ee50`, `0x40f160` and `0x40f3d0`, docs/formats/map-gam.md 1.2). The tile goes at the
+    /// centre of the map area above the HUD frame. A block the loader would not apply (zoom
+    /// outside 2..=7, as in a zeroed block) falls back to the whole map in view.
+    pub(super) fn camera_for_view(
+        &self,
+        view: &rt2_formats::view::View,
+        w: usize,
+        h: usize,
+    ) -> rt2_render::Camera {
+        use rt2_formats::view::View;
+        if !view.zoom_valid() {
+            return self.fit_camera(w, h);
+        }
+        let (x, y) = view.center_tile(w, h);
+        let mut cam = rt2_render::Camera {
+            target: rt2_render::camera::Vec2::new(x, y),
+            zoom: rt2_render::NATIVE_ZOOM * View::native_scale(view.zoom) * self.scale.factor(),
+            rotation: view.rotation.rem_euclid(4) as u8,
+        };
+        cam.target -= cam.forward() * (self.hud_height() / cam.zoom);
+        cam
+    }
+
+    /// The view block that describes `cam` (the inverse of [`Self::camera_for_view`]); the
+    /// fields the loader does not take from the camera (`mode`, `company`, `head`) stay as in
+    /// `base`. The zoom is rounded to the nearest of the original's levels 2..=7.
+    pub(super) fn view_of_camera(
+        &self,
+        cam: &rt2_render::Camera,
+        base: &rt2_formats::view::View,
+        w: usize,
+        h: usize,
+    ) -> rt2_formats::view::View {
+        use rt2_formats::view::{ZOOM_MAX, ZOOM_MIN};
+        let native = rt2_render::NATIVE_ZOOM * self.scale.factor();
+        let level = ZOOM_MAX + (cam.zoom / native).max(1e-6).log2().round() as i32;
+        let focus = cam.target + cam.forward() * (self.hud_height() / cam.zoom);
+        let mut v = *base;
+        v.set_center_tile(
+            (focus.x, focus.y),
+            level.clamp(ZOOM_MIN, ZOOM_MAX),
+            i32::from(cam.rotation),
+            w,
+            h,
+        );
+        v
+    }
+
+    /// The running game as a `Save` for writing: the world's state plus the current camera in
+    /// the view block (the saver `0x477540` copies the main window's view there).
+    pub(super) fn save_with_camera(&self) -> Option<rt2_formats::map::Save> {
+        let Screen::Game(g) = &self.screen else {
+            return None;
+        };
+        let mut s = g.world.to_save();
+        let base = s.view();
+        let (w, h) = g.map_size;
+        let v = self.view_of_camera(&g.camera, &base, w, h);
+        s.set_view(&v);
+        Some(s)
+    }
+
     /// Builds the main window over the map: the frame of the original art (rails, bottom frame
     /// with the radar, center and activity boxes), the tool icons, the tab strip, the
     /// rotate/zoom buttons and the compass, all placed by [`Geometry`].

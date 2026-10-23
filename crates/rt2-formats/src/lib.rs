@@ -11,3 +11,4 @@ pub mod savefields;
 pub mod sound;
 pub mod terrain;
 pub mod ui;
+pub mod view;

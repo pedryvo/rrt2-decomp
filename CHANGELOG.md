@@ -29,6 +29,8 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Change: the message history moved into the activity box (click the logo box; Briefing and Close buttons there); the center box opens on the Companies tab; the tabs show a tooltip with their name.
 - Docs: docs/ui.md "Janela principal" and docs/reference/screens.md C1/C2 describe the layout, the art banks and the responsive scheme.
 - Fix: main window: no duplicate station name under the city name, tool icons without the empty plate, no stray right rail, widened frame filled between date box and tabs
+- Feature: campaigns, scenarios and saves open with the camera of the original (the view block of the file: zoom level, rotation and the centre tile), and every save writes the current camera; the original has no other focus rule.
+- RE: the 0x40-byte view block of .MAP/.MP2/.GAM files is decoded (`rt2_formats::view`, docs/formats/map-gam.md 1.2): zoom 2..7, scroll, rotation, map size, local person and company, re-applied by `0x477a60` through `0x40ee50`, `0x40f160`, `0x40f3d0`, `0x467bd0`, `0x467fd0`.
 
 ## v0.3.0 — 2026-10-23
 - Fix: Lay Track drag now starts and ends on a station when pressed on its building (snap to the station's tile), so dragging from one station to another works as in the original

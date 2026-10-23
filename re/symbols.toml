@@ -5863,3 +5863,87 @@ name = "scenario_robbery_level"
 kind = "data"
 comment = "i32 overall robbery level of the scenario (state +0x38b6); Robbers page slider 0x83cc; 0x573e02 creeps back to it each January"
 spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x577b98"
+name = "view_block"
+kind = "table"
+comment = "16 dwords da vista gravados/lidos em +0x8819 (0x233C): head, zoom 2..7, scroll x/y, viewport w/h, rotacao, mapa w/h, pessoa local, empresa local, 5 sem uso"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x40ee50"
+name = "view_rotate"
+kind = "function"
+comment = "fastcall(view=janela+0x7b, delta): gira a vista (delta & 3 quartos de volta) mantendo o centro, usa as tabelas de extremos por zoom/rotacao de 0x472980"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x40f160"
+name = "view_set_zoom"
+kind = "function"
+comment = "fastcall(view, zoom): muda para o nivel de zoom absoluto (0x40181b com a diferenca)"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x40181b"
+name = "view_zoom_by"
+kind = "function"
+comment = "fastcall(view, delta): soma ao nivel de zoom (view+4), so se o resultado fica em 2..7, mantendo o centro do viewport"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x40f3d0"
+name = "view_set_scroll"
+kind = "function"
+comment = "fastcall(view, x, y): scroll absoluto do canto superior esquerdo (view+8, +0xc) em pixels do zoom atual; redesenha o mapa"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x476fa0"
+name = "view_apply_block"
+kind = "function"
+comment = "fastcall(bloco de 16 dwords, so_vista): reaplica um bloco de vista a janela 0xfd: view_rotate, view_set_zoom, view_set_scroll, dword 0; se so_vista == 0 tambem pessoa (0x467bd0) e empresa (0x467fd0)"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x467bd0"
+name = "set_local_person"
+kind = "function"
+comment = "fastcall(pessoa): define a pessoa local (0x566ca4) e a empresa em que e chairman (0x467fd0); dword 9 do bloco de vista"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x566ca4"
+name = "local_person"
+kind = "global"
+comment = "pessoa local (slot do pool de pessoas); dword 9 do bloco de vista"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x574414"
+name = "local_company"
+kind = "global"
+comment = "empresa local (0 = nenhuma); dword 10 do bloco de vista"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x405080"
+name = "view_center_on"
+kind = "function"
+comment = "fastcall(view, empresa, estacao/predio, x, y): centra a vista num objeto ou tile (usado pelo seguimento de eventos 0x405240 e pela janela principal), nao e chamada ao iniciar jogo"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x405240"
+name = "view_follow_event"
+kind = "function"
+comment = "segue o evento atual na vista (modos 1/2/3/6/7 de 0x574788) com timeouts de 5000/12000/9000 ms; chamada por game_frame_update"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x472980"
+name = "map_set_size"
+kind = "function"
+comment = "fastcall(largura, altura): define o tamanho do mapa (0x55e7a4/a0) e monta as tabelas de extremos de tela por zoom 2..7 e rotacao (0x57422c, 0x574700), pools e buffers"
+spec = "docs/formats/map-gam.md"

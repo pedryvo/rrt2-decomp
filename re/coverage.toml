@@ -3,10 +3,10 @@
 # Ver docs/re-workflow.md.
 #
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
-# Classificadas (categoria != unknown): 1310 (44.5%)
-# Por categoria: lib=258, platform=114, render=11, audio=54, ui=275, sim=598, unknown=1635
-# Por estado:   unknown=2309, named=164, spec=171, verified=301
-# Entradas manuais: 562
+# Classificadas (categoria != unknown): 1318 (44.8%)
+# Por categoria: lib=258, platform=114, render=11, audio=54, ui=283, sim=598, unknown=1627
+# Por estado:   unknown=2300, named=168, spec=176, verified=301
+# Entradas manuais: 571
 # sim spec coverage: 71.7% (429 de 598 funcoes sim em spec/verified)
 
 [[function]]
@@ -2027,9 +2027,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x40181b"
 size = 5
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "docs/formats/map-gam.md 1.2; faixa de zoom 2..7"
+manual = true
 
 [[function]]
 addr = "0x401820"
@@ -7756,16 +7757,18 @@ manual = true
 [[function]]
 addr = "0x405080"
 size = 433
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "named"
+why = "centra a vista num objeto; nao participa do inicio de jogo; corpo nao analisado em detalhe"
+manual = true
 
 [[function]]
 addr = "0x405240"
 size = 306
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "named"
+why = "seguimento de eventos na vista; nao participa do inicio de jogo"
+manual = true
 
 [[function]]
 addr = "0x405390"
@@ -8287,16 +8290,18 @@ why = "no-evidence"
 [[function]]
 addr = "0x40ee50"
 size = 781
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "docs/formats/map-gam.md 1.2; rotacao da vista; crates/rt2-formats/src/view.rs, rt2-game camera_for_view"
+manual = true
 
 [[function]]
 addr = "0x40f160"
 size = 8
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "docs/formats/map-gam.md 1.2; zoom absoluto da vista"
+manual = true
 
 [[function]]
 addr = "0x40f170"
@@ -8315,9 +8320,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x40f3d0"
 size = 245
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "docs/formats/map-gam.md 1.2; scroll absoluto"
+manual = true
 
 [[function]]
 addr = "0x40f4d0"
@@ -11809,8 +11815,9 @@ why = "no-evidence"
 addr = "0x467bd0"
 size = 1024
 category = "ui"
-status = "unknown"
-why = "string:brlogo%s%s.imb"
+status = "named"
+why = "docs/formats/map-gam.md 1.2; pessoa local (dword 9); corpo nao analisado"
+manual = true
 
 [[function]]
 addr = "0x467fd0"
@@ -12536,9 +12543,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x472980"
 size = 3085
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "named"
+why = "map_set_size: tabelas de extremos por zoom/rotacao (docs/formats/map-gam.md 1.2); resto nao analisado"
+manual = true
 
 [[function]]
 addr = "0x473590"
@@ -12736,9 +12744,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x476fa0"
 size = 154
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "docs/formats/map-gam.md 1.2; aplica o bloco de vista"
+manual = true
 
 [[function]]
 addr = "0x477040"

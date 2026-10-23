@@ -144,7 +144,7 @@ impl AppState {
         let dir = self.own_saves_dir()?;
         let meta = self.current_meta(kind).ok_or("no game")?;
         let thumb = g.radar.as_ref().map(thumbnail_of);
-        let bytes = g.world.to_save().to_bytes();
+        let bytes = self.save_with_camera().ok_or("no game")?.to_bytes();
         saves::write_save(&dir, stem, &bytes, &meta, thumb.as_ref()).map_err(|e| format!("{e:#}"))
     }
 
@@ -232,7 +232,10 @@ impl AppState {
             return;
         };
         let thumb = g.radar.as_ref().map(thumbnail_of);
-        let bytes = g.world.to_save().to_bytes();
+        let Some(save) = self.save_with_camera() else {
+            return;
+        };
+        let bytes = save.to_bytes();
         let result = self.own_saves_dir().and_then(|dir| {
             saves::autosave(&dir, keep.max(1) as usize, &bytes, &meta, thumb.as_ref())
                 .map_err(|e| format!("{e:#}"))

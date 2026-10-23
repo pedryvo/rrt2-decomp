@@ -16,7 +16,7 @@ O arquivo é a imagem de blocos de globais, na ordem (confiança alta, vem do c�
 | 0x0000 | 4 | `0x567b38` | versão (`0x233C`) |
 | 0x0004 | 0x878F | `0x567b3c..` | bloco de cabeçalho (ver abaixo); endereço = `0x567b38 + offset` |
 | 0x8793 | 0x86 | `0x566d00` | bloco extra (só versão > `0x2334`), não decodificado |
-| 0x8819 | 0x40 | `0x577b98` | vista/câmera: 16 dwords (`0x577b98..0x577bd8`) passados à janela `0xfd` (posição/zoom) e a `0x467bd0`/`0x467fd0` |
+| 0x8819 | 0x40 | `0x577b98` | **vista/câmera**: 16 dwords (`0x577b98..0x577bd8`), decodificados na seção 1.2 (`rt2_formats::view`) |
 | 0x8859 | 0x29C8 | `game_running` `0x5704e8` (via conversão) | **estado global do jogo** (data, hora, velocidade, ...) |
 | 0xB221 | 0xB6 | `0x574840` | bloco com `game_seed` (`+0x2e` = `0x57486e`, arquivo 0xB24F) |
 | 0xB2D7 | 10*w*h | `DAT_00574c24` | tiles (10 bytes no arquivo, 15 na memória: 5 bytes de estado de execução zerados no load) |
@@ -40,6 +40,28 @@ O último byte da última regra é o fim do arquivo (verificado nos 33 arquivos 
 | 0x7474..0x8793 | restante do bloco (opções, tabelas por tipo); em maps é quase só zeros. Inclui **53 registros de 9 bytes** em `0x5702cb` (arquivo 0x2793..0x297c): u8 **desativado pelo cenário** (0 = permitido, o padrão; `0x433370`, `0x433550` só contam o tipo se o byte 0 vale 0), u32 = 100, u32 = 2 por padrão, indexados por tipo de indústria (página Industry, 10.11) |
 
 O "bloco quase todo zero até 0xB2D6" da primeira passada **não é um bloco só**: é o fim do cabeçalho, o bloco `0x86`, a vista, o **estado global** e o bloco do `game_seed`.
+
+### 1.2 Bloco de vista (0x40 bytes, alta; `crates/rt2-formats/src/view.rs`)
+
+O gravador `0x477540` copia sete dwords da janela principal do mapa (`FUN_00502f60(0xfd)`, campos de `janela+0x7b` a `+0x93`) para os globais `0x577b98..`, acrescenta o tamanho do mapa, a pessoa local e a empresa local e grava os 16 dwords depois do bloco `0x86` (e antes do estado global). O carregador `0x477a60` (e o aplicador `0x476fa0`, que faz o mesmo a partir de um bloco em memória) lê os 16 dwords e os reaplica à janela, nesta ordem: `0x40ee50(janela+0x7b, rotação - rotação_atual)`, `0x40f160(zoom)` (muda o zoom pela diferença, `0x40181b`), `0x40f3d0(scroll x, scroll y)`, `*(janela+0x7b) = dword 0`, `0x467bd0(pessoa)` e `0x467fd0(empresa)`. Não há outro cálculo de foco: **o original usa o bloco salvo**, e não escolhe cidade inicial, sede da empresa nem primeira cidade. Os campos de tamanho do viewport (dwords 4 e 5) não são reaplicados (a janela mantém o seu).
+
+| Dword | Global | Campo da janela | Conteúdo |
+|---|---|---|---|
+| 0 | `0x577b98` | `+0x7b` | copiado de volta sem uso (0 em todos os arquivos) |
+| 1 | `0x577b9c` | `+0x7f` | **zoom** 2..7; `0x40181b` ignora valores fora de `1 < z < 8`. Um tile mede `2^z` pixels de largura na tela (nível 7 = 128 px, a arte nativa) |
+| 2, 3 | `0x577ba0/a4` | `+0x83/+0x87` | **scroll** x, y: canto superior esquerdo do viewport, em pixels de tela no zoom e rotação do bloco (`0x40f3d0`) |
+| 4, 5 | `0x577ba8/ac` | `+0x8b/+0x8f` | tamanho do viewport (1024 x 508 em todos os arquivos) |
+| 6 | `0x577bb0` | `+0x93` | **rotação** 0..3 (`0x40ee50` gira pela diferença, módulo 4) |
+| 7, 8 | `0x577bb4/b8` | | largura e altura do mapa (`0x55e7a4`, `0x55e7a0`); o carregador as passa a `0x472980` |
+| 9 | `0x577bbc` | | pessoa local (`0x566ca4`); `0x467bd0` |
+| 10 | `0x577bc0` | | empresa local (`0x574414`, 0 = nenhuma); `0x467fd0` |
+| 11..15 | | | não usados (zero em todos) |
+
+**Conversão para tile.** `0x472980` (que a carga chama com o tamanho do mapa) monta, por zoom `z` e rotação, os extremos do mapa em pixels com deslocamentos de `z` bits: o diamante de um tile tem `2^z` de largura e `2^(z-1)` de altura. Com `(x', y')` as coordenadas do tile no quadro girado, a tela é `sx = (x' - y') * 2^(z-1)`, `sy = (x' + y') * 2^(z-2)` (origem no canto (0,0) do mapa girado; a elevação desloca o desenho, não o sistema de scroll). O centro do viewport é `(scroll_x + 512, scroll_y + 254)`. Quadro girado a partir do tile `(x, y)` num mapa `w x h`: rotação 0 `(x, y)`; 1 `(y, w - x)`; 2 `(w - x, h - y)`; 3 `(h - y, x)`. A rotação 1 coloca o canto `(w, 0)` no topo (a mesma convenção do nosso `Camera`, rotação 1). Verificação (`crates/rt2-formats/tests/view.rs`, nos 128 arquivos de `maps/` e `games/`): o centro fica dentro do mapa em todos, e em mais de 80% dentro de 40 tiles de uma cidade/região; no `Tutorial.GAM` (zoom 5, scroll 2231,2137, rotação 1) o centro cai a 3,5 tiles de uma cidade (os saves são da vista do jogador; os `.MAP` são a vista em que o autor do cenário parou, nem sempre sobre uma cidade).
+
+**Valores dos arquivos originais.** Zoom 2..7 (mediana 3), rotação 1 em todos (`0`, `3` em um ou dois), `person` 1 (três arquivos 0), empresa 0..12, viewport 1024x508, dword 0 e 11..15 sempre 0. **Bloco zerado:** o carregador não ramifica; `0x40181b` ignora o zoom 0 (a janela fica no zoom que já tinha), a rotação volta a 0, o scroll vai a (0, 0) e pessoa e empresa a 0. O clone, nesse caso (e em zoom fora de 2..7), abre com o mapa inteiro enquadrado.
+
+**Clone.** `Save::view()` e `Save::set_view()` lêem e gravam o bloco; o gravador do clone (`Save::to_bytes`) preserva os bytes e o jogo grava a câmera atual (`View::set_center_tile`: zoom arredondado ao nível 2..7 mais próximo, rotação, centro da área do mapa acima da moldura da janela principal) em todo save (manual, rápido e automático) mantendo `head`, `person`, `company` e o resto do arquivo. Ao abrir campanha, cenário ou save, `AppState::camera_for_view` (`crates/rt2-game/src/state/mainwin.rs`) converte o bloco: nível `z` vira `NATIVE_ZOOM * 2^(z-7) * escala da interface`, a rotação é a mesma, e o tile central vai para o centro da área do mapa.
 
 ### 1.1 Diferenças 0x233C vs 0x2348 (alta; verificado em 95 `.MP2` e em 3 saves gerados pelo oráculo)
 
