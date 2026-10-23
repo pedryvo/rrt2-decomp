@@ -4,6 +4,7 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 
 ## Unreleased
 
+- Docs: Windows installer and macOS app bundle in the v1.0 scope
 - Docs: first-run setup screen (detect or pick the original install, then Play) in the v1.0 scope
 - Docs: multiplayer (deterministic lockstep between copies of the clone) moved into the v1.0 scope
 - Feature: recent interface strings translated to Spanish, German, Chinese and Russian.

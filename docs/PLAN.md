@@ -266,6 +266,7 @@ O usuário decidiu que todos os itens abaixo entram na 1.0, inclusive o multipla
 - [ ] Mods: dados de jogo (locomotivas, cargas, indústrias, construções, efeitos) exportáveis do EXE para TOML e carregáveis de pacotes de mod, com o EXE como padrão
 - [ ] Acessibilidade: paletas para daltonismo, tamanho de fonte independente da escala da UI, legendas para avisos sonoros
 - [x] Empacotamento: AppImage e Flatpak no Linux, além dos tarballs e do zip do Windows
+- [ ] Windows: instalador (Inno Setup) com atalho no menu Iniciar, desinstalador e ícone do projeto embutido no `.exe`, além do zip portátil; manifesto do winget. macOS: `.app` com ícone num `.dmg`. Assinatura de código (Windows e notarização da Apple) depende de decisão do usuário
 - [ ] Guia do jogador (instalação, primeiros passos, diferenças em relação ao original, recursos modernos) nos seis idiomas
 
 **Multiplayer** (entre cópias do clone; não conversa com o DirectPlay do original)
