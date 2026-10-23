@@ -1447,6 +1447,13 @@ impl AppState {
             copy_from,
         }) {
             Ok(train) => {
+                // A train only leaves once 0x2c marks it ready (commands.md). The original's window
+                // sends it after the stops are edited; we mark right away so a train bought with
+                // its default stops runs, and later stop edits still apply through their commands.
+                if let Err(e) = self.issue(BuildCmd::TrainMark { train }) {
+                    let m = self.cmd_error_text(e, 354);
+                    self.toast_text(m);
+                }
                 self.close_dialog();
                 self.push_dialog(Dialog::TrainEdit {
                     train,
