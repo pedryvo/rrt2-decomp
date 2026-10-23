@@ -3,6 +3,8 @@
 Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Docs or RE (reverse-engineering finding). Append `(original bug)` to fixes of bugs present in the original game.
 
 ## Unreleased
+
+- Docs: multiplayer (deterministic lockstep between copies of the clone) moved into the v1.0 scope
 - Feature: recent interface strings translated to Spanish, German, Chinese and Russian.
 - Feature: Map Options has the Special Restrictions, Regional and Computer A.I. pages, and the Industries tab lists every industry type with the original's "Allow this building type for this map" box.
 - Feature: the overview panel of the map editor uses the editor's four-button plate, and its side buttons pick the overview mode.

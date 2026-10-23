@@ -177,7 +177,7 @@ Cada tipo de tarefa vai para o modelo mais barato que a resolve bem. Os agentes 
 - Mods via dados em RON/TOML.
 - Localização: inglês e PT-BR.
 - Acessibilidade: paletas para daltonismo e tamanho de fonte.
-- Extra (pós-1.0): multiplayer lockstep, viável por causa da simulação determinística.
+- Multiplayer lockstep (na 1.0 por decisão do usuário em 2026-10-23), viável por causa da simulação determinística.
 
 ## 8. Riscos
 
@@ -243,10 +243,10 @@ O manual e o guia de estratégia (`docs/reference/manual-rules.md`) servem para 
 
 ## 12. Escopo da versão 1.0 (decidido em 2026-10-23)
 
-O usuário decidiu que todos os itens abaixo entram na 1.0. O multiplayer continua pós-1.0. Cada item marcado `[x]` precisa estar implementado, testado (inclusive pelo caminho real de entrada, quando for interface) e documentado.
+O usuário decidiu que todos os itens abaixo entram na 1.0, inclusive o multiplayer (decisão de 2026-10-23). Cada item marcado `[x]` precisa estar implementado, testado (inclusive pelo caminho real de entrada, quando for interface) e documentado.
 
 **Jogo completo**
-- [ ] Todas as telas do inventário (`docs/reference/screens.md`) prontas, menos as exclusivas do multiplayer
+- [ ] Todas as telas do inventário (`docs/reference/screens.md`) prontas, inclusive as do multiplayer
 - [ ] Vídeos de introdução (Smacker)
 - [x] Câmera inicial como no original: decodificar o bloco de vista do save (`0x8819`, 16 dwords lidos por `0x467bd0`/`0x467fd0`), focar a cidade inicial ao abrir campanhas e cenários e gravar a câmera atual ao salvar
 - [ ] Janela principal com o visual do original (referência: screenshot do usuário de 2026-10-23): moldura de metal e canos da arte original em 9-slice, abas da caixa central com ícones, caixas de caixa e data, caixa da direita com logo e retrato, rosa dos ventos girando com a câmera, nomes das cidades em amarelo-creme com sombra e a linha da empresa na caixa central. Adaptável a qualquer resolução e escala; não precisa ser idêntica.
@@ -266,6 +266,14 @@ O usuário decidiu que todos os itens abaixo entram na 1.0. O multiplayer contin
 - [ ] Acessibilidade: paletas para daltonismo, tamanho de fonte independente da escala da UI, legendas para avisos sonoros
 - [ ] Empacotamento: AppImage e Flatpak no Linux, além dos tarballs e do zip do Windows
 - [ ] Guia do jogador (instalação, primeiros passos, diferenças em relação ao original, recursos modernos) nos seis idiomas
+
+**Multiplayer** (entre cópias do clone; não conversa com o DirectPlay do original)
+- [ ] Engenharia reversa das regras de multiplayer do original: opções da partida (K3), o que muda na simulação com vários humanos (pessoa e empresa locais, `0x467bd0`/`0x467fd0`, pausa, velocidade, aprovação do anfitrião), mensagens de rede e chat; spec em `docs/spec/multiplayer.md`
+- [ ] Lockstep determinístico: só comandos trafegam, agendados alguns ticks à frente; checksum do estado periódico e detecção de dessincronização com dump do diff de estado
+- [ ] Rede: anfitrião e clientes por TCP (ou QUIC), conexão direta por IP e porta; tolerância a atraso e perda; desconexão sem derrubar a partida (a IA ou o anfitrião assume a empresa)
+- [ ] Telas K1–K3 e H3: menu multiplayer, conexão, preparação com aprovação e ping por jogador, escolha do personagem; chat dentro do jogo
+- [ ] Entrar no meio da partida e reconectar (o anfitrião envia o save e os comandos pendentes); salvar e carregar partidas multiplayer
+- [ ] Testes: duas ou mais instâncias headless na mesma máquina jogando um replay e terminando com checksums idênticos, no CI; teste com perda e atraso simulados
 
 **Qualidade**
 - [ ] Rodada de testes de jogo do usuário com campanhas de ponta a ponta, e os bugs encontrados corrigidos
