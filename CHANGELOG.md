@@ -4,6 +4,7 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 
 ## Unreleased
 
+- Docs: first-run setup screen (detect or pick the original install, then Play) in the v1.0 scope
 - Docs: multiplayer (deterministic lockstep between copies of the clone) moved into the v1.0 scope
 - Feature: recent interface strings translated to Spanish, German, Chinese and Russian.
 - Feature: Map Options has the Special Restrictions, Regional and Computer A.I. pages, and the Industries tab lists every industry type with the original's "Allow this building type for this map" box.

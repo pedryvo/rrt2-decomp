@@ -173,6 +173,7 @@ Cada tipo de tarefa vai para o modelo mais barato que a resolve bem. Os agentes 
 - Notificações configuráveis e um histórico de eventos.
 
 **Plataforma**
+- [ ] Tela inicial de configuração (primeira execução e pelo menu): detecta instalações do original (Steam, GOG, Lutris, prefixos do Wine, pastas comuns do Windows), deixa escolher a pasta com o seletor nativo (portal do xdg no Linux, o que também resolve o acesso do Flatpak), valida os arquivos (PK2 e EXE esperados, com mensagem clara do que falta), lembra a escolha e tem o botão Jogar; sem nenhuma pasta configurada, abre essa tela em vez de sair com erro no terminal
 - Linux e Windows nativos, suporte a controle e Steam Deck.
 - Mods via dados em RON/TOML.
 - Localização: inglês e PT-BR.
