@@ -389,3 +389,132 @@ fn a_territory_can_be_removed_from_its_dialog() {
     assert_eq!(save_of(&s).territories.count, n - 1);
     std::fs::remove_dir_all(dir).ok();
 }
+
+/// Clicks the widget with `action` through the real mouse path (cursor move, press, release at
+/// the middle of its laid-out rectangle). For a list, `row` picks the row.
+fn mouse_click(s: &mut AppState, action: u32, row: Option<usize>) {
+    use rt2_ui::Kind;
+    let found =
+        s.ui.draw_order()
+            .into_iter()
+            .find_map(|(_, id)| match &s.ui.node(id).kind {
+                Kind::Button { action: a, .. }
+                | Kind::Toggle { action: a, .. }
+                | Kind::Hotspot { action: a, .. }
+                    if *a == action =>
+                {
+                    Some((id, 0.5))
+                }
+                Kind::List {
+                    action: a,
+                    scroll,
+                    row_h,
+                    ..
+                } if *a == action => {
+                    let r = row.unwrap_or(0) as f32 - *scroll as f32 + 0.5;
+                    Some((id, r * *row_h / s.ui.rect(id).h))
+                }
+                _ => None,
+            });
+    let (id, fy) = found.unwrap_or_else(|| panic!("no widget with action {action}"));
+    let (r, k) = (s.ui.rect(id), s.scale.factor());
+    s.cursor_moved((r.x + r.w * 0.5) * k, (r.y + r.h * fy) * k);
+    s.mouse_button(true, true);
+    s.mouse_button(true, false);
+}
+
+fn type_keys(s: &mut AppState, text: &str) {
+    use winit::keyboard::KeyCode;
+    for ch in text.chars() {
+        let code = match ch {
+            '0' => KeyCode::Digit0,
+            '1' => KeyCode::Digit1,
+            '2' => KeyCode::Digit2,
+            '3' => KeyCode::Digit3,
+            '4' => KeyCode::Digit4,
+            '5' => KeyCode::Digit5,
+            _ => KeyCode::Digit6,
+        };
+        s.key(code, true, false, Some(&ch.to_string()));
+        s.key(code, false, false, None);
+    }
+}
+
+/// Special Restrictions, Regional, Computer A.I. and Industry pages, driven by mouse clicks and
+/// key presses on the laid-out dialog.
+#[test]
+fn the_new_option_pages_work_through_the_mouse_and_keyboard() {
+    use super::editor_options_ui::*;
+    use rt2_sim::editor_opts as o;
+    let Some((mut s, dir)) = state("newpages") else {
+        return;
+    };
+    assert!(s.editor_show_dialog("special"));
+    let was = o::special(save_of(&s), o::Special::NoMoney);
+    mouse_click(&mut s, A_SPECIAL + 2, None);
+    assert_eq!(o::special(save_of(&s), o::Special::NoMoney), !was);
+    assert_eq!(save_of(&s).header[0x8700], u8::from(!was));
+    mouse_click(&mut s, A_SPECIAL + 9, None);
+    assert!(save_of(&s).header[0x8974] != 0);
+    // Start offset: the field takes digits, the buttons step by 10.
+    mouse_click(&mut s, A_MODAL + 620 + (F_START_OFFSET - 30), None);
+    for _ in 0..4 {
+        s.key(winit::keyboard::KeyCode::Backspace, true, false, None);
+    }
+    type_keys(&mut s, "45");
+    assert_eq!(o::start_offset_days(save_of(&s)), 45);
+    mouse_click(&mut s, A_START_OFF + 1, None);
+    assert_eq!(o::start_offset_days(save_of(&s)), 55);
+    assert!(s.editor_dirty());
+
+    // Regional radio groups and the A.I. page.
+    assert!(s.editor_show_dialog("regional"));
+    mouse_click(&mut s, A_COST + 3 + 2, None); // diesel, low
+    mouse_click(&mut s, A_COST, None); // steam, high
+    mouse_click(&mut s, A_TRAFFIC + 2, None);
+    let h = &save_of(&s).header;
+    assert_eq!((h[0x235], h[0x236], h[0x238]), (0, 2, 2));
+    assert!(s.editor_show_dialog("ai"));
+    mouse_click(&mut s, A_AI_TRACK, None); // aggressive stores 2
+    mouse_click(&mut s, A_AI_DIV + 2, None); // none
+    let h = &save_of(&s).header;
+    assert_eq!((h[0x8975], h[0x8976]), (2, 2));
+
+    // Industry list: pick a row with the mouse, flip its box.
+    assert!(s.editor_show_dialog("industries"));
+    mouse_click(&mut s, A_IND_LIST, Some(5));
+    let Some(Modal::Options(op)) = s.ed().unwrap().modal.clone() else {
+        panic!("options open");
+    };
+    assert_eq!(op.ind_sel, 5);
+    let was = save_of(&s).header[0x8793 + 9 * 6];
+    mouse_click(&mut s, A_IND_TOGGLE, None);
+    assert_eq!(save_of(&s).header[0x8793 + 9 * 6], 1 - was.min(1));
+    std::fs::remove_dir_all(dir).ok();
+}
+
+/// The side buttons of the overview panel pick the overview mode (`0x494f40` ids `0x7d8..`); the
+/// editor variant of the window has four of them.
+#[test]
+fn the_overview_side_buttons_pick_the_mode_by_mouse() {
+    use super::editor_ui::A_SUB;
+    let Some((mut s, dir)) = state("overview") else {
+        return;
+    };
+    s.editor_show_group("overview", 0, None);
+    assert_eq!(s.ed().unwrap().sub, 0);
+    mouse_click(&mut s, A_SUB + 2, None);
+    assert_eq!(s.ed().unwrap().sub, 2);
+    mouse_click(&mut s, A_SUB + 3, None);
+    assert_eq!(s.ed().unwrap().sub, 3);
+    mouse_click(&mut s, A_SUB, None);
+    assert_eq!(s.ed().unwrap().sub, 0);
+    // The fifth button of the full window is not in the editor variant.
+    let has = |s: &AppState, a: u32| {
+        s.ui.draw_order().into_iter().any(|(_, id)| {
+            matches!(&s.ui.node(id).kind, rt2_ui::Kind::Hotspot { action, .. } if *action == a)
+        })
+    };
+    assert!(has(&s, A_SUB + 3) && !has(&s, A_SUB + 4));
+    std::fs::remove_dir_all(dir).ok();
+}

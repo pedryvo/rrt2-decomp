@@ -7,8 +7,10 @@ use rt2_sim::editor_opts::{self as opts, Controller, OptError};
 use rt2_ui::{Align, Kind};
 
 use super::editor_modals::{
-    A_OPT_BASE, Ctx, F_CASH, F_PORT_Q, F_ROB_LEVEL, F_ROB_NAME, F_ROB_YEAR, OptionsState,
+    A_OPT_BASE, Ctx, F_CASH, F_PORT_Q, F_ROB_LEVEL, F_ROB_NAME, F_ROB_YEAR, F_START_OFFSET,
+    OptionsState,
 };
+use super::editor_ui::A_MODAL;
 use super::editor_ui::{BAD, HEAD, MUTED, TEXT};
 use super::{AppState, Screen};
 
@@ -36,6 +38,34 @@ pub(super) const A_PORT_DEM: u32 = A_OPT_BASE + 196; // + 0..8
 pub(super) const A_ROB_LEVEL: u32 = A_OPT_BASE + 205; // -10, +10
 /// Last action id of these pages (exclusive).
 pub(super) const A_OPT_END: u32 = A_OPT_BASE + 210;
+/// Actions of the Special Restrictions, Regional, Computer A.I. and Industry pages; they sit in
+/// the gap between the text fields (`A_MODAL + 620..650`) and the end of the dialog range.
+pub(super) const A_SPEC_BASE: u32 = A_MODAL + 650;
+pub(super) const A_SPECIAL: u32 = A_SPEC_BASE; // + 0..10
+pub(super) const A_START_OFF: u32 = A_SPEC_BASE + 10; // -10, +10
+pub(super) const A_COST: u32 = A_SPEC_BASE + 12; // + 3 * row + level
+pub(super) const A_TRAFFIC: u32 = A_SPEC_BASE + 21; // + level
+pub(super) const A_AI_TRACK: u32 = A_SPEC_BASE + 24; // + 0..3: aggressive, moderate, conservative
+pub(super) const A_AI_DIV: u32 = A_SPEC_BASE + 27; // + 0..3: aggressive, moderate, none
+pub(super) const A_IND_TOGGLE: u32 = A_SPEC_BASE + 30;
+pub(super) const A_IND_LIST: u32 = A_SPEC_BASE + 31;
+pub(super) const A_SPEC_END: u32 = A_SPEC_BASE + 32;
+
+/// A wrapped label (the hints of the pages).
+fn wrap(c: &mut Ctx, x: f32, y: f32, w: f32, h: f32, text: &str, color: rt2_ui::Color) {
+    let l = c.rect(x, y, w, h);
+    c.ui.add(
+        c.b,
+        Kind::Label {
+            text: text.to_owned(),
+            font: c.f,
+            color,
+            align: Align::Left,
+            wrap: true,
+        },
+        l,
+    );
+}
 
 /// Values of the supplied-cargo list: none, then the 45 cargos.
 fn supply_values() -> Vec<u8> {
@@ -482,6 +512,182 @@ impl AppState {
         }
     }
 
+    // ---- Special restrictions, regional, computer A.I., industry types ----------------------
+
+    pub(super) fn draw_special(&self, c: &mut Ctx, o: &OptionsState) {
+        let Some(s) = self.opt_save() else { return };
+        let t = &self.texts;
+        let y0 = c.top() + 50.0;
+        c.label(20.0, y0, 200.0, &t.get(3329, "Start offset days"), HEAD);
+        c.button(230.0, y0, 44.0, "-10", A_START_OFF);
+        let v = self.typed(o, F_START_OFFSET, opts::start_offset_days(s).to_string());
+        c.field(280.0, y0, 70.0, &v, F_START_OFFSET);
+        c.button(356.0, y0, 44.0, "+10", A_START_OFF + 1);
+        wrap(
+            c,
+            20.0,
+            y0 + 28.0,
+            740.0,
+            48.0,
+            &t.get(3330, "Offset, in days, to start of this scenario."),
+            MUTED,
+        );
+        for (k, f) in opts::Special::ALL.into_iter().enumerate() {
+            let y = y0 + 84.0 + 40.0 * k as f32;
+            c.toggle(
+                20.0,
+                y,
+                260.0,
+                &t.get(f.text_id(), "?"),
+                A_SPECIAL + k as u32,
+                opts::special(s, f),
+            );
+            wrap(
+                c,
+                296.0,
+                y - 4.0,
+                464.0,
+                40.0,
+                &t.get(f.text_id() + 1, ""),
+                MUTED,
+            );
+        }
+    }
+
+    pub(super) fn draw_regional(&self, c: &mut Ctx) {
+        let Some(s) = self.opt_save() else { return };
+        let t = &self.texts;
+        let y0 = c.top() + 56.0;
+        let levels = [
+            t.get(2886, "High"),
+            t.get(2887, "Normal"),
+            t.get(2888, "Low"),
+        ];
+        for row in 0..3usize {
+            let y = y0 + 64.0 * row as f32;
+            c.label(20.0, y, 200.0, &t.get(2880 + row as u32, "?"), HEAD);
+            for (l, name) in levels.iter().enumerate() {
+                c.toggle(
+                    230.0 + 120.0 * l as f32,
+                    y,
+                    112.0,
+                    name,
+                    A_COST + 3 * row as u32 + l as u32,
+                    usize::from(opts::cost_level(s, row)) == l,
+                );
+            }
+            wrap(
+                c,
+                20.0,
+                y + 28.0,
+                720.0,
+                30.0,
+                &t.get(2883 + row as u32, ""),
+                MUTED,
+            );
+        }
+        let y = y0 + 64.0 * 3.0 + 10.0;
+        c.label(20.0, y, 200.0, &t.get(2889, "Passenger Traffic:"), HEAD);
+        for (l, name) in levels.iter().enumerate() {
+            c.toggle(
+                230.0 + 120.0 * l as f32,
+                y,
+                112.0,
+                name,
+                A_TRAFFIC + l as u32,
+                usize::from(opts::traffic_level(s)) == l,
+            );
+        }
+        wrap(c, 20.0, y + 28.0, 720.0, 60.0, &t.get(2890, ""), MUTED);
+    }
+
+    pub(super) fn draw_ai(&self, c: &mut Ctx) {
+        let Some(s) = self.opt_save() else { return };
+        let t = &self.texts;
+        let y0 = c.top() + 56.0;
+        // Track expansion: aggressive stores 2, conservative 0 (ids 0x83fc..0x83fe).
+        c.label(20.0, y0, 700.0, &t.get(3408, "Track Expansion"), HEAD);
+        for k in 0..3u32 {
+            let y = y0 + 34.0 + 70.0 * k as f32;
+            c.toggle(
+                20.0,
+                y,
+                200.0,
+                &t.get(3395 + k, "?"),
+                A_AI_TRACK + k,
+                u32::from(opts::ai_track(s)) == 2 - k,
+            );
+            wrap(c, 236.0, y - 2.0, 520.0, 60.0, &t.get(3403 - k, ""), MUTED);
+        }
+        let y1 = y0 + 34.0 + 70.0 * 3.0 + 20.0;
+        c.label(
+            20.0,
+            y1,
+            700.0,
+            &t.get(3409, "Dividend Payout / Stock Buyback"),
+            HEAD,
+        );
+        for k in 0..3u32 {
+            let y = y1 + 34.0 + 70.0 * k as f32;
+            c.toggle(
+                20.0,
+                y,
+                200.0,
+                &t.get(3398 + k, "?"),
+                A_AI_DIV + k,
+                u32::from(opts::ai_dividend(s)) == k,
+            );
+            wrap(c, 236.0, y - 2.0, 520.0, 60.0, &t.get(3404 + k, ""), MUTED);
+        }
+    }
+
+    /// The per-type list of the Industries tab (`0x486d70`): every type may be allowed or not
+    /// for the map, with the weighting name at the right.
+    pub(super) fn draw_industry_types(&self, c: &mut Ctx, o: &OptionsState, y: f32) {
+        let (Some(s), Some(d)) = (self.opt_save(), self.data.as_ref()) else {
+            return;
+        };
+        let t = &self.texts;
+        c.label(20.0, y, 500.0, &t.get(464, "Industry Weightings"), HEAD);
+        let items: Vec<String> = (0..opts::INDUSTRY_TYPES)
+            .filter_map(|i| opts::industry_row(s, &d.image, i))
+            .map(|r| {
+                format!(
+                    "{}{}   [{}]",
+                    t.get(r.name_id, "?"),
+                    if r.allowed {
+                        String::new()
+                    } else {
+                        t.get(478, " (disabled)")
+                    },
+                    t.get(r.weight_name_id, "?")
+                )
+            })
+            .collect();
+        let sel = o.ind_sel.min(opts::INDUSTRY_TYPES - 1);
+        c.list(20.0, y + 30.0, 400.0, 400.0, items, sel, A_IND_LIST);
+        let allowed = opts::industry_row(s, &d.image, sel).is_some_and(|r| r.allowed);
+        c.toggle(
+            440.0,
+            y + 30.0,
+            320.0,
+            &t.get(509, "Allow this building type for this map"),
+            A_IND_TOGGLE,
+            allowed,
+        );
+        c.label(
+            440.0,
+            y + 64.0,
+            320.0,
+            &format!(
+                "{} {}",
+                opts::industry_allowed_count(s),
+                t.a("types allowed")
+            ),
+            MUTED,
+        );
+    }
+
     // ---- actions --------------------------------------------------------------------------
 
     fn mark_options_dirty(&mut self) {
@@ -501,6 +707,9 @@ impl AppState {
 
     /// The buttons of the new pages; true when `a` was one of them.
     pub(super) fn options_page_action(&mut self, a: u32, o: &mut OptionsState) -> bool {
+        if (A_SPEC_BASE..A_SPEC_END).contains(&a) {
+            return self.spec_page_action(a, o);
+        }
         if !(A_OPT_BASE..A_OPT_END).contains(&a) {
             return false;
         }
@@ -641,6 +850,47 @@ impl AppState {
         true
     }
 
+    fn spec_page_action(&mut self, a: u32, o: &mut OptionsState) -> bool {
+        match a {
+            x if (A_SPECIAL..A_SPECIAL + 10).contains(&x) => {
+                let f = opts::Special::ALL[(x - A_SPECIAL) as usize];
+                self.opt_with_save(|s| opts::toggle_special(s, f));
+            }
+            x if (A_START_OFF..A_START_OFF + 2).contains(&x) => {
+                let d: i64 = if x == A_START_OFF { -10 } else { 10 };
+                self.opt_with_save(|s| {
+                    let v = (i64::from(opts::start_offset_days(s)) + d)
+                        .clamp(0, i64::from(opts::START_OFFSET_MAX));
+                    opts::set_start_offset_days(s, v as u32);
+                });
+                o.typing = None;
+            }
+            x if (A_COST..A_COST + 9).contains(&x) => {
+                let (row, level) = (((x - A_COST) / 3) as usize, ((x - A_COST) % 3) as u8);
+                self.opt_with_save(|s| opts::set_cost_level(s, row, level));
+            }
+            x if (A_TRAFFIC..A_TRAFFIC + 3).contains(&x) => {
+                let level = (x - A_TRAFFIC) as u8;
+                self.opt_with_save(|s| opts::set_traffic_level(s, level));
+            }
+            x if (A_AI_TRACK..A_AI_TRACK + 3).contains(&x) => {
+                let v = 2 - (x - A_AI_TRACK) as u8;
+                self.opt_with_save(|s| opts::set_ai_track(s, v));
+            }
+            x if (A_AI_DIV..A_AI_DIV + 3).contains(&x) => {
+                let v = (x - A_AI_DIV) as u8;
+                self.opt_with_save(|s| opts::set_ai_dividend(s, v));
+            }
+            A_IND_TOGGLE => {
+                let i = o.ind_sel.min(opts::INDUSTRY_TYPES - 1);
+                self.opt_with_save(|s| opts::toggle_industry(s, i));
+            }
+            A_IND_LIST => {}
+            _ => return false,
+        }
+        true
+    }
+
     /// Typed characters of the new fields (ids from 30); true when `id` is one of them.
     pub(super) fn options_edit_field(
         &mut self,
@@ -662,6 +912,7 @@ impl AppState {
                     }
                 }
                 F_ROB_LEVEL => opts::robbery_level(s).to_string(),
+                F_START_OFFSET => opts::start_offset_days(s).to_string(),
                 x if (F_PORT_Q..F_PORT_Q + 4).contains(&x) => {
                     opts::port(s, (x - F_PORT_Q) as usize)
                         .map_or_else(String::new, |p| (p.quantity as i32).to_string())
@@ -669,7 +920,8 @@ impl AppState {
                 _ => String::new(),
             }
         };
-        let known = (F_ROB_NAME..F_PORT_Q + 4).contains(&id) || id == F_CASH;
+        let known =
+            (F_ROB_NAME..F_PORT_Q + 4).contains(&id) || id == F_CASH || id == F_START_OFFSET;
         if !known {
             return false;
         }
@@ -712,6 +964,12 @@ impl AppState {
                 if let Ok(v) = s.parse::<i32>() {
                     self.opt_with_save(|sv| opts::set_port_quantity(sv, k, v));
                 }
+                o.typing = Some((id, s));
+            }
+            F_START_OFFSET => {
+                s = digits(&s, 3);
+                let v = s.parse::<u32>().unwrap_or(0);
+                self.opt_with_save(|sv| opts::set_start_offset_days(sv, v));
                 o.typing = Some((id, s));
             }
             F_CASH => {

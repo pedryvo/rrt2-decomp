@@ -4,6 +4,13 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 
 ## Unreleased
 - Feature: recent interface strings translated to Spanish, German, Chinese and Russian.
+- Feature: Map Options has the Special Restrictions, Regional and Computer A.I. pages, and the Industries tab lists every industry type with the original's "Allow this building type for this map" box.
+- Feature: the overview panel of the map editor uses the editor's four-button plate, and its side buttons pick the overview mode.
+- Fix: the Robbers page edited the wrong field (it is the i32 at state +0x38b6, 0..401, not the start offset at header +0x8970).
+- Fix: city names are kept out of the HUD (bottom panel, action icons, rotate/zoom and speed buttons) instead of being half hidden.
+- Fix: a tab of the Options screen with more rows than fit (300% scale on 1080p) scrolls with buttons and the wheel.
+- Fix: save times in the Save and Load dialogs are shown in the local time zone.
+- RE: Map Options page builders 0x480740, 0x4855e0, 0x485230 and 0x486d70 decoded (byte maps in docs/formats/map-gam.md 10.8..10.11); the per-type record at header +0x8793 byte 0 means "disabled by the scenario".
 
 ## v0.3.0 — 2026-10-23
 - Fix: Lay Track drag now starts and ends on a station when pressed on its building (snap to the station's tile), so dragging from one station to another works as in the original

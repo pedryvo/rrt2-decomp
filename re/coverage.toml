@@ -5,7 +5,7 @@
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
 # Classificadas (categoria != unknown): 1310 (44.5%)
 # Por categoria: lib=258, platform=114, render=11, audio=54, ui=275, sim=598, unknown=1635
-# Por estado:   unknown=2314, named=159, spec=171, verified=301
+# Por estado:   unknown=2309, named=164, spec=171, verified=301
 # Entradas manuais: 562
 # sim spec coverage: 71.7% (429 de 598 funcoes sim em spec/verified)
 
@@ -12938,9 +12938,10 @@ why = "string:horsb_2.imb"
 
 [[function]]
 addr = "0x480740"
+name = "map_options_page_special_restrictions"
 size = 3522
 category = "ui"
-status = "unknown"
+status = "named"
 why = "string:trainbuy.imb"
 
 [[function]]
@@ -13038,16 +13039,18 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x485230"
+name = "map_options_page_computer_ai"
 size = 933
 category = "ui"
-status = "unknown"
+status = "named"
 why = "string:trndbut.imb"
 
 [[function]]
 addr = "0x4855e0"
+name = "map_options_page_regional"
 size = 1363
 category = "ui"
-status = "unknown"
+status = "named"
 why = "string:trndbut.imb"
 
 [[function]]
@@ -13059,9 +13062,10 @@ why = "string:[u1]%s"
 
 [[function]]
 addr = "0x486d70"
+name = "map_options_page_industry"
 size = 1544
 category = "ui"
-status = "unknown"
+status = "named"
 why = "string:trainbuy.imb"
 
 [[function]]
@@ -13306,9 +13310,10 @@ manual = true
 
 [[function]]
 addr = "0x4931b0"
+name = "overview_side_buttons_refresh"
 size = 212
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]

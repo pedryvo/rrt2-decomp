@@ -252,6 +252,9 @@ pub fn load(assets: &GameAssets) -> Artwork {
                     .find(|c| c.id == 2000)
                     .and_then(|c| c.image_record())
             });
+        // The overview window in editor mode swaps its background to record 8 (`0x492e40`, case
+        // 0xb with `0x573d7a != 0`): the same plate without the Track by Company button.
+        let rec = if *name == "bpovervw" { Some(8) } else { rec };
         if let Some(rec) = rec {
             dialogs.editor.panels[i] = add(&format!("{name}.imb"), usize::from(rec));
         }

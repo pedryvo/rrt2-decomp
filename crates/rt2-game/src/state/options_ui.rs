@@ -35,6 +35,9 @@ pub(super) const A_OPT_KEYLIST: u32 = 8900;
 pub(super) const A_OPT_REBIND: u32 = 8901;
 pub(super) const A_OPT_ADDKEY: u32 = 8902;
 pub(super) const A_OPT_KEYRESET: u32 = 8903;
+/// Scroll buttons of a tab with more rows than the panel shows (up, down).
+pub(super) const A_OPT_SCROLL: u32 = 8904;
+const A_SCROLL_DOWN: u32 = 8905;
 const PICK_SPAN: u32 = 16;
 /// Whether `a` is an action of this screen.
 pub(super) fn owns(a: u32) -> bool {
@@ -64,6 +67,8 @@ pub(super) struct OptionsState {
     /// Selected row of the key list.
     pub key_sel: usize,
     pub rebinding: Option<Rebinding>,
+    /// First visible row of a tab of settings that does not fit the panel.
+    pub scroll: usize,
 }
 
 impl OptionsState {
@@ -72,7 +77,25 @@ impl OptionsState {
             tab,
             key_sel: 0,
             rebinding: None,
+            scroll: 0,
         }
+    }
+}
+
+/// Smallest height of a row of settings, in logical units; a tab with more rows than fit scrolls.
+const MIN_ROW_H: f32 = 26.0;
+
+/// Rows a body of height `h` shows at the smallest row height.
+fn rows_that_fit(h: f32) -> usize {
+    ((h / MIN_ROW_H).floor() as usize).max(1)
+}
+
+/// The window of rows to draw: first row and count, with `scroll` clamped.
+fn row_window(n: usize, fit: usize, scroll: usize) -> (usize, usize) {
+    if n <= fit {
+        (0, n)
+    } else {
+        (scroll.min(n - fit), fit)
     }
 }
 
@@ -330,6 +353,18 @@ impl AppState {
         self.save_config();
     }
 
+    /// Scrolls the rows of a tab of settings by `d` rows (the buttons and the wheel).
+    pub(super) fn options_scroll(&mut self, d: i32) {
+        let Some(Overlay::Options(o)) = &mut self.overlay else {
+            return;
+        };
+        if matches!(o.tab, Tab::Keys | Tab::Language) {
+            return;
+        }
+        o.scroll = (o.scroll as i32 + d).max(0) as usize;
+        self.rebuild_ui();
+    }
+
     pub(super) fn options_activated(&mut self, a: u32) -> bool {
         let Some(Overlay::Options(o)) = &mut self.overlay else {
             return false;
@@ -350,7 +385,11 @@ impl AppState {
             a if (A_OPT_TAB..A_OPT_TAB + 5).contains(&a) => {
                 o.tab = Tab::ALL[(a - A_OPT_TAB) as usize];
                 o.rebinding = None;
+                o.scroll = 0;
                 self.rebuild_ui();
+            }
+            A_OPT_SCROLL | A_SCROLL_DOWN => {
+                self.options_scroll(if a == A_OPT_SCROLL { -1 } else { 1 });
             }
             a if (A_OPT_TOGGLE..A_OPT_TOGGLE + 64).contains(&a) => {
                 if let Some(s) = Setting::from_index(a - A_OPT_TOGGLE) {
@@ -542,23 +581,52 @@ impl AppState {
         match o.tab {
             Tab::Language => self.build_language(ui, panel, &body),
             Tab::Keys => self.build_keys(ui, panel, &body, o),
-            tab => self.build_rows(ui, panel, &body, tab),
+            tab => self.build_rows(ui, panel, &body, tab, o.scroll),
         }
     }
 
-    fn build_rows(&self, ui: &mut Ui, panel: NodeId, b: &Body, tab: Tab) {
+    fn build_rows(&self, ui: &mut Ui, panel: NodeId, b: &Body, tab: Tab, scroll: usize) {
         let t = &self.texts;
         let rows = options::rows(tab, &self.config, &self.env(), t);
-        let n = rows.len().max(1) as f32;
-        let row_h = (b.h / n).clamp(26.0, 46.0 * b.u.max(0.8));
+        // More rows than fit (a small canvas, the 300 % scale on 1080p): show a window of them
+        // with scroll buttons and the wheel instead of running over the footer.
+        let (first, shown) = row_window(rows.len(), rows_that_fit(b.h), scroll);
+        let scrolls = shown < rows.len();
+        let n = shown.max(1) as f32;
+        let row_h = (b.h / n).clamp(MIN_ROW_H, 46.0 * b.u.max(0.8));
         let fs = (row_h * 0.46).clamp(11.0, 20.0);
         let label_font = game_font(8).with_size(fs.round());
         let btn_font = game_font(2).with_size((fs * 0.9).round().max(10.0));
         let label_w = b.w * 0.40;
         let cx = b.x + label_w + 8.0;
-        let cw = b.w - label_w - 8.0;
-        for (i, r) in rows.iter().enumerate() {
-            let y = b.y + i as f32 * row_h;
+        let gutter = if scrolls { 34.0 } else { 0.0 };
+        let cw = b.w - label_w - 8.0 - gutter;
+        if scrolls {
+            let bw = 28.0;
+            let bx = b.x + b.w - bw;
+            ui.add(
+                panel,
+                button("^", btn_font, A_OPT_SCROLL),
+                at(bx, b.y, bw, 28.0),
+            );
+            ui.add(
+                panel,
+                button("v", btn_font, A_SCROLL_DOWN),
+                at(bx, b.y + b.h - 28.0, bw, 28.0),
+            );
+            ui.add(
+                panel,
+                text(
+                    &format!("{}-{}/{}", first + 1, first + shown, rows.len()),
+                    btn_font,
+                    MUTED,
+                    Align::Center,
+                ),
+                at(bx - 8.0, b.y + b.h / 2.0 - 10.0, bw + 16.0, 20.0),
+            );
+        }
+        for (i, r) in rows.iter().enumerate().skip(first).take(shown) {
+            let y = b.y + (i - first) as f32 * row_h;
             let h = row_h - 6.0;
             let idx = r.setting.index();
             let enabled = !matches!(r.control, Control::Choice { enabled: false, .. });
@@ -670,7 +738,7 @@ impl AppState {
         }
         // A hint under the rows of the display tab.
         if tab == Tab::Display {
-            let hint_y = b.y + rows.len() as f32 * row_h + 4.0;
+            let hint_y = b.y + shown as f32 * row_h + 4.0;
             if hint_y + 18.0 < b.y + b.h + 4.0 {
                 ui.add(
                     panel,

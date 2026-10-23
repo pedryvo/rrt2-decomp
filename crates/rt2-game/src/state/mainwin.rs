@@ -156,18 +156,18 @@ fn panel(fill: Fill) -> Kind {
 
 /// Geometry of the bottom panel, shared by the builder and the camera code.
 #[derive(Clone, Copy, Debug)]
-struct Geometry {
-    dz: f32,
+pub(super) struct Geometry {
+    pub(super) dz: f32,
     /// Height of the whole bottom panel (content plus status line).
-    ph: f32,
+    pub(super) ph: f32,
     /// Height of the status line.
-    sl: f32,
-    inset: f32,
+    pub(super) sl: f32,
+    pub(super) inset: f32,
     /// Side of the square radar and activity boxes.
-    side: f32,
+    pub(super) side: f32,
 }
 
-fn geometry(cw: f32, ch: f32) -> Geometry {
+pub(super) fn geometry(cw: f32, ch: f32) -> Geometry {
     let dz = design_scale(ch);
     let sl = (22.0 * dz).round();
     let ph = (215.0 * dz).min(ch * 0.40).max(150.0).round();
@@ -185,6 +185,36 @@ fn geometry(cw: f32, ch: f32) -> Geometry {
         inset,
         side,
     }
+}
+
+/// The parts of the window the in-game HUD covers, as `[x, y, w, h]` in logical units: the bottom
+/// panel, the eight action icons down the left edge, the rotate/zoom buttons above the activity
+/// box and the speed controls at the top right (the same geometry as `build_mainwin`).
+pub(super) fn hud_blockers(cw: f32, ch: f32) -> Vec<[f32; 4]> {
+    let Geometry {
+        dz,
+        ph,
+        inset,
+        side,
+        ..
+    } = geometry(cw, ch);
+    let per = (ch - ph - 16.0) / 8.0;
+    let bh = (per - 4.0).clamp(20.0, 34.0 * dz).round();
+    let bw = (bh * 50.0 / 34.0).round();
+    let nav_h = (34.0 * dz).round().min(side / 4.0 * 0.68);
+    let nav_w = (nav_h * 50.0 / 34.0).round();
+    let nav_total = 4.0 * nav_w + 12.0 * dz;
+    vec![
+        [0.0, ch - ph, cw, ph],
+        [6.0 * dz, 8.0 * dz, bw, per * 8.0],
+        [
+            cw - inset - nav_total,
+            ch - ph - 4.0 - nav_h,
+            nav_total,
+            nav_h,
+        ],
+        [cw - inset - 250.0 * dz, inset, 250.0 * dz, 30.0 * dz],
+    ]
 }
 
 impl AppState {

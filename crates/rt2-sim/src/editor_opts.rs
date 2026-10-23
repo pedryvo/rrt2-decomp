@@ -24,8 +24,21 @@ const HDR_POOL: usize = 0x208;
 /// Header `0x57023b` (`+0x8703`): the Port row of the industry table (4 slots of 0x20 bytes at
 /// `+4`, `docs/spec/cargo.md` 7.1.1).
 const HDR_PORTS: usize = 0x8703;
-/// Header `0x5704a8` (`+0x8970`): u32 overall robbery level.
-const HDR_ROBBERY: usize = 0x8970;
+/// Header `0x5704a8` (`+0x8970`): i32 "Start offset days" of the Special Restrictions page
+/// (`0x83a1`, clamp `0..=0x16c`).
+const HDR_START_OFFSET: usize = 0x8970;
+/// State `0x573d9e` (`+0x38b6`): i32 overall robbery level (slider `0x83cc`).
+const ST_ROBBERY: usize = 0x38b6;
+/// Header `0x5702cb` (`+0x8793`): 53 records of 9 bytes by industry type (`+0` disabled by the
+/// scenario, `+1` i32 weight in percent, `+5` i32 weighting 0..=4 shown by the page).
+const HDR_INDUSTRY: usize = 0x8793;
+/// Header bytes of the Regional page (`0x4855e0`): steam, diesel, electric cost level and the
+/// passenger traffic level (0 high, 1 normal, 2 low).
+const HDR_REGIONAL: usize = 0x235;
+const HDR_TRAFFIC: usize = 0x238;
+/// Header bytes of the Computer A.I. page (`0x485230`): track expansion and dividend policy.
+const HDR_AI_TRACK: usize = 0x8975;
+const HDR_AI_DIVIDEND: usize = 0x8976;
 /// State `0x570638`: one byte per manager (40).
 const ST_MANAGERS: usize = 0x570638 - 0x5704e8;
 /// State `0x570667`: one byte per engine (66), `docs/spec/trains.md` 2.4.
@@ -45,8 +58,12 @@ pub const MANAGER_COUNT: usize = 40;
 pub const ENGINE_COUNT: usize = 66;
 pub const PORT_COUNT: usize = 4;
 pub const ROBBER_COUNT: usize = 4;
-/// Largest overall robbery level (`0x83a1`: clamp `0x16c`).
-pub const ROBBERY_MAX: u32 = 0x16c;
+/// Largest overall robbery level (slider `0x83cc` of the Robbers page, range `0..=0x191`).
+pub const ROBBERY_MAX: u32 = 0x191;
+/// Largest "Start offset days" (`0x83a1`: clamp `0x16c`).
+pub const START_OFFSET_MAX: u32 = 0x16c;
+/// Industry types of the Industry page list (types 1..=48, `0x486d70` adds `0x30` rows).
+pub const INDUSTRY_TYPES: usize = 48;
 /// Robber names hold 20 characters (`_strncpy(.., 0x14)`).
 pub const ROBBER_NAME_LEN: usize = 20;
 /// No cargo in a port slot.
@@ -683,15 +700,15 @@ pub fn port_cargo_name_id(data: &DataImage, i: usize) -> u32 {
 
 // ---- robbers ----------------------------------------------------------------------------------
 
-/// Overall robbery level 0..=364 (`0x83a1`).
+/// Overall robbery level (state `0x573d9e`, i32; the shipped maps hold 0..=400).
 pub fn robbery_level(s: &Save) -> u32 {
-    s.header
-        .get(HDR_ROBBERY..HDR_ROBBERY + 4)
+    s.state
+        .get(ST_ROBBERY..ST_ROBBERY + 4)
         .map_or(0, |b| u32_at(b, 0))
 }
 
 pub fn set_robbery_level(s: &mut Save, level: u32) {
-    if let Some(b) = s.header.get_mut(HDR_ROBBERY..HDR_ROBBERY + 4) {
+    if let Some(b) = s.state.get_mut(ST_ROBBERY..ST_ROBBERY + 4) {
         b.copy_from_slice(&level.min(ROBBERY_MAX).to_le_bytes());
     }
 }
@@ -787,4 +804,204 @@ pub fn territory_remove(s: &mut Save, id: u8) -> Result<(), OptError> {
     }
     pool::free(&mut s.territories, usize::from(id));
     Ok(())
+}
+
+// ---- special restrictions (`0x480740`) ---------------------------------------------------------
+
+/// The ten check boxes of the Special Restrictions page: header byte, ids `0x833d..` (LNG
+/// `2871 + 2k` name, `+1` hint; the last five use `3331 + 2k`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Special {
+    SlowDate,
+    FixedCargo,
+    NoMoney,
+    NoCustoms,
+    LimitedSupply,
+    ShowVisited,
+    OneShotWaste,
+    LimitedTrack,
+    TerritoryWars,
+    Metra,
+}
+
+impl Special {
+    pub const ALL: [Special; 10] = [
+        Special::SlowDate,
+        Special::FixedCargo,
+        Special::NoMoney,
+        Special::NoCustoms,
+        Special::LimitedSupply,
+        Special::ShowVisited,
+        Special::OneShotWaste,
+        Special::LimitedTrack,
+        Special::TerritoryWars,
+        Special::Metra,
+    ];
+
+    /// Header offset of the flag byte (`0x47ef50` toggles `byte == 0`).
+    pub fn offset(self) -> usize {
+        match self {
+            Special::SlowDate => 0x86ff,
+            Special::FixedCargo => 0x86fe,
+            Special::NoMoney => 0x8700,
+            Special::NoCustoms => 0x8701,
+            Special::LimitedSupply => 0x86ef,
+            Special::ShowVisited => 0x86f0,
+            Special::OneShotWaste => 0x86f1,
+            Special::LimitedTrack => 0x86f2,
+            Special::TerritoryWars => 0x8702,
+            Special::Metra => 0x8974,
+        }
+    }
+
+    /// LNG id of the name; the hint is the next id.
+    pub fn text_id(self) -> u32 {
+        match self {
+            Special::SlowDate => 2871,
+            Special::FixedCargo => 2873,
+            Special::NoMoney => 2875,
+            Special::NoCustoms => 2877,
+            Special::LimitedSupply => 3331,
+            Special::ShowVisited => 3333,
+            Special::OneShotWaste => 3335,
+            Special::LimitedTrack => 3337,
+            Special::TerritoryWars => 3339,
+            Special::Metra => 3341,
+        }
+    }
+}
+
+pub fn special(s: &Save, f: Special) -> bool {
+    s.header.get(f.offset()).is_some_and(|&b| b != 0)
+}
+
+/// The check box handlers flip the byte (`byte = (byte == 0)`).
+pub fn toggle_special(s: &mut Save, f: Special) {
+    if let Some(b) = s.header.get_mut(f.offset()) {
+        *b = u8::from(*b == 0);
+    }
+}
+
+/// "Start offset days" (0 means January 1).
+pub fn start_offset_days(s: &Save) -> u32 {
+    s.header
+        .get(HDR_START_OFFSET..HDR_START_OFFSET + 4)
+        .map_or(0, |b| u32_at(b, 0))
+}
+
+pub fn set_start_offset_days(s: &mut Save, days: u32) {
+    if let Some(b) = s.header.get_mut(HDR_START_OFFSET..HDR_START_OFFSET + 4) {
+        b.copy_from_slice(&days.min(START_OFFSET_MAX).to_le_bytes());
+    }
+}
+
+// ---- regional (`0x4855e0`) and computer A.I. (`0x485230`) ---------------------------------------
+
+/// Fuel and maintenance cost level of steam (0), diesel (1) or electric (2) trains: 0 high,
+/// 1 normal, 2 low (ids `0x83d8 + 10 * row + level`).
+pub fn cost_level(s: &Save, row: usize) -> u8 {
+    s.header
+        .get(HDR_REGIONAL + row)
+        .copied()
+        .unwrap_or(1)
+        .min(2)
+}
+
+pub fn set_cost_level(s: &mut Save, row: usize, level: u8) {
+    if row < 3
+        && level < 3
+        && let Some(b) = s.header.get_mut(HDR_REGIONAL + row)
+    {
+        *b = level;
+    }
+}
+
+/// Passenger traffic level: 0 high, 1 normal, 2 low (ids `0x83f6..0x83f8`).
+pub fn traffic_level(s: &Save) -> u8 {
+    s.header.get(HDR_TRAFFIC).copied().unwrap_or(1).min(2)
+}
+
+pub fn set_traffic_level(s: &mut Save, level: u8) {
+    if level < 3
+        && let Some(b) = s.header.get_mut(HDR_TRAFFIC)
+    {
+        *b = level;
+    }
+}
+
+/// Track expansion of A.I. companies: 0 conservative, 1 moderate, 2 aggressive (ids `0x83fc`
+/// aggressive .. `0x83fe` conservative, `byte = 0x83fe - id`).
+pub fn ai_track(s: &Save) -> u8 {
+    s.header.get(HDR_AI_TRACK).copied().unwrap_or(0).min(2)
+}
+
+pub fn set_ai_track(s: &mut Save, v: u8) {
+    if v < 3
+        && let Some(b) = s.header.get_mut(HDR_AI_TRACK)
+    {
+        *b = v;
+    }
+}
+
+/// Dividend and stock buyback policy of A.I. companies: 0 aggressive, 1 moderate, 2 none
+/// (ids `0x8401..0x8403`, `byte = id - 0x8401`).
+pub fn ai_dividend(s: &Save) -> u8 {
+    s.header.get(HDR_AI_DIVIDEND).copied().unwrap_or(0).min(2)
+}
+
+pub fn set_ai_dividend(s: &mut Save, v: u8) {
+    if v < 3
+        && let Some(b) = s.header.get_mut(HDR_AI_DIVIDEND)
+    {
+        *b = v;
+    }
+}
+
+// ---- industry types (`0x486d70`) ---------------------------------------------------------------
+
+/// LNG ids of the industry names: `0x5536ea`, one per type from 1, and of the weighting names
+/// (`0x553890`, 0..=4).
+const INDUSTRY_NAMES: u32 = 0x0055_36ea;
+const WEIGHT_NAMES: u32 = 0x0055_3890;
+
+/// One row of the Industry page (item `i` is industry type `i + 1`).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct IndustryRow {
+    pub type_id: usize,
+    pub name_id: u32,
+    /// "Allow this building type" (the record's disabled byte is 0).
+    pub allowed: bool,
+    /// LNG id of the weighting name.
+    pub weight_name_id: u32,
+}
+
+pub fn industry_row(s: &Save, data: &DataImage, i: usize) -> Option<IndustryRow> {
+    if i >= INDUSTRY_TYPES {
+        return None;
+    }
+    let o = HDR_INDUSTRY + 9 * (i + 1);
+    let rec = s.header.get(o..o + 9)?;
+    let w = (u32_at(rec, 5) as usize).min(4);
+    Some(IndustryRow {
+        type_id: i + 1,
+        name_id: u32::from(data.u16(INDUSTRY_NAMES + 2 * i as u32)),
+        allowed: rec[0] == 0,
+        weight_name_id: u32::from(data.u16(WEIGHT_NAMES + 2 * w as u32)),
+    })
+}
+
+/// Number of industry types allowed.
+pub fn industry_allowed_count(s: &Save) -> usize {
+    (1..=INDUSTRY_TYPES)
+        .filter(|&t| s.header.get(HDR_INDUSTRY + 9 * t).is_some_and(|&b| b == 0))
+        .count()
+}
+
+/// The `0x82f9` check box: `byte = 1 - byte` of the selected type.
+pub fn toggle_industry(s: &mut Save, i: usize) {
+    if i < INDUSTRY_TYPES
+        && let Some(b) = s.header.get_mut(HDR_INDUSTRY + 9 * (i + 1))
+    {
+        *b = 1 - (*b).min(1);
+    }
 }

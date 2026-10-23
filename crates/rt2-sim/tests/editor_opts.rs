@@ -284,3 +284,73 @@ fn pcx_import_builds_the_map() {
     let again = Save::parse(&s.to_bytes()).unwrap();
     assert_eq!(again.map.elevation, s.map.elevation);
 }
+
+/// Special Restrictions, Regional, Computer A.I. and Industry pages (map-gam.md 10.8..10.11):
+/// each control writes exactly its documented byte, and the shipped maps stay in range.
+#[test]
+fn special_regional_ai_and_industry_pages_write_their_bytes() {
+    let Some(dir) = install() else { return };
+    let d = data(&dir);
+    let raw = std::fs::read(dir.join("maps/Alaska.MP2")).unwrap();
+    let mut s = Save::parse(&raw).unwrap();
+    let before = s.clone();
+
+    // Check boxes flip their byte.
+    for f in o::Special::ALL {
+        let was = o::special(&s, f);
+        o::toggle_special(&mut s, f);
+        assert_eq!(o::special(&s, f), !was, "{f:?}");
+        assert_eq!(s.header[f.offset()], u8::from(!was));
+        o::toggle_special(&mut s, f);
+    }
+    assert_eq!(
+        s.header, before.header,
+        "toggling twice restores the header"
+    );
+    o::set_start_offset_days(&mut s, 9999);
+    assert_eq!(o::start_offset_days(&s), o::START_OFFSET_MAX);
+    assert_eq!(s.header[0x8970..0x8974], 0x16cu32.to_le_bytes());
+
+    // Regional and A.I. radio groups.
+    o::set_cost_level(&mut s, 0, 2);
+    o::set_cost_level(&mut s, 1, 0);
+    o::set_cost_level(&mut s, 2, 1);
+    o::set_cost_level(&mut s, 2, 7);
+    assert_eq!(s.header[0x235..0x238], [2, 0, 1]);
+    o::set_traffic_level(&mut s, 2);
+    assert_eq!(s.header[0x238], 2);
+    o::set_ai_track(&mut s, 2);
+    o::set_ai_dividend(&mut s, 1);
+    assert_eq!((s.header[0x8975], s.header[0x8976]), (2, 1));
+    assert_eq!((o::ai_track(&s), o::ai_dividend(&s)), (2, 1));
+
+    // Industry list: item i is type i + 1, the record's byte 0 is "disabled".
+    let row = o::industry_row(&s, &d.image, 0).unwrap();
+    assert_eq!(row.type_id, 1);
+    assert_eq!(row.allowed, s.header[0x8793 + 9] == 0);
+    s.header[0x8793 + 9] = 0;
+    s.header[0x8793 + 9 * 48] = 0;
+    let allowed = o::industry_allowed_count(&s);
+    assert!(o::industry_row(&s, &d.image, 0).unwrap().allowed);
+    o::toggle_industry(&mut s, 0);
+    assert_eq!(s.header[0x8793 + 9], 1);
+    assert!(!o::industry_row(&s, &d.image, 0).unwrap().allowed);
+    assert_eq!(o::industry_allowed_count(&s), allowed - 1);
+    o::toggle_industry(&mut s, 47);
+    assert_eq!(s.header[0x8793 + 9 * 48], 1);
+    assert!(o::industry_row(&s, &d.image, 48).is_none());
+
+    // The shipped maps: every byte is in the range the page can produce.
+    for p in mp2s(&dir) {
+        let m = Save::parse(&std::fs::read(&p).unwrap()).unwrap();
+        for r in 0..3 {
+            assert!(m.header[0x235 + r] < 3, "{}", p.display());
+        }
+        assert!(m.header[0x238] < 3 && m.header[0x8975] < 3 && m.header[0x8976] < 3);
+        assert!(o::start_offset_days(&m) <= o::START_OFFSET_MAX);
+        assert!(o::robbery_level(&m) <= o::ROBBERY_MAX);
+        for t in 1..=o::INDUSTRY_TYPES {
+            assert!(m.header[0x8793 + 9 * t] < 2);
+        }
+    }
+}

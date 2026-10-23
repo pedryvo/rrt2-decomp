@@ -47,7 +47,7 @@ const A_OPT_CASH: u32 = A_MODAL + 144; // -, +
 /// First action of the Players, pool, managers, engines, ports and robbers pages.
 pub(super) const A_OPT_BASE: u32 = A_MODAL + 400;
 /// Tabs of Map Options (`OPT_TABS`).
-pub(super) const A_OPT_TOTAL: usize = 11;
+pub(super) const A_OPT_TOTAL: usize = 14;
 // Rules.
 const A_RULE_LIST: u32 = A_MODAL + 200;
 const A_RULE_ADD: u32 = A_MODAL + 210;
@@ -100,6 +100,7 @@ pub(super) const F_ROB_YEAR: u32 = 34; // + 0..4
 pub(super) const F_ROB_LEVEL: u32 = 38;
 pub(super) const F_CASH: u32 = 39;
 pub(super) const F_PORT_Q: u32 = 40; // + 0..4
+pub(super) const F_START_OFFSET: u32 = 46;
 const F_IMG: u32 = 44;
 const F_SCALE: u32 = 45;
 
@@ -116,6 +117,9 @@ pub(super) const OPT_TABS: [&str; A_OPT_TOTAL] = [
     "restrictions",
     "ports",
     "robbers",
+    "special",
+    "regional",
+    "ai",
 ];
 const T_GENERAL: usize = 0;
 const T_GOALS: usize = 1;
@@ -128,6 +132,9 @@ const T_INDUSTRIES: usize = 7;
 const T_RESTRICTIONS: usize = 8;
 const T_PORTS: usize = 9;
 const T_ROBBERS: usize = 10;
+const T_SPECIAL: usize = 11;
+const T_REGIONAL: usize = 12;
+const T_AI: usize = 13;
 
 /// The action of text field `id`.
 fn field_action(id: u32) -> u32 {
@@ -162,6 +169,8 @@ pub(super) struct OptionsState {
     pub goal_cond: [String; 4],
     /// Selected row of the Players list.
     pub player_sel: usize,
+    /// Selected row of the Industry list (industry type - 1).
+    pub ind_sel: usize,
     /// The numeric field being typed into (its id and text): applied to the map as soon as it
     /// is valid, shown as typed while it has the focus.
     pub typing: Option<(u32, String)>,
@@ -284,6 +293,7 @@ impl AppState {
             tab: 0,
             goal_cond: goals,
             player_sel: 0,
+            ind_sel: 0,
             typing: None,
             note: String::new(),
         }));
@@ -738,6 +748,11 @@ impl AppState {
                     } else {
                         r.eff_sel = row;
                     }
+                }
+            }
+            super::editor_options_ui::A_IND_LIST => {
+                if let Some(Modal::Options(o)) = self.ed_mut().and_then(|e| e.modal.as_mut()) {
+                    o.ind_sel = row;
                 }
             }
             super::editor_options_ui::A_PLR_LIST => {
@@ -1445,6 +1460,9 @@ impl AppState {
             t.get(1316, "Restrictions"),
             t.get(1317, "Ports"),
             t.get(1318, "Robbers"),
+            t.get(1320, "Special Restrictions"),
+            t.get(2843, "Regional"),
+            t.get(3393, "Computer A.I."),
         ];
         let per_row = A_OPT_TOTAL.div_ceil(2);
         let tw = (c.w / c.dz - 40.0) / per_row as f32;
@@ -1469,6 +1487,9 @@ impl AppState {
             T_ENGINES => self.draw_engines(c),
             T_PORTS => self.draw_ports(c, o),
             T_ROBBERS => self.draw_robbers(c, o),
+            T_SPECIAL => self.draw_special(c, o),
+            T_REGIONAL => self.draw_regional(c),
+            T_AI => self.draw_ai(c),
             T_GENERAL => {
                 c.label(20.0, y, 120.0, &t.a("Name"), MUTED);
                 c.field(150.0, y, c.w / c.dz - 170.0, &editor::map_name(s), F_NAME);
@@ -1591,6 +1612,7 @@ impl AppState {
                         usize::from(editor::industry_set(s)) == i,
                     );
                 }
+                self.draw_industry_types(c, o, y + 40.0);
             }
             _ => {}
         }

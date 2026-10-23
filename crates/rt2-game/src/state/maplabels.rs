@@ -58,12 +58,14 @@ fn text_width(text: &str, size: f32) -> f32 {
 
 /// Places the names that fit: `zoom` is the camera's zoom over `NATIVE_ZOOM`, `k` the UI scale
 /// factor (the font sizes are logical), `viewport` the physical window; `view` is the part of it
-/// that shows the map (the panel at the bottom hides the rest).
+/// that shows the map; `blockers` are the rectangles (`[x, y, w, h]`, physical pixels) the HUD
+/// draws over the map: a name that would touch one is dropped instead of being half hidden.
 pub fn place_labels(
     mut cands: Vec<Cand>,
     zoom: f32,
     k: f32,
     view: (f32, f32),
+    blockers: &[[f32; 4]],
     px_per_tile: f32,
 ) -> Vec<Placed> {
     if zoom < MIN_ZOOM_CITIES {
@@ -91,6 +93,12 @@ pub fn place_labels(
             continue;
         }
         let pad = 3.0 * k;
+        if blockers
+            .iter()
+            .any(|b| x < b[0] + b[2] && b[0] < x + w && y < b[1] + b[3] && b[1] < y + h)
+        {
+            continue;
+        }
         let clash = placed.iter().any(|p| {
             x < p.x + p.w + pad && p.x < x + w + pad && y < p.y + p.h + pad && p.y < y + h + pad
         });
@@ -210,9 +218,13 @@ impl AppState {
             crate::pick::tile_to_screen(&g.camera, self.viewport, &save.map, x, y)
         });
         let k = self.scale.factor();
-        // The bottom panel covers the rest of the window.
-        let view = (self.viewport.0 as f32, self.viewport.1 as f32 * 0.65);
-        let labels = place_labels(cands, zoom, k, view, g.camera.zoom * 0.5);
+        // The HUD (bottom panel, action icons, rotate/zoom and speed buttons) covers parts of it.
+        let view = (self.viewport.0 as f32, self.viewport.1 as f32);
+        let blockers: Vec<[f32; 4]> = super::mainwin::hud_blockers(view.0 / k, view.1 / k)
+            .into_iter()
+            .map(|b| b.map(|v| v * k))
+            .collect();
+        let labels = place_labels(cands, zoom, k, view, &blockers, g.camera.zoom * 0.5);
         if labels.is_empty() {
             return;
         }
@@ -265,7 +277,7 @@ mod tests {
     #[test]
     fn nothing_is_drawn_when_zoomed_far_out() {
         let c = vec![cand("London", 900.0, 500.0, 5)];
-        assert!(place_labels(c, 0.05, 1.0, (1920.0, 700.0), 4.0).is_empty());
+        assert!(place_labels(c, 0.05, 1.0, (1920.0, 700.0), &[], 4.0).is_empty());
     }
 
     #[test]
@@ -278,9 +290,10 @@ mod tests {
             0.5,
             1.0,
             (1920.0, 700.0),
+            &[],
             20.0,
         );
-        let r2 = place_labels(vec![far, b, a], 0.5, 1.0, (1920.0, 700.0), 20.0);
+        let r2 = place_labels(vec![far, b, a], 0.5, 1.0, (1920.0, 700.0), &[], 20.0);
         let names = |v: &[Placed]| v.iter().map(|p| p.text.clone()).collect::<Vec<_>>();
         assert_eq!(names(&r1), ["London", "Oxford"]);
         assert_eq!(names(&r2), names(&r1));
@@ -293,6 +306,7 @@ mod tests {
             1.0,
             1.0,
             (1920.0, 700.0),
+            &[],
             32.0,
         );
         assert_eq!(r.len(), 1);
@@ -302,12 +316,31 @@ mod tests {
     }
 
     #[test]
+    fn a_name_under_a_hud_button_is_dropped_and_one_beside_it_kept() {
+        // A rotate/zoom strip at the bottom right (physical pixels).
+        let strip = [[1500.0, 600.0, 400.0, 60.0]];
+        let r = place_labels(
+            vec![
+                cand("Cambridge", 1700.0, 700.0, 5),
+                cand("Norwich", 1000.0, 700.0, 4),
+            ],
+            1.0,
+            1.0,
+            (1920.0, 1080.0),
+            &strip,
+            20.0,
+        );
+        let names: Vec<_> = r.iter().map(|p| p.text.as_str()).collect();
+        assert_eq!(names, ["Norwich"]);
+    }
+
+    #[test]
     fn station_names_need_a_close_view_and_the_font_grows_with_the_zoom() {
         let mut s = cand("Slough Station", 800.0, 500.0, -1);
         s.station = true;
-        assert!(place_labels(vec![s.clone()], 0.3, 1.0, (1920.0, 700.0), 10.0).is_empty());
+        assert!(place_labels(vec![s.clone()], 0.3, 1.0, (1920.0, 700.0), &[], 10.0).is_empty());
         assert_eq!(
-            place_labels(vec![s], 1.0, 1.0, (1920.0, 700.0), 30.0).len(),
+            place_labels(vec![s], 1.0, 1.0, (1920.0, 700.0), &[], 30.0).len(),
             1
         );
         assert!(city_size(1.0) > city_size(0.1));

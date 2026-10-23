@@ -441,3 +441,71 @@ fn fullscreen_key_and_mute_key_go_through_the_config() {
     s.ctrl = false;
     assert!(s.config().audio.mute);
 }
+
+/// A canvas too small for every row of a tab (the 300 % scale on a short window): the tab shows
+/// a window of rows, and the buttons, the mouse wheel and the tab change move it. Everything is
+/// driven through mouse events on the laid-out screen.
+#[test]
+fn a_settings_tab_that_does_not_fit_scrolls() {
+    use rt2_ui::Kind;
+    let Some(mut s) = state() else { return };
+    s.set_ui_scale(UiScale::from_percent(300), true);
+    s.resize((1600, 560));
+    s.open_options(Tab::Gameplay);
+    let rows_total = Tab::Gameplay.settings().len();
+    // Labels of the rows drawn now.
+    let labels = |s: &AppState| -> Vec<String> {
+        s.ui.draw_order()
+            .into_iter()
+            .filter_map(|(_, id)| match &s.ui.node(id).kind {
+                Kind::Label { text, .. } => Some(text.clone()),
+                _ => None,
+            })
+            .collect()
+    };
+    let first_row = s.texts.a(Tab::Gameplay.settings()[0].english());
+    let second_row = s.texts.a(Tab::Gameplay.settings()[1].english());
+    let last_row = s
+        .texts
+        .a(Tab::Gameplay.settings()[rows_total - 1].english());
+    assert!(labels(&s).contains(&first_row));
+    assert!(
+        !labels(&s).contains(&last_row),
+        "the last row is below the fold"
+    );
+    let scroll_down = |s: &mut AppState| {
+        let id = s
+            .ui
+            .draw_order()
+            .into_iter()
+            .map(|(_, id)| id)
+            .find(|&id| matches!(&s.ui.node(id).kind, Kind::Button { action, .. } if *action == A_OPT_SCROLL + 1))
+            .expect("a scroll-down button");
+        let (r, k) = (s.ui.rect(id), s.scale.factor());
+        s.cursor_moved((r.x + r.w / 2.0) * k, (r.y + r.h / 2.0) * k);
+        s.mouse_button(true, true);
+        s.mouse_button(true, false);
+    };
+    for _ in 0..rows_total {
+        scroll_down(&mut s);
+    }
+    assert!(labels(&s).contains(&last_row), "scrolled to the end");
+    assert!(!labels(&s).contains(&first_row));
+    // The wheel scrolls back up, and switching tabs starts from the top again.
+    s.cursor_moved(800.0, 300.0);
+    for _ in 0..rows_total {
+        s.wheel(1.0);
+    }
+    assert!(labels(&s).contains(&first_row));
+    assert!(labels(&s).contains(&second_row) || rows_total < 2);
+    s.options_activated(A_OPT_TAB);
+    s.options_activated(A_OPT_TAB + 4);
+    assert!(labels(&s).contains(&first_row));
+    // A roomy canvas shows every row and no scroll buttons.
+    s.set_ui_scale(UiScale::from_percent(100), true);
+    s.resize((1600, 900));
+    assert!(labels(&s).contains(&last_row));
+    assert!(!s.ui.draw_order().into_iter().any(|(_, id)| {
+        matches!(&s.ui.node(id).kind, Kind::Button { action, .. } if *action == A_OPT_SCROLL)
+    }));
+}

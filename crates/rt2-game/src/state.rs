@@ -592,6 +592,17 @@ impl AppState {
 
     pub fn wheel(&mut self, notches: f32) {
         self.ui.input(Input::Wheel(notches));
+        if matches!(self.overlay, Some(Overlay::Options(_))) {
+            // The rows of a settings tab that does not fit scroll (a list handles its own).
+            if self
+                .ui
+                .hovered()
+                .is_none_or(|h| !matches!(self.ui.node(h).kind, rt2_ui::Kind::List { .. }))
+            {
+                self.options_scroll(-notches.round() as i32);
+            }
+            return;
+        }
         if self.has_dialog() {
             return;
         }

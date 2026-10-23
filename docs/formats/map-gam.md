@@ -37,7 +37,7 @@ O último byte da última regra é o fim do arquivo (verificado nos 33 arquivos 
 | 0x235..0x238 | 4 flags (valem 1 para versões < `0x233c`) |
 | 0x25a | descrição (texto livre) |
 | 0x387/0x390 | **preview** 170x170 bytes (`0x70E4`) gerado por `0x477040` ao salvar; termina em **0x7474** (alta: bate com a 1ª passada) |
-| 0x7474..0x8793 | restante do bloco (opções, tabelas por tipo); em maps é quase só zeros. Inclui **53 registros de 9 bytes** em `0x5702cb` (arquivo 0x2793..0x297c): u8 ligado (1), u32 = 100, u32 = 2 por padrão, indexados por tipo de indústria (`0x433370`, `0x433550`: testam o byte 0 e pulam o tipo se for 0) |
+| 0x7474..0x8793 | restante do bloco (opções, tabelas por tipo); em maps é quase só zeros. Inclui **53 registros de 9 bytes** em `0x5702cb` (arquivo 0x2793..0x297c): u8 **desativado pelo cenário** (0 = permitido, o padrão; `0x433370`, `0x433550` só contam o tipo se o byte 0 vale 0), u32 = 100, u32 = 2 por padrão, indexados por tipo de indústria (página Industry, 10.11) |
 
 O "bloco quase todo zero até 0xB2D6" da primeira passada **não é um bloco só**: é o fim do cabeçalho, o bloco `0x86`, a vista, o **estado global** e o bloco do `game_seed`.
 
@@ -270,11 +270,38 @@ Os jogadores são registros da pool de pessoas (`0x574c68`, 0x576 bytes): `+4` a
 ### 10.4 Ports (`0x487380` + redesenho `0x487ce0`, ids `0x8345..0x8389`)
 São as quatro linhas do slot da indústria Porto (tipo 28; `header+0x8703` = `0x57023b`, quatro bytes de cabeçalho e **quatro slots de 0x20 bytes** em `+4`, cargo.md 7.1.1; `industry_load_fixups` os copia). Campos do slot k (`+0x8707 + 0x20k`): `+0` modo (**1 oferta anual**, 0 manufaturado), `+1` cargo ofertado (`0x7f` nenhum), `+2` f32 quantidade por ano, `+6` cargo demandado (`0x7f` nenhum), `+7` "exige a demanda" (1 se manufaturado). Lista de cargos: 45 LNG ids em `0x553630` (848..879, 3290..3301, 880), a de oferta com "None" primeiro. Efeitos de dados: anual (`0x8345..`): modo 1, demanda `0x7f`; manufaturado (`0x8351..`): modo 0 e demanda 7 se estava `0x7f`; o redesenho zera o segundo insumo (`+0x11 = 0x7f`, `+0x12..+0x1b = 0`), limita a quantidade anual a 1..7 e fixa a manufaturada em 1.0 com `+7 = 1`. A quantidade digitada é inteira. Nos `.MP2` a linha sem oferta tem quantidade 0 (a página nunca foi aberta no editor original).
 
-### 10.5 Robbers (`0x482270`, ids `0x83a1`, `0x83b8..0x83c5`)
-`header+0x8970` (`0x5704a8`): u32 nível geral de assaltos, 0..364 (`0x16c`; 1875 ~ 200, começo do século XX ~ 30). Quatro ladrões em `state+0x38ba + 0x18k` (`0x573da2`): nome char[20] + NUL, `+0x16` i16 ano de início (0 = desde o começo; `< 1800` vira 0, `> 2099` vira 2100). Nome vazio = ladrão não usado (nomes genéricos se nenhum).
+### 10.5 Robbers (`0x482270`, ids `0x83b8..0x83c5`, slider `0x83cc`)
+Nível geral de assaltos: **state `+0x38b6`** (`0x573d9e`, i32; slider `0x83cc`, faixa `0..0x191`; os 95 `.MP2` trazem 0..400, 20 = padrão de um mapa novo, `0x472980`). A leitura anterior (header `+0x8970`) estava errada: aquele campo é o "Start offset days" da página Special Restrictions (10.8). `0x573e02` (taxa atual, i16) volta a ele a cada 1º de janeiro (`world-tick.md`). Quatro ladrões em `state+0x38ba + 0x18k` (`0x573da2`): nome char[20] + NUL, `+0x16` i16 ano de início (0 = desde o começo; `< 1800` vira 0, `> 2099` vira 2100). Nome vazio = ladrão não usado (nomes genéricos se nenhum).
 
 ### 10.6 New Map > From Image (`0x4694f0`, `0x469bc0`, `0x469670`)
 O botão (`0xc47`) pergunta o arquivo (LNG 248..251, padrão `<dados>\EXAMPLE.PCX`, que a instalação GOG não traz) e a escala de altura (LNG 252, inteiro 1..2000, padrão 100; `escala = (f32)n * (f32)0.01`). **Leitor PCX** (`0x469bc0`): cabeçalho de 128 bytes (`xmax` em +8, `ymax` em +10, planos em +0x41); `stride = (xmax + 2) & 0xfffe`, linhas `ymax + 1`; RLE normal (`b >= 0xc0`: repete o próximo byte `b & 0x3f` vezes), um plano por buffer; com 1 plano espera `0x0C` + paleta de 768 bytes. **Aplicação** (`0x469670`, depois de criar o mapa `W x H`, `0x472980`): para cada vértice `(x, y)` de `0..=W` x `0..=H`: posição `px = x * stride / (W+1)` e `py = y * linhas / (H+1)` (f32, limitadas a `stride - 1` e `linhas - 1`), amostra bilinear com pesos `1 - frac` (um peso `> 0.99` vira 1) da luminosidade (1 plano: `(R+G+B)/3` da paleta; vários planos: cada plano), soma dos planos, `altura = ftol((soma - 1.0) * escala / planos)` limitada a -255..510 (`0x4260c0`). Em seguida o mapa todo é repintado com a classe de terreno 6 (`0x42a3e0(0, 0, W, H, 6, ..)`). Preto é o ponto mais baixo (-1 na escala 100), branco o mais alto (254). Porte: `rt2_sim::editor_pcx`. Verificação: leitura do assembly (o `.exe` não traz imagem de exemplo; o teste usa PCX sintéticos).
 
 ### 10.7 Remover território (extensão do clone)
 O original não remove territórios (a lista de `0x48caa0` só esconde os registros com `+0x23 == 0`; Territory Setup `0x4c6e70` não tem botão de apagar). O clone adiciona **Remove Territory** no diálogo: os tiles do território voltam ao 1, o registro é liberado (o número vira o próximo novo, `0x4c8440`); recusa o primeiro e qualquer território que outro remapeia (`+0x2a`, LNG 2393). `rt2_sim::editor_opts::territory_remove`.
+
+### 10.8 Special Restrictions (`0x480740`, título LNG 2870, ids `0x833d..0x83a3`)
+Dez caixas; cada tratador (`0x47ef50`) faz `byte = (byte == 0)` num byte do cabeçalho (offsets do bloco de cabeçalho, `0x567b38 + off`). Texto = LNG do nome, e a dica é o id seguinte.
+
+| id | byte | LNG | efeito |
+|---|---|---|---|
+| `0x833d` | `+0x86ff` | 2871 Slow date | hora e minuto em vez de mês e dia |
+| `0x833e` | `+0x86fe` | 2873 Fixed cargo | vagões fixos, sempre cheios |
+| `0x833f` | `+0x8700` | 2875 No money | dinheiro some das telas |
+| `0x82f5` | `+0x8701` | 2877 No customs at borders | sem alfândega |
+| `0x839b` | `+0x86ef` | 3331 Limited supply and demand | oferta e demanda normais desligadas |
+| `0x839c` | `+0x86f0` | 3333 Show visited track | escurece o trilho já visitado |
+| `0x839d` | `+0x86f1` | 3335 One shot waste | estações aceitam lixo uma vez |
+| `0x839e` | `+0x86f2` | 3337 Limited track building | limite de células por empresa |
+| `0x839f` | `+0x8702` | 3339 Territory Wars | cenário de guerra de territórios |
+| `0x83a3` | `+0x8974` | 3341 Metra | cenário de metrô leve |
+
+E o campo **Start offset days** (`0x83a1`, rótulo LNG 3329, dica 3330): header `+0x8970`, i32, inteiro limitado a `0..0x16c` (364); 0 = "1 de janeiro", 22 = 23 de janeiro (os `.MP2` trazem 0 em 89 de 95; o maior é 252). `rt2_sim::editor_opts::{Special, toggle_special, start_offset_days}`. Confiança alta (construtor e tratador lidos; os bytes ficam em 0/1 nos 95 `.MP2`).
+
+### 10.9 Regional (`0x4855e0`, título LNG 2879)
+Quatro grupos de três botões de rádio (High, Normal, Low = LNG 2886..2888; dicas 2883..2885 e 2890). Os três primeiros são os custos de combustível e manutenção (LNG 2880 Steam Costs, 2881 Diesel, 2882 Electric): ids `0x83d8 + 10*linha + nível` gravam `header[0x235 + linha] = nível` (0 alto, 1 normal, 2 baixo; padrão dos `.MP2` = 1). O quarto é **Passenger Traffic** (LNG 2889): ids `0x83f6..0x83f8`, `header[0x238] = id - 0x83f6` (mesma escala). O refresh marca `hdr[0x238] + 0x83f6` e `hdr[0x235 + linha] + 0x83d8 + 10*linha`. `rt2_sim::editor_opts::{cost_level, traffic_level}`. Os bytes `0x237` (custo elétrico: ajusta o global `0x5534c0`, 8000/6000/5000) e `0x238` (tráfego de passageiros: taxas das casas) são lidos pela simulação (`cargo.md` 7.1.1 passo 1). Confiança alta nos ids e deslocamentos; a ordem High/Normal/Low = 0/1/2 vem da ordem dos botões e dos valores dos `.MP2` (padrão 1).
+
+### 10.10 Computer A.I. (`0x485230`, título LNG 3407)
+Dois grupos de três rádios. **Track Expansion** (LNG 3408): ids `0x83fc..0x83fe`, rótulos LNG 3395..3397 (Aggressive, Moderate, Conservative), dicas 3403, 3402, 3401; `header[0x8975] = 0x83fe - id` (2 agressivo, 1 moderado, 0 conservador; o refresh marca `0x83fe - byte`). **Dividend Payout / Stock Buyback** (LNG 3409): ids `0x8401..0x8403`, rótulos 3398..3400 (Aggressive, Moderate, None), dicas 3404..3406; `header[0x8976] = id - 0x8401` (0 agressivo, 1 moderado, 2 nenhum). `rt2_sim::editor_opts::{ai_track, ai_dividend}`. Os `.MP2` trazem valores 0..2 nos dois bytes. Confiança alta; o consumo pela IA (`ai.md`) não foi conferido por esta passada.
+
+### 10.11 Industry (`0x486d70`, título LNG 464 "Industry Weightings")
+Lista `0x82f3` de **48 linhas** (tipos `1..=48`, linha `i` = tipo `i + 1`) sobre os **registros de 9 bytes em header `+0x8793`** (`0x5702cb`, 53 registros, `world-growth.md`): `+0` u8 **tipo desativado pelo cenário** (1 = não pode aparecer; 0 = permitido, o padrão), `+1` i32 peso em %, `+5` i32 ponderação 0..4 (padrão 2). A linha mostra o nome (LNG `u16[0x5536ea + 2*i]`: 921..957, 3010..3022), " (disabled)" (LNG 478) quando o byte 0 é diferente de 0, e à direita o nome da ponderação (`u16[0x553890 + 2*(+5)]`: LNG 1138..1142 Very Low..Very High). Ao selecionar (`0x481f70`) o tratador mostra o primeiro ano (`0x535c44 + 0x27*tipo`) e o estado da caixa **Allow this building type for this map** (LNG 509, id `0x82f9`, ligada quando o byte 0 vale 0); o clique faz `byte = 1 - byte` do tipo selecionado (`DAT_00577c30 * 9 + 0x8793`). A ponderação (`+5`) só é mostrada: a página não tem controle para ela (o tratador não trata `0x82fa`). O mundo pula os tipos com o byte 0 diferente de 0 (`0x433370`, `0x433550`; `world-growth.md` 2.5). `rt2_sim::editor_opts::{industry_row, toggle_industry, industry_allowed_count}`. Confiança alta; correção de `## 1`: o byte 0 dos registros é **desativado** (0 = ligado), não "ligado (1)".

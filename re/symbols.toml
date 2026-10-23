@@ -5807,3 +5807,59 @@ name = "building_sprite_release"
 kind = "function"
 comment = "fastcall(predio): contador de uso dos sprites do tipo/estilo (0x5458c8); no zero libera as quatro imagens (so interface); [S]"
 spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x480740"
+name = "map_options_page_special_restrictions"
+kind = "function"
+comment = "fastcall(x, y, w): page builder of Map Options > Special Restrictions: 10 check boxes (ids 0x833d,0x833e,0x833f,0x82f5,0x839b..0x839f,0x83a3 toggle header bytes +0x86ff,+0x86fe,+0x8700,+0x8701,+0x86ef..+0x86f2,+0x8702,+0x8974) and the 'Start offset days' field 0x83a1 (header +0x8970, i32, clamp 0..0x16c)"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x4855e0"
+name = "map_options_page_regional"
+kind = "function"
+comment = "fastcall(x, y, w): Map Options > Regional: steam/diesel/electric cost radios (ids 0x83d8 + 10*row + level, header +0x235+row, 0 high 1 normal 2 low) and passenger traffic radios (ids 0x83f6..0x83f8, header +0x238)"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x485230"
+name = "map_options_page_computer_ai"
+kind = "function"
+comment = "fastcall(x, y, w): Map Options > Computer A.I.: track expansion radios (ids 0x83fc..0x83fe, header +0x8975 = 0x83fe - id: 2 aggressive 0 conservative) and dividend/buyback radios (ids 0x8401..0x8403, header +0x8976 = id - 0x8401: 0 aggressive 1 moderate 2 none)"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x486d70"
+name = "map_options_page_industry"
+kind = "function"
+comment = "fastcall(x, y, w): Map Options > Industry (title LNG 464): list 0x82f3 of 48 types (type = row + 1) over the 9-byte records of header +0x8793 (byte 0 = disabled by the scenario), checkbox 0x82f9 'Allow this building type' (LNG 509) toggles the selected record"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x481e90"
+name = "map_options_industry_row_draw"
+kind = "function"
+comment = "list draw callback of the Industry page: name LNG u16[0x5536ea + 2*row], ' (disabled)' (LNG 478) when record byte 0 != 0, weighting name LNG u16[0x553890 + 2*record.+5] (Very Low..Very High)"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x481f70"
+name = "map_options_industry_row_select"
+kind = "function"
+comment = "list select callback of the Industry page: DAT_00577c30 = row + 1, shows the first year (0x535c44 + 39*type) and the box state"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x4931b0"
+name = "overview_side_buttons_refresh"
+kind = "function"
+comment = "highlights the side buttons 0x7d1..0x7d7 of the tool palette (current mode DAT_005534c4, or DAT_005534c8 when the window is the station palette)"
+spec = "docs/ui.md"
+
+[[symbol]]
+addr = "0x573d9e"
+name = "scenario_robbery_level"
+kind = "data"
+comment = "i32 overall robbery level of the scenario (state +0x38b6); Robbers page slider 0x83cc; 0x573e02 creeps back to it each January"
+spec = "docs/formats/map-gam.md"

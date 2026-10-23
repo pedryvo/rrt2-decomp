@@ -609,6 +609,17 @@ impl AppState {
                 p.brushes(brush, &t.a("The size of the brush."));
             }
             Group::Overview => {
+                // `bpovervw.win` in editor mode (`0x492e40` case 0xb with `0x573d7a != 0`): the
+                // background is record 8, whose fifth side button (Track by Company) is blank;
+                // the Bars 2008..2011 pick the overview mode (`0x494f40`, `0x48f520(0xb, 1,
+                // mode)`), tips LNG 1936..1940.
+                const TIPS: [u32; 4] = [1936, 1939, 1937, 1938];
+                for (i, tip) in TIPS.into_iter().enumerate() {
+                    let r = [397.0, 4.0 + 32.0 * i as f32, 56.0, 31.0];
+                    p.hot(r, A_SUB + i as u32, sub == i, true, &t.get(tip, ""));
+                }
+                let mode = t.get(TIPS[sub.min(3)], "");
+                p.caption([10.0, 6.0, 380.0, 40.0], &mode, 0.9, TEXT, true);
                 let hint = t.a("The radar shows each territory in its own colour.");
                 p.caption([10.0, 60.0, 380.0, 40.0], &hint, 0.9, TEXT, true);
             }

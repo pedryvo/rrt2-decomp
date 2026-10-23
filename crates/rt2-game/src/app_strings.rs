@@ -500,6 +500,7 @@ pub static APP_EN: &[&str] = &[
     "The first territory cannot be removed.",
     "Territory %1 remaps to this one; remap it first.",
     "At most 32 players.",
+    "types allowed",
 ];
 
 /// The id of an English default.

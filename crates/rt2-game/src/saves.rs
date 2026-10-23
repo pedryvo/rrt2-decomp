@@ -42,7 +42,7 @@ pub struct SaveMeta {
     pub day: u8,
     /// The company's cash in dollars, if there is a company.
     pub cash: Option<i64>,
-    /// Unix time of the save (UTC).
+    /// Unix time of the save (seconds since the epoch, UTC; shown in local time).
     pub saved_at: u64,
 }
 
@@ -292,31 +292,29 @@ pub fn months_between(from: (u16, u8), to: (u16, u8)) -> i32 {
     m(to) - m(from)
 }
 
-/// Civil date and time (UTC) of a Unix time: `(year, month, day, hour, minute)`.
-pub fn civil(unix: u64) -> (i64, u32, u32, u32, u32) {
-    let days = (unix / 86_400) as i64;
-    let rem = (unix % 86_400) as u32;
-    // Howard Hinnant's days-to-civil algorithm.
-    let z = days + 719_468;
-    let era = z.div_euclid(146_097);
-    let doe = z.rem_euclid(146_097);
-    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
-    let y = yoe + era * 400;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = (doy - (153 * mp + 2) / 5 + 1) as u32;
-    let m = if mp < 10 { mp + 3 } else { mp - 9 } as u32;
-    let y = if m <= 2 { y + 1 } else { y };
-    (y, m, d, rem / 3600, rem % 3600 / 60)
+/// `2026-10-23 14:05` in the system's local time zone (the sidecar keeps the Unix time, which is
+/// UTC; only the display converts). An empty text for a missing time.
+pub fn format_time(unix: u64) -> String {
+    format_time_in(unix, &jiff::tz::TimeZone::system())
 }
 
-/// `2026-10-23 14:05` (UTC; the date has no time zone database behind it).
-pub fn format_time(unix: u64) -> String {
+/// [`format_time`] in `zone` (a zone the system does not know falls back to UTC).
+pub fn format_time_in(unix: u64, zone: &jiff::tz::TimeZone) -> String {
     if unix == 0 {
         return String::new();
     }
-    let (y, m, d, h, mi) = civil(unix);
-    format!("{y:04}-{m:02}-{d:02} {h:02}:{mi:02}")
+    let Ok(ts) = jiff::Timestamp::from_second(unix as i64) else {
+        return String::new();
+    };
+    let z = ts.to_zoned(zone.clone());
+    format!(
+        "{:04}-{:02}-{:02} {:02}:{:02}",
+        z.year(),
+        z.month(),
+        z.day(),
+        z.hour(),
+        z.minute()
+    )
 }
 
 #[cfg(test)]
@@ -345,12 +343,18 @@ mod tests {
     }
 
     #[test]
-    fn civil_dates_are_right() {
-        assert_eq!(civil(0), (1970, 1, 1, 0, 0));
-        assert_eq!(civil(1_000_000_000), (2001, 9, 9, 1, 46));
-        assert_eq!(civil(1_709_210_096), (2024, 2, 29, 12, 34));
-        assert_eq!(format_time(1_000_000_000), "2001-09-09 01:46");
+    fn times_show_in_the_zone_asked_for() {
+        let utc = jiff::tz::TimeZone::UTC;
+        assert_eq!(format_time_in(1_709_210_096, &utc), "2024-02-29 12:34");
         assert_eq!(format_time(0), "");
+        let utc = jiff::tz::TimeZone::UTC;
+        assert_eq!(format_time_in(1_000_000_000, &utc), "2001-09-09 01:46");
+        // A zone behind UTC shows the earlier local time, one ahead the later one (crossing
+        // midnight changes the date too).
+        let west = jiff::tz::TimeZone::fixed(jiff::tz::offset(-3));
+        let east = jiff::tz::TimeZone::fixed(jiff::tz::offset(9));
+        assert_eq!(format_time_in(1_000_000_000, &west), "2001-09-08 22:46");
+        assert_eq!(format_time_in(1_000_000_000, &east), "2001-09-09 10:46");
     }
 
     #[test]

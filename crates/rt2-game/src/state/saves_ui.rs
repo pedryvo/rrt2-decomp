@@ -831,18 +831,12 @@ impl AppState {
                 lines.push((t.a("Cash"), crate::info::money(c as f64)));
             }
             if m.saved_at > 0 {
-                lines.push((
-                    t.a("Saved"),
-                    format!("{} UTC", saves::format_time(m.saved_at)),
-                ));
+                lines.push((t.a("Saved"), saves::format_time(m.saved_at)));
             }
         } else if let Some(row) = row
             && row.entry.modified > 0
         {
-            lines.push((
-                t.a("Saved"),
-                format!("{} UTC", saves::format_time(row.entry.modified)),
-            ));
+            lines.push((t.a("Saved"), saves::format_time(row.entry.modified)));
         }
         if row.is_some_and(|r| r.original) {
             lines.push((t.a("Source"), t.a("Original game")));
