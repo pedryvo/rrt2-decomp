@@ -327,6 +327,10 @@ impl Ai<'_, '_> {
                     }
                 }
                 self.tile_rebuild(rx0 - 1, ry0 - 1, rx1 + 1, ry1 + 1);
+                if check.is_none() && self.suppress_networks {
+                    self.overlay_snapshot = None;
+                    return;
+                }
                 if check.is_none() {
                     if self.ts.s.stations.count < 0x14 {
                         self.station_networks_rebuild();
@@ -362,7 +366,7 @@ impl Ai<'_, '_> {
 
     /// `track_bulldoze_tile(x, y, company, &reason)` (`0x4286a0`): the tile's track, and on a
     /// bridge or water span the whole crossing.
-    fn track_bulldoze_tile(
+    pub(crate) fn track_bulldoze_tile(
         &mut self,
         x: i32,
         y: i32,

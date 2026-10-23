@@ -167,6 +167,11 @@ Acidentes, roubos, demissões, liquidações, a bolsa da IA e a troca de locomot
 | `liquidate` | empresa 5: caixa, patrimônio, lucro e preço ruins em 3 anos (`+0x4766`, `+0x479e`, `+0x4286`, arquivos) | liquidação (`0x438170`) e venda de ações da IA: `Liquidate` |
 | `stocks` | pessoa 2 com $5 000 000 | `ai_person_trade_stocks` (`0x4a8af0`): `Stocks` |
 | `engine` | trens 3 e 4 com motor de 1800 (`+0xa9`), `+0x4243` da empresa 5 = 0 | troca de locomotiva no trilho (`0x4d4e90`): `Engine` (semente 2); `FieldDemolition` (1234) demole uma fazenda no fim do ano |
+| `flood` | regra `2\|TerritoryId=1\|233=12` | inundação (`0x4c8a30`, `0x490490` modo 3): `Flood` |
+| `confstations` | regra `2\|CompanyId=5\|302=1` | destruição das estações da IA (`0x437f50`, `0x40adb0`, `0x4bf4e0`): `ConfStations` |
+| `deactivate` | regra `2\|CompanyId=5\|189=1` | desativação da empresa da IA (`0x438170` com `f = 1`): `Deactivate` |
+
+Regras de cenário entram no save com `rt2-savepatch --add-rule 'GATILHO|CONDIÇÃO|E=V,...'` (receitas com o prefixo `rule:` em `prepare_rare.py`): a condição é compilada pelo clone (`rt2_sim::scenario::Rule::from_condition`, laços derivados como no editor), a regra é "uma vez só", sem mensagem (nenhuma janela modal), e o byte `V` vai para o efeito `E` do primeiro conjunto; o original carrega a regra do arquivo como qualquer outra. Para inspecionar um caminho raro no original durante o avanço, `ADV_ADVHOOKPY=<arquivo.py>` (lido por `advance_gdb.py` depois da carga e das sementes) pode criar breakpoints e registrar funções em `adv_hooks[endereço]`, com `log`, `reg`, `rd`, `rd32` à mão (ex.: despejar as listas de sobreposição `tile+10` antes e depois de `0x4091f0`, ou o RNG a cada chamada de `0x4f0660` entre dois pontos); só as linhas de `log` aparecem na saída.
 
 Mudar uma receita muda o sha do arquivo e, com ele, a chave do cache do placar (o original roda de novo).
 

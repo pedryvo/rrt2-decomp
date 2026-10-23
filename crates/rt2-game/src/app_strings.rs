@@ -491,6 +491,15 @@ pub static APP_EN: &[&str] = &[
     "This effect needs the rule to test each company.",
     "This effect needs the rule to test each player.",
     "This effect needs the rule to test each territory.",
+    "From Image",
+    "From Scratch",
+    "Image file",
+    "Height scale (1 to 2000)",
+    "The image could not be read (an indexed or 24-bit PCX is needed).",
+    "Remove Territory",
+    "The first territory cannot be removed.",
+    "Territory %1 remaps to this one; remap it first.",
+    "At most 32 players.",
 ];
 
 /// The id of an English default.

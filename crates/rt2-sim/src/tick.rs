@@ -30,9 +30,11 @@ use crate::todo_hook;
 use crate::world::World;
 
 mod company;
+mod demolish;
 mod editor;
 mod events;
 mod fincmd;
+mod flood;
 mod found;
 mod history;
 mod newgame;

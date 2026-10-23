@@ -6,7 +6,9 @@
 //! Confiscation (`destroy == false`) only clears the owner; the trains are always deleted
 //! (`train_delete` `0x4cdd50`). Destruction removes the track with `tile_track_remove`
 //! (`0x4162b0`) after deleting the trains holding a reservation on it, and destroys the station
-//! buildings (`building_destroy(b, 1)` `0x40adb0`, not on this view: counted as a missing hook).
+//! buildings (`building_destroy(b, 1)` `0x40adb0`): the scenario effects route that case to
+//! `SimState::stations_destroy` (`tick/demolish.rs`), since the building part of `0x40adb0` lives
+//! on the save view; here it is only counted as a missing hook.
 
 use crate::ai::Ai;
 use crate::scenario::Confiscate;
@@ -50,7 +52,7 @@ impl Ai<'_, '_> {
     /// `0x437d40(company, territory, destroy)`: `0x437ab0` per company. The redraw of every
     /// track tile (`0x4cb090`) only runs with the view option `0x574bc8+0x54`, which is not
     /// part of the game state (assumed off).
-    fn confiscate_track(&mut self, company: i32, territory: i32, destroy: bool) {
+    pub(crate) fn confiscate_track(&mut self, company: i32, territory: i32, destroy: bool) {
         for c in self.confiscate_targets(company) {
             self.confiscate_track_of(c, territory, destroy);
         }
@@ -98,7 +100,7 @@ impl Ai<'_, '_> {
     /// `0x437db0(company, territory)`: the trains of the list from the last to the first; with
     /// a territory only a train on the map (`+0x9c`) whose locomotive (`+0`, car pool `+9`/`+0xb`)
     /// stands in it. Each goes through `train_delete(+0x3d)`.
-    fn confiscate_trains(&mut self, company: i32, territory: i32) {
+    pub(crate) fn confiscate_trains(&mut self, company: i32, territory: i32) {
         for c in self.confiscate_targets(company) {
             let trains = self.ids(P::Train);
             for &t in trains.iter().rev() {
@@ -156,7 +158,7 @@ impl Ai<'_, '_> {
     /// `0x4380a0(company, territory)`: the buildings of the list from the last to the first
     /// owned by `c` (`+0x97`), placed (`+7`) and in `territory` (`+0x9d`, 0 = any) lose the
     /// owner.
-    fn confiscate_buildings(&mut self, company: i32, territory: i32) {
+    pub(crate) fn confiscate_buildings(&mut self, company: i32, territory: i32) {
         for c in self.confiscate_targets(company) {
             let buildings = self.ids(P::Industry);
             for &b in buildings.iter().rev() {

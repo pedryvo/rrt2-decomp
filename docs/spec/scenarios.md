@@ -182,7 +182,7 @@ Estruturas lidas (campos de `docs/spec/cargo.md` e `finance.md`):
 2. uma regra "uma vez só" já disparada continua avaliando (e sorteando) nas combinações seguintes: só o efeito/mensagem é pulado;
 3. regras de modo de data (desfazer) não avaliam: sem sorteio;
 4. gatilhos 6 e 7, `+0x34f`, `+0x350`: a função usa o `rand()` do CRT (estado `0x5609f0`, `crt_rand_range`: `lo + rand % (hi-lo+1)`), **não** o RNG do jogo;
-5. a mensagem e os efeitos do conjunto de efeitos não sorteiam (o que as funções chamadas por alguns efeitos, `0x438780` gerentes, `0x4c8a30` inundação, `0x4cdd50` aposentar trem, `0x469fb0` estado econômico, sortearem não foi lido: Em aberto).
+5. a mensagem e os efeitos do conjunto de efeitos não sorteiam (o que as funções chamadas por alguns efeitos, `0x438780` gerentes, `0x4cdd50` aposentar trem, `0x469fb0` estado econômico, sortearem não foi lido: Em aberto; a inundação `0x4c8a30` sorteia na água forçada, na costa, nas transições e no replan dos trens da IA das estações destruídas, 4.2.1).
 Confirmado: o diferencial compara o estado do RNG do jogo e do CRT depois de 6000 expressões bem formadas e 4000 malformadas.
 
 ### 3.5 Tabela de tokens (118 entradas, `0x53b330`, 17 bytes cada)
@@ -513,9 +513,13 @@ Efeitos de nível lidos por: `effect_multiplier` `0x46b480` (`cargo.md` 5): `f(n
 - **Trens** `0x437db0(empresa, território)`: os trens da lista da última posição para a primeira (`train_nth`); trem da empresa (`+0x41`); com território, só trem no mapa (`+0x9c != 0`) cuja locomotiva (`+0`, registro do pool `0x574c70`, `x = +9`, `y = +0xb`) está num tile do território. Cada um vai por `train_delete(+0x3d)` (`0x4cdd50`): **confisco e destruição apagam os trens**. [V: `#E09` e `#E15`, confisco de trens nas regras de início.]
 - **Estações** `0x437f50(empresa, território, destruir)` (`company_stations_release`): estações da lista da última para a primeira com dono `+0x39 == empresa` e `+0x4ad == território` (ou território 0). Confisco: o prédio da estação (`industry_ptr(+4)`) fica com `+0x97 = 0` e a estação com `+0x39 = 0`. Destruir: `building_destroy(prédio, 1)` (`0x40adb0`).
 - **Prédios** `0x4380a0(empresa, território)`: prédios da lista da última para a primeira com `i16 +0x97 == empresa`, `+7 != 0` e `i8 +0x9d == território` (ou 0): `+0x97 = 0`. Igual nos dois modos.
-- **Inundação** `0x4c8a30(território, v)` (efeito 233): acha o tile do território com a menor soma dos quatro cantos de elevação (o primeiro na ordem linha a linha em empate) e chama `0x490490(x, y, 0x12, 3, 0, soma/4 + v)` (preenchimento com água; arredonda a divisão para zero), entre redesenhos (`0x502200`, `0x50dca0/0x50dcd0`). Não portado (gancho `scenario_flood`).
+- **Inundação** `0x4c8a30(território, v)` (efeito 233) [V: placar `Flood`]: acha o tile do território com a menor soma dos quatro cantos de elevação (o primeiro na ordem linha a linha em empate) e chama `0x490490(x, y, 0x12, 3, 0, soma/4 + v)` (preenchimento com água; arredonda a divisão para zero), entre redesenhos (`0x502200`, `0x50dca0/0x50dcd0`). O preenchimento no modo 3 (os modos 0..2 são as ferramentas do editor, `crate::editor::fill`):
+  1. marca a partir de `(x, y)` (pilha, vizinhos O, N, L, S) os tiles cuja soma dos quatro cantos é `<= 4 * nível` (o tile inicial sempre; o argumento substitui a média do tile inicial);
+  2. com `0x574b80` e `0x574b78` incrementados (a remoção de trilho de um retângulo, `0x4caaa0`, deixa de refazer as redes e as rotas), três passes sobre os tiles marcados, linha a linha: **passe 0**, num tile que não é água, para o próprio tile e cada vizinho que os bits da peça (`peça+0`, tabelas `0x537b48`/`0x537b68`) ligam, `train_delete` dos trens com reserva na peça (`peça+3` -> `pool_80+1`); **passe 1**, num tile que não é água, `building_destroy(prédio da estação, 1)` da estação do tile (`0x4bf1d0`, estrutura tipo 4); **passe 2**, num tile que não é água: `0x4286a0(x, y, 0, NULL)` se há peça, `0x408e70` (prédio da estrutura tipo 3 -> `building_destroy(b, 1)`), `0x429ea0(x, y, 0, 0)` (tira o bit de rio e reorienta os rios do 3x3, `0x429ce0`) e `0x429e30(x, y, 0)` (tira a estrada); num tile de água só o rio. Depois, no passe 2, todo tile marcado entra na caixa, ganha água forçada `0x42a3e0(x, y, 1, 1, 0x12, 0, 0, 1, 0, 0)` se ainda não é água e os quatro cantos no nível (`0x4260c0`, limitado a `-255..510`);
+  3. decrementa os contadores, refaz os rios do mapa todo (`0x4294d0(0, 0, W, H)`: só as flags `0x4258e0` dos tiles que perdem ou têm rio ficam no save; o sorteio é `rng_hash_range`), as redes (`0x46a370`) e as rotas (`0x4d3640`); com caixa, `0x426d30(caixa +- 1)` (costa), `0x42a7d0(x0 - 2, y0 - 2, larg + 5, alt + 5)` e `0x417770(caixa +- 3)` (o redesenho adiado também refaz o bit plano `0x417880` dos cantos novos).
+  As bordas de território que as listas guardam antes da água (camada 1, criadas quando os tiles eram terra) entram no `0x42a7d0` final: um tile que vira água perde a borda e a flag. No `Example` com `v = 12` a água cobre o mar inteiro e a costa (64 906 tiles, 47 de trilho), destrói 2 estações e 27 trilhos e apaga um trem. Porte: `SimState::flood_territory` / `water_fill` (`crates/rt2-sim/src/tick/flood.rs`).
 
-Porte: `Ai::territory_confiscate` (`crates/rt2-sim/src/build/confiscate.rs`); a destruição de estações conta o gancho `confiscate_destroy_station` (o `building_destroy` de `tick/town.rs` não está na vista do passo de trem).
+Porte: `Ai::territory_confiscate` (`crates/rt2-sim/src/build/confiscate.rs`); a destruição de estações (efeitos 299 e 302) vai por `SimState::stations_destroy` (`tick/demolish.rs`) -> `building_destroy_with` (`tick/town.rs`) -> `Ai::station_remove` (`build/demolish.rs`, `0x4bf4e0`, `terrain-track.md` 3.4) [V: placar `ConfStations`].
 
 ### 4.3 Dinheiro (`0x45c150`)
 
@@ -569,7 +573,7 @@ Depois de qualquer mudança de `[0x573d70]`, `event_fire_trigger` encerra a varr
 ## 9. Em aberto
 
 1. Flags `+2` e `+6..+10` da tabela de efeitos (provavelmente "visível" e escopos permitidos no editor) e as 41 linhas 309..349, a linha 234 sem ramo.
-2. ~~Confisco e destruição~~ (4.2.1). Restam `0x490490` (o preenchimento da inundação), `0x438170`, `0x467bd0`.
+2. ~~Confisco e destruição~~, ~~inundação (`0x490490` modo 3)~~ e ~~`0x438170`~~ (4.2.1, `finance.md` 15.5). Resta `0x467bd0`.
 3. Quem lê os níveis de disponibilidade (127..188, 193..232, 305..308) e `[0x574784]`.
 4. Nomes finais dos campos `+0x32a`, `+0x32e`, `+0x34f/+0x350` (a avaliação "local" não aplica efeitos: provavelmente para não dessincronizar a rede) e de `[0x5665f0]`, `[0x5748fc]`.
 5. Mensagens: janelas (`0x469320`, `0x4a42f0`, `0x4510a0`) e a ordem de exibição em rede (escolha sempre 0 com 2 ou mais jogadores).

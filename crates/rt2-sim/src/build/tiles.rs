@@ -333,7 +333,11 @@ impl Ai<'_, '_> {
                 // had overlays without track overlays before the change keeps them.
                 let other = self.ts.t8(x, y, 0) & 1 != 0
                     || self.ts.t8(x, y, 3) & 0x20 != 0
-                    || !self.overlay_pre(x, y);
+                    || !self.overlay_pre(x, y)
+                    || self
+                        .ground_layer
+                        .as_ref()
+                        .is_some_and(|g| g[(y * w + x) as usize]);
                 if added[i] || (had[i] && other) {
                     self.ts.set_t8(x, y, 6, f6 | 0x80);
                     self.ts.set_t8(x, y, 2, f2 | 0x40);

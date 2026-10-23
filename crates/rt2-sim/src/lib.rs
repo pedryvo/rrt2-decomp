@@ -38,6 +38,8 @@ pub mod company_record;
 pub mod convert;
 pub mod data;
 pub mod editor;
+pub mod editor_opts;
+pub mod editor_pcx;
 pub mod effects;
 pub mod exe;
 pub mod fields;

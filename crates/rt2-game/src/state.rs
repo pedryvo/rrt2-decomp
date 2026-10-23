@@ -33,6 +33,8 @@ mod build_dialogs;
 mod build_ui;
 mod dialogs;
 mod editor_modals;
+mod editor_options_ui;
+mod editor_panel;
 mod editor_ui;
 mod info_ui;
 mod mainwin;
@@ -1466,6 +1468,8 @@ mod tests {
 
 #[cfg(test)]
 mod build_tests;
+#[cfg(test)]
+mod editor_panel_tests;
 #[cfg(test)]
 mod editor_tests;
 #[cfg(test)]

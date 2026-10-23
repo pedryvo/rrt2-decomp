@@ -249,6 +249,14 @@ pub enum Kind {
         action: Action,
         on: bool,
     },
+    /// An invisible click area over art the application draws itself (the original's `Bar`
+    /// controls over the `bp*.imb` panels): no drawing of its own, only an outline while `on`
+    /// and a light tint under the cursor. Takes the mouse and acts like a [`Kind::Toggle`].
+    Hotspot {
+        action: Action,
+        on: bool,
+        enabled: bool,
+    },
     /// A grid of coloured cells (a minimap). A press or drag over it sends
     /// [`UiEvent::Pointer`] with the position as a fraction of the grid.
     Cells {
@@ -416,7 +424,9 @@ impl Ui {
     /// Switches a [`Kind::Toggle`] or [`Kind::Icon`] on or off.
     pub fn set_on(&mut self, id: NodeId, value: bool) {
         match &mut self.nodes[id.0].kind {
-            Kind::Toggle { on, .. } | Kind::Icon { on, .. } => *on = value,
+            Kind::Toggle { on, .. } | Kind::Icon { on, .. } | Kind::Hotspot { on, .. } => {
+                *on = value
+            }
             _ => {}
         }
     }
@@ -437,8 +447,9 @@ impl Ui {
     }
 
     pub fn set_enabled(&mut self, id: NodeId, on: bool) {
-        if let Kind::Button { enabled, .. } | Kind::Toggle { enabled, .. } =
-            &mut self.nodes[id.0].kind
+        if let Kind::Button { enabled, .. }
+        | Kind::Toggle { enabled, .. }
+        | Kind::Hotspot { enabled, .. } = &mut self.nodes[id.0].kind
         {
             *enabled = on;
         }
@@ -597,6 +608,7 @@ impl Ui {
             Kind::Button { .. }
             | Kind::Toggle { .. }
             | Kind::Icon { .. }
+            | Kind::Hotspot { .. }
             | Kind::Cells { .. }
             | Kind::Text { .. }
             | Kind::List { .. } => true,
@@ -645,6 +657,11 @@ impl Ui {
                 enabled: true,
                 ..
             }
+            | Kind::Hotspot {
+                action,
+                enabled: true,
+                ..
+            }
             | Kind::Icon { action, .. } => Some(*action),
             _ => None,
         }
@@ -667,7 +684,9 @@ impl Ui {
     fn focusable(&self, id: NodeId) -> bool {
         self.shown[id.0]
             && match &self.nodes[id.0].kind {
-                Kind::Button { enabled, .. } | Kind::Toggle { enabled, .. } => *enabled,
+                Kind::Button { enabled, .. }
+                | Kind::Toggle { enabled, .. }
+                | Kind::Hotspot { enabled, .. } => *enabled,
                 Kind::Icon { .. } | Kind::List { .. } => true,
                 _ => false,
             }
@@ -841,7 +860,10 @@ impl Ui {
             Key::Enter | Key::Space => {
                 if let Some(f) = self.focused() {
                     match &self.nodes[f.0].kind {
-                        Kind::Button { .. } | Kind::Toggle { .. } | Kind::Icon { .. } => {
+                        Kind::Button { .. }
+                        | Kind::Toggle { .. }
+                        | Kind::Icon { .. }
+                        | Kind::Hotspot { .. } => {
                             if let Some(a) = self.press_action(f) {
                                 ev.push(UiEvent::Activated(a));
                             }
@@ -1206,6 +1228,37 @@ mod tests {
         let _ = (cells, frame);
         ui.input(Input::CursorMoved { x: 50.0, y: 150.0 });
         assert!(ui.over_ui());
+    }
+
+    #[test]
+    fn hotspot_takes_the_mouse_and_toggles() {
+        let mut ui = Ui::new(UiScale::default());
+        let r = ui.add_root(Kind::Panel { fill: Fill::None }, Layout::fill());
+        let h = ui.add(
+            r,
+            Kind::Hotspot {
+                action: 11,
+                on: false,
+                enabled: true,
+            },
+            Layout::at(Anchor::TopLeft, 50.0, 50.0),
+        );
+        ui.layout((800, 600));
+        assert_eq!(ui.hit(10.0, 10.0), Some(h));
+        assert_eq!(ui.hit(100.0, 100.0), None);
+        ui.set_on(h, true);
+        assert!(matches!(ui.node(h).kind, Kind::Hotspot { on: true, .. }));
+        ui.input(Input::CursorMoved { x: 10.0, y: 10.0 });
+        ui.input(Input::MouseDown(MouseButton::Left));
+        assert_eq!(
+            ui.input(Input::MouseUp(MouseButton::Left)),
+            vec![UiEvent::Activated(11)]
+        );
+        assert!(ui.focus_order().contains(&h));
+        ui.set_enabled(h, false);
+        assert!(!ui.focus_order().contains(&h));
+        ui.input(Input::MouseDown(MouseButton::Left));
+        assert!(ui.input(Input::MouseUp(MouseButton::Left)).is_empty());
     }
 
     #[test]

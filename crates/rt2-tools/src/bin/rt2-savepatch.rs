@@ -7,7 +7,9 @@
 //! `structures stations persons companies cars objects anim pool58 pool7c pool80 track trains
 //! places territories pool88`), `OFF` a byte offset (decimal or `0x`), `TYPE` one of
 //! `u8 i8 u16 i16 u32 i32 f32 f64`. `--get TARGET+OFF:TYPE` prints a field; `--list POOL` the live
-//! slots of a pool.
+//! slots of a pool. `--add-rule 'TRIGGER|CONDITION|E=V,E=V'` appends a one-shot scenario rule
+//! (compiled by `rt2_sim::scenario`, loop flags derived like the editor, empty message) whose
+//! first effect set has byte `V` at effect `E` (scenario effects of the prepared cases).
 
 use std::path::PathBuf;
 
@@ -30,6 +32,27 @@ struct Args {
     /// Print the live slots of a pool
     #[arg(long)]
     list: Option<String>,
+    /// `TRIGGER|CONDITION|E=V,...` (repeatable): append a one-shot rule
+    #[arg(long = "add-rule")]
+    rules: Vec<String>,
+}
+
+/// `TRIGGER|CONDITION|E=V,...` -> the rule record of the file.
+fn parse_rule(spec: &str) -> anyhow::Result<rt2_formats::map::Rule> {
+    let mut it = spec.splitn(3, '|');
+    let trigger: u8 = it.next().context("missing trigger")?.trim().parse()?;
+    let cond = it.next().context("missing condition")?.trim();
+    let effects = it.next().context("missing effects")?;
+    let mut rule = rt2_sim::scenario::Rule::from_condition(cond, trigger)
+        .map_err(|e| anyhow::anyhow!("condition {cond:?}: {e:?}"))?;
+    rule.once = true;
+    for e in effects.split(',').filter(|e| !e.trim().is_empty()) {
+        let (k, v) = e.split_once('=').context("effect must be E=V")?;
+        let k: usize = k.trim().parse()?;
+        let v = parse_num(v.trim())? as i8;
+        *rule.effects[0].get_mut(k).context("effect index out of range")? = v;
+    }
+    Ok(rule.to_file())
 }
 
 fn pool_mut<'a>(s: &'a mut Save, name: &str) -> anyhow::Result<&'a mut Pool> {
@@ -152,11 +175,14 @@ fn main() -> anyhow::Result<()> {
             .context("offset out of range")?
             .copy_from_slice(&enc);
     }
+    for r in &args.rules {
+        save.rules.push(parse_rule(r)?);
+    }
     if let Some(out) = &args.output {
         // Note: `to_bytes` writes the decoded scalars (minutes, date, time, speed, game_seed)
         // over the raw blocks; patch those with the decoded fields, not here.
         std::fs::write(out, save.to_bytes()).with_context(|| out.display().to_string())?;
-    } else if !args.sets.is_empty() {
+    } else if !args.sets.is_empty() || !args.rules.is_empty() {
         bail!("--set needs an output file");
     }
     Ok(())

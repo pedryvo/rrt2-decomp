@@ -114,6 +114,13 @@ pub struct Ai<'t, 'a> {
     /// Track-overlay presence of a rectangle before a change (x0, y0, x1, y1, cells), see
     /// [`crate::build::tiles`].
     pub overlay_snapshot: Option<(i32, i32, i32, i32, Vec<bool>)>,
+    /// Per tile (`y * W + x`): the overlay list holds a ground blend (layer 0), when the caller
+    /// knows it (`SimState::ground_layer`); read by [`crate::build::tiles`] to tell whether a
+    /// tile keeps overlays once its track overlays are gone.
+    pub ground_layer: Option<Vec<bool>>,
+    /// `0x574b80` / `0x574b78` raised (the water fill of a flood, `0x490490` mode 3): the track
+    /// removal of a rectangle (`0x4caaa0`) skips the network rebuild and the train refresh.
+    pub suppress_networks: bool,
     /// `0x5746ec`: the AI turn is running (station track is laid double, the build A* adds the
     /// slope penalty).
     pub ai_turn: bool,
@@ -212,6 +219,13 @@ impl Tables {
     }
 }
 
+impl Drop for Ai<'_, '_> {
+    /// The ratio `0x57951c` is a global of the original: it survives the session.
+    fn drop(&mut self) {
+        self.ts.g.ai_ratio = self.ratio.to_bits();
+    }
+}
+
 impl<'t, 'a> Ai<'t, 'a> {
     /// End of a session on the world: the queued commands plus the scenario triggers raised
     /// by the primitives, and the deferred network rebuild flag (`0x5794f0`) kept in the train
@@ -228,10 +242,11 @@ impl<'t, 'a> Ai<'t, 'a> {
     pub fn new(ts: &'t mut Ts<'a>) -> Self {
         let tables = Tables::from_image(ts.img);
         let elec = ts.img.i32(0x0055_34c0);
+        let ratio = f32::from_bits(ts.g.ai_ratio);
         Ai {
             ts,
             company: 0,
-            ratio: 0.0,
+            ratio,
             route_foreign: 0,
             route_total: 0,
             track_single: false,
@@ -246,6 +261,8 @@ impl<'t, 'a> Ai<'t, 'a> {
             dirty_rect: None,
             events: Vec::new(),
             overlay_snapshot: None,
+            ground_layer: None,
+            suppress_networks: false,
             ai_turn: false,
             lng: None,
             traders: Vec::new(),

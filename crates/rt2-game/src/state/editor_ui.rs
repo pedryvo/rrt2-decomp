@@ -33,6 +33,9 @@ pub(super) const A_BRUSH: u32 = 7040;
 pub(super) const A_ITEM: u32 = 7100;
 pub(super) const A_STYLE: u32 = 7080;
 pub(super) const A_FILL_MODE: u32 = 7090;
+/// Scroll the paint palette up or down by a row (the bars beside the `bppaintt` swatches).
+pub(super) const A_PAL_UP: u32 = 7220;
+pub(super) const A_PAL_DOWN: u32 = 7221;
 pub(super) const A_UNDO: u32 = 7200;
 pub(super) const A_OPTIONS: u32 = 7201;
 pub(super) const A_RULES: u32 = 7202;
@@ -77,7 +80,7 @@ impl Group {
         Group::Overview,
     ];
 
-    fn uses_brush(self) -> bool {
+    pub(super) fn uses_brush(self) -> bool {
         !matches!(
             self,
             Group::Select | Group::Fill | Group::Overview | Group::Add
@@ -115,6 +118,8 @@ pub(super) struct EditorState {
     pub class_slot: usize,
     pub mix_slot: usize,
     pub tree_slot: usize,
+    /// First visible row of the paint palette when the original panel art shows two rows.
+    pub pal_row: usize,
     pub fill_mode: FillMode,
     /// Row of the add list (0..6 the special entries, then the 98 shapes by name).
     pub add_row: usize,
@@ -139,7 +144,7 @@ pub(super) struct EditorState {
     pub focus: u32,
 }
 
-fn fnt(n: u8, dz: f32) -> FontStyle {
+pub(super) fn fnt(n: u8, dz: f32) -> FontStyle {
     let f = game_font(n);
     f.with_size((f.size * dz).round())
 }
@@ -185,6 +190,7 @@ impl EditorState {
             class_slot: 5,
             mix_slot: 6,
             tree_slot: 0,
+            pal_row: 0,
             fill_mode: FillMode::Match,
             add_row: 6,
             style: 0,
@@ -822,6 +828,8 @@ impl AppState {
             };
             g.world.editor_recompute();
             let mut s = g.world.to_save();
+            // Editor mode: the saver keeps the player summary of the Players page (`0x477540`).
+            rt2_sim::editor_opts::refresh_player_summary(&mut s);
             editor::refresh_preview(&mut s);
             s.to_bytes()
         };
@@ -896,6 +904,8 @@ impl AppState {
                 e.sub = 0;
                 e.msg = None;
             }
+            A_PAL_UP => e.pal_row = e.pal_row.saturating_sub(1),
+            A_PAL_DOWN => e.pal_row = (e.pal_row + 1).min(1),
             a if (A_SUB..A_SUB + 16).contains(&a) => e.sub = (a - A_SUB) as usize,
             a if (A_BRUSH..A_BRUSH + 5).contains(&a) => e.brush = (a - A_BRUSH) as usize,
             a if (A_STYLE..A_STYLE + 6).contains(&a) => e.style = (a - A_STYLE) as usize,
@@ -990,11 +1000,18 @@ impl AppState {
         let (cw, ch) = ui.logical_size();
         let dz = design_scale(ch);
         let ph = bottom_height(ch, dz);
-        let sl = (22.0 * dz).round();
         let inset = (8.0 * dz).round();
         let t = &self.texts;
         let Some(ed) = self.ed() else { return };
         let (group, sub, brush) = (ed.group, ed.sub, ed.brush);
+        // The original panel art (`bp*.imb`) carries its own message strip, so the clone's status
+        // bar is dropped when it is drawn (editor_panel.rs).
+        let art = self.editor_panel_art(group, sub);
+        let sl = if art.is_some() {
+            0.0
+        } else {
+            (22.0 * dz).round()
+        };
         let mut tips: Vec<(NodeId, String)> = Vec::new();
         // The highlights over the map go first: the panel and the dialogs draw over them.
         self.build_editor_overlay(ui);
@@ -1003,20 +1020,23 @@ impl AppState {
             Kind::Panel { fill: Fill::Panel },
             Layout::at(Anchor::Bottom, 0.0, ph),
         );
-        let status_bar = ui.add(
-            bottom,
-            Kind::Panel {
-                fill: Fill::Solid(Color(0x10, 0x20, 0x14, 0xe0)),
-            },
-            Layout::at(Anchor::Bottom, 0.0, sl).offset(inset, 4.0),
-        );
-        let status = ui.add(
-            status_bar,
-            lbl("", fnt(2, dz * 0.9), TEXT, Align::Left),
-            Layout::fill().offset(8.0 * dz, 0.0),
-        );
+        let mut status = None;
+        if art.is_none() {
+            let status_bar = ui.add(
+                bottom,
+                Kind::Panel {
+                    fill: Fill::Solid(Color(0x10, 0x20, 0x14, 0xe0)),
+                },
+                Layout::at(Anchor::Bottom, 0.0, sl).offset(inset, 4.0),
+            );
+            status = Some(ui.add(
+                status_bar,
+                lbl("", fnt(2, dz * 0.9), TEXT, Align::Left),
+                Layout::fill().offset(8.0 * dz, 0.0),
+            ));
+        }
         let body_y = inset;
-        let body_h = ph - sl - 2.0 * inset - 4.0;
+        let body_h = ph - sl - 2.0 * inset - if art.is_some() { 0.0 } else { 4.0 };
 
         // Left: the tool groups.
         let names = [
@@ -1083,7 +1103,12 @@ impl AppState {
             (t.a("New Map..."), A_NEW, t.a("Start a new, empty map.")),
             (t.get(lng::QUIT, "Quit"), A_EXIT, t.a("Leave the editor.")),
         ];
-        let bh = (body_h / 8.0).floor();
+        // With the panel art the Undo button sits on the plate of the `bpmisc` strip.
+        let buttons: Vec<_> = buttons
+            .into_iter()
+            .filter(|(_, a, _)| art.is_none() || *a != A_UNDO)
+            .collect();
+        let bh = (body_h / buttons.len() as f32).floor();
         for (i, (text, action, tip)) in buttons.into_iter().enumerate() {
             let enabled = action != A_UNDO || !ed.undo.is_empty();
             let n = ui.add(
@@ -1139,17 +1164,27 @@ impl AppState {
         // Middle: the palette.
         let px = inset * 2.0 + gw;
         let pw = (radar_x - inset - px).max(100.0);
-        let pal = ui.add(
-            bottom,
-            Kind::Panel {
-                fill: Fill::Solid(Color(0x0c, 0x0f, 0x0c, 0x90)),
-            },
-            at(px, body_y, pw, body_h),
-        );
-        self.build_palette(ui, pal, pw, body_h, dz, group, sub, brush, &mut tips);
+        if let Some(art) = art {
+            let area = rt2_ui::Rect::new(px, body_y, pw, body_h);
+            let s = self.build_art_panel(ui, bottom, art, area, dz, &mut tips);
+            status = Some(s);
+        } else {
+            let pal = ui.add(
+                bottom,
+                Kind::Panel {
+                    fill: Fill::Solid(Color(0x0c, 0x0f, 0x0c, 0x90)),
+                },
+                at(px, body_y, pw, body_h),
+            );
+            self.build_palette(ui, pal, pw, body_h, dz, group, sub, brush, &mut tips);
+        }
 
         // A message or the hint at the top edge of the panel.
-        if let Some((m, good)) = &self.ed().and_then(|e| e.msg.clone()) {
+        if art.is_some() {
+            if let Some((m, good)) = &self.ed().and_then(|e| e.msg.clone()) {
+                self.build_art_message(ui, m, *good, ph, dz);
+            }
+        } else if let Some((m, good)) = &self.ed().and_then(|e| e.msg.clone()) {
             ui.add(
                 bottom,
                 Kind::Label {
@@ -1163,7 +1198,7 @@ impl AppState {
             );
         }
         if let Screen::Game(g) = &mut self.screen {
-            g.hud.status = Some(status);
+            g.hud.status = status;
             g.hud.tips = tips;
         }
         if self.editor_modal_open() {
@@ -1579,7 +1614,7 @@ impl AppState {
         }
     }
 
-    fn class_name(&self, c: u8) -> String {
+    pub(super) fn class_name(&self, c: u8) -> String {
         match c {
             0..=12 => self.texts.get(700 + u32::from(c), ""),
             18 => self.texts.get(713, "ocean"),
@@ -1588,7 +1623,7 @@ impl AppState {
     }
 
     /// Rows of the add list: the special entries, then the shapes by name.
-    fn add_items(&self) -> Vec<String> {
+    pub(super) fn add_items(&self) -> Vec<String> {
         let t = &self.texts;
         let mut v = vec![
             t.get(536, "** Special - Add City **"),
@@ -1726,15 +1761,25 @@ impl AppState {
             "new" => self.editor_new_dialog(),
             "open" => self.editor_open_dialog(),
             "save-as" => self.editor_save_as_dialog(),
-            "options" | "goals" | "restrictions" | "economy" | "industries" => {
+            n if super::editor_modals::OPT_TABS.contains(&n) => {
                 self.editor_options_dialog();
-                let tab = ["options", "goals", "restrictions", "economy", "industries"]
+                let tab = super::editor_modals::OPT_TABS
                     .iter()
                     .position(|n| *n == name)
                     .unwrap_or(0);
                 self.editor_modal_activated(A_MODAL + 80 + tab as u32);
             }
             "rules" => self.editor_rules_dialog(),
+            // `image:<file>`: New Map > From Image with that PCX (screenshots).
+            n if n.starts_with("image:") => {
+                self.editor_new_dialog();
+                if let Some(Modal::NewMap(m)) = self.ed_mut().and_then(|e| e.modal.as_mut()) {
+                    m.image = n["image:".len()..].to_owned();
+                    m.w = 120;
+                    m.h = 100;
+                }
+                self.editor_modal_activated(A_MODAL + 66);
+            }
             "place" => {
                 let id = self
                     .editor_world()
@@ -1840,7 +1885,7 @@ pub(super) fn region_color(region: u8) -> Color {
 }
 
 /// "desert 70, wasteland 30": what a mixed-paint entry draws from.
-fn mix_text(i: usize) -> String {
+pub(super) fn mix_text(i: usize) -> String {
     const NAMES: [&str; 8] = [
         "beach",
         "desert",

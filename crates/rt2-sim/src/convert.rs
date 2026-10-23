@@ -371,7 +371,7 @@ fn difficulty_flags(s: &mut Save) {
 /// `0x406f60(station)`: clears the station's catchment link chain (`+0x3d`, count `+0x41`) and
 /// removes, from each building (`c74`, list order), the first link of its chain (`+0x2f`, count
 /// `+0x33`) that points at the station, freeing it in `pool_58`.
-fn station_unlink(ts: &mut crate::trainstep::Ts<'_>, st: i32) {
+pub(crate) fn station_unlink(ts: &mut crate::trainstep::Ts<'_>, st: i32) {
     ts.seti32(P::Station, st, 0x3d, 0);
     ts.seti32(P::Station, st, 0x41, 0);
     let mut b = ts.first_id(P::Industry);

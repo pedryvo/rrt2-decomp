@@ -671,24 +671,43 @@ impl ScenarioWorld for ScWorld<'_> {
         destroy: bool,
         rng: &mut GameRng,
     ) {
-        // `0x437d40` / `0x437db0` / `0x437f50` / `0x4380a0` (`build::confiscate`).
+        // `0x437d40` / `0x437db0` / `0x437f50` / `0x4380a0` (`build::confiscate`); the station
+        // buildings of a destruction go through `building_destroy` (`tick/demolish.rs`).
         let minutes = self.minutes;
         let crt = &mut *self.crt;
-        self.s.with_trainstep_parts(minutes, rng, crt, |ts| {
-            crate::ai::Ai::new(ts).territory_confiscate(company, territory, what, destroy);
-        });
+        match (what, destroy) {
+            (Confiscate::All, true) => {
+                self.s.with_trainstep_parts(minutes, rng, crt, |ts| {
+                    let mut ai = crate::ai::Ai::new(ts);
+                    ai.confiscate_track(company, territory, true);
+                    ai.confiscate_trains(company, territory);
+                });
+                self.s
+                    .stations_destroy(minutes, rng, crt, company, territory);
+                self.s.with_trainstep_parts(minutes, rng, crt, |ts| {
+                    crate::ai::Ai::new(ts).confiscate_buildings(company, territory);
+                });
+            }
+            (Confiscate::Stations, true) => {
+                self.s
+                    .stations_destroy(minutes, rng, crt, company, territory);
+            }
+            _ => {
+                self.s.with_trainstep_parts(minutes, rng, crt, |ts| {
+                    crate::ai::Ai::new(ts).territory_confiscate(company, territory, what, destroy);
+                });
+            }
+        }
     }
-    fn deactivate_company(&mut self, company: i32) {
+    fn deactivate_company(&mut self, company: i32, rng: &mut GameRng) {
         // Effect 189: `0x438170(company, 1)`.
         if pool::record(&self.s.save.companies, company as usize).is_none() {
             return;
         }
         let minutes = self.minutes;
         let crt = &mut *self.crt;
-        // Nothing in it draws from the game RNG (train_delete, owners, holdings).
-        let mut rng = GameRng::new(0);
         self.s
-            .company_liquidate(minutes, &mut rng, crt, company as usize, true);
+            .company_liquidate(minutes, rng, crt, company as usize, true);
     }
     fn eliminate_player(&mut self, person: i32) {
         let minutes = self.minutes;
@@ -700,8 +719,11 @@ impl ScenarioWorld for ScWorld<'_> {
     fn set_persona(&mut self, _person: i32, _index: i32) {
         self.skip("scenario_set_persona", "persona table copy (LNG texts)");
     }
-    fn flood_territory(&mut self, _territory: i32, _amount: i32) {
-        self.skip("scenario_flood", "0x4c8a30");
+    fn flood_territory(&mut self, territory: i32, amount: i32, rng: &mut GameRng) {
+        // `0x4c8a30(territory, v)` (`tick/flood.rs`).
+        let minutes = self.minutes;
+        let crt = &mut *self.crt;
+        self.s.flood_territory(minutes, rng, crt, territory, amount);
     }
     fn retire_train(&mut self, id: i32, rng: &mut GameRng) {
         // `0x4cdd50` only when the train is in the pool (`0x574c64`).

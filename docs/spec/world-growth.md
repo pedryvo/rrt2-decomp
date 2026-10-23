@@ -300,7 +300,7 @@ se escolha: building_destroy(escolha, 1)
 ```
 O prédio de **menor lucratividade** (com ruído de +-10%) da classe pedida é demolido; prédios de empresas e prédios de estação são imunes, e prédios novos (rating 0) são os primeiros da fila. Não há falência de indústria por outra via: **uma indústria só fecha quando o lugar encolhe** (laço de encolhimento ou demolição espontânea, 3.3), e a escolhida é a menos lucrativa; uma indústria sem nenhum serviço continua viva enquanto o alvo do lugar a comportar.
 
-`building_destroy` (`0x40adb0`) [S]: decrementa `0x570713` (se real), tira o prédio da lista do lugar (`0x430da0`), libera lotes sem estação, destrói a estação ligada, devolve os tiles (`0x42e320`), limpa a máscara de pegada e marca `+0x4f = 1` (4.5).
+`building_destroy` (`0x40adb0`) [S]: decrementa `0x570713` (se real), tira o prédio da lista do lugar (`0x430da0`), percorre a pilha de lotes (`+0x4d`, próximo `+0xf`): cada lote perde a indústria (`+1 = 0`) e o que não está num vagão (`+5 == 0`) é liberado [V: placar Flood], destrói a estação ligada, devolve os tiles (`0x42e320`), limpa a máscara de pegada e marca `+0x4f = 1` (4.5).
 
 ### 3.7 Reinício (`town_reset` `0x4317f0`) [S]
 
@@ -427,7 +427,7 @@ passada 1, por tile:  c = classe(tile+0 >> 6), n = tile+2 & 0xf
 passada 2, por tile:  tile+6 bit 3 (0x08) = !(bit 2) ou x < 1 ou vizinho oeste bit 4 ou y < 2 (sic) ou vizinho norte bit 4
                       ou x >= L-1 ou vizinho leste bit 4 ou y >= A-1 ou vizinho sul bit 4
 ```
-**Demolição** (`0x40adb0(prédio, 1)`, depois do que 3.6 descreve: lista do lugar, lotes sem estação, elos): `tile_struct_remove(tile, 3, id)` (`0x42e320`: desliga e libera o primeiro registro `(3, id)`; `tile+2 & 0x10` passa a valer se ainda há tipo 3) para todos os tiles da caixa `+0x26..+0x2c` (**`x` externo, `y` interno**); `0x4091f0` devolve os tiles guardados em `+0x50` (`flags2` nibble, árvores, terreno) e libera `pool_88`; para tipos 0xb/0x10/0x21 repinta as transições (`0x42a7d0(xmin - 1, ymin - 1, larg + 3, alt + 3)` sobre a caixa `+0x26..+0x2c`, com RNG, 4.5.1); `0x424c10(caixa +- 1)`; `+0x4f = 1`. A elevação **não** volta ao que era (só as prévias restauram a lista `0x564fc8`). Prédios de estação (`+8 != 0`) também chamam `station_remove` (`terrain-track.md`). O contador `0x570713` e a venda ao dono (`0x43eb60`) estão em 3.6/5.3.
+**Demolição** (`0x40adb0(prédio, 1)`, depois do que 3.6 descreve: lista do lugar, lotes sem estação, elos): `tile_struct_remove(tile, 3, id)` (`0x42e320`: desliga e libera o primeiro registro `(3, id)`; `tile+2 & 0x10` passa a valer se ainda há tipo 3) para todos os tiles da caixa `+0x26..+0x2c` (**`x` externo, `y` interno**); `0x4091f0` devolve os tiles guardados em `+0x50` (`flags2` nibble, árvores, terreno) e libera `pool_88`; para tipos 0xb/0x10/0x21 repinta as transições (`0x42a7d0(xmin - 1, ymin - 1, larg + 3, alt + 3)` sobre a caixa `+0x26..+0x2c`, com RNG, 4.5.1); `0x424c10(caixa +- 1)`; `+0x4f = 1`. A elevação **não** volta ao que era (só as prévias restauram a lista `0x564fc8`). A repintura parte das listas de sobreposição do tile **como estavam** (as transições de camada 0 que o carregador pôs ao redor dos campos, `tile+6 & 0x80`): `0x42a7d0` remove essas transições dos tiles devolvidos e chama `0x4258e0`, que limpa `tile+2 & 0x40` e `tile+6 & 0x80` onde nada sobra [V: placar FieldDemolition; o clone precisa montar a camada de chão antes de devolver os tiles]. Prédios de estação (`+8 != 0`) também chamam `station_remove` (`terrain-track.md`). O contador `0x570713` e a venda ao dono (`0x43eb60`) estão em 3.6/5.3.
 
 #### 4.5.1 Campos, sobreposições e luz [V]
 
@@ -627,7 +627,7 @@ Os stubs são código de máquina escrito sobre o corpo do callee na imagem emul
 
 - Rótulo de lucratividade da UI (LNG 2466..2471 "Poor" .. "Gushing Cash"; 2475..2482 "Atrocious" .. "Good"): a função que mapeia `+0x4b`/`+0x36` aos textos não foi localizada.
 - A parte de estações de `building_can_place` (arestas de trilho ao lado da âncora, `0x4629f0`, `0x4603a0`) é de `terrain-track.md`.
-- Repintura na demolição (`0x4091f0` + `0x42a7d0`) portada mas ainda sem caso no placar; o reaproveitamento de slot do pool de prédios guardaria bytes do registro antigo em `+0x38` (4.5.1).
+- Repintura na demolição (`0x4091f0` + `0x42a7d0`) [V: placar FieldDemolition]; o reaproveitamento de slot do pool de prédios guardaria bytes do registro antigo em `+0x38` (4.5.1).
 - Outras mudanças de elevação fora da construção de prédios (trilho, terraplenagem: `0x426000` com `param_3 != 0`) ainda não acumulam o retângulo de redesenho no clone; só importa para a luz (`tile+6 & 0x20`) num redesenho.
 - `+0x4b` inicial de um prédio novo (a alocação `0x4f1690` zera o registro?) e `+0x4a` (pesos por tipo) no formato do `.MAP`: o decodificador de `map-gam.md` ainda não os expõe (o registro de arquivo tem 0x96 bytes, a memória 0xb4).
 - Significado de `0x573d7a` (modo editor), `0x570237` (desliga crescimento, economia e finanças) e `0x5748f8` (trava).

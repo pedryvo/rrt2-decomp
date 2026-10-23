@@ -531,3 +531,24 @@ prepared = "~/.cache/rrt2/rare/engine.GAM"
 days = [30]
 seed = 1234
 desc = "Example preparado: demolição de uma fazenda no fim do ano (0x4091f0, repintura dos campos)"
+
+[[scenario]]
+name = "Flood"
+prepared = "~/.cache/rrt2/rare/flood.GAM"
+days = [30]
+seed = 1234
+desc = "Example preparado: regra de cenário inunda o território 1 (efeito 233, 0x4c8a30, 0x490490 modo 3)"
+
+[[scenario]]
+name = "ConfStations"
+prepared = "~/.cache/rrt2/rare/confstations.GAM"
+days = [30]
+seed = 1234
+desc = "Example preparado: regra de cenário destrói as estações da IA (efeito 302, 0x437f50, 0x40adb0, 0x4bf4e0)"
+
+[[scenario]]
+name = "Deactivate"
+prepared = "~/.cache/rrt2/rare/deactivate.GAM"
+days = [30]
+seed = 1234
+desc = "Example preparado: regra de cenário desativa a empresa da IA (efeito 189, 0x438170 com f = 1)"

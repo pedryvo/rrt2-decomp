@@ -638,6 +638,17 @@ impl UiRenderer {
                         None => self.button_like(layer, id, r, st, fallback, *font, true, *on, k),
                     }
                 }
+                Kind::Hotspot { on, enabled, .. } => {
+                    if *enabled && st.hover {
+                        self.solid(&mut layer.quads, r, Color(255, 255, 255, 0x24));
+                    }
+                    if *on {
+                        self.outline(&mut layer.quads, r, theme.accent, k);
+                    }
+                    if st.focus {
+                        self.outline(&mut layer.quads, r.inset(1.0 * k, 1.0 * k), theme.accent, k);
+                    }
+                }
                 Kind::Cells {
                     cols, rows, colors, ..
                 } => self.cells(&mut layer.quads, r, *cols, *rows, colors),

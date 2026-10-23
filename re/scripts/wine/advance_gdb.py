@@ -148,6 +148,10 @@ class MsgWindowOpen(gdb.Breakpoint):
         wr32(0x574D20, 0)
         return False
 MSGBP = MsgWindowOpen()
+# ADV_ADVHOOKPY=<arquivo.py>: executado antes do avanco (depois da carga e das sementes); pode criar
+# breakpoints e registrar funcoes em `adv_hooks[endereco]` (ex.: despejar listas de sobreposicao).
+if env.get("ADV_ADVHOOKPY"):
+    exec(open(env["ADV_ADVHOOKPY"]).read())
 remaining = 1440 * days
 t1 = time.time()
 while remaining > 0:

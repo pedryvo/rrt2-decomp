@@ -759,7 +759,7 @@ fn river_turn(t: &mut Tile) {
 
 /// `0x429ce0(x, y, extra)`: turns the flow direction until it points at a possible neighbour;
 /// with `extra` one more step first.
-fn river_orient(s: &mut Save, x: i32, y: i32, extra: bool) {
+pub(crate) fn river_orient(s: &mut Save, x: i32, y: i32, extra: bool) {
     let (f, _) = river_links(s, x, y);
     while !f[river_dir(tile_ref(s, x, y))] {
         river_turn(tile_mut(s, x, y));

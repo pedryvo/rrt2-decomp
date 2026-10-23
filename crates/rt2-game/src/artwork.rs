@@ -59,6 +59,28 @@ pub struct DialogArt {
     /// A blank 1024x569 sprite the station detail window fills with its composed picture
     /// (`stationview.rs`) through `UiRenderer::upload_sprite`.
     pub station_view: Option<SpriteId>,
+    /// The editor tool panels (`bp*.imb`).
+    pub editor: EditorArt,
+}
+
+/// Names of the editor tool panels, in [`EditorArt::panels`] order: height, paint, fill, add
+/// trees, cut trees, territories, add buildings, bulldoze, overview (`bp*.win`, docs/ui.md).
+pub const EDITOR_PANELS: [&str; 9] = [
+    "bpraisea", "bppaintt", "bpfillte", "bpaddtre", "bpremtre", "bpterrit", "bpaddbui", "bpbulldz",
+    "bpovervw",
+];
+/// Design size of a panel background (the `Image id 2000` control of every `bp*.win`) and of the
+/// `bpmisc.imb` strip below it.
+pub const PANEL_SIZE: (f32, f32) = (458.0, 166.0);
+pub const MISC_SIZE: (f32, f32) = (458.0, 50.0);
+
+/// The original editor panels: the 458x166 background of each tool window (`bp*.imb`, the
+/// image of control 2000 of its `.win`) and the 458x50 `bpmisc.imb` strip with the message
+/// field and the button plate. None without the install art.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct EditorArt {
+    pub panels: [Option<SpriteId>; 9],
+    pub misc: Option<SpriteId>,
 }
 
 pub struct Artwork {
@@ -216,8 +238,34 @@ pub fn load(assets: &GameAssets) -> Artwork {
         medal_gold: add("winlose.imb", 1),
         medal_silver: add("winlose.imb", 2),
         station_view: None,
+        editor: EditorArt::default(),
     };
     let mut dialogs = dialogs;
+    for (i, name) in EDITOR_PANELS.iter().enumerate() {
+        // The record of the background is the image of control 2000 of the window.
+        let rec = assets
+            .blob(&format!("{name}.win"))
+            .and_then(|w| rt2_formats::ui::Window::parse(w).ok())
+            .and_then(|w| {
+                w.controls
+                    .iter()
+                    .find(|c| c.id == 2000)
+                    .and_then(|c| c.image_record())
+            });
+        if let Some(rec) = rec {
+            dialogs.editor.panels[i] = add(&format!("{name}.imb"), usize::from(rec));
+        }
+    }
+    let misc = assets
+        .blob("bppaintt.win")
+        .and_then(|w| rt2_formats::ui::Window::parse(w).ok())
+        .and_then(|w| {
+            w.controls
+                .iter()
+                .find(|c| c.bank == "bpmisc.imb")
+                .and_then(|c| c.image_record())
+        });
+    dialogs.editor.misc = misc.and_then(|r| add("bpmisc.imb", usize::from(r)));
     if assets.contains("sdmbkg1.imb") {
         dialogs.station_view =
             Some(b.reserve(crate::stationview::VIEW_W, crate::stationview::VIEW_H));

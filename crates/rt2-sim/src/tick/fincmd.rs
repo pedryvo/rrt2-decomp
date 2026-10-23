@@ -952,11 +952,14 @@ impl SimState {
     /// `company_liquidate(0)` (`0x438170`), after the merger moved everything away: frees the
     /// manager, removes the company column of every person's positions, removes the chairman's
     /// post, marks the company inactive and drops it from the company set.
-    pub(super) fn fc_liquidate(&mut self, slot: usize) {
-        // Track the company still owns goes ownerless (`0x437ab0(0, 0)`).
-        for r in self.save.track_pieces.records.iter_mut() {
-            if usize::from(r.data[2]) == slot {
-                r.data[2] = 0;
+    pub(super) fn fc_liquidate(&mut self, slot: usize, release_track: bool) {
+        // Track the company still owns goes ownerless (`0x437ab0(c, 0, 0)`; with "destroy" the
+        // caller already removed it).
+        if release_track {
+            for r in self.save.track_pieces.records.iter_mut() {
+                if usize::from(r.data[2]) == slot {
+                    r.data[2] = 0;
+                }
             }
         }
         let idx = self.company_idx(slot);
@@ -1103,7 +1106,7 @@ impl SimState {
                 put_u16(&mut r.data, 0x97, buyer as u16);
             }
         }
-        self.fc_liquidate(target);
+        self.fc_liquidate(target, true);
         self.fc_quote(now, buyer, 0, false);
     }
 }

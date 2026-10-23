@@ -19,10 +19,10 @@ pub const STRUCT_STATION: u8 = 4;
 impl Ts<'_> {
     // ---- tile structure chain -----------------------------------------------------------
 
-    fn st_type(&self, id: i32) -> u8 {
+    pub(crate) fn st_type(&self, id: i32) -> u8 {
         self.u8(P::Struct, id, 0)
     }
-    fn st_next(&self, id: i32) -> i32 {
+    pub(crate) fn st_next(&self, id: i32) -> i32 {
         i32::from(self.u16(P::Struct, id, 5))
     }
 

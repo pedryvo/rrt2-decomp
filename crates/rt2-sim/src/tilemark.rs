@@ -661,3 +661,39 @@ impl PlaceMap for Save {
         i32::from(terrain::tables().class_of_id(id))
     }
 }
+
+/// `0x42e8f0(tile, kind)`: the data (`+1`) of the first structure of `kind` in the chain of
+/// tile `(x, y)`.
+pub fn first_struct(s: &Save, x: i32, y: i32, kind: u8) -> Option<u32> {
+    if !in_map(s, x, y) {
+        return None;
+    }
+    let mut c = struct_id(s, x, y);
+    let mut guard = 0;
+    while c != 0 && guard <= s.structures.records.len() {
+        guard += 1;
+        if st_kind(s, c) == kind {
+            return Some(st_data(s, c));
+        }
+        c = st_next(s, c);
+    }
+    None
+}
+
+/// `0x4258e0` on one tile: `tile+6 & 0x80` tells whether the overlay list is not empty, and
+/// `tile+2 & 0x40` is that bit or, without overlays, whether the terrain id is outside its
+/// class's own ids.
+pub fn overlay_flags(t: &mut rt2_formats::map::Tile, any: bool) {
+    t.flags6 = (t.flags6 & 0x7f) | if any { 0x80 } else { 0 };
+    let mut f2 = (t.flags2 & 0xbf) | if any { 0x40 } else { 0 };
+    if !any {
+        let tb = rt2_formats::terrain::tables();
+        let id = (u16::from(t.var) | (u16::from(t.ground) << 8)) >> 6;
+        let c = usize::from(tb.class_of_id(id));
+        let st = tb.start[c];
+        if i32::from(id) < st[0] || st[4] < i32::from(id) {
+            f2 |= 0x40;
+        }
+    }
+    t.flags2 = f2;
+}

@@ -140,6 +140,25 @@ def engine_patches():
             co(5, "0x4243", "u16", 0)]
 
 
+def flood_patches():
+    """Inundacao de territorio (efeito 233, 0x4c8a30 -> 0x490490 modo 3): regra de inicio de mes,
+    uma vez so, no territorio 1 com nivel minimo + 12 (alaga o mar, a costa, 47 tiles de trilho e
+    3 estacoes da empresa 5)."""
+    return ["rule:2|TerritoryId=1|233=12"]
+
+
+def confstations_patches():
+    """Destruicao das estacoes da empresa 5 (efeito 302, 0x437f50(5, 0, 1) -> building_destroy
+    0x40adb0 -> station_remove 0x4bf4e0) no inicio do mes."""
+    return ["rule:2|CompanyId=5|302=1"]
+
+
+def deactivate_patches():
+    """Desativacao da empresa 5 (efeito 189, 0x438170(5, 1)): trens apagados, estacoes demolidas
+    e trilho removido (0x437ab0(5, 0, 1)) no inicio do mes."""
+    return ["rule:2|CompanyId=5|189=1"]
+
+
 RECIPES = {
     # nome: (funcao da base, funcao dos patches)
     "crash": (example_base, crash_patches),
@@ -150,6 +169,9 @@ RECIPES = {
     "liquidate": (example_base, liquidate_patches),
     "stocks": (example_base, stocks_patches),
     "engine": (example_base, engine_patches),
+    "flood": (example_base, flood_patches),
+    "confstations": (example_base, confstations_patches),
+    "deactivate": (example_base, deactivate_patches),
 }
 
 
@@ -173,7 +195,10 @@ def main():
         out = os.path.join(OUT, name + ".GAM")
         cmd = [PATCH, base(), out]
         for p in patches():
-            cmd += ["--set", p]
+            if p.startswith("rule:"):
+                cmd += ["--add-rule", p[5:]]  # regra de cenario (rt2-savepatch --add-rule)
+            else:
+                cmd += ["--set", p]
         r = subprocess.run(cmd)
         if r.returncode:
             sys.exit("rt2-savepatch falhou em " + name)

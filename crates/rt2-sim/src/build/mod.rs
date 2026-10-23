@@ -29,6 +29,7 @@ macro_rules! todo_hook {
 pub mod bulldoze;
 pub mod cmd;
 pub mod confiscate;
+pub mod demolish;
 pub mod improve;
 pub mod level;
 pub mod network;

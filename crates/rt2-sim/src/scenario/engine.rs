@@ -163,7 +163,7 @@ pub trait ScenarioWorld: ScenarioEnv {
         rng: &mut GameRng,
     );
     /// Effect 189: `0x438170(company, 1)`.
-    fn deactivate_company(&mut self, company: i32);
+    fn deactivate_company(&mut self, company: i32, rng: &mut GameRng);
     /// Effect 190 (AI persons only): `0x4a6a00`; also the game-over elimination.
     fn eliminate_player(&mut self, person: i32);
     /// Effect 191: `0x467bd0`.
@@ -171,7 +171,7 @@ pub trait ScenarioWorld: ScenarioEnv {
     /// Effect 192 with `b > 0`: persona table entry (spec 4.2).
     fn set_persona(&mut self, person: i32, index: i32);
     /// Effect 233 with `v > 0`: `0x4c8a30(territory, v)`.
-    fn flood_territory(&mut self, territory: i32, amount: i32);
+    fn flood_territory(&mut self, territory: i32, amount: i32, rng: &mut GameRng);
     /// Effect 235 with `b > 0`: retires train `id` when it exists (`0x4cdd50`).
     fn retire_train(&mut self, id: i32, rng: &mut GameRng);
     /// Effects 236..240: sets the "rights for sale" flags `+0x44 + i` of the territory for each
@@ -554,7 +554,7 @@ fn apply_effects<W: ScenarioWorld>(
                 };
                 world.confiscate(c.company, c.territory, what, destroy, rng);
             }
-            189 if c.company != 0 => world.deactivate_company(c.company),
+            189 if c.company != 0 => world.deactivate_company(c.company, rng),
             190 if c.person != 0 && !world.is_human_person(c.person) => {
                 world.eliminate_player(c.person);
             }
@@ -563,7 +563,7 @@ fn apply_effects<W: ScenarioWorld>(
             233 if c.territory != 0 => {
                 let v = var_value(b);
                 if v > 0 {
-                    world.flood_territory(c.territory, v);
+                    world.flood_territory(c.territory, v, rng);
                 }
             }
             235 if b > 0 => world.retire_train(bi, rng),

@@ -230,6 +230,55 @@ pub fn ground_rect(
     w: i32,
     h: i32,
 ) {
+    ground_rect_with(s, ctx, rng, x, y, w, h, None);
+}
+
+/// Per tile (`y * W + x`): the territory borders `0x42bf90` gives the tile (layer 1) over the
+/// current tiles of the whole map.
+pub fn border_layer(s: &Save) -> Vec<bool> {
+    let mwu = s.map.width;
+    let tiles = &s.map.tiles;
+    let mut g = TerrainGrid::from_new_ids(mwu, s.map.height, |tx, ty| {
+        let t = &tiles[ty * mwu + tx];
+        TileBytes {
+            b0: t.var,
+            b1: t.ground,
+            b2: t.flags2,
+            b3: t.trees,
+            b6: t.flags6,
+        }
+    });
+    let region: Vec<u8> = tiles.iter().map(|t| t.region).collect();
+    let terr = &s.territories;
+    let shown = |r: u8| {
+        terr.get(usize::from(r))
+            .is_some_and(|t| t.data.get(0x24).is_some_and(|&b| b != 0))
+    };
+    g.build_territory_borders(&region, shown);
+    g.cells
+        .iter()
+        .map(|c| {
+            c.nodes
+                .iter()
+                .any(|n| n.layer() == terrain::LAYER_TERRITORY)
+        })
+        .collect()
+}
+
+/// [`ground_rect`] with the territory borders the tiles' lists hold before the pass given
+/// (`borders`, per tile), when the tiles changed since the borders were last built (the water
+/// fill of a flood); without it they are rebuilt from the current tiles.
+#[allow(clippy::too_many_arguments)]
+pub fn ground_rect_with(
+    s: &mut Save,
+    ctx: &mut FieldCtx<'_>,
+    rng: &mut GameRng,
+    x: i32,
+    y: i32,
+    w: i32,
+    h: i32,
+    borders: Option<&[bool]>,
+) {
     let (mw, mh) = (s.map.width as i32, s.map.height as i32);
     let (x0, y0) = (x.max(0), y.max(0));
     let x1 = (x + w - 1).min(mw - 1);
@@ -282,7 +331,19 @@ pub fn ground_rect(
             }
         }
     }
-    g.build_territory_borders_rect(rx0, ry0, rx1, ry1, &region, shown);
+    match borders {
+        Some(b) => {
+            for ty in ry0..=ry1 {
+                for tx in rx0..=rx1 {
+                    let i = ty as usize * mwu + tx as usize;
+                    if b[i] {
+                        g.cells[i].nodes.push(node(terrain::LAYER_TERRITORY));
+                    }
+                }
+            }
+        }
+        None => g.build_territory_borders_rect(rx0, ry0, rx1, ry1, &region, shown),
+    }
     for ty in ry0..=ry1 {
         for tx in rx0..=rx1 {
             let i = ty as usize * mwu + tx as usize;

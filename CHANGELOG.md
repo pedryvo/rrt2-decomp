@@ -5,6 +5,16 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 ## Unreleased
 - Fix: Lay Track drag now starts and ends on a station when pressed on its building (snap to the station's tile), so dragging from one station to another works as in the original
 - Feature: city names and free map labels (seas) are written above the map, station names when zoomed in; vector text, hidden when too far out, overlap-free
+- Feature: the editor's tool panel uses the original `bp*.imb` art (height, paint, fill, trees, territories, add, bulldoze, overview) with the message strip `bpmisc`, scaled to the window, with click areas over the art (`Kind::Hotspot` in rt2-ui)
+- Feature: Map Options pages Players (add/delete, persona, mandatory/optional, human/computer/either, cash), Player Pool, Managers, Engines, Ports and Robbers, with the player summary of the header kept as the original's editor does
+- Feature: New Map > From Image (PCX heights with height scale 1..2000) and Remove Territory in Territory Setup
+- RE: Map Options byte maps (players pool 0x574c68 +0x530..0x533, header summary 0x567c88/0x567ca0, player pool 0x567d40, managers 0x570638, engines 0x570667, port rows 0x57023b, robbers 0x573da2, robbery level 0x5704a8) and the PCX import (0x469bc0, 0x469670) documented in docs/formats/map-gam.md section 10
+- Feature: scenario effect 233 floods a territory like the original (0x4c8a30 and the mode 3 water fill of 0x490490: trains, stations, track, buildings, rivers and roads cleared, water painted, corners set to the level).
+- Feature: scenario effects 299/302 demolish stations and effect 189 removes the company's stations and track (building_destroy 0x40adb0 -> station_remove 0x4bf4e0, 0x437ab0 with destroy).
+- Fix: demolishing a farm repaints the fields with the overlay lists as loaded (FieldDemolition identical to the original).
+- Fix: a demolished building's cargo pile clears the lots' industry and frees those not in a car (0x40adb0).
+- RE: the AI stop ratio 0x57951c is a run-time global that outlives a turn; ai_replan_train out of the AI turn (station removal) reads it.
+- Docs: fidelity scoreboard 131/131 identical with the new prepared cases Flood, ConfStations and Deactivate (rt2-savepatch --add-rule, prepare_rare.py recipes, ADV_ADVHOOKPY in advance_gdb.py).
 
 ## v0.2.0 — 2026-10-23
 - Feature: map and scenario editor (main menu Editor): new/open/save .MP2 maps, height, paint, fill, trees, territories, add buildings/industries/cities/rivers/roads, bulldozer, undo, Map Options and a scenario rules editor with live condition validation

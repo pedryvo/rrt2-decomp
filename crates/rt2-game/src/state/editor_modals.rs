@@ -28,10 +28,13 @@ use crate::text::id as lng;
 const A_OK: u32 = A_MODAL;
 const A_CANCEL: u32 = A_MODAL + 1;
 const A_DELETE: u32 = A_MODAL + 2;
-const A_FIELD: u32 = A_MODAL + 10; // + field id
+const A_FIELD: u32 = A_MODAL + 10; // + field id (0..30)
+/// Fields 30.. (`F_ROB_NAME` ...): their actions are `A_FIELD2 + id - 30`.
+const A_FIELD2: u32 = A_MODAL + 620;
 // New map.
 const A_NM_STEP: u32 = A_MODAL + 40; // +0..3: width -/+, height -/+
 const A_NM_CLASS: u32 = A_MODAL + 50; // + slot
+const A_NM_IMAGE: u32 = A_MODAL + 66;
 const A_OPEN_LIST: u32 = A_MODAL + 70;
 // Options.
 const A_OPT_TAB: u32 = A_MODAL + 80;
@@ -41,7 +44,10 @@ const A_OPT_IND: u32 = A_MODAL + 133;
 const A_OPT_SET: u32 = A_MODAL + 136;
 const A_OPT_YEAR: u32 = A_MODAL + 140; // -10, -1, +1, +10
 const A_OPT_CASH: u32 = A_MODAL + 144; // -, +
-const A_OPT_TOTAL: usize = 6;
+/// First action of the Players, pool, managers, engines, ports and robbers pages.
+pub(super) const A_OPT_BASE: u32 = A_MODAL + 400;
+/// Tabs of Map Options (`OPT_TABS`).
+pub(super) const A_OPT_TOTAL: usize = 11;
 // Rules.
 const A_RULE_LIST: u32 = A_MODAL + 200;
 const A_RULE_ADD: u32 = A_MODAL + 210;
@@ -89,6 +95,48 @@ const F_LABEL2: u32 = 5;
 const F_TITLE: u32 = 6;
 const F_GOAL: u32 = 10; // + 0..4 conditions
 const F_GOAL_MSG: u32 = 20; // + 0..4 messages
+pub(super) const F_ROB_NAME: u32 = 30; // + 0..4
+pub(super) const F_ROB_YEAR: u32 = 34; // + 0..4
+pub(super) const F_ROB_LEVEL: u32 = 38;
+pub(super) const F_CASH: u32 = 39;
+pub(super) const F_PORT_Q: u32 = 40; // + 0..4
+const F_IMG: u32 = 44;
+const F_SCALE: u32 = 45;
+
+/// The tabs of Map Options in order; `--tool` names of the screenshots and tests.
+pub(super) const OPT_TABS: [&str; A_OPT_TOTAL] = [
+    "options",
+    "goals",
+    "players",
+    "pool",
+    "managers",
+    "economy",
+    "engines",
+    "industries",
+    "restrictions",
+    "ports",
+    "robbers",
+];
+const T_GENERAL: usize = 0;
+const T_GOALS: usize = 1;
+const T_PLAYERS: usize = 2;
+const T_POOL: usize = 3;
+const T_MANAGERS: usize = 4;
+const T_ECONOMY: usize = 5;
+const T_ENGINES: usize = 6;
+const T_INDUSTRIES: usize = 7;
+const T_RESTRICTIONS: usize = 8;
+const T_PORTS: usize = 9;
+const T_ROBBERS: usize = 10;
+
+/// The action of text field `id`.
+fn field_action(id: u32) -> u32 {
+    if id < 30 {
+        A_FIELD + id
+    } else {
+        A_FIELD2 + id - 30
+    }
+}
 
 #[derive(Clone, Debug)]
 pub(super) struct NewMap {
@@ -96,6 +144,9 @@ pub(super) struct NewMap {
     pub w: usize,
     pub h: usize,
     pub class_slot: usize,
+    /// From Image: the PCX file and the height scale as typed.
+    pub image: String,
+    pub scale: String,
 }
 
 #[derive(Clone, Debug)]
@@ -109,6 +160,13 @@ pub(super) struct OptionsState {
     pub tab: usize,
     /// The text of each goal condition as typed (it may not compile yet).
     pub goal_cond: [String; 4],
+    /// Selected row of the Players list.
+    pub player_sel: usize,
+    /// The numeric field being typed into (its id and text): applied to the map as soon as it
+    /// is valid, shown as typed while it has the focus.
+    pub typing: Option<(u32, String)>,
+    /// The last refusal of the Players page.
+    pub note: String,
 }
 
 #[derive(Clone, Debug)]
@@ -155,6 +213,9 @@ const TRIGGERS: [&str; 8] = [
     "Status line",
 ];
 const GOALS: [&str; 4] = ["Bronze", "Silver", "Gold", "Defeat"];
+fn opts_scale_default() -> String {
+    rt2_sim::editor_pcx::SCALE_DEFAULT.to_string()
+}
 const STYLE_BYTES: [u8; 5] = [0, 1, 2, 3, 5];
 const SIZES: [&str; 5] = ["Village", "Town", "City", "Metropolis", "Megalopolis"];
 
@@ -168,6 +229,8 @@ impl AppState {
             w: 120,
             h: 120,
             class_slot: 5,
+            image: "EXAMPLE.PCX".into(),
+            scale: opts_scale_default(),
         }));
         self.set_focus(F_NAME + 1);
     }
@@ -220,6 +283,9 @@ impl AppState {
         self.set_modal(Modal::Options(OptionsState {
             tab: 0,
             goal_cond: goals,
+            player_sel: 0,
+            typing: None,
+            note: String::new(),
         }));
         self.set_focus(0);
     }
@@ -371,8 +437,25 @@ impl AppState {
         };
         match m {
             Modal::NewMap(mut n) => {
-                f(&mut n.name);
-                n.name.truncate(30);
+                match id {
+                    F_IMG => {
+                        f(&mut n.image);
+                        n.image.truncate(200);
+                    }
+                    F_SCALE => {
+                        f(&mut n.scale);
+                        n.scale = n
+                            .scale
+                            .chars()
+                            .filter(char::is_ascii_digit)
+                            .take(4)
+                            .collect();
+                    }
+                    _ => {
+                        f(&mut n.name);
+                        n.name.truncate(30);
+                    }
+                }
                 self.replace_modal(Modal::NewMap(n));
             }
             Modal::SaveAs(mut s) => {
@@ -391,6 +474,13 @@ impl AppState {
                 self.replace_modal(Modal::Territory(t));
             }
             Modal::Options(mut o) => {
+                if id >= 30 {
+                    if self.options_edit_field(&mut o, id, f) {
+                        self.replace_modal(Modal::Options(o));
+                        self.mark_dirty();
+                    }
+                    return;
+                }
                 if id == F_NAME {
                     let mut s = self.map_text(true);
                     f(&mut s);
@@ -650,6 +740,13 @@ impl AppState {
                     }
                 }
             }
+            super::editor_options_ui::A_PLR_LIST => {
+                if let Some(Modal::Options(o)) = self.ed_mut().and_then(|e| e.modal.as_mut()) {
+                    o.player_sel = row;
+                    o.note.clear();
+                    o.typing = None;
+                }
+            }
             A_PL_LIST => {
                 if let Some(Modal::Place(p)) = self.ed_mut().and_then(|e| e.modal.as_mut()) {
                     p.wsel = row;
@@ -662,8 +759,14 @@ impl AppState {
     }
 
     pub(super) fn editor_modal_activated(&mut self, action: u32) -> bool {
-        if (A_FIELD..A_FIELD + 30).contains(&action) {
-            self.set_focus(action - A_FIELD + 1);
+        if (A_FIELD..A_FIELD + 30).contains(&action) || (A_FIELD2..A_FIELD2 + 30).contains(&action)
+        {
+            let id = if action >= A_FIELD2 {
+                action - A_FIELD2 + 30
+            } else {
+                action - A_FIELD
+            };
+            self.set_focus(id + 1);
             self.rebuild_ui();
             return true;
         }
@@ -699,6 +802,10 @@ impl AppState {
                 self.close_modal();
                 return;
             }
+            A_NM_IMAGE => {
+                self.new_map_from_image(n);
+                return;
+            }
             x if (A_NM_STEP..A_NM_STEP + 4).contains(&x) => {
                 let d: isize = if (x - A_NM_STEP).is_multiple_of(2) {
                     -10
@@ -719,6 +826,35 @@ impl AppState {
         }
         self.replace_modal(Modal::NewMap(n));
         self.rebuild_ui();
+    }
+
+    /// New Map > From Image (`0x4694f0`): reads the PCX (as typed, else next to the game's data),
+    /// builds the map and gives it the heights of the image (`0x469670`).
+    fn new_map_from_image(&mut self, n: NewMap) {
+        let typed = PathBuf::from(n.image.trim());
+        let candidates = [typed.clone(), self.install.join(&typed)];
+        let img = candidates.iter().find_map(|p| {
+            std::fs::read(p)
+                .ok()
+                .and_then(|raw| rt2_sim::editor_pcx::Pcx::parse(&raw).ok())
+        });
+        let Some(img) = img else {
+            let m = self
+                .texts
+                .a("The image could not be read (an indexed or 24-bit PCX is needed).");
+            self.close_modal();
+            self.editor_new_dialog();
+            self.ed_msg(m, false);
+            return;
+        };
+        let scale = n
+            .scale
+            .parse::<i32>()
+            .unwrap_or(rt2_sim::editor_pcx::SCALE_DEFAULT);
+        self.close_modal();
+        self.editor_new_map(n.w, n.h, rt2_sim::editor_pcx::IMPORT_CLASS, &n.name);
+        self.editor_world_mut().editor_import_image(&img, scale);
+        self.editor_changed(true);
     }
 
     fn act_open(&mut self, a: u32, o: OpenList) {
@@ -764,6 +900,11 @@ impl AppState {
     }
 
     fn act_options(&mut self, a: u32, mut o: OptionsState) {
+        if self.options_page_action(a, &mut o) {
+            self.replace_modal(Modal::Options(o));
+            self.rebuild_ui();
+            return;
+        }
         match a {
             A_OK | A_CANCEL => {
                 self.close_modal();
@@ -771,6 +912,8 @@ impl AppState {
             }
             x if (A_OPT_TAB..A_OPT_TAB + A_OPT_TOTAL as u32).contains(&x) => {
                 o.tab = (x - A_OPT_TAB) as usize;
+                o.typing = None;
+                o.note.clear();
                 self.set_focus(0);
             }
             x if (A_OPT_PERM..A_OPT_PERM + 22).contains(&x) => {
@@ -1088,6 +1231,25 @@ impl AppState {
                 self.close_modal();
                 return;
             }
+            A_DELETE => {
+                match self.editor_world_mut().editor_territory_remove(t.info.id) {
+                    Ok(()) => {
+                        self.mark_dirty();
+                        if let Some(e) = self.ed_mut() {
+                            e.terr_sel = 0;
+                        }
+                        self.close_modal();
+                        self.editor_changed(false);
+                    }
+                    Err(e) => {
+                        let m = self.opt_error_message(e);
+                        self.close_modal();
+                        self.ed_msg(m, false);
+                        self.rebuild_ui();
+                    }
+                }
+                return;
+            }
             x if (A_TD_TOGGLE..A_TD_TOGGLE + 3).contains(&x) => match x - A_TD_TOGGLE {
                 0 => t.info.visible = !t.info.visible,
                 1 => t.info.merged_flag = !t.info.merged_flag,
@@ -1125,10 +1287,10 @@ impl AppState {
         let (cw, ch) = ui.logical_size();
         let dz = design_scale(ch);
         let (w, h) = match &m {
-            Modal::NewMap(_) => (520.0, 380.0),
+            Modal::NewMap(_) => (520.0, 480.0),
             Modal::Open(_) => (520.0, 420.0),
             Modal::SaveAs(_) | Modal::Confirm(_) => (460.0, 190.0),
-            Modal::Options(_) => (640.0, 470.0),
+            Modal::Options(_) => (780.0, 650.0),
             Modal::Rules(_) => (cw / dz - 24.0, ch / dz - 24.0),
             Modal::Place(_) => (560.0, 420.0),
             Modal::Territory(_) => (560.0, 430.0),
@@ -1197,7 +1359,20 @@ impl AppState {
                 n.class_slot == i,
             );
         }
-        c.ok_cancel(&t.get(lng::OK, "OK"), &t.get(lng::CANCEL, "Cancel"));
+        let y = y + 4.0 * 28.0 + 8.0;
+        c.label(20.0, y, 150.0, &t.a("Image file"), MUTED);
+        c.field(180.0, y, c.w / c.dz - 200.0, &n.image, F_IMG);
+        c.label(
+            20.0,
+            y + 32.0,
+            150.0,
+            &t.a("Height scale (1 to 2000)"),
+            MUTED,
+        );
+        c.field(180.0, y + 32.0, 80.0, &n.scale, F_SCALE);
+        c.ok_cancel(&t.a("From Scratch"), &t.get(lng::CANCEL, "Cancel"));
+        let by = c.h / c.dz - 38.0;
+        c.button(14.0, by, 150.0, &t.a("From Image"), A_NM_IMAGE);
     }
 
     fn class_label(&self, class: u8) -> String {
@@ -1259,30 +1434,42 @@ impl AppState {
         let t = &self.texts;
         c.title(&t.a("Map Options"));
         let tabs = [
-            t.a("General"),
-            t.a("Victory Conditions"),
-            t.a("Restrictions"),
-            t.a("Economy"),
-            t.a("Industries"),
-            t.a("Not editable here"),
+            t.get(1308, "General"),
+            t.get(1309, "Victory Conditions"),
+            t.get(1311, "Players"),
+            t.get(1319, "Player Pool"),
+            t.get(1312, "Managers"),
+            t.get(1313, "Economy"),
+            t.get(1314, "Engines"),
+            t.get(1315, "Industry"),
+            t.get(1316, "Restrictions"),
+            t.get(1317, "Ports"),
+            t.get(1318, "Robbers"),
         ];
-        let tw = (c.w / c.dz - 40.0) / A_OPT_TOTAL as f32;
+        let per_row = A_OPT_TOTAL.div_ceil(2);
+        let tw = (c.w / c.dz - 40.0) / per_row as f32;
         for (i, name) in tabs.iter().enumerate() {
             c.toggle(
-                20.0 + i as f32 * tw,
-                c.top() - 6.0,
+                20.0 + (i % per_row) as f32 * tw,
+                c.top() - 6.0 + (i / per_row) as f32 * 30.0,
                 tw - 3.0,
                 name,
                 A_OPT_TAB + i as u32,
                 o.tab == i,
             );
         }
-        let mut y = c.top() + 30.0;
+        let mut y = c.top() + 56.0;
         let Some(s) = self.editor_world().and_then(|w| w.editor_save()) else {
             return;
         };
         match o.tab {
-            0 => {
+            T_PLAYERS => self.draw_players(c, o),
+            T_POOL => self.draw_pool(c),
+            T_MANAGERS => self.draw_managers(c),
+            T_ENGINES => self.draw_engines(c),
+            T_PORTS => self.draw_ports(c, o),
+            T_ROBBERS => self.draw_robbers(c, o),
+            T_GENERAL => {
                 c.label(20.0, y, 120.0, &t.a("Name"), MUTED);
                 c.field(150.0, y, c.w / c.dz - 170.0, &editor::map_name(s), F_NAME);
                 y += 34.0;
@@ -1314,7 +1501,7 @@ impl AppState {
                 );
                 c.button(336.0, y, 36.0, "+", A_OPT_CASH + 1);
             }
-            1 => {
+            T_GOALS => {
                 c.label(20.0, y, c.w / c.dz - 40.0, &t.a("Each goal is a rule: the condition below must hold. Leave a goal empty for none."), MUTED);
                 y += 30.0;
                 for k in 0..4 {
@@ -1350,7 +1537,7 @@ impl AppState {
                     y += 62.0;
                 }
             }
-            2 => {
+            T_RESTRICTIONS => {
                 let cols = 2;
                 let bw = (c.w / c.dz - 40.0) / cols as f32;
                 for i in 0..22usize {
@@ -1365,7 +1552,7 @@ impl AppState {
                     );
                 }
             }
-            3 => {
+            T_ECONOMY => {
                 let names = [t.a("Basic"), t.a("Advanced"), t.a("Expert")];
                 c.label(20.0, y, 160.0, &t.a("Financial model"), MUTED);
                 for (i, n) in names.iter().enumerate() {
@@ -1391,7 +1578,7 @@ impl AppState {
                     );
                 }
             }
-            4 => {
+            T_INDUSTRIES => {
                 c.label(20.0, y, 160.0, &t.a("Industry set"), MUTED);
                 let names = [t.a("Original industries"), t.a("Expansion industries")];
                 for (i, n) in names.iter().enumerate() {
@@ -1405,9 +1592,7 @@ impl AppState {
                     );
                 }
             }
-            _ => {
-                c.label(20.0, y, c.w / c.dz - 40.0, &t.a("Players, managers, engines, ports and robbers are kept as the map has them."), MUTED);
-            }
+            _ => {}
         }
         c.ok_cancel(&t.get(lng::OK, "OK"), "");
     }
@@ -1877,7 +2062,12 @@ impl AppState {
                 );
             }
         }
-        c.ok_cancel(&t.get(lng::OK, "OK"), &t.get(lng::CANCEL, "Cancel"));
+        c.ok_cancel_delete(
+            &t.get(lng::OK, "OK"),
+            &t.get(lng::CANCEL, "Cancel"),
+            &t.a("Remove Territory"),
+            !tdl.is_new && tdl.info.id != 1,
+        );
     }
 }
 
@@ -1946,26 +2136,26 @@ fn fit_text(text: &str, editing: bool, max: usize) -> String {
 
 /// Drawing context of a dialog: the box and the sizes, with the widget helpers in logical units
 /// relative to the box.
-struct Ctx<'a> {
-    ui: &'a mut Ui,
-    b: NodeId,
-    dz: f32,
-    w: f32,
-    h: f32,
-    focus: u32,
-    f: FontStyle,
+pub(super) struct Ctx<'a> {
+    pub(super) ui: &'a mut Ui,
+    pub(super) b: NodeId,
+    pub(super) dz: f32,
+    pub(super) w: f32,
+    pub(super) h: f32,
+    pub(super) focus: u32,
+    pub(super) f: FontStyle,
 }
 
 impl Ctx<'_> {
-    fn top(&self) -> f32 {
+    pub(super) fn top(&self) -> f32 {
         44.0
     }
 
-    fn rect(&self, x: f32, y: f32, w: f32, h: f32) -> Layout {
+    pub(super) fn rect(&self, x: f32, y: f32, w: f32, h: f32) -> Layout {
         at(x * self.dz, y * self.dz, w * self.dz, h * self.dz)
     }
 
-    fn title(&mut self, text: &str) {
+    pub(super) fn title(&mut self, text: &str) {
         let l = self.rect(16.0, 8.0, self.w / self.dz - 32.0, 30.0);
         self.ui.add(
             self.b,
@@ -1974,13 +2164,13 @@ impl Ctx<'_> {
         );
     }
 
-    fn label(&mut self, x: f32, y: f32, w: f32, text: &str, color: Color) {
+    pub(super) fn label(&mut self, x: f32, y: f32, w: f32, text: &str, color: Color) {
         let l = self.rect(x, y, w, 26.0);
         self.ui
             .add(self.b, lbl(text, self.f, color, Align::Left), l);
     }
 
-    fn button(&mut self, x: f32, y: f32, w: f32, text: &str, action: u32) {
+    pub(super) fn button(&mut self, x: f32, y: f32, w: f32, text: &str, action: u32) {
         let l = self.rect(x, y, w, 26.0);
         self.ui.add(
             self.b,
@@ -1995,7 +2185,7 @@ impl Ctx<'_> {
         );
     }
 
-    fn toggle(&mut self, x: f32, y: f32, w: f32, text: &str, action: u32, on: bool) {
+    pub(super) fn toggle(&mut self, x: f32, y: f32, w: f32, text: &str, action: u32, on: bool) {
         let l = self.rect(x, y, w, 26.0);
         self.ui.add(
             self.b,
@@ -2011,7 +2201,7 @@ impl Ctx<'_> {
     }
 
     /// A text field: a toggle showing the text (with a caret while it has the focus).
-    fn field(&mut self, x: f32, y: f32, w: f32, text: &str, id: u32) {
+    pub(super) fn field(&mut self, x: f32, y: f32, w: f32, text: &str, id: u32) {
         let on = self.focus == id + 1;
         let shown = fit_text(text, on, (w * self.dz / (self.f.size * 0.62)) as usize);
         let l = self.rect(x, y, w, 26.0);
@@ -2020,7 +2210,7 @@ impl Ctx<'_> {
             Kind::Toggle {
                 text: shown,
                 font: self.f,
-                action: A_FIELD + id,
+                action: field_action(id),
                 on,
                 enabled: true,
             },
@@ -2028,7 +2218,7 @@ impl Ctx<'_> {
         );
     }
 
-    fn field_tall(&mut self, x: f32, y: f32, w: f32, h: f32, text: &str, id: u32) {
+    pub(super) fn field_tall(&mut self, x: f32, y: f32, w: f32, h: f32, text: &str, id: u32) {
         let on = self.focus == id + 1;
         let l = self.rect(x, y, w, h);
         let node = self.ui.add(
@@ -2036,7 +2226,7 @@ impl Ctx<'_> {
             Kind::Toggle {
                 text: String::new(),
                 font: self.f,
-                action: A_FIELD + id,
+                action: field_action(id),
                 on,
                 enabled: true,
             },
@@ -2060,7 +2250,7 @@ impl Ctx<'_> {
         );
     }
 
-    fn list(
+    pub(super) fn list(
         &mut self,
         x: f32,
         y: f32,
@@ -2086,7 +2276,7 @@ impl Ctx<'_> {
         );
     }
 
-    fn ok_cancel(&mut self, ok: &str, cancel: &str) {
+    pub(super) fn ok_cancel(&mut self, ok: &str, cancel: &str) {
         let y = self.h / self.dz - 38.0;
         let w = 110.0;
         let x = self.w / self.dz - 14.0 - w;
@@ -2098,7 +2288,13 @@ impl Ctx<'_> {
         }
     }
 
-    fn ok_cancel_delete(&mut self, ok: &str, cancel: &str, delete: &str, show_delete: bool) {
+    pub(super) fn ok_cancel_delete(
+        &mut self,
+        ok: &str,
+        cancel: &str,
+        delete: &str,
+        show_delete: bool,
+    ) {
         self.ok_cancel(ok, cancel);
         if show_delete {
             let y = self.h / self.dz - 38.0;

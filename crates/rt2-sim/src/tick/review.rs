@@ -807,10 +807,14 @@ impl SimState {
 
     /// `company_liquidate(company, f)` (`0x438170`, finance.md 15.5): the company's trains are
     /// deleted (`0x4cdd50`, train list from the tail), its industries (`+0x97`, type `+7 != 0`)
-    /// and stations (`+0x39`, with the station building's `+0x97`) lose their owner, then the
-    /// track, the manager, the holdings column, the chairman's post, the active flag and the
-    /// company set (`company_liquidate` tail, shared with the merger). `f != 0` (stations
-    /// demolished with `0x40adb0`, track removed by `0x437ab0(c, 0, 1)`) is not ported.
+    /// lose their owner, its stations (`+0x39`, list from the tail) lose their owner (with the
+    /// station building's `+0x97`) or, with `destroy` (`f != 0`, effect 189), have their
+    /// building destroyed (`building_destroy(b, 1)` -> `station_remove`); then the track
+    /// (`0x437ab0(c, 0, f)`: ownerless, or with `destroy` the trains holding a reservation and
+    /// the track itself are removed), the manager, the holdings column, the chairman's post,
+    /// the active flag and the company set (`company_liquidate` tail, shared with the merger).
+    /// The redraw of every track tile after a destruction (`0x4cb090(0, 0, W, H, 0)`) only
+    /// rebuilds the overlay lists, which the clone derives from the track.
     pub(crate) fn company_liquidate(
         &mut self,
         minutes: i32,
@@ -819,14 +823,6 @@ impl SimState {
         slot: usize,
         destroy: bool,
     ) {
-        if destroy {
-            todo_hook!(
-                self.log,
-                "liquidate_destroy",
-                "0x438170 with f != 0: stations demolished (0x40adb0) and track removed (0x437ab0)",
-                "finance.md 15.5"
-            );
-        }
         let c = slot as i32;
         self.with_trainstep_parts(minutes, rng, crt, |ts| {
             use crate::trainstep::P;
@@ -846,20 +842,40 @@ impl SimState {
                 put_u16(&mut r.data, 0x97, 0);
             }
         }
-        for st in pool::list_order(&self.save.stations).into_iter().rev() {
-            let Some(r) = pool::record_mut(&mut self.save.stations, st) else {
-                continue;
-            };
-            if i32_at(&r.data, ST_STATION_COMPANY) != c {
-                continue;
-            }
-            put_u32(&mut r.data, ST_STATION_COMPANY, 0);
-            let b = i32_at(&r.data, 4);
-            if let Some(br) = pool::record_mut(&mut self.save.objects, b as usize) {
-                put_u16(&mut br.data, 0x97, 0);
+        if destroy {
+            let (mw, mh) = (self.save.map.width as i32, self.save.map.height as i32);
+            let snap = self.with_trainstep_parts(minutes, rng, crt, |ts| {
+                let mut ai = crate::ai::Ai::new(ts);
+                ai.snapshot_overlays(0, 0, mw - 1, mh - 1);
+                ai.overlay_snapshot.take()
+            });
+            self.stations_destroy_of(minutes, rng, crt, c, 0);
+            let ground = self.take_ground_layer();
+            let ground = self.with_trainstep_parts(minutes, rng, crt, |ts| {
+                let mut ai = crate::ai::Ai::new(ts);
+                ai.confiscate_track(c, 0, true);
+                ai.overlay_snapshot = snap;
+                ai.ground_layer = Some(ground);
+                ai.tile_rebuild(0, 0, mw, mh);
+                ai.ground_layer.take()
+            });
+            self.ground_layer = ground;
+        } else {
+            for st in pool::list_order(&self.save.stations).into_iter().rev() {
+                let Some(r) = pool::record_mut(&mut self.save.stations, st) else {
+                    continue;
+                };
+                if i32_at(&r.data, ST_STATION_COMPANY) != c {
+                    continue;
+                }
+                put_u32(&mut r.data, ST_STATION_COMPANY, 0);
+                let b = i32_at(&r.data, 4);
+                if let Some(br) = pool::record_mut(&mut self.save.objects, b as usize) {
+                    put_u16(&mut br.data, 0x97, 0);
+                }
             }
         }
-        self.fc_liquidate(slot);
+        self.fc_liquidate(slot, !destroy);
         self.log.ran("company_liquidate");
     }
 }

@@ -5604,3 +5604,206 @@ name = "vehicle_lift"
 kind = "function"
 comment = "fastcall(car): +0x2a = 0 e, sem +0x45, tira a estrutura do carro do tile (0x42e320 tipo 2)"
 spec = "docs/spec/trains.md"
+
+[[symbol]]
+addr = "0x4881d0"
+name = "map_options_dialog"
+kind = "function"
+comment = "fastcall(cabecalho): copia 0x898E bytes do cabecalho (0x577c28), abre mapset.win, lista de paginas 0x5539a0, laco modal com o tratador 0x47ef50; Cancelar restaura a copia; [S]"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x47ef50"
+name = "map_options_handler"
+kind = "function"
+comment = "fastcall(evento): tratador de controles do Map Options (ids 0x82df..0x8403: nome, descricao, anos, jogadores, pool, gerentes, motores, portos, ladroes); [S]"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x46b890"
+name = "players_summary_refresh"
+kind = "function"
+comment = "recalcula o sumario de jogadores do cabecalho: u32[6] em 0x567c88 e 32 x 5 bytes em 0x567ca0 (persona, +0x530..+0x533); [V contra os 95 .MP2]"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x4a7990"
+name = "persona_pick"
+kind = "function"
+comment = "fastcall(atual, passo, permite0): proxima persona (0..40) nao usada por pessoa ativa, com um rng_range(0,0x28); [S]"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x4a6a60"
+name = "player_add_new"
+kind = "function"
+comment = "fastcall(persona_idx, nome, descricao, persona): aloca um registro de pessoa e chama player_init (0x4a6b00); [S]"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x46a8c0"
+name = "players_free_records"
+kind = "function"
+comment = "pool de pessoas.count - [0x570775]: registros que nao sao jogadores; [S]"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x46a8d0"
+name = "person_free_record"
+kind = "function"
+comment = "fastcall(n): o n-esimo registro de pessoa inativo (+4 == 0); [S]"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x46a920"
+name = "player_list_push"
+kind = "function"
+comment = "fastcall(id): acrescenta a pessoa a lista de jogadores (0x570775/0x570779); [S]"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x484df0"
+name = "players_page_refresh"
+kind = "function"
+comment = "redesenha a pagina Players (linhas Players/Human/Computer via 0x46b890, lista, persona, flags, caixa); [S]"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x482080"
+name = "events_list_refresh"
+kind = "function"
+comment = "reconstroi a lista de eventos (regras) da pagina Events; [S]"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x487380"
+name = "ports_page_build"
+kind = "function"
+comment = "constroi a pagina Ports: 4 linhas com dropdowns de cargo (lista 0x553630, 45 LNG ids); [S]"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x487ce0"
+name = "ports_page_refresh"
+kind = "function"
+comment = "normaliza e redesenha as 4 linhas do porto (modo +0, oferta +1, f32 quantidade +2 limitada a 1..7, demanda +6, segundo insumo zerado); [S]"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x4694f0"
+name = "map_from_image_dialog"
+kind = "function"
+comment = "New Map > From Image: pede o PCX (LNG 248..251, EXAMPLE.PCX) e a escala (1..2000, 0x553b68 = n * 0.01f); retorna 1 se leu; [S]"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x469bc0"
+name = "pcx_read"
+kind = "function"
+comment = "fastcall(nome, planos[], &stride, &linhas, &nplanos, &paleta): leitor PCX com RLE, stride = (xmax+2)&~1, paleta 0x0C + 768 bytes se 1 plano; [V por leitura]"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x469670"
+name = "map_apply_heightmap"
+kind = "function"
+comment = "aplica a imagem do PCX: altura do vertice = ftol((soma bilinear - 1) * escala / planos) em -255..510 via 0x4260c0, depois repinta o mapa com a classe 6; [V por leitura, rt2_sim::editor_pcx]"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x48caa0"
+name = "territory_list_refresh"
+kind = "function"
+comment = "reconstroi a lista de territorios da ferramenta (so os registros com +0x23 != 0 e a entrada '<new territory>' LNG 0x8d8); [S]"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x570638"
+name = "manager_allowed"
+kind = "table"
+comment = "u8[40]: gerente permitido no mapa (pagina Managers, ids 0x89e4+m)"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x567d40"
+name = "player_pool_flags"
+kind = "table"
+comment = "u8[100] (1..40 usados): persona pode ser sorteada para vagas sem atribuicao (pagina Player Pool, ids 0x8a48+p)"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x5704a8"
+name = "robbery_level"
+kind = "global"
+comment = "u32 0..364: nivel geral de assaltos (pagina Robbers, 0x83a1)"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x573da2"
+name = "robber_table"
+kind = "table"
+comment = "4 x 0x18 bytes: nome char[20]+NUL, i16 ano de inicio em +0x16 (pagina Robbers)"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x57023b"
+name = "port_row_header"
+kind = "table"
+comment = "linha do Porto no cabecalho: 4 bytes + 4 slots de 0x20 (modo, oferta, f32 quantidade, demanda); copiada por industry_load_fixups"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x567c88"
+name = "player_summary_counts"
+kind = "table"
+comment = "u32[6]: obrigatorios, total, obrig. sem computador, humano permitido, obrig. sem humano, computador permitido (0x46b890)"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x567ca0"
+name = "player_summary_slots"
+kind = "table"
+comment = "32 x 5 bytes: persona, +0x530, +0x531, +0x532, +0x533 por jogador na ordem da lista"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x570775"
+name = "player_count"
+kind = "global"
+comment = "u32: jogadores da lista (state+0x28d)"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x570779"
+name = "player_list"
+kind = "table"
+comment = "u16[32]: ids dos jogadores em ordem (state+0x291)"
+spec = "docs/formats/map-gam.md"
+
+[[symbol]]
+addr = "0x42e410"
+name = "tile_struct_remove_all"
+kind = "function"
+comment = "fastcall(tipo, dado): linha a linha, solta e libera a primeira estrutura (tipo, dado) da cadeia de cada tile; no tile que perdeu uma, tile+2 & 0x10 = ainda ha estrutura tipo 3; [V placar ConfStations]"
+spec = "docs/spec/terrain-track.md"
+
+[[symbol]]
+addr = "0x408e70"
+name = "tile_building_destroy"
+kind = "function"
+comment = "fastcall(x, y): primeira estrutura tipo 3 do tile -> predio (pool 0x574c74); com 0x5748f8 so libera (0x466c30), senao building_destroy(predio, 1); [V placar Flood]"
+spec = "docs/spec/scenarios.md"
+
+[[symbol]]
+addr = "0x406ea0"
+name = "building_unlink_stations"
+kind = "function"
+comment = "fastcall(id do predio): zera +0x2f/+0x33 do predio e, em cada estacao (ordem de lista), solta e libera o primeiro elo (pool_58) que aponta para o predio (+0x41 -= 1); [S]"
+spec = "docs/spec/world-growth.md"
+
+[[symbol]]
+addr = "0x409320"
+name = "building_sprite_release"
+kind = "function"
+comment = "fastcall(predio): contador de uso dos sprites do tipo/estilo (0x5458c8); no zero libera as quatro imagens (so interface); [S]"
+spec = "docs/spec/world-growth.md"

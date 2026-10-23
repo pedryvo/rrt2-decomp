@@ -8,7 +8,7 @@ use rt2_render::GameAssets;
 use rt2_ui::UiScale;
 
 use super::editor_modals::*;
-use super::editor_ui::{Group, Modal};
+use super::editor_ui::{A_MODAL, Group, Modal};
 use super::*;
 
 fn home(p: &str) -> Option<PathBuf> {
@@ -222,5 +222,170 @@ fn the_menu_entry_makes_a_blank_map_through_the_new_map_dialog() {
     assert_eq!((m.width, m.height), (130, 120));
     assert!(save_of(&s).rules.is_empty());
     assert_eq!(rt2_sim::editor::class_at(save_of(&s), 5, 5), 5);
+    std::fs::remove_dir_all(dir).ok();
+}
+
+fn act(s: &mut AppState, a: u32) {
+    s.editor_activated(a);
+}
+
+#[test]
+fn the_players_page_adds_edits_and_removes_players() {
+    use super::editor_options_ui::*;
+    let Some((mut s, dir)) = state("players") else {
+        return;
+    };
+    assert!(s.editor_show_dialog("players"));
+    let n0 = rt2_sim::editor_opts::players(save_of(&s)).len();
+    act(&mut s, A_PLR_ADD);
+    let list = rt2_sim::editor_opts::players(save_of(&s));
+    assert_eq!(list.len(), n0 + 1);
+    // The header summary follows the page (`0x46b890`).
+    let hdr =
+        |i: usize| u32::from_le_bytes(save_of(&s).header[0x150 + 4 * i..][..4].try_into().unwrap());
+    assert_eq!(hdr(1) as usize, n0 + 1);
+    // Select the new row, make it optional, computer only, then step its persona.
+    s.editor_modal_row(A_PLR_LIST, n0);
+    act(&mut s, A_PLR_OPT);
+    act(&mut s, A_PLR_COMP);
+    act(&mut s, A_PLR_NEXT);
+    let me = rt2_sim::editor_opts::players(save_of(&s)).pop().unwrap();
+    assert!(!me.mandatory);
+    assert_eq!(me.controller, rt2_sim::editor_opts::Controller::Computer);
+    assert_ne!(me.persona, 0);
+    // The first player stays mandatory and human: the page refuses and says why.
+    s.editor_modal_row(A_PLR_LIST, 0);
+    act(&mut s, A_PLR_OPT);
+    assert!(rt2_sim::editor_opts::players(save_of(&s))[0].mandatory);
+    let Some(Modal::Options(o)) = s.ed().unwrap().modal.clone() else {
+        panic!("options open");
+    };
+    assert!(!o.note.is_empty());
+    // Cash through the field.
+    s.editor_modal_row(A_PLR_LIST, n0);
+    act(&mut s, A_MODAL + 620 + (F_CASH - 30));
+    for _ in 0..8 {
+        s.editor_modal_key(winit::keyboard::KeyCode::Backspace, None);
+    }
+    s.editor_type("123456");
+    assert_eq!(
+        rt2_sim::editor_opts::players(save_of(&s))
+            .pop()
+            .unwrap()
+            .cash,
+        123_456.0
+    );
+    s.editor_modal_row(A_PLR_LIST, n0);
+    act(&mut s, A_PLR_DEL);
+    assert_eq!(rt2_sim::editor_opts::players(save_of(&s)).len(), n0);
+    std::fs::remove_dir_all(dir).ok();
+}
+
+#[test]
+fn engines_managers_ports_and_robbers_pages_edit_the_map() {
+    use super::editor_options_ui::*;
+    let Some((mut s, dir)) = state("pages") else {
+        return;
+    };
+    assert!(s.editor_show_dialog("engines"));
+    let was = rt2_sim::editor_opts::engine_allowed(save_of(&s), 5);
+    act(&mut s, A_ENG_ITEM + 5);
+    assert_eq!(rt2_sim::editor_opts::engine_allowed(save_of(&s), 5), !was);
+    act(&mut s, A_ENG_PRESET + 1);
+    assert!(rt2_sim::editor_opts::engine_count(save_of(&s)) > 10);
+    assert!(s.editor_show_dialog("managers"));
+    act(&mut s, A_MGR_ITEM + 2);
+    assert!(!rt2_sim::editor_opts::manager_allowed(save_of(&s), 2));
+    assert!(s.editor_show_dialog("pool"));
+    act(&mut s, A_POOL_PRESET + 2);
+    assert!(rt2_sim::editor_opts::pool_count(save_of(&s)) > 0);
+    assert!(s.editor_show_dialog("ports"));
+    act(&mut s, A_PORT_ANNUAL);
+    act(&mut s, A_PORT_SUP + 1);
+    let p = rt2_sim::editor_opts::port(save_of(&s), 0).unwrap();
+    assert!(p.annual && p.demanded == rt2_sim::editor_opts::NO_CARGO);
+    act(&mut s, A_MODAL + 620 + (F_PORT_Q - 30));
+    s.editor_type("5");
+    assert!(rt2_sim::editor_opts::port(save_of(&s), 0).unwrap().quantity >= 1.0);
+    assert!(s.editor_show_dialog("robbers"));
+    act(&mut s, A_MODAL + 620 + (F_ROB_NAME - 30));
+    s.editor_type("Bart");
+    act(&mut s, A_MODAL + 620 + (F_ROB_YEAR - 30));
+    s.editor_type("1885");
+    assert_eq!(
+        rt2_sim::editor_opts::robber(save_of(&s), 0),
+        Some(("Bart".to_string(), 1885))
+    );
+    act(&mut s, A_ROB_LEVEL + 1);
+    assert_eq!(rt2_sim::editor_opts::robbery_level(save_of(&s)), 10);
+    std::fs::remove_dir_all(dir).ok();
+}
+
+#[test]
+fn from_image_builds_a_map_with_the_heights_of_the_pcx() {
+    let Some((mut s, dir)) = state("image") else {
+        return;
+    };
+    // An 8-bit PCX 32x32, black at the left edge to white at the right, grey palette.
+    let mut f = vec![0u8; 128];
+    f[0] = 10;
+    f[1] = 5;
+    f[2] = 1;
+    f[3] = 8;
+    f[8] = 31;
+    f[10] = 31;
+    f[0x41] = 1;
+    for _y in 0..32 {
+        for x in 0..32u8 {
+            let v = x * 8;
+            if v >= 0xc0 {
+                f.push(0xc1);
+            }
+            f.push(v);
+        }
+    }
+    f.push(0x0c);
+    for i in 0..=255u8 {
+        f.extend([i; 3]);
+    }
+    let file = dir.join("hm.pcx");
+    std::fs::write(&file, f).unwrap();
+    s.editor_new_dialog();
+    if let Some(Modal::NewMap(n)) = s.ed_mut().and_then(|e| e.modal.as_mut()) {
+        n.image = file.to_string_lossy().into_owned();
+        n.w = 40;
+        n.h = 30;
+    }
+    act(&mut s, A_MODAL + 66);
+    let m = &save_of(&s).map;
+    assert_eq!((m.width, m.height), (40, 30));
+    let w = m.width + 1;
+    assert!(m.elevation[0] <= 1);
+    assert!(m.elevation[w - 1] > 150);
+    assert!(s.editor_dirty());
+    // A missing file keeps the dialog and says so.
+    s.editor_new_dialog();
+    if let Some(Modal::NewMap(n)) = s.ed_mut().and_then(|e| e.modal.as_mut()) {
+        n.image = "no-such-file.pcx".into();
+    }
+    act(&mut s, A_MODAL + 66);
+    assert!(matches!(s.ed().unwrap().modal, Some(Modal::NewMap(_))));
+    assert!(s.ed().unwrap().msg.is_some());
+    std::fs::remove_dir_all(dir).ok();
+}
+
+#[test]
+fn a_territory_can_be_removed_from_its_dialog() {
+    let Some((mut s, dir)) = state("terr") else {
+        return;
+    };
+    s.editor_territory_new();
+    act(&mut s, A_MODAL); // OK: a new territory 2
+    let n = save_of(&s).territories.count;
+    assert!(n >= 2);
+    s.editor_show_group("territory", 0, Some(n - 1));
+    s.editor_territory_edit();
+    act(&mut s, A_MODAL + 2); // Remove Territory
+    assert_eq!(save_of(&s).territories.count, n - 1);
     std::fs::remove_dir_all(dir).ok();
 }

@@ -49,6 +49,10 @@ pub enum P {
 /// `DAT_00574b84`-style runtime globals that live outside the save.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Globals {
+    /// `0x57951c`: the "served / offered" ratio of the AI stop choice (`ai_pick_stop` raises it
+    /// by 1 after a sweep without a pick and leaves it so); a run-time global that outlives one
+    /// [`crate::ai::Ai`] session (0 at start). Kept as the bits of the `f32`.
+    pub ai_ratio: u32,
     /// `0x574b84`: count of trains whose consist changed (`0x4d14b0` refresh pending).
     pub refresh_574b84: i32,
     /// `0x56506c`: the serial given to the next vehicle (`vehicle_init` `0x414220` stores it in

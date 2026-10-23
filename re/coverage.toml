@@ -3,11 +3,11 @@
 # Ver docs/re-workflow.md.
 #
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
-# Classificadas (categoria != unknown): 1302 (44.2%)
-# Por categoria: lib=258, platform=114, render=11, audio=54, ui=274, sim=591, unknown=1643
-# Por estado:   unknown=2334, named=147, spec=175, verified=289
-# Entradas manuais: 554
-# sim spec coverage: 71.4% (422 de 591 funcoes sim em spec/verified)
+# Classificadas (categoria != unknown): 1310 (44.5%)
+# Por categoria: lib=258, platform=114, render=11, audio=54, ui=275, sim=598, unknown=1635
+# Por estado:   unknown=2314, named=159, spec=171, verified=301
+# Entradas manuais: 562
+# sim spec coverage: 71.7% (429 de 598 funcoes sim em spec/verified)
 
 [[function]]
 addr = "0x401005"
@@ -7843,9 +7843,10 @@ why = "no-evidence"
 [[function]]
 addr = "0x406ea0"
 size = 188
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "building_unlink_stations; parte de building_destroy"
+manual = true
 
 [[function]]
 addr = "0x406f60"
@@ -7945,9 +7946,10 @@ manual = true
 [[function]]
 addr = "0x408e70"
 size = 87
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "predio do tile -> building_destroy(predio, 1); placar Flood"
+manual = true
 
 [[function]]
 addr = "0x408ed0"
@@ -7991,16 +7993,17 @@ manual = true
 addr = "0x4091f0"
 size = 243
 category = "sim"
-status = "spec"
-why = "world-growth.md 4.5: tilemark::restore_saved_tiles + fields::repaint_after_demolition (0x42a7d0 tipos 0xb/0x10/0x21); sem caso no placar"
+status = "verified"
+why = "devolve os tiles de pool_88 e repinta 0x42a7d0 (tipos 0xb/0x10/0x21) com as listas de sobreposicao do carregador; placar FieldDemolition"
 manual = true
 
 [[function]]
 addr = "0x409320"
 size = 183
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "ui"
+status = "spec"
+why = "contador de sprites do tipo de predio; so interface"
+manual = true
 
 [[function]]
 addr = "0x4093e0"
@@ -8101,7 +8104,7 @@ addr = "0x40adb0"
 size = 930
 category = "sim"
 status = "verified"
-why = "docs/spec/world-growth.md 4.5 (Example 30 dias)"
+why = "building_destroy: lotes da pilha perdem +1 e os sem vagao (+5 == 0) sao liberados; venda ao dono (0x43eb60); station_remove de predio de estacao; placares ConfStations/Deactivate/Flood"
 manual = true
 
 [[function]]
@@ -9148,11 +9151,11 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x4294d0"
-name = "terrain_build_rivers"
 size = 1096
-category = "unknown"
-status = "named"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "reconstrucao dos rios (camada 2, rng_hash_range, sem o RNG do jogo); so as flags 0x4258e0 ficam no save; placar Flood"
+manual = true
 
 [[function]]
 addr = "0x429920"
@@ -9180,19 +9183,19 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x429e30"
-name = "tile_set_road"
 size = 104
-category = "unknown"
-status = "named"
-why = "no-evidence"
+category = "sim"
+status = "spec"
+why = "bit de estrada (tile+3 & 0x20), 0x424c10 do tile e as sobreposicoes de estrada 0x428fe0; editor e inundacao"
+manual = true
 
 [[function]]
 addr = "0x429ea0"
-name = "tile_set_river"
 size = 276
-category = "unknown"
-status = "named"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "liga/desliga o bit de rio e reorienta os vizinhos (0x429ce0); com redesenho tambem 0x424c10, 0x4299e0, 0x4294d0; placar Flood (sem redesenho) e editor"
+manual = true
 
 [[function]]
 addr = "0x429fc0"
@@ -9297,9 +9300,10 @@ manual = true
 [[function]]
 addr = "0x42e410"
 size = 335
-category = "unknown"
-status = "unknown"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "tile_struct_remove_all; placar ConfStations"
+manual = true
 
 [[function]]
 addr = "0x42e850"
@@ -9749,8 +9753,8 @@ manual = true
 addr = "0x437ab0"
 size = 419
 category = "sim"
-status = "spec"
-why = "company_release_track: Ai::confiscate_track_of (build/confiscate.rs); scenarios.md 4.2.1"
+status = "verified"
+why = "company_release_track com destruir: trens com reserva apagados e trilho removido; placar Deactivate"
 manual = true
 
 [[function]]
@@ -9773,8 +9777,8 @@ manual = true
 addr = "0x437f50"
 size = 329
 category = "sim"
-status = "spec"
-why = "company_stations_release: Ai::confiscate_stations (destruir conta gancho ausente: building_destroy fora da vista do passo de trem); scenarios.md 4.2.1"
+status = "verified"
+why = "company_stations_release com destruir (efeito 302): building_destroy dos predios de estacao; placar ConfStations"
 manual = true
 
 [[function]]
@@ -9790,7 +9794,7 @@ addr = "0x438170"
 size = 631
 category = "sim"
 status = "verified"
-why = "company_liquidate f=0 completo (trens, industrias, estacoes): placar Liquidate; f!=0 (efeito 189) com estacoes/trilho destruidos nao portado"
+why = "liquidacao com f = 0 (Liquidate) e f != 0 (efeito 189: estacoes demolidas, 0x437ab0(c, 0, 1), 0x4cb090 no mapa todo); placar Deactivate"
 manual = true
 
 [[function]]
@@ -11970,23 +11974,26 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x4694f0"
+name = "map_from_image_dialog"
 size = 382
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
 addr = "0x469670"
+name = "map_apply_heightmap"
 size = 1349
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
 addr = "0x469bc0"
+name = "pcx_read"
 size = 780
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -12092,23 +12099,26 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x46a8c0"
+name = "players_free_records"
 size = 15
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
 addr = "0x46a8d0"
+name = "person_free_record"
 size = 71
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
 addr = "0x46a920"
+name = "player_list_push"
 size = 20
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -12270,9 +12280,10 @@ manual = true
 
 [[function]]
 addr = "0x46b890"
+name = "players_summary_refresh"
 size = 259
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -12905,9 +12916,10 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x47ef50"
+name = "map_options_handler"
 size = 3412
 category = "ui"
-status = "unknown"
+status = "named"
 why = "string:%s %s"
 
 [[function]]
@@ -12940,9 +12952,10 @@ why = "string:trainbuy.imb"
 
 [[function]]
 addr = "0x482080"
+name = "events_list_refresh"
 size = 385
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -13017,9 +13030,10 @@ why = "string:trainbuy.imb"
 
 [[function]]
 addr = "0x484df0"
+name = "players_page_refresh"
 size = 1048
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -13052,23 +13066,26 @@ why = "string:trainbuy.imb"
 
 [[function]]
 addr = "0x487380"
+name = "ports_page_build"
 size = 2385
 category = "ui"
-status = "unknown"
+status = "named"
 why = "string:trainbdl.imb"
 
 [[function]]
 addr = "0x487ce0"
+name = "ports_page_refresh"
 size = 673
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
 addr = "0x4881d0"
+name = "map_options_dialog"
 size = 412
 category = "ui"
-status = "unknown"
+status = "named"
 why = "string:mapset.win"
 
 [[function]]
@@ -13204,9 +13221,10 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x48caa0"
+name = "territory_list_refresh"
 size = 339
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -13257,11 +13275,11 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x490490"
-name = "terrain_fill_adjacent"
 size = 1849
-category = "unknown"
-status = "named"
-why = "no-evidence"
+category = "sim"
+status = "verified"
+why = "preenchimento do editor (modos 0..2) e da inundacao (modo 3: tres passes que apagam trens, estacoes, trilho, predios, rio e estrada, agua forcada e cantos no nivel); placar Flood (tick/flood.rs)"
+manual = true
 
 [[function]]
 addr = "0x490bd0"
@@ -14066,9 +14084,10 @@ manual = true
 
 [[function]]
 addr = "0x4a6a60"
+name = "player_add_new"
 size = 60
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -14222,9 +14241,10 @@ manual = true
 
 [[function]]
 addr = "0x4a7990"
+name = "persona_pick"
 size = 174
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]
@@ -14956,8 +14976,8 @@ manual = true
 addr = "0x4bf4e0"
 size = 632
 category = "sim"
-status = "spec"
-why = "docs/spec/terrain-track.md 3.4; razao e contador verificados em tests/stations.rs (800) com 0x406f60/0x42e410/0x46a370 em ret"
+status = "verified"
+why = "station_remove: contas, elos, redes, estruturas tipo 4, +0x45, estacao principal (reusa o indice do laco), paradas dos trens com replan da IA repetido; placar ConfStations/Deactivate/Flood (build/demolish.rs)"
 manual = true
 
 [[function]]
@@ -15325,8 +15345,8 @@ manual = true
 addr = "0x4c8a30"
 size = 416
 category = "sim"
-status = "spec"
-why = "territory_flood: scenarios.md 4.2.1; nao portado (0x490490), gancho scenario_flood"
+status = "verified"
+why = "efeito 233: tile do territorio com menor soma de cantos, 0x490490(x, y, 0x12, 3, 0, soma/4 + v); placar Flood"
 manual = true
 
 [[function]]
@@ -16076,8 +16096,8 @@ manual = true
 addr = "0x4d87e0"
 size = 1488
 category = "sim"
-status = "spec"
-why = "docs/spec/ai.md: portado em crates/rt2-sim/src/ai (sem snapshot proprio)"
+status = "verified"
+why = "ai_pick_stop: +1 em 0x57951c por varredura sem escolha, o valor fica para a proxima chamada; placar Flood"
 manual = true
 
 [[function]]
@@ -16092,8 +16112,8 @@ manual = true
 addr = "0x4d8f40"
 size = 421
 category = "sim"
-status = "spec"
-why = "docs/spec/ai.md: portado em crates/rt2-sim/src/ai (sem snapshot proprio)"
+status = "verified"
+why = "ai_replan_train; fora do turno da IA (station_remove) a razao 0x57951c e a do ultimo uso (global em Globals::ai_ratio); placar Flood"
 manual = true
 
 [[function]]

@@ -42,6 +42,8 @@ const BD_NEXT: usize = 4;
 const BD_SHAPE: usize = 6;
 const BD_TYPE: usize = 7;
 const BD_STATION: usize = 8;
+/// Lot field: the car carrying it (`+5`, cargo.md 2).
+const LOT_CAR: usize = 5;
 
 fn place_town(d: &[u8]) -> Town {
     Town {
@@ -571,11 +573,30 @@ impl SimState {
         }
     }
 
-    /// `building_destroy(b, 1)` (`0x40adb0`, world-growth.md 3.6).
+    /// `building_destroy(b, 1)` (`0x40adb0`, world-growth.md 3.6) of a town building (no owner,
+    /// no station: the cases `town_remove_worst_building` and the editor's bulldozer reach).
     pub(crate) fn building_destroy(&mut self, rng: &mut GameRng, slot: usize) {
+        self.building_destroy_with(rng, None, slot);
+    }
+
+    /// `building_destroy(b, 1)` (`0x40adb0`) with the game clock and the CRT for the parts that
+    /// run on the train-step view: the sale to the owner of a real building (`0x43eb60(owner,
+    /// id, 0)`) and `station_remove` (`0x4bf4e0`) of a station building (`+8`). A building
+    /// already destroyed (`+0x4f`) is left alone.
+    pub(crate) fn building_destroy_with(
+        &mut self,
+        rng: &mut GameRng,
+        mut ctx: Option<(i32, &mut crate::rng::CrtRng)>,
+        slot: usize,
+    ) {
         let Some(rec) = pool::record(&self.save.objects, slot) else {
             return;
         };
+        if rec.data[industry::OFF_INACTIVE] != 0 {
+            return;
+        }
+        let owner = i32::from(i16_at(&rec.data, 0x97));
+        let station = i32::from(u16_at(&rec.data, BD_STATION));
         let place = usize::from(u16_at(&rec.data, BD_PLACE));
         let next = u16_at(&rec.data, BD_NEXT);
         let real = rec.data[BD_TYPE] != 0 && rec.data[0x2e] == 0;
@@ -584,6 +605,21 @@ impl SimState {
         if real {
             let n = i32_at(&self.save.state, ST_INDUSTRY_COUNT);
             put_u32(&mut self.save.state, ST_INDUSTRY_COUNT, (n - 1) as u32);
+            if owner != 0 {
+                match ctx.as_mut() {
+                    Some((minutes, crt)) => {
+                        self.with_trainstep_parts(*minutes, rng, crt, |ts| {
+                            crate::ai::Ai::new(ts).sell_industry(owner, slot as i32);
+                        });
+                    }
+                    None => todo_hook!(
+                        self.log,
+                        "building_destroy_sale",
+                        "0x40adb0 -> 0x43eb60(owner, id, 0) without the train-step context",
+                        "world-growth.md 3.6"
+                    ),
+                }
+            }
         }
         // Out of the place's list (`0x430da0`).
         let first = pool::record(&self.save.places, place)
@@ -614,16 +650,18 @@ impl SimState {
             put_u16(&mut r.data, BD_PLACE, 0);
             put_u16(&mut r.data, BD_NEXT, 0);
         }
-        // The lots of the pile that no station took are freed.
+        // The lots of the pile (`+0x4d`, next `+0xf`) lose their industry (`+1 = 0`); those
+        // not loaded in a car (`+5 == 0`) are freed.
         let mut lot = pile;
         let mut guard = 0;
         while lot != 0 && guard <= self.save.pool_7c.records.len() {
             guard += 1;
-            let nx = pool::record(&self.save.pool_7c, lot)
-                .map_or(0, |r| usize::from(u16_at(&r.data, industry::LOT_NEXT)));
-            let free = pool::record(&self.save.pool_7c, lot)
-                .is_some_and(|r| u16_at(&r.data, industry::LOT_STATION) == 0);
-            if free {
+            let Some(r) = pool::record_mut(&mut self.save.pool_7c, lot) else {
+                break;
+            };
+            let nx = usize::from(u16_at(&r.data, industry::LOT_NEXT));
+            put_u16(&mut r.data, industry::LOT_INDUSTRY, 0);
+            if u16_at(&r.data, LOT_CAR) == 0 {
                 pool::free(&mut self.save.pool_7c, lot);
             }
             lot = nx;
@@ -683,11 +721,33 @@ impl SimState {
                 d[BD_TYPE],
             )
         };
+        let repaint = matches!(shape_ty, 0xb | 0x10 | 0x21);
+        if repaint && self.ground_layer.is_none() {
+            // The overlay lists are the loader's (built over the tiles as loaded, with the
+            // field still on them): materialise them before the saved tiles come back.
+            let g = self.take_ground_layer();
+            self.ground_layer = Some(g);
+        }
         tilemark::unmark_building(&mut self.save, slot as u16, bbox);
+        if station != 0 {
+            match ctx.as_mut() {
+                Some((minutes, crt)) => {
+                    self.with_trainstep_parts(*minutes, rng, crt, |ts| {
+                        crate::ai::Ai::new(ts).station_remove(station);
+                    });
+                }
+                None => todo_hook!(
+                    self.log,
+                    "building_destroy_station",
+                    "0x40adb0 -> station_remove 0x4bf4e0 without the train-step context",
+                    "terrain-track.md 3.4"
+                ),
+            }
+        }
         if saved != 0 {
             tilemark::restore_saved_tiles(&mut self.save, saved, origin.0, origin.1);
         }
-        if matches!(shape_ty, 0xb | 0x10 | 0x21) {
+        if repaint {
             let b = bbox.map(i32::from);
             let cached = self.track_cache.take();
             let local;
