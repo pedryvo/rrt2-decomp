@@ -18,9 +18,11 @@ mod gfx;
 mod info;
 mod keys;
 mod locales;
+mod options;
 mod paths;
 mod pick;
 mod radar;
+mod saves;
 mod scenario_info;
 mod setup;
 mod sound;
@@ -115,6 +117,10 @@ struct Args {
     /// With `--screen game`: found a company with this name (the dialog's middle sliders)
     #[arg(long)]
     found: Option<String>,
+    /// With a game screen: write a save with this name into the saves folder (`RRT2_SAVES`)
+    /// before the shot, to have something to list in the Load dialog
+    #[arg(long)]
+    save_as: Option<String>,
     /// With `--screen game`: start a scenario map as a campaign game (index 0..18)
     #[arg(long)]
     campaign: Option<usize>,
@@ -129,6 +135,11 @@ enum Screen {
     Game,
     /// A dialog (`--page`) over the main window.
     Dialog,
+    /// The Options screen over the menu (or over the game when a file is given); `--page` is the
+    /// tab: display, audio, language, keys, gameplay.
+    Options,
+    /// The Save Game or Load Game dialog over the game; `--page` is `save` or `load`.
+    Saves,
     /// An information screen over the loaded game: finance, stock, trains, train, stations,
     /// station, cities, city, industries, industry or territory (see `--info`).
     Info,
@@ -222,9 +233,15 @@ fn screenshot(init: Init, skin: rt2_ui::Skin, args: &Args, out: &std::path::Path
                 bail!("unknown --page {page:?}");
             }
         }
+        Screen::Options if args.file.is_none() => {
+            let tab = args.page.as_deref().unwrap_or("display");
+            if !state.show_options(tab) {
+                bail!("unknown options tab {tab:?}");
+            }
+        }
         Screen::NewGame => state.show_new_game(),
         Screen::LoadGame => state.show_load_game(),
-        Screen::Game | Screen::Info | Screen::Dialog => {
+        Screen::Game | Screen::Info | Screen::Dialog | Screen::Options | Screen::Saves => {
             let file = args
                 .file
                 .clone()
@@ -257,6 +274,21 @@ fn screenshot(init: Init, skin: rt2_ui::Skin, args: &Args, out: &std::path::Path
             state.update(0.0);
             if matches!(args.screen, Screen::Info) && !state.show_info_screen(&args.info) {
                 bail!("unknown --info screen {:?}", args.info);
+            }
+            if let Some(name) = &args.save_as {
+                state.save_as(name).map_err(|e| anyhow::anyhow!(e))?;
+            }
+            if matches!(args.screen, Screen::Options) {
+                let tab = args.page.as_deref().unwrap_or("display");
+                if !state.show_options(tab) {
+                    bail!("unknown options tab {tab:?}");
+                }
+            }
+            if matches!(args.screen, Screen::Saves) {
+                let name = args.page.as_deref().unwrap_or("load");
+                if !state.show_saves(name) {
+                    bail!("unknown --page saves {name:?} (save or load)");
+                }
             }
             if matches!(args.screen, Screen::Dialog) {
                 let name = args.page.as_deref().unwrap_or("goals");

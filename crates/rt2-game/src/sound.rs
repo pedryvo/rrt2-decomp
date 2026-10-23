@@ -40,13 +40,14 @@ impl AudioSettings {
 }
 
 /// Something the screen did that has a sound. Produced by the UI state, consumed by audio.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Cue {
     /// `music_request_category` (`0x4f6130`): [`CAT_MENU`] or [`CAT_GAME`].
     Music(i32),
     Event(Event),
     NextTrack,
-    ToggleMute,
+    /// New volumes and mute state (the options screen, the mute key).
+    Settings(AudioSettings),
 }
 
 /// Turns "which screen is up" into music requests, only when the category changes (the original
@@ -138,8 +139,8 @@ impl SoundSystem {
 
     pub fn apply(&mut self, cue: Cue) {
         match cue {
-            Cue::ToggleMute => {
-                self.settings.mute = !self.settings.mute;
+            Cue::Settings(settings) => {
+                self.settings = settings;
                 self.apply_volumes();
             }
             Cue::Music(cat) => {
@@ -191,10 +192,13 @@ mod tests {
             ..AudioSettings::default()
         });
         assert_eq!(s.settings().effective_master(), 70);
-        s.apply(Cue::ToggleMute);
+        let mut muted = s.settings().clone();
+        muted.mute = true;
+        s.apply(Cue::Settings(muted.clone()));
         assert_eq!(s.settings().effective_master(), 0);
         assert_eq!(s.settings().master, 70);
-        s.apply(Cue::ToggleMute);
+        muted.mute = false;
+        s.apply(Cue::Settings(muted));
         assert_eq!(s.settings().effective_master(), 70);
     }
 

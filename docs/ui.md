@@ -124,14 +124,14 @@ Textos: ids do `default2.lng` quando conhecidos (`New Game` 1686, `Load Game` 16
 ## `rrt2`: instalação, teclas, saves
 
 - Instalação: `--game-dir`, `RT2_DIR` ou `game_dir` em `~/.config/rrt2/config.toml`; `rrt2 set-path <pasta>` valida (`data/RT2.PK2` e `RT2_PLAT.EXE`) e grava. Sem nada configurado, o erro diz o que fazer. A instalação é só leitura.
-- Saves próprios: `~/.local/share/rrt2/saves/` (`$RRT2_SAVES` para mudar), `Nome-AAAA-MM-DD.GAM` via `World::to_save`; o jogo recusa escrever dentro da instalação. Um jogo novo (cenário ou campanha) já tem estado e salva como qualquer outro.
+- Saves próprios: `~/.local/share/rrt2/saves/` (`$RRT2_SAVES` para mudar), `<nome>.GAM` via `World::to_save` com sidecars `.toml` e `.png` (ver "Opções e saves"); o jogo recusa escrever dentro da instalação. Um jogo novo (cenário ou campanha) já tem estado e salva como qualquer outro.
 - Teclas (`[keys]` no `config.toml`, nomes de `KeyCode` do winit, prefixo `ctrl+` opcional; padrões):
 
 | Ação | Padrão | Origem |
 |---|---|---|
 | pausa | `Pause`, `Space` | `Pause` do manual |
 | velocidade + / - | `Equal`, `NumpadAdd` / `Minus`, `NumpadSubtract` | teclas `+`/`-` do manual |
-| salvar | `F5` | |
+| salvar rápido | `F5` | |
 | menu | `Escape` | |
 | girar | `KeyQ` / `KeyE` | |
 | enquadrar | `Home` | |
@@ -140,6 +140,9 @@ Textos: ids do `default2.lng` quando conhecidos (`New Game` 1686, `Load Game` 16
 | tela cheia | `F11` | |
 | mudo | `ctrl+KeyM` | extra moderno (`[keys] mute`) |
 | próxima faixa | `ctrl+KeyN` | extra moderno (`[keys] next_track`) |
+| salvar / carregar rápido | `F5` / `F9` | `[keys] save` / `quick_load`; um slot fixo (`quicksave`) |
+| diálogos Salvar / Carregar | `ctrl+KeyS` / `ctrl+KeyL` | `[keys] save_dialog` / `load_dialog` |
+| Opções | `F10` | `[keys] options`; tudo é remapeável pela tela (ver abaixo) |
 
 ### Som
 
@@ -147,7 +150,41 @@ Textos: ids do `default2.lng` quando conhecidos (`New Game` 1686, `Load Game` 16
 
 - Música (`sound.md` 2.2): categoria 0 no menu principal e nas subtelas (Novo/Carregar jogo), categoria 1 no jogo; só há pedido quando a categoria muda. Fades de 1300 ms (saída) e 500 ms (entrada), nunca repete as 3 últimas, voltar a uma categoria retoma a faixa dela (tudo em `MusicDirector`).
 - Sons de UI (`sound.md` 1.3): botão apertado = id 2 `ButtonDown` (ao pressionar o botão esquerdo sobre um widget), solto/ativado = id 1 `ButtonUp`, seleção de lista por clique = id 3 `ListClick`, por roda/teclado = id 4 `ListHover` (volume 90).
-- `[audio]` no `config.toml`: `master`, `music`, `sfx` (0 a 100, padrão 100) e `mute` (padrão `false`). O atalho de mudo alterna só durante a sessão.
+- `[audio]` no `config.toml`: `master`, `music`, `sfx` (0 a 100, padrão 100) e `mute` (padrão `false`). O atalho de mudo alterna `mute` e grava no `config.toml` (a tela de Opções mostra o mesmo estado).
+
+## Opções e saves (2026-10-23)
+
+Código: `rt2-game/src/options.rs` (modelo: abas, linhas, faixas, como uma mudança edita o `Config`; sem UI e sem I/O), `keys.rs` (`KeyAction`, conflitos, `rebind`/`reset`), `saves.rs` (arquivos, metadados, rotação do autosave; I/O e relógio de parede ficam aqui, nunca no `rt2-sim`), `state/options_ui.rs` e `state/saves_ui.rs` (os painéis). Os dois painéis são *overlays* do `AppState` (`Overlay`), desenhados por cima do menu ou do jogo, seguram a simulação e recebem todas as teclas enquanto abertos. Textos novos: tabela `[app]` (ids 100238..100328; tradução pt-BR; os outros idiomas caem no inglês).
+
+**Tela de Opções** (botão "Options" no canto superior direito de todas as páginas do menu, botão Options do File Options, `F10`). Cada mudança vale na hora e é gravada em `~/.config/rrt2/config.toml` (`$RRT2_CONFIG`). Cinco abas (`←`/`→` trocam de aba):
+
+| Aba | Itens | Chave no `config.toml` |
+|---|---|---|
+| Display | modo da janela (janela / tela cheia sem bordas), tamanho da janela (1024x768 a 3840x2160, mais o valor do arquivo), monitor, vsync, escala da interface automática (DPI do monitor) ou 100 a 300 % em passos de 25 | `[display] mode, width, height, monitor, vsync`; `ui_scale` |
+| Audio | volume geral, música, efeitos (0 a 100, passo 5), mudo | `[audio] master, music, sfx, mute` |
+| Language | um botão por idioma (troca na hora, relayout completo) | `language` |
+| Keys | lista de ações com as teclas; Rebind (substitui), Add key (alternativa), Reset this key, Reset all keys | `[keys]` |
+| Gameplay | velocidade ao iniciar (0 = a do save), autosave a cada N meses de jogo (0 = desligado), quantos autosaves manter, rolagem na borda da janela, velocidade da câmera (25 a 300 %), inverter arrasto do mouse, inverter zoom da roda, velocidade do zoom | `[gameplay] default_speed, autosave_months, autosave_keep, edge_scroll, pan_speed, invert_drag, invert_zoom, zoom_speed` |
+
+- **Controles**: botões Toggle (ligar/desligar), Toggle como botão de rádio (escolhas), e "sliders" feitos de `Kind::Cells` (clique ou arraste na barra) com botões `-`/`+`. Cada aba tem "Reset this tab"; a de teclas restaura todas as teclas.
+- **Remapear teclas**: selecione a ação, Rebind (ou Enter) e pressione a nova tecla (`ctrl+` conta como parte da tecla; `Esc` cancela; modificadores sozinhos são ignorados). Se outra ação já usa a tecla, nada muda e a tela avisa quais; pressionar a mesma tecla **de novo** tira-a da outra ação e passa para esta. Tecla = par (ctrl, `KeyCode`), então `q` e `KeyQ` são a mesma tecla e `Equal` difere de `ctrl+Equal`. Reset de uma ação devolve também a tecla padrão que outra ação tenha tomado. Os padrões nunca colidem entre si (teste).
+- **Janela**: o laço da janela recebe `Effect::ApplyDisplay` (modo, tamanho, monitor, `Fifo` ou `AutoNoVsync`) e `Effect::SaveConfig` (só o último de cada lote vale). F11 também passa pelo config. A janela abre com o tamanho e o modo gravados. O tamanho da janela não vale em tela cheia sem bordas (usa o do monitor).
+- **Gameplay**: nenhuma opção muda regras. A velocidade inicial vai pelo mesmo `Command::SetSpeed(Absolute)` dos botões do HUD. Rolagem na borda: cursor a até 4 px da borda e fora de qualquer widget (a barra do HUD cobre as bordas esquerda e inferior no jogo; em tela cheia o topo e a direita funcionam sempre).
+- Limite conhecido: em escala lógica muito pequena (300 % em 1080p) as linhas encolhem até 26 unidades e a aba Gameplay (8 linhas) pode passar do painel.
+
+**Saves próprios** (`~/.local/share/rrt2/saves`, `$RRT2_SAVES`; nunca dentro da instalação):
+
+- Um save é o `.GAM` do original (`World::to_save().to_bytes()`) mais dois arquivos de mesmo nome: `<nome>.toml` (versão, tipo manual/quick/auto, cenário, empresa, data do jogo, caixa, hora da gravação em UTC) e `<nome>.png` (miniatura = as cores do radar de terreno, RGB 8 bits, uma célula por pixel). Os dois são opcionais: um `.GAM` sem eles lista e carrega do mesmo jeito. Gravação atômica (arquivo temporário e `rename`). Nomes digitados passam por `sanitize_stem` (sem `/`, `\`, `:` etc., até 60 caracteres).
+- **Save Game** (File Options > Save, `ctrl+S`): lista dos saves próprios, campo de nome (digite; Backspace apaga; clicar numa linha copia o nome), botão vira "Overwrite" se o nome já existe, "Delete" com confirmação em dois toques, caixa de detalhe com o jogo atual. **Load Game** (File Options > Load, `ctrl+L`, menu Single Player > Load Scenario): saves próprios (mais novos primeiro, marcados `(auto)` e `(quick)`) e depois os `.GAM` originais de `games/` (`(original)`); a caixa mostra miniatura, cenário, empresa, data do jogo, caixa e hora; sem sidecar, lê o mapa do arquivo para a miniatura e o título. Duplo clique ou Enter carrega. Um save próprio continua de onde estava (sem repetir o briefing); um original abre o briefing como o Load Game do menu.
+- **Quick save/load**: `F5` grava `quicksave` (toast "Quick saved"), `F9` carrega (ou avisa que não há).
+- **Autosave**: a cada `autosave_months` meses de jogo (o contador parte da data de início ou do último autosave; carregar uma data anterior reinicia) grava `autosave-NNNN` e apaga os mais antigos além de `autosave_keep` (sempre fica ao menos um). Só o laço da janela liga a gravação (`AppState::set_persistence`), então testes e screenshots nunca escrevem nas pastas do usuário. Não grava com um Choice pendente nem depois do fim do jogo.
+- Limite: a hora dos saves é UTC (não há banco de fusos); a data de jogo é a do calendário do jogo.
+
+**Mensagens Choice** (resolvido): o laço da janela liga `World::set_interactive_choices(true)`. Com um `World::pending_choice()` o `poll_world` abre o diálogo com os rótulos 1 e 2 da regra por cima de tudo (a simulação espera); o botão envia `Command::AnswerChoice { message_id, button }`; fechar o diálogo de outro jeito faz o `poll_world` reabri-lo. A mensagem repetida pelo passo reexecutado só vira linha da Activity Box (não abre outro diálogo). Sem o modo interativo (testes, screenshots, `rt2-sim` puro) vale o botão 0 de imediato, e `take_choice_answers()` só devolve respostas que o mundo não aceitou (diálogos de exemplo).
+
+Screenshots: `rrt2 --screenshot out.png --screen options --page display|audio|language|keys|gameplay|keys-rebind|keys-conflict [arquivo.GAM]` (sem arquivo, sobre o menu; com arquivo, sobre o jogo) e `--screen saves --page save|load [--save-as NOME]` (`--save-as` grava um save em `$RRT2_SAVES` antes, para ter o que listar). Capturas em `~/.cache/rrt2/shots/options/`.
+
+Lacunas: sem controle (gamepad) nem Steam Deck; sem as opções de gráficos do Control Panel original (detalhe, sombras, texturas: a renderização do clone não tem esses níveis); sem a aba "General" do original (profundidade de cor, uso de memória, vídeo de abertura, linhas de grade); acessibilidade (daltonismo, tamanho de fonte) além da escala da interface ainda não existe.
 
 ## Screenshots
 
@@ -189,7 +226,7 @@ Resolvidos nesta passada (capturas em `~/.cache/rrt2/shots/polish/`, antes e dep
 - **Texto que não cabe**: o `rt2-ui` encolhe o texto de uma linha até 55 % do tamanho para caber na caixa e, abaixo disso, corta com reticências (cabeçalhos "IMPROVEMENTS" e "CARGO WAITING" da lista central, rótulos de botão, células). Vale em qualquer escala e nas seis línguas.
 - **Detalhe da estação**: a imagem é a cena original de 1024x569 (fundo da classe do sítio mais uma camada por prédio e melhoria, `stationview.rs`; mapeamento dos 55 bancos em `formats/sprite-catalog.md` 6.1). As camadas são compostas na CPU num sprite reservado do atlas (`SkinBuilder::reserve`, `UiRenderer::upload_sprite`) quando a estação, o estilo ou as melhorias mudam.
 - **Lista da bolsa (`M`)**: botões Buy e Sell por linha, ativos conforme a cotação (`fin_trade_quote`), que abrem o diálogo de negociação da empresa (o mesmo do botão Trade do relatório).
-- **Mensagens Choice dos cenários**: o diálogo mostra os dois botões (rótulos 1 e 2 da regra) e fila a resposta em `AppState::take_choice_answers()`. **Pendente na simulação**: o motor ainda roda o conjunto de efeitos do botão 0 no instante em que levanta a mensagem (`scenario/engine.rs`, `show_message` retorna 0), então apertar o botão 2 só registra a resposta. Falta um `Command::AnswerChoice { message_id, button }` e adiar o efeito até a resposta (ver o relatório do polimento).
+- **Mensagens Choice dos cenários**: o diálogo mostra os dois botões (rótulos 1 e 2 da regra). (Resolvido em 2026-10-23: ver "Opções e saves", o motor espera `Command::AnswerChoice`.)
 
 ## Pendências de revisão (coordenador, 2026-10-22)
 
@@ -200,3 +237,5 @@ Resolvidos nesta passada (capturas em `~/.cache/rrt2/shots/polish/`, antes e dep
 - Trens com vagões "empilhados" (Example, curva da estação, verificado em 2026-10-22): não é bug de desenho. A direção de mapa diagonal (d3, d7) é vertical na tela (`sprite-catalog.md` 8), os vagões espaçam 24 unidades ao longo dela, e os trens 1 e 10 ocupam as duas vias (lado 1/2, ±0,27 tile) de uma via dupla; a posição lida do save (`tile + sub/64`, sub pode passar de 63 em curva) bate com `trains.md` 10.1/10.2.
 
 - ~~Start New Company "You buy" maior que o investimento~~: correto. O original arredonda as ações do fundador para o milhar mais próximo; a UI deve usar `rt2_sim::found::founding_preview`.
+- Opções: em 300% de escala numa tela 1080p, a aba Gameplay pode transbordar o painel.
+- Horários dos saves aparecem em UTC; usar o fuso local.

@@ -49,6 +49,7 @@ pub(super) const A_FILE_SAVE: u32 = 741;
 pub(super) const A_FILE_NEW: u32 = 742;
 pub(super) const A_FILE_MENU: u32 = 743;
 pub(super) const A_FILE_QUIT: u32 = 744;
+pub(super) const A_FILE_OPTIONS: u32 = 745;
 
 const DIM: Color = Color(0, 0, 0, 150);
 const CREAM: Color = Color::rgb(0xf4, 0xea, 0xc8);
@@ -71,10 +72,10 @@ const E_BUTTON_Y: f32 = 188.0;
 pub(super) enum Act {
     Close,
     /// A button of a scenario Choice message (`scenarios.md` 2.4): `button` 0 or 1 answers the
-    /// rule with `trigger`. The answer is queued in `AppState::choice_answers`; `rt2-sim` still
-    /// runs the effect set of button 0 itself (`message.rs`), see `answer_choice`.
+    /// pending choice `id` (`World::pending_choice`, `Command::AnswerChoice`), see
+    /// `answer_choice`.
     Choice {
-        trigger: u8,
+        id: u32,
         button: u8,
     },
 }
@@ -291,20 +292,8 @@ impl AppState {
                         |e| e.text.clone(),
                     ),
                     buttons: vec![
-                        (
-                            "Take the cash".to_owned(),
-                            Act::Choice {
-                                trigger: 2,
-                                button: 0,
-                            },
-                        ),
-                        (
-                            "Take the land".to_owned(),
-                            Act::Choice {
-                                trigger: 2,
-                                button: 1,
-                            },
-                        ),
+                        ("Take the cash".to_owned(), Act::Choice { id: 2, button: 0 }),
+                        ("Take the land".to_owned(), Act::Choice { id: 2, button: 1 }),
                     ],
                 })
             }
@@ -429,8 +418,13 @@ impl AppState {
                 },
                 // Two buttons (`scenarios.md` 2.4); a rule with a single label offers just that one.
                 MessageKind::Choice => {
+                    // Interactive games show the pending choice instead (`pending_choice_dialog`):
+                    // the message of the replayed step is only a line of the activity box.
+                    if self.interactive_choices {
+                        return None;
+                    }
                     let first = |button| Act::Choice {
-                        trigger: sm.trigger,
+                        id: u32::from(sm.trigger),
                         button,
                     };
                     let mut buttons = vec![(
@@ -580,7 +574,8 @@ impl AppState {
         };
         let over_text = g.world.game_over_text().to_owned();
         let other_won = g.world.game_over_other_won();
-        if msgs.is_empty() && outcome.is_none() {
+        let choice = self.pending_choice_dialog();
+        if msgs.is_empty() && outcome.is_none() && choice.is_none() {
             return false;
         }
         let briefing = msgs
@@ -616,6 +611,8 @@ impl AppState {
         if let Screen::Game(g) = &mut self.screen {
             // Oldest message on top: push the newest first.
             g.dialogs.extend(dialogs.into_iter().rev());
+            // The world waits for the answer: its dialog is the one on top.
+            g.dialogs.extend(choice);
         }
         self.rebuild_ui();
         briefing
@@ -623,17 +620,61 @@ impl AppState {
 
     // ---- actions ----------------------------------------------------------------------------
 
-    /// The player's answer to a scenario Choice message. The simulation has no way to take it yet
-    /// (the engine runs the effect set of button 0 the moment it raises the message, `message.rs`
-    /// and `scenario/engine.rs`), so the answer is only queued here for the day `rt2-sim` gets
-    /// an `AnswerChoice` command (docs/ui.md "Mensagens Choice").
-    fn answer_choice(&mut self, trigger: u8, button: u8) {
-        self.choice_answers.push((trigger, button));
+    /// The dialog of the scenario choice the simulation waits for (`World::pending_choice`), when
+    /// it is not on screen yet. It cannot be dismissed: until it is answered the world does not
+    /// advance, and closing it any other way brings it back.
+    fn pending_choice_dialog(&self) -> Option<Dialog> {
+        let Screen::Game(g) = &self.screen else {
+            return None;
+        };
+        let p = g.world.pending_choice()?;
+        let shown = g.dialogs.iter().any(|d| {
+            matches!(d, Dialog::Message(m)
+                if m.buttons.iter().any(|b| matches!(b.1, Act::Choice { id, .. } if id == p.id)))
+        });
+        if shown {
+            return None;
+        }
+        let ok = self.texts.get(lng::OK, "OK");
+        let sm = &p.message;
+        let first = |button| Act::Choice { id: p.id, button };
+        let mut buttons = vec![(
+            if sm.label1.is_empty() {
+                ok
+            } else {
+                sm.label1.clone()
+            },
+            first(0),
+        )];
+        if !sm.label2.is_empty() {
+            buttons.push((sm.label2.clone(), first(1)));
+        }
+        Some(Dialog::Message(Message {
+            title: String::new(),
+            body: sm.text.clone(),
+            buttons,
+        }))
     }
 
-    /// Answers given to Choice messages and not yet handed to the simulation, `(trigger, button)`.
+    /// The player's answer to a scenario Choice message: `Command::AnswerChoice` to the world when
+    /// it waits for exactly this choice, else (a sample dialog, a game that is not interactive)
+    /// queued in `choice_answers` for whoever wants it.
+    fn answer_choice(&mut self, id: u32, button: u8) {
+        if let Screen::Game(g) = &mut self.screen
+            && g.world.pending_choice().is_some_and(|p| p.id == id)
+        {
+            g.world.apply(rt2_sim::Command::AnswerChoice {
+                message_id: id,
+                button,
+            });
+            return;
+        }
+        self.choice_answers.push((id, button));
+    }
+
+    /// Answers given to Choice messages that the world did not take, `(id, button)`.
     #[cfg_attr(not(test), allow(dead_code))]
-    pub fn take_choice_answers(&mut self) -> Vec<(u8, u8)> {
+    pub fn take_choice_answers(&mut self) -> Vec<(u32, u8)> {
         std::mem::take(&mut self.choice_answers)
     }
 
@@ -649,9 +690,9 @@ impl AppState {
                 };
                 match act {
                     Some(Act::Close) => self.close_dialog(),
-                    Some(Act::Choice { trigger, button }) => {
+                    Some(Act::Choice { id, button }) => {
                         self.close_dialog();
-                        self.answer_choice(trigger, button);
+                        self.answer_choice(id, button);
                     }
                     None => {}
                 }
@@ -675,7 +716,11 @@ impl AppState {
             A_FILE_LOAD => self.file_load(),
             A_FILE_SAVE => {
                 self.close_dialog();
-                self.save_game();
+                self.open_saves(super::saves_ui::SavesMode::Save);
+            }
+            A_FILE_OPTIONS => {
+                self.close_dialog();
+                self.open_options(crate::options::Tab::Display);
             }
             A_FILE_NEW => self.file_new(),
             A_FILE_MENU => {
@@ -858,7 +903,7 @@ impl AppState {
 
     fn file_load(&mut self) {
         self.close_dialog();
-        self.show_load_game();
+        self.open_saves(super::saves_ui::SavesMode::Load);
     }
 
     fn file_new(&mut self) {
@@ -1099,7 +1144,7 @@ impl AppState {
 
     fn build_file_options(&self, ui: &mut Ui) {
         let t = &self.texts;
-        let fr = self.eagle(ui, 3);
+        let fr = self.eagle(ui, 4);
         let sx = fr.sx;
         let size = 15.0 * sx;
         self.text_in(
@@ -1117,6 +1162,7 @@ impl AppState {
             (t.get(lng::LOAD_GAME, "Load Game"), A_FILE_LOAD),
             (t.a("Save"), A_FILE_SAVE),
             (t.get(lng::NEW_GAME, "New Game"), A_FILE_NEW),
+            (t.a("Options"), A_FILE_OPTIONS),
             (t.a("Main Menu"), A_FILE_MENU),
             (t.get(lng::QUIT, "Quit"), A_FILE_QUIT),
             (t.get(lng::CANCEL, "Cancel"), A_DLG_CLOSE),

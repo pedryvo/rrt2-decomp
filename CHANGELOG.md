@@ -220,3 +220,11 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Fix: the expansion industry set (`0x5704ac = 1`) takes its own industry type table, without the set-0 load fix-ups; #E08 and #E11 New Game identical
 - RE: a pool step whose block reaches Wine's large-block size (about 0x7f000 bytes) is zero-filled instead of 0xBAADF00D; the buildings grown in that step keep zeros at +0x38
 - Feature: scenario two-button choices can wait for the player's answer (`World::set_interactive_choices`, `World::pending_choice`, `Command::AnswerChoice`); the step is replayed with the answer so the order matches the original's modal window, and a local game with AI players no longer skips the choice as if it were a network game
+- Feature: Options screen (menu, File Options, F10) with Display (window/borderless fullscreen, window size, monitor, vsync, UI scale 100-300%), Audio (master, music, effects, mute), Language, Keys and Gameplay tabs; every change applies at once and is written to ~/.config/rrt2/config.toml.
+- Feature: remappable keys with conflict detection (a key another action uses is reported and only moved on a second press), alternate keys, per-key and global reset; new bindable actions for quick save, quick load, the Save/Load dialogs and Options.
+- Feature: Save Game and Load Game dialogs for the clone's own saves (~/.local/share/rrt2/saves) with date, scenario, company, cash, game date and a terrain thumbnail; the Load dialog also lists and opens the original's .GAM games.
+- Feature: quick save (F5) and quick load (F9), and autosave every N game months with rotation that keeps the last K autosaves.
+- Feature: gameplay preferences: game speed at start, edge scrolling, camera speed, reversed mouse drag and wheel zoom, wheel zoom speed.
+- Improved: scenario Choice messages now wait for the player: the dialog shows the rule's two buttons and the answer goes to the simulation as Command::AnswerChoice (headless runs keep answering button 0).
+- Improved: window size, mode, monitor and vsync are remembered; the mute key and Ctrl +/- UI scale are saved too.
+- Docs: docs/ui.md "Opções e saves" and the J1/J3/J5/A6/A7 rows of docs/reference/screens.md.

@@ -62,6 +62,7 @@ pub(super) const A_CAMP_LIST: u32 = 490;
 pub(super) const A_CAMP_BONUS: u32 = 491;
 pub(super) const A_CAMP_PLAY: u32 = 495;
 pub(super) const A_NOTICE_OK: u32 = 496;
+pub(super) const A_OPEN_OPTIONS: u32 = 497;
 
 const CREAM: Color = Color::rgb(0xf2, 0xe9, 0xd0);
 const GOLD: Color = Color::rgb(0xe6, 0xc2, 0x6a);
@@ -288,7 +289,8 @@ impl AppState {
             A_SUB_NEW_CAMPAIGN => self.open_page(Page::NewCampaign),
             A_SUB_LOAD_CAMPAIGN => self.open_page(Page::LoadCampaign),
             A_SUB_NEW_SCENARIO => self.open_page(Page::NewScenario),
-            A_SUB_LOAD_SCENARIO => self.open_page(Page::LoadGame),
+            A_SUB_LOAD_SCENARIO => self.open_saves(super::saves_ui::SavesMode::Load),
+            A_OPEN_OPTIONS => self.open_options(crate::options::Tab::Display),
             A_SETUP_MAP => self.set_side(Side::Map),
             A_SETUP_OPTIONS => self.set_side(Side::Options),
             a if (A_LEVEL..A_LEVEL + 5).contains(&a) => {
@@ -546,7 +548,23 @@ impl AppState {
             Layout::at(Anchor::BottomLeft, 0.0, 20.0 * z).offset(14.0, 6.0),
         );
         self.menu_handles.status = Some(status);
+        // The Options screen from any menu page (docs/ui.md "Opcoes e saves").
+        let ob = ui.add(
+            layer,
+            button(
+                &self.texts.a("Options"),
+                mfont(2, z * 0.9),
+                A_OPEN_OPTIONS,
+                None,
+            ),
+            Layout::at(Anchor::TopRight, 130.0 * z, 36.0 * z).offset(14.0 * z, 14.0 * z),
+        );
         let mut tips: Vec<(NodeId, String)> = Vec::new();
+        tips.push((
+            ob,
+            self.texts
+                .a("Display, audio, language, keys and gameplay settings."),
+        ));
         let wide = cw >= 760.0;
         match page {
             Page::Main => self.build_main(ui, layer, cw, ch, z, logo_bottom, &mut tips),

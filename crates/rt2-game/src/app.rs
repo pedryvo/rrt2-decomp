@@ -36,7 +36,7 @@ pub struct App {
 }
 
 impl Surface {
-    fn new(window: Arc<Window>, skin: Skin) -> Result<Surface> {
+    fn new(window: Arc<Window>, skin: Skin, vsync: bool) -> Result<Surface> {
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
         let surface = instance.create_surface(window.clone())?;
         let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
@@ -55,7 +55,7 @@ impl Surface {
         if let Some(&f) = caps.formats.iter().find(|f| f.is_srgb()) {
             config.format = f;
         }
-        config.present_mode = wgpu::PresentMode::Fifo;
+        config.present_mode = present_mode(vsync);
         surface.configure(&device, &config);
         let gfx = Gfx::new(
             device,
@@ -70,6 +70,15 @@ impl Surface {
             config,
             gfx,
         })
+    }
+
+    /// Vertical sync on (`Fifo`) or off (the best mode without waiting).
+    fn set_vsync(&mut self, vsync: bool) {
+        let mode = present_mode(vsync);
+        if self.config.present_mode != mode {
+            self.config.present_mode = mode;
+            self.surface.configure(&self.gfx.device, &self.config);
+        }
     }
 
     fn resize(&mut self, w: u32, h: u32) {
@@ -112,6 +121,45 @@ impl Surface {
     }
 }
 
+fn present_mode(vsync: bool) -> wgpu::PresentMode {
+    if vsync {
+        wgpu::PresentMode::Fifo
+    } else {
+        wgpu::PresentMode::AutoNoVsync
+    }
+}
+
+/// The monitors' names for the Options screen, in the order `available_monitors` gives them.
+fn monitor_names(event_loop: &ActiveEventLoop) -> Vec<String> {
+    event_loop
+        .available_monitors()
+        .enumerate()
+        .map(|(i, m)| {
+            let size = m.size();
+            let name = m.name().unwrap_or_else(|| format!("Monitor {}", i + 1));
+            format!("{name} ({}x{})", size.width, size.height)
+        })
+        .collect()
+}
+
+/// Window mode, size and monitor from the `[display]` settings.
+fn apply_display(window: &Window, d: &crate::config::Display, event_loop: &ActiveEventLoop) {
+    use crate::config::WindowMode;
+    let monitor = d
+        .monitor
+        .and_then(|i| event_loop.available_monitors().nth(i));
+    match d.mode {
+        WindowMode::Windowed => {
+            window.set_fullscreen(None);
+            if let Some(m) = &monitor {
+                window.set_outer_position(m.position());
+            }
+            let _ = window.request_inner_size(winit::dpi::PhysicalSize::new(d.width, d.height));
+        }
+        WindowMode::Borderless => window.set_fullscreen(Some(Fullscreen::Borderless(monitor))),
+    }
+}
+
 /// Runs the game window until it is closed.
 pub fn run(init: Init, skin: Skin, open: Option<std::path::PathBuf>) -> Result<()> {
     // Audio is optional: without a device this logs once and the game runs silent.
@@ -143,9 +191,19 @@ impl ApplicationHandler for App {
         let Some((mut init, skin)) = self.init.take() else {
             return;
         };
-        let attrs = Window::default_attributes()
+        let display = init.config.display.clone();
+        let mut attrs = Window::default_attributes()
             .with_title("Railroad Tycoon II (rrt2)")
-            .with_inner_size(winit::dpi::LogicalSize::new(1280.0, 800.0));
+            .with_inner_size(winit::dpi::PhysicalSize::new(
+                display.width.max(320),
+                display.height.max(240),
+            ));
+        if display.mode == crate::config::WindowMode::Borderless {
+            let monitor = display
+                .monitor
+                .and_then(|i| event_loop.available_monitors().nth(i));
+            attrs = attrs.with_fullscreen(Some(Fullscreen::Borderless(monitor)));
+        }
         let window = match event_loop.create_window(attrs) {
             Ok(w) => Arc::new(w),
             Err(e) => {
@@ -159,9 +217,15 @@ impl ApplicationHandler for App {
         if !init.scale_pinned {
             init.scale = rt2_ui::UiScale::from_dpi(window.scale_factor());
         }
-        match Surface::new(window, skin) {
+        let dpi = window.scale_factor();
+        match Surface::new(window, skin, display.vsync) {
             Ok(s) => {
                 let mut state = AppState::new(init);
+                state.dpi_changed(dpi);
+                state.set_monitors(monitor_names(event_loop));
+                // The real game: choices wait for the player, autosaves are written.
+                state.set_interactive_choices(true);
+                state.set_persistence(true);
                 // Each real game gets its own seed (the original seeds from the clock); the
                 // simulation never sees the clock, only this number.
                 state.set_seed(
@@ -254,13 +318,11 @@ impl ApplicationHandler for App {
         for e in state.take_effects() {
             match e {
                 Effect::Quit => event_loop.exit(),
-                Effect::ToggleFullscreen => {
-                    let fs = surface.window.fullscreen().is_none();
-                    surface
-                        .window
-                        .set_fullscreen(fs.then_some(Fullscreen::Borderless(None)));
+                Effect::ApplyDisplay(d) => {
+                    apply_display(&surface.window, &d, event_loop);
+                    surface.set_vsync(d.vsync);
                 }
-                Effect::SaveLanguage(locale) => save_language(&locale),
+                Effect::SaveConfig(c) => save_config(&c),
             }
         }
     }
@@ -272,16 +334,12 @@ impl ApplicationHandler for App {
     }
 }
 
-/// Remembers the chosen language in config.toml (a failure is only logged).
-fn save_language(locale: &str) {
+/// Writes `config.toml` (a failure is only logged).
+fn save_config(config: &crate::config::Config) {
     let Some(path) = crate::paths::config_file() else {
         return;
     };
-    let result = crate::config::Config::load(&path).and_then(|mut c| {
-        c.language = Some(locale.to_owned());
-        c.save(&path)
-    });
-    if let Err(e) = result {
-        eprintln!("cannot save the language: {e:#}");
+    if let Err(e) = config.save(&path) {
+        eprintln!("cannot save the configuration: {e:#}");
     }
 }

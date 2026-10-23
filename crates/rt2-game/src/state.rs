@@ -35,6 +35,8 @@ mod dialogs;
 mod info_ui;
 mod mainwin;
 mod menus;
+mod options_ui;
+mod saves_ui;
 use dialogs::Dialog;
 use info_ui::InfoState;
 use mainwin::{CenterState, MainIds, NewsItem};
@@ -82,9 +84,17 @@ const TOAST_SECS: f32 = 4.0;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Effect {
     Quit,
-    ToggleFullscreen,
-    /// The player chose a language: remember it in `config.toml`.
-    SaveLanguage(String),
+    /// Window mode, size, monitor or vsync changed (`Config::display` has the new values).
+    ApplyDisplay(crate::config::Display),
+    /// Something in the configuration changed: write it to `config.toml`. Only the last one of a
+    /// batch matters.
+    SaveConfig(Box<Config>),
+}
+
+/// A screen over the menu or the game: Options, or the Save / Load dialogs.
+enum Overlay {
+    Options(options_ui::OptionsState),
+    Saves(saves_ui::SavesState),
 }
 
 struct MenuState {
@@ -133,6 +143,8 @@ struct GameState {
     scene_fp: u64,
     /// The construction tools (`build_ui.rs`).
     build: build_ui::BuildState,
+    /// Game year and month of the last autosave (or of the start).
+    last_autosave: (u16, u8),
 }
 
 /// Hash of the parts of the save the static layers are built from: building type and tile,
@@ -191,7 +203,7 @@ pub struct AppState {
     /// Sprites to re-upload to the renderer's atlas (the composed station picture), and the key
     /// of what the station sprite holds now. Built from `&self` while the windows are laid out.
     /// Answers to scenario Choice messages, queued for the simulation (`answer_choice`).
-    choice_answers: Vec<(u8, u8)>,
+    choice_answers: Vec<(u32, u8)>,
     sprite_uploads: std::cell::RefCell<Vec<(SpriteId, Vec<u8>)>>,
     station_view_key: std::cell::RefCell<Option<(u8, i32, u32)>>,
     texts: Texts,
@@ -226,6 +238,21 @@ pub struct AppState {
     press: Option<(f32, f32)>,
     /// Seed of the next start (`set_seed`).
     seed: u32,
+    /// The configuration being edited by the Options screen (the window loop writes it out).
+    config: Config,
+    overlay: Option<Overlay>,
+    /// Monitors the window loop reported, for the Options screen.
+    monitors: Vec<String>,
+    /// DPI scale factor of the window (kept even while the UI scale is pinned).
+    dpi: f64,
+    /// Our saves folder (`paths::saves_dir`); tests point it at a temporary folder.
+    saves_dir: Option<PathBuf>,
+    /// Autosaves and other writes the player did not ask for in this very moment; off until the
+    /// window loop enables them, so tests and screenshots never write into the user's folders.
+    persist: bool,
+    /// Scenario Choice messages wait for the player (the window loop turns this on); off, they
+    /// are answered with button 0 at once like a headless run.
+    interactive_choices: bool,
 }
 
 #[derive(Default, Clone)]
@@ -301,6 +328,13 @@ impl AppState {
             via_mouse: false,
             press: None,
             seed: RNG_SEED,
+            config: init.config,
+            overlay: None,
+            monitors: Vec::new(),
+            dpi: 1.0,
+            saves_dir: paths::saves_dir(),
+            persist: false,
+            interactive_choices: false,
         };
         s.rebuild_ui();
         s
@@ -326,6 +360,27 @@ impl AppState {
 
     pub fn invalid_keys(&self) -> &[String] {
         &self.binds.invalid
+    }
+
+    /// Scenario Choice messages wait for the player (the window loop turns this on); off, a
+    /// headless run answers button 0 at once, as `rt2-sim` does by default.
+    pub fn set_interactive_choices(&mut self, on: bool) {
+        self.interactive_choices = on;
+        if let Screen::Game(g) = &mut self.screen {
+            g.world.set_interactive_choices(on);
+        }
+    }
+
+    /// Lets the state write files the player did not ask for in this moment (autosaves). Off by
+    /// default, so tests and screenshots never write into the user's folders.
+    pub fn set_persistence(&mut self, on: bool) {
+        self.persist = on;
+    }
+
+    /// Where our saves go (default `paths::saves_dir()`); tests use a temporary folder.
+    #[cfg(test)]
+    pub fn set_saves_dir(&mut self, dir: Option<PathBuf>) {
+        self.saves_dir = dir;
     }
 
     /// Pixels the renderer must write into reserved sprites before drawing (the station picture).
@@ -418,6 +473,7 @@ impl AppState {
 
     /// The monitor's DPI changed: follow it unless the scale was pinned by the player.
     pub fn dpi_changed(&mut self, scale_factor: f64) {
+        self.dpi = scale_factor;
         if !self.scale_pinned {
             self.set_ui_scale(UiScale::from_dpi(scale_factor), false);
         }
@@ -431,11 +487,35 @@ impl AppState {
         }
     }
 
+    /// Which way the cursor pushes the camera at the window edge: `(right, up)` in -1..=1.
+    fn edge_direction(&self) -> (f32, f32) {
+        const EDGE: f32 = 4.0;
+        let Some((x, y)) = self.cursor else {
+            return (0.0, 0.0);
+        };
+        let (w, h) = (self.viewport.0 as f32, self.viewport.1 as f32);
+        let axis = |v: f32, size: f32| {
+            if v <= EDGE {
+                -1.0
+            } else if v >= size - 1.0 - EDGE {
+                1.0
+            } else {
+                0.0
+            }
+        };
+        (axis(x, w), -axis(y, h))
+    }
+
     pub fn cursor_moved(&mut self, x: f32, y: f32) {
         if self.drag
             && let (Some((px, py)), Screen::Game(g)) = (self.cursor, &mut self.screen)
         {
-            g.camera.drag(x - px, y - py);
+            let k = if self.config.gameplay.invert_drag {
+                -1.0
+            } else {
+                1.0
+            };
+            g.camera.drag(k * (x - px), k * (y - py));
             if g.build.tool.is_some() {
                 // The tool's overlay follows the map.
                 self.cursor = Some((x, y));
@@ -515,7 +595,10 @@ impl AppState {
         if !self.ui.over_ui()
             && let Screen::Game(g) = &mut self.screen
         {
-            g.camera.zoom_by(ZOOM_STEP.powf(notches));
+            let p = &self.config.gameplay;
+            let step = 1.0 + (ZOOM_STEP - 1.0) * p.zoom_speed as f32 / 100.0;
+            let dir = if p.invert_zoom { -1.0 } else { 1.0 };
+            g.camera.zoom_by(step.powf(dir * notches));
             if g.build.tool.is_some() {
                 self.rebuild_ui();
             }
@@ -538,17 +621,27 @@ impl AppState {
             return;
         }
         self.keys_down.insert(code);
+        // The Options screen and the Save / Load dialogs take every key (rebinding must see F11
+        // and the like as plain keys).
+        if self.options_open() {
+            self.options_key(code, repeat);
+            return;
+        }
+        if self.saves_open() {
+            self.saves_key(code, repeat, text);
+            return;
+        }
         let (ctrl, b) = (self.ctrl, self.binds.clone());
         if b.ui_scale_up.matches(code, ctrl) {
-            self.set_ui_scale(self.scale.step(1), true);
+            self.step_ui_scale(1);
             return;
         }
         if b.ui_scale_down.matches(code, ctrl) {
-            self.set_ui_scale(self.scale.step(-1), true);
+            self.step_ui_scale(-1);
             return;
         }
         if !repeat && b.mute.matches(code, ctrl) {
-            self.cues.push(Cue::ToggleMute);
+            self.toggle_mute();
             return;
         }
         if !repeat && b.next_track.matches(code, ctrl) {
@@ -556,7 +649,19 @@ impl AppState {
             return;
         }
         if !repeat && b.fullscreen.matches(code, ctrl) {
-            self.effects.push(Effect::ToggleFullscreen);
+            self.toggle_fullscreen();
+            return;
+        }
+        if !repeat && b.options.matches(code, ctrl) {
+            self.open_options(crate::options::Tab::Display);
+            return;
+        }
+        if !repeat && b.quick_load.matches(code, ctrl) {
+            self.quick_load();
+            return;
+        }
+        if !repeat && b.load_dialog.matches(code, ctrl) {
+            self.open_saves(saves_ui::SavesMode::Load);
             return;
         }
         match &self.screen {
@@ -666,7 +771,9 @@ impl AppState {
         } else if b.speed_down.matches(code, ctrl) {
             cmd = Some(Command::SetSpeed(SpeedChange::Delta(-1)));
         } else if b.save.matches(code, ctrl) {
-            self.save_game();
+            self.quick_save();
+        } else if b.save_dialog.matches(code, ctrl) {
+            self.open_saves(saves_ui::SavesMode::Save);
         } else if b.menu.matches(code, ctrl) {
             // File Options (`fileopt.win`): Load, Save, New Game, Main Menu, Quit.
             self.push_dialog(Dialog::FileOptions);
@@ -739,18 +846,29 @@ impl AppState {
             axis(&b.pan_down, &b.pan_up),
         );
         let ctrl = self.ctrl;
+        let covered = self.overlay.is_some();
+        // Edge scrolling: the cursor in the border strip of the window and over no widget.
+        let (edx, edy) = if self.config.gameplay.edge_scroll && !covered && !self.ui.over_ui() {
+            self.edge_direction()
+        } else {
+            (0.0, 0.0)
+        };
+        let pan_pct = self.config.gameplay.pan_speed as f32 / 100.0;
+        let (dx, dy) = ((dx + edx).clamp(-1.0, 1.0), (dy + edy).clamp(-1.0, 1.0));
         let mut overlay_stale = false;
         let Screen::Game(g) = &mut self.screen else {
             return;
         };
-        if (dx != 0.0 || dy != 0.0) && !ctrl && g.info.is_none() && g.dialogs.is_empty() {
-            let k = PAN_SPEED * dt_ms / 1000.0;
+        if (dx != 0.0 || dy != 0.0) && !ctrl && !covered && g.info.is_none() && g.dialogs.is_empty()
+        {
+            let k = PAN_SPEED * pan_pct * dt_ms / 1000.0;
             g.camera.pan(dx * k, dy * k);
             overlay_stale = g.build.tool.is_some();
         }
         // Dialogs and the information screens hold the simulation (the original's "keep the
-        // game running in dialogs" option defaults to off for modal windows).
-        let on_hold = !g.dialogs.is_empty();
+        // game running in dialogs" option defaults to off for modal windows); so do the Options
+        // and Save / Load screens.
+        let on_hold = !g.dialogs.is_empty() || covered;
         if !on_hold {
             g.accum_ms += dt_ms.min(250.0);
         }
@@ -777,6 +895,7 @@ impl AppState {
         g.cash_timer -= dt_ms;
         // Messages and the end of the game, after the steps (and once at the start).
         self.poll_world();
+        self.autosave_tick();
         let Screen::Game(g) = &mut self.screen else {
             return;
         };
@@ -815,7 +934,9 @@ impl AppState {
                     self.activated(a);
                 }
                 UiEvent::Pointer(a, fx, fy) => {
-                    if a == mainwin::A_RADAR {
+                    if options_ui::owns(a) {
+                        self.options_event(&UiEvent::Pointer(a, fx, fy));
+                    } else if a == mainwin::A_RADAR {
                         self.radar_pointer(fx, fy);
                     } else if self.via_mouse && self.build_pointer(a, fx, fy) {
                     } else {
@@ -852,10 +973,20 @@ impl AppState {
     /// A list selection that belongs to the menus or the main window; true if consumed.
     fn row_event(&mut self, action: u32, row: usize) -> bool {
         let e = UiEvent::Selected(action, row);
-        self.menu_event(&e) || self.mainwin_event(&e) || self.build_row_event(action, row)
+        self.options_event(&e)
+            || self.saves_event(&e)
+            || self.menu_event(&e)
+            || self.mainwin_event(&e)
+            || self.build_row_event(action, row)
     }
 
     fn activated(&mut self, action: u32) {
+        if options_ui::owns(action) && self.options_activated(action) {
+            return;
+        }
+        if saves_ui::owns(action) && self.saves_activated(action) {
+            return;
+        }
         if self.in_game() {
             if self.dialog_activated(action)
                 || self.build_dialog_activated(action)
@@ -877,13 +1008,12 @@ impl AppState {
             A_PAUSE => self.apply_command(Command::TogglePause),
             A_FASTER => self.apply_command(Command::SetSpeed(SpeedChange::Delta(1))),
             A_SLOWER => self.apply_command(Command::SetSpeed(SpeedChange::Delta(-1))),
-            A_SAVE => self.save_game(),
+            A_SAVE => self.quick_save(),
             A_MENU => self.go_to_menu(),
             a if (A_LANG..A_LANG + 32).contains(&a) && !self.in_game() => {
                 if let Some((locale, _)) = self.texts.languages().get((a - A_LANG) as usize) {
                     let locale = locale.clone();
-                    self.set_language(&locale);
-                    self.effects.push(Effect::SaveLanguage(locale));
+                    self.choose_language(&locale);
                 }
             }
             _ => {}
@@ -1063,6 +1193,7 @@ impl AppState {
             ),
         };
         let last_year = world.date().year;
+        let world_month = world.date().month;
         self.screen = Screen::Game(Box::new(GameState {
             cash,
             radar: Some(crate::radar::Radar::new(&map)),
@@ -1087,7 +1218,18 @@ impl AppState {
             info: None,
             scene_fp,
             build: build_ui::BuildState::default(),
+            last_autosave: (last_year, world_month),
         }));
+        // Scenario choices wait for the player in the real game; headless they answer button 0.
+        if let Screen::Game(g) = &mut self.screen {
+            g.world.set_interactive_choices(self.interactive_choices);
+            // The configured starting speed goes through the same command as the HUD buttons.
+            let speed = self.config.gameplay.default_speed;
+            if speed > 0 {
+                g.world
+                    .apply(Command::SetSpeed(SpeedChange::Absolute(speed)));
+            }
+        }
         self.rebuild_ui();
         Ok(())
     }
@@ -1120,40 +1262,6 @@ impl AppState {
         }
     }
 
-    /// Writes the game to our own saves folder, never into the install.
-    fn save_game(&mut self) {
-        let result = self.try_save();
-        match result {
-            Ok(p) => {
-                let m = self.texts.af("Saved %1", &[p.display().to_string()]);
-                self.toast(m);
-            }
-            Err(e) => {
-                let m = self.texts.af("Cannot save: %1", &[e.to_string()]);
-                self.toast(m);
-            }
-        }
-    }
-
-    fn try_save(&self) -> Result<PathBuf> {
-        let Screen::Game(g) = &self.screen else {
-            bail!("no game");
-        };
-        let dir = paths::saves_dir().context("no data folder")?;
-        if dir.starts_with(&self.install) {
-            bail!("refusing to write inside the game install");
-        }
-        std::fs::create_dir_all(&dir).with_context(|| dir.display().to_string())?;
-        let d = g.world.date();
-        let file = dir.join(format!(
-            "{}-{}-{:02}-{:02}.GAM",
-            g.name, d.year, d.month, d.day
-        ));
-        std::fs::write(&file, g.world.to_save().to_bytes())
-            .with_context(|| file.display().to_string())?;
-        Ok(file)
-    }
-
     // ---- UI construction ------------------------------------------------------------------
 
     fn rebuild_ui(&mut self) {
@@ -1169,6 +1277,7 @@ impl AppState {
                 self.build_dialogs(&mut ui);
             }
         }
+        self.build_overlay_screen(&mut ui);
         ui.layout(self.viewport);
         self.ui = ui;
         if let Some((x, y)) = self.cursor {
@@ -1321,5 +1430,7 @@ mod tests {
 mod build_tests;
 #[cfg(test)]
 mod fin_tests;
+#[cfg(test)]
+mod options_tests;
 #[cfg(test)]
 mod play_tests;
