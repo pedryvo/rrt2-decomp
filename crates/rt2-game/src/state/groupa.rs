@@ -74,7 +74,7 @@ impl AppState {
 
 impl AppState {
     /// Screenshots: opens the Map Overview on a layer. `resource[:all|:ID,ID...]`, `stations`,
-    /// `grade`, `traffic`, `company`.
+    /// `grade`, `traffic`, `company`, `supplydemand[:all|:ID...]`, `profit`, `congestion`.
     pub fn show_overview(&mut self, spec: &str) -> bool {
         use super::overview::Layer;
         if !self.in_game() || self.editor_active() {
@@ -87,13 +87,16 @@ impl AppState {
             "grade" => Layer::Grade,
             "traffic" => Layer::Traffic,
             "company" => Layer::Company,
+            "supply" | "demand" | "supplydemand" => Layer::SupplyDemand,
+            "profit" => Layer::Profit,
+            "congestion" => Layer::Congestion,
             _ => return false,
         };
         if !self.ga.overview.open {
             self.overview_toggle();
         }
         self.ga.overview.layer = layer;
-        if layer == Layer::Resource {
+        if layer == Layer::Resource || layer == Layer::SupplyDemand {
             let roles = self.ga.overview.roles.clone();
             self.ga.overview.cargo_on = if arg == "all" {
                 roles.0.union(&roles.1).copied().collect()

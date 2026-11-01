@@ -228,6 +228,54 @@ pub fn track_by_owner(tiles: &[TrackTile]) -> std::collections::BTreeMap<u8, usi
     m
 }
 
+/// Profitability band 0..=4 based on traffic wear relative to max wear:
+/// 0: High profit
+/// 1: Moderate profit
+/// 2: Break-even
+/// 3: Minor loss
+/// 4: Heavy loss (zero traffic / idle track)
+pub fn profit_band(wear: f32, max_wear: f32) -> usize {
+    if max_wear <= 0.0 || wear <= 0.0 {
+        return 4;
+    }
+    let f = wear / max_wear;
+    if f >= 0.5 {
+        0
+    } else if f >= 0.2 {
+        1
+    } else if f >= 0.05 {
+        2
+    } else {
+        3
+    }
+}
+
+/// Congestion band 0..=4 based on traffic wear and track slope:
+/// 0: Free flow
+/// 1: Light delay
+/// 2: Moderate
+/// 3: Heavy queue
+/// 4: Severe bottleneck
+pub fn congestion_band(wear: f32, max_wear: f32, grade: u8) -> usize {
+    if max_wear <= 0.0 || wear <= 0.0 {
+        return 0;
+    }
+    let traffic_factor = (wear / max_wear).clamp(0.0, 1.0);
+    let grade_penalty = (f32::from(grade) / 50.0).clamp(0.0, 1.0) * 0.35;
+    let score = traffic_factor * 0.75 + grade_penalty;
+    if score >= 0.85 {
+        4
+    } else if score >= 0.60 {
+        3
+    } else if score >= 0.35 {
+        2
+    } else if score >= 0.15 {
+        1
+    } else {
+        0
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -249,6 +297,24 @@ mod tests {
         assert_eq!(traffic_band(10.0, 10.0), Some(4));
         assert_eq!(traffic_band(0.1, 10.0), Some(0));
         assert_eq!(traffic_band(3.0, 10.0), Some(2));
+    }
+
+    #[test]
+    fn profit_bands_score_relative_wear() {
+        assert_eq!(profit_band(0.0, 10.0), 4);
+        assert_eq!(profit_band(0.2, 10.0), 3);
+        assert_eq!(profit_band(0.8, 10.0), 2);
+        assert_eq!(profit_band(2.5, 10.0), 1);
+        assert_eq!(profit_band(6.0, 10.0), 0);
+    }
+
+    #[test]
+    fn congestion_bands_combine_traffic_and_grade() {
+        assert_eq!(congestion_band(0.0, 10.0, 0), 0);
+        assert_eq!(congestion_band(2.0, 10.0, 0), 1);
+        assert_eq!(congestion_band(5.0, 10.0, 10), 2);
+        assert_eq!(congestion_band(8.0, 10.0, 20), 3);
+        assert_eq!(congestion_band(10.0, 10.0, 50), 4);
     }
 
     #[test]

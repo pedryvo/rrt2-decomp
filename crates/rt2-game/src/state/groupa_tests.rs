@@ -364,6 +364,25 @@ fn map_overview_layers_by_clicks() {
     assert!(overlay_squares(&s) > 0);
     click(&mut s, A_OV_COMPANY);
     assert!(s.ga.overview.company.is_some());
+
+    // Modern overlays: Supply & Demand, Track Profit, and Congestion.
+    click(&mut s, A_OV_LAYER + 5);
+    assert_eq!(s.ga.overview.layer, Layer::SupplyDemand);
+    assert!(has_text(&s, "Producers (green) and consumers (orange/red)"));
+    assert!(overlay_squares(&s) > 0);
+
+    click(&mut s, A_OV_LAYER + 6);
+    assert_eq!(s.ga.overview.layer, Layer::Profit);
+    assert!(has_text(&s, "Track Profitability"));
+    assert!(has_text(&s, "High profit"));
+    assert!(overlay_squares(&s) > 0);
+
+    click(&mut s, A_OV_LAYER + 7);
+    assert_eq!(s.ga.overview.layer, Layer::Congestion);
+    assert!(has_text(&s, "Track Congestion & Bottlenecks"));
+    assert!(has_text(&s, "Free flow"));
+    assert!(overlay_squares(&s) > 0);
+
     // The overlay follows the camera: panning changes the squares' positions without a click.
     let before = overlay_squares(&s);
     s.wheel(3.0);

@@ -4,6 +4,7 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 
 ## Unreleased
 
+- Feature: modern Map Overview layers for cargo supply and demand heatmap, track profitability and congestion bottlenecks.
 - Docs: Windows installer and macOS app bundle in the v1.0 scope
 - Docs: first-run setup screen (detect or pick the original install, then Play) in the v1.0 scope
 - Docs: multiplayer (deterministic lockstep between copies of the clone) moved into the v1.0 scope

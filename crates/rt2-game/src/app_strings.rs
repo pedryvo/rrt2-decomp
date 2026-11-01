@@ -663,6 +663,25 @@ pub static APP_EN: &[&str] = &[
     "Undo last build",
     "Last construction undone.",
     "Nothing to undo.",
+    "Supply & Demand",
+    "Track Profit",
+    "Congestion",
+    "View cargo supply and demand heatmap.",
+    "View track profitability and maintenance cost balance.",
+    "View bottlenecks, delays and track congestion.",
+    "Track Profitability",
+    "High profit",
+    "Moderate profit",
+    "Break-even",
+    "Minor loss",
+    "Heavy loss",
+    "Track Congestion & Bottlenecks",
+    "Free flow",
+    "Light delay",
+    "Moderate",
+    "Heavy queue",
+    "Bottleneck",
+    "Producers (green) and consumers (orange/red) of selected cargos.",
 ];
 
 /// The id of an English default.
@@ -693,6 +712,7 @@ mod tests {
             include_str!("state/dialogs/fin.rs"),
             include_str!("gamedir.rs"),
             include_str!("mp_ui.rs"),
+            include_str!("state/overview.rs"),
             include_str!("text.rs"),
         ] {
             for call in [".a(\"", ".af(\""] {

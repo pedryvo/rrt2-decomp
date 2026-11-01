@@ -49,6 +49,20 @@ pub(super) const TRAFFIC_COLORS: [Color; 5] = [
     Color::rgb(0xf0, 0xd8, 0x40),
     Color::rgb(0xe8, 0x40, 0x30),
 ];
+pub(super) const PROFIT_COLORS: [Color; 5] = [
+    Color::rgb(0x28, 0xd0, 0x50),
+    Color::rgb(0x84, 0xcc, 0x16),
+    Color::rgb(0xf0, 0xd8, 0x40),
+    Color::rgb(0xf0, 0x80, 0x20),
+    Color::rgb(0xe0, 0x30, 0x30),
+];
+pub(super) const CONGESTION_COLORS: [Color; 5] = [
+    Color::rgb(0x06, 0xb6, 0xd4),
+    Color::rgb(0x10, 0xb9, 0x81),
+    Color::rgb(0xfa, 0xcc, 0x15),
+    Color::rgb(0xfb, 0x92, 0x3c),
+    Color::rgb(0xdc, 0x26, 0x26),
+];
 /// Most overlay squares drawn per layer (the visible ones come first).
 const MAX_SQUARES: usize = 3000;
 
@@ -59,15 +73,21 @@ pub(super) enum Layer {
     Grade,
     Traffic,
     Company,
+    SupplyDemand,
+    Profit,
+    Congestion,
 }
 
 impl Layer {
-    pub(super) const ALL: [Layer; 5] = [
+    pub(super) const ALL: [Layer; 8] = [
         Layer::Resource,
         Layer::Stations,
         Layer::Grade,
         Layer::Traffic,
         Layer::Company,
+        Layer::SupplyDemand,
+        Layer::Profit,
+        Layer::Congestion,
     ];
 
     fn caption(self) -> &'static str {
@@ -77,10 +97,13 @@ impl Layer {
             Layer::Grade => "Track Grade",
             Layer::Traffic => "Traffic Density",
             Layer::Company => "Track by Company",
+            Layer::SupplyDemand => "Supply & Demand",
+            Layer::Profit => "Track Profit",
+            Layer::Congestion => "Congestion",
         }
     }
 
-    /// LNG id and English text of the hint (`default2.lng` 1936..1940).
+    /// LNG id and English text of the hint (`default2.lng` 1936..1940 or 0 for modern).
     fn tip(self) -> (u32, &'static str) {
         match self {
             Layer::Resource => (1936, "View the resource map."),
@@ -88,6 +111,9 @@ impl Layer {
             Layer::Grade => (1937, "View the track grade map."),
             Layer::Traffic => (1938, "View the traffic density map."),
             Layer::Company => (1940, "View track by company."),
+            Layer::SupplyDemand => (0, "View cargo supply and demand heatmap."),
+            Layer::Profit => (0, "View track profitability and maintenance cost balance."),
+            Layer::Congestion => (0, "View bottlenecks, delays and track congestion."),
         }
     }
 }
@@ -244,7 +270,7 @@ impl AppState {
         }
         let o = &mut self.ga.overview;
         match action {
-            a if (A_OV_LAYER..A_OV_LAYER + 5).contains(&a) => {
+            a if (A_OV_LAYER..A_OV_LAYER + Layer::ALL.len() as u32).contains(&a) => {
                 o.layer = Layer::ALL[(a - A_OV_LAYER) as usize];
             }
             A_OV_ALL => o.cargo_on = o.roles.0.union(&o.roles.1).copied().collect(),
@@ -335,25 +361,31 @@ impl AppState {
             Layout::at(Anchor::TopRight, 90.0 * dz, row_h).offset(pad, 4.0 * dz),
         );
         tips.push((cancel, t.get(1930, "Cancel out of 'Map Overview'")));
-        // The five layers down the left side.
-        let lw = (w * 0.27).min(190.0 * dz);
-        let mut y = 4.0 * dz + row_h + 4.0 * dz;
-        let lh = ((h - y - pad) / 5.0).min(row_h * 1.1);
+        // The eight layers down the left side (2 columns of 4 buttons).
+        let lw = (w * 0.44).min(220.0 * dz);
+        let y = 4.0 * dz + row_h + 4.0 * dz;
+        let lh = ((h - y - pad) / 4.0).min(row_h * 1.05);
+        let col_w = (lw - 4.0 * dz) / 2.0;
+        let f_toggle = fnt(1, dz * 0.82);
         for (i, l) in Layer::ALL.iter().enumerate() {
+            let col = i / 4;
+            let row = i % 4;
+            let bx = pad + col as f32 * (col_w + 4.0 * dz);
+            let by = y + row as f32 * lh;
             let (id, en) = l.tip();
+            let tip_text = if id != 0 { t.get(id, en) } else { t.a(en) };
             let n = ui.add(
                 parent,
                 Kind::Toggle {
                     text: t.a(l.caption()),
-                    font: f1,
+                    font: f_toggle,
                     action: A_OV_LAYER + i as u32,
                     on: o.layer == *l,
                     enabled: true,
                 },
-                at(pad, y, lw, lh - 2.0),
+                at(bx, by, col_w, lh - 2.0),
             );
-            tips.push((n, t.get(id, en)));
-            y += lh;
+            tips.push((n, tip_text));
         }
         // The right side depends on the layer.
         let rx = pad + lw + pad;
@@ -362,6 +394,21 @@ impl AppState {
         let area_h = (h - top - pad).max(20.0);
         match o.layer {
             Layer::Resource => self.overview_cargo_grid(ui, parent, rx, top, rw, area_h, dz, tips),
+            Layer::SupplyDemand => {
+                ui.add(
+                    parent,
+                    lbl(
+                        &t.a("Producers (green) and consumers (orange/red) of selected cargos."),
+                        fnt(1, dz * 0.8),
+                        MUTED,
+                        Align::Left,
+                    ),
+                    at(rx, top, rw, (16.0 * dz).round()),
+                );
+                let sub_top = top + 18.0 * dz;
+                let sub_h = (area_h - 18.0 * dz).max(20.0);
+                self.overview_cargo_grid(ui, parent, rx, sub_top, rw, sub_h, dz, tips);
+            }
             Layer::Stations => {
                 self.overview_note(
                     ui,
@@ -405,6 +452,46 @@ impl AppState {
                     dz,
                     &t.a("Traffic on the track"),
                     &TRAFFIC_COLORS,
+                    &names,
+                );
+            }
+            Layer::Profit => {
+                let names = [
+                    t.a("High profit"),
+                    t.a("Moderate profit"),
+                    t.a("Break-even"),
+                    t.a("Minor loss"),
+                    t.a("Heavy loss"),
+                ];
+                self.overview_legend(
+                    ui,
+                    parent,
+                    rx,
+                    top,
+                    rw,
+                    dz,
+                    &t.a("Track Profitability"),
+                    &PROFIT_COLORS,
+                    &names,
+                );
+            }
+            Layer::Congestion => {
+                let names = [
+                    t.a("Free flow"),
+                    t.a("Light delay"),
+                    t.a("Moderate"),
+                    t.a("Heavy queue"),
+                    t.a("Bottleneck"),
+                ];
+                self.overview_legend(
+                    ui,
+                    parent,
+                    rx,
+                    top,
+                    rw,
+                    dz,
+                    &t.a("Track Congestion & Bottlenecks"),
+                    &CONGESTION_COLORS,
                     &names,
                 );
             }
@@ -715,6 +802,40 @@ impl AppState {
                         let c = TRAFFIC_COLORS[b];
                         square(ui, t.x, t.y, Color(c.0, c.1, c.2, 0xd8), 0.0);
                     }
+                }
+            }
+            Layer::SupplyDemand => {
+                let mut sel = o.cargo_on.clone();
+                sel.extend(o.hover);
+                if sel.is_empty() {
+                    sel = o.roles.0.union(&o.roles.1).copied().collect();
+                }
+                for m in ov::resource_markers(&o.blds, &sel) {
+                    for y in m.y0..=m.y1 {
+                        for x in m.x0..=m.x1 {
+                            if m.supply && m.demand {
+                                square(ui, x, y, Color(0xfa, 0xcc, 0x15, 0xd8), 0.0);
+                            } else if m.supply {
+                                square(ui, x, y, Color(0x10, 0xb9, 0x81, 0xd8), 0.0);
+                            } else if m.demand {
+                                square(ui, x, y, Color(0xef, 0x44, 0x44, 0xd8), 0.0);
+                            }
+                        }
+                    }
+                }
+            }
+            Layer::Profit => {
+                for t in &o.tiles {
+                    let b = ov::profit_band(t.wear, o.max_wear);
+                    let c = PROFIT_COLORS[b];
+                    square(ui, t.x, t.y, Color(c.0, c.1, c.2, 0xd8), 0.0);
+                }
+            }
+            Layer::Congestion => {
+                for t in &o.tiles {
+                    let b = ov::congestion_band(t.wear, o.max_wear, t.grade);
+                    let c = CONGESTION_COLORS[b];
+                    square(ui, t.x, t.y, Color(c.0, c.1, c.2, 0xd8), 0.0);
                 }
             }
             Layer::Company => {
