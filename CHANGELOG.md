@@ -69,6 +69,7 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Feature: command 0x29 (train_set_throttle, 0x4d6080) and read-only breakdown probability calculation (train_breakdown_chance, 0x4cf030) verified against Wine snapshots (v1throttle80, v1throttle50)
 - Feature: GameData TOML mods export and load (GameData::to_toml, apply_mod_toml, apply_mod_dir) and Fleet Manager simulation API (ConsistTemplate, apply_consist_template, bulk_replace_engines)
 - Feature: multiplayer phase 2 UI (K1 menu, K2 connection dialog, K3 lobby with approval lights and ping, H3 character profile editor, in-game chat, lockstep command routing, and multiplayer save/load)
+- Feature: single-player build undo UI and hotkeys (Ctrl+Z and U) in rt2-game with Options rebinding and localized notifications
 - Docs: player's guide in 6 languages (en, pt-BR, es, de, zh-CN, ru) covering installation, getting started, controls, differences from original, and modern features
 
 ## v0.3.0 — 2026-10-23

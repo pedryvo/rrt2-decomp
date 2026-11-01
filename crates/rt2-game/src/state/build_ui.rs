@@ -323,6 +323,26 @@ impl AppState {
         self.rebuild_ui();
     }
 
+    /// Undoes the last single-player build action (track, station, improvement, bulldoze),
+    /// restoring the world save, live frame, cash and fingerprint to the pre-build snapshot.
+    pub(super) fn undo_build(&mut self) -> bool {
+        let Screen::Game(g) = &mut self.screen else {
+            return false;
+        };
+        if !g.world.can_undo_last_build() {
+            let m = self.texts.a("Nothing to undo.");
+            self.set_message(m, false);
+            return false;
+        }
+        let undone = g.world.undo_last_build();
+        if undone {
+            self.sync_after_build();
+            let m = self.texts.a("Last construction undone.");
+            self.set_message(m, true);
+        }
+        undone
+    }
+
     /// The tile under the cursor as the Lay Track tool takes it: a press on a station building
     /// means the station's tile (`buildtools::snap_to_station`).
     fn track_tile_under(&self, pos: (f32, f32)) -> Option<(i32, i32)> {

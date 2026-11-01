@@ -880,7 +880,9 @@ impl AppState {
             }
         }
         let mut cmd = None;
-        if b.pause.matches(code, ctrl) {
+        if b.undo.matches(code, ctrl) {
+            self.undo_build();
+        } else if b.pause.matches(code, ctrl) {
             cmd = Some(Command::TogglePause);
         } else if b.speed_up.matches(code, ctrl) {
             cmd = Some(Command::SetSpeed(SpeedChange::Delta(1)));

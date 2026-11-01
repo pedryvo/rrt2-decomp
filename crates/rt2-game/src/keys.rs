@@ -229,10 +229,11 @@ pub enum KeyAction {
     Stations,
     Cities,
     Industries,
+    Undo,
 }
 
 impl KeyAction {
-    pub const ALL: [KeyAction; 27] = [
+    pub const ALL: [KeyAction; 28] = [
         KeyAction::Pause,
         KeyAction::SpeedUp,
         KeyAction::SpeedDown,
@@ -260,6 +261,7 @@ impl KeyAction {
         KeyAction::Stations,
         KeyAction::Cities,
         KeyAction::Industries,
+        KeyAction::Undo,
     ];
 
     /// The English name (an `app_strings` entry; see the test).
@@ -292,6 +294,7 @@ impl KeyAction {
             KeyAction::Stations => "Stations screen",
             KeyAction::Cities => "Cities screen",
             KeyAction::Industries => "Industries screen",
+            KeyAction::Undo => "Undo last build",
         }
     }
 }
@@ -327,6 +330,7 @@ macro_rules! slot {
             KeyAction::Stations => $($r)+ $k.stations,
             KeyAction::Cities => $($r)+ $k.cities,
             KeyAction::Industries => $($r)+ $k.industries,
+            KeyAction::Undo => $($r)+ $k.undo,
         }
     };
 }
@@ -475,6 +479,7 @@ pub struct Bindings {
     pub stations: Binding,
     pub cities: Binding,
     pub industries: Binding,
+    pub undo: Binding,
     /// Names in the config that were not recognised.
     pub invalid: Vec<String>,
 }
@@ -511,6 +516,7 @@ impl Bindings {
             stations: b(&k.stations),
             cities: b(&k.cities),
             industries: b(&k.industries),
+            undo: b(&k.undo),
             invalid: Vec::new(),
         };
         Bindings {

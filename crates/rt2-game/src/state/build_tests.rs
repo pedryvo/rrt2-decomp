@@ -330,3 +330,61 @@ fn escape_cancels_the_drag_then_the_tool_and_the_right_button_pans() {
     s.key(KeyCode::Escape, true, false, None);
     assert!(game(&s).build.tool.is_none());
 }
+
+#[test]
+fn undo_last_build_via_ui_and_hotkey() {
+    let Some(mut s) = state() else {
+        eprintln!("install or converted save missing; skipping");
+        return;
+    };
+    let initial_cash = game(&s).cash;
+
+    // Before building, undo does nothing
+    assert!(!s.undo_build());
+    assert!(
+        game(&s)
+            .build
+            .message
+            .as_ref()
+            .is_some_and(|m| m.0.contains("Nothing to undo") || !m.1)
+    );
+
+    // Lay track through the UI
+    let a = player_stations(&s)[0];
+    let b = (a.0 + 3, a.1 + 3);
+    s.select_tool(super::build_ui::ToolKind::Track);
+    let pa = tile_px(&s, a);
+    let pb = tile_px(&s, b);
+    s.cursor_moved(pa.0, pa.1);
+    s.mouse_button(true, true);
+    s.cursor_moved(pb.0, pb.1);
+    s.mouse_button(true, false);
+
+    let after_build_cash = game(&s).cash;
+    assert!(
+        after_build_cash < initial_cash,
+        "cash was deducted for track"
+    );
+
+    // Press Ctrl+Z
+    s.modifiers(true, false);
+    s.key(KeyCode::KeyZ, true, false, None);
+    s.modifiers(false, false);
+
+    assert_eq!(
+        game(&s).cash,
+        initial_cash,
+        "cash is fully restored by undo"
+    );
+    assert!(
+        game(&s).build.message.as_ref().is_some_and(|m| m.1),
+        "success message displayed"
+    );
+
+    // Undo again via hotkey U: nothing left to undo
+    s.key(KeyCode::KeyU, true, false, None);
+    assert!(
+        game(&s).build.message.as_ref().is_some_and(|m| !m.1),
+        "nothing to undo error"
+    );
+}

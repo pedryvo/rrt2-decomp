@@ -660,6 +660,9 @@ pub static APP_EN: &[&str] = &[
     "Connecting to %1...",
     "Connection failed: %1",
     "Out of Synch at minute %1",
+    "Undo last build",
+    "Last construction undone.",
+    "Nothing to undo.",
 ];
 
 /// The id of an English default.

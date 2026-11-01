@@ -255,7 +255,7 @@ O usuário decidiu que todos os itens abaixo entram na 1.0, inclusive o multipla
 - [x] Caso de fidelidade de 10 anos (ou mais) idêntico ao original
 
 **Jogabilidade moderna** (sem alterar o balanceamento padrão)
-- [ ] Desfazer a última construção
+- [x] Desfazer a última construção
 - [ ] Overlays de mapa: as camadas originais, mais oferta e demanda por carga, lucro por trecho e congestionamento
 - [ ] Gerenciador de frota: modelos de composição e troca de locomotiva em massa
 - [x] Gráficos e relatórios financeiros mais completos

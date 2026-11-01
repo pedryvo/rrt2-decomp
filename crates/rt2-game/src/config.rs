@@ -41,6 +41,8 @@ pub struct Keys {
     pub stations: Vec<String>,
     pub cities: Vec<String>,
     pub industries: Vec<String>,
+    /// Modern extra (PLAN.md section 12): undo the last single-player build action.
+    pub undo: Vec<String>,
 }
 
 fn v(keys: &[&str]) -> Vec<String> {
@@ -83,6 +85,7 @@ impl Default for Keys {
             stations: v(&["KeyG"]),
             cities: v(&["KeyC"]),
             industries: v(&["KeyI"]),
+            undo: v(&["ctrl+KeyZ", "KeyU"]),
         }
     }
 }
