@@ -29,9 +29,19 @@ pub struct World {
     pub(crate) votes: crate::fincmd::Votes,
     /// Answers to scenario choices (`crate::choice`); not part of a save.
     pub(crate) choices: crate::choice::Choices,
+    /// Last build snapshot for single-player undo (PLAN.md section 12).
+    pub(crate) last_build_snapshot: Option<UndoBuildSnapshot>,
     /// Network session (`None` = single player, the rules of the fidelity scoreboard); see
     /// [`crate::net`].
     pub(crate) net: Option<crate::net::NetSession>,
+}
+
+/// Lightweight snapshot of state before a local player construction command.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct UndoBuildSnapshot {
+    pub(crate) sim: Box<crate::tick::SimState>,
+    pub(crate) rng: GameRng,
+    pub(crate) crt: CrtRng,
 }
 
 impl World {
@@ -48,6 +58,7 @@ impl World {
             speed_resume: DEFAULT_SPEED,
             votes: crate::fincmd::Votes::default(),
             choices: crate::choice::Choices::default(),
+            last_build_snapshot: None,
             net: None,
         }
     }
@@ -58,6 +69,15 @@ impl World {
 
     pub fn date(&self) -> Date {
         Date::from_minutes(self.minutes)
+    }
+
+    /// Estimated breakdown probability at top speed for a train (`0x4d4790` calling `0x4cf030`
+    /// for `traindtl.win`). Returns `0.0` if the world has no save pools or if `train` is invalid.
+    pub fn train_breakdown_chance(&self, train: i32) -> f32 {
+        self.sim
+            .as_ref()
+            .map(|s| s.train_breakdown_chance(train, Date::from_minutes(self.minutes).year))
+            .unwrap_or(0.0)
     }
 
     pub fn speed(&self) -> u8 {
@@ -99,7 +119,35 @@ impl World {
 
     /// Advances the clock by `dt` game minutes (see the TODO on [`World::tick`]).
     pub fn advance_minutes(&mut self, dt: i32) {
+        if dt > 0 {
+            self.last_build_snapshot = None;
+        }
         self.minutes = self.minutes.wrapping_add(dt);
+    }
+
+    /// Undoes the last local construction command (TrackBuild, TrackBulldoze, StationBuild,
+    /// StationImprove, StationSizeChange, DoubleTrack, ElectricTrack), restoring the state
+    /// before the command.
+    ///
+    /// Disabled in multiplayer games (`self.net.is_some()`). Returns `true` if an undo was performed,
+    /// or `false` if there was no recent build to undo or undo is disabled.
+    pub fn undo_last_build(&mut self) -> bool {
+        if self.net.is_some() {
+            return false;
+        }
+        if let Some(saved) = self.last_build_snapshot.take() {
+            self.sim = Some(saved.sim);
+            self.rng = saved.rng;
+            self.crt = saved.crt;
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Whether there is a recent build that can be undone.
+    pub fn can_undo_last_build(&self) -> bool {
+        self.net.is_none() && self.last_build_snapshot.is_some()
     }
 
     /// The enabled fixes of original bugs (faithful for a world without save pools).

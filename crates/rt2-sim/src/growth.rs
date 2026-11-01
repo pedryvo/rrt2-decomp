@@ -27,7 +27,7 @@ pub const TYPE_PORT: usize = 0x1c;
 /// Building shapes in `0x5457ef` (0x154-byte records).
 pub const SHAPES: usize = 0x7a;
 
-const ADDR_BUILDING_TYPES: u32 = 0x0053_5c38;
+pub const ADDR_BUILDING_TYPES: u32 = 0x0053_5c38;
 const ADDR_TARGET: u32 = 0x0053_a464;
 const ADDR_TREND: u32 = 0x0053_a48c;
 const ADDR_RADIUS_CAP: u32 = 0x0055_03f4;

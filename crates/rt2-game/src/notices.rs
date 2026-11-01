@@ -23,6 +23,8 @@ pub enum Category {
     Towns,
     /// The other companies: starts, connections, mergers, bankruptcies, chairmanships.
     Competitors,
+    /// Train arrivals, breakdowns, crashes and robberies.
+    Trains,
 }
 
 impl Category {
@@ -44,6 +46,7 @@ impl Category {
             Category::Finance => "Finance and stocks",
             Category::Towns => "Towns and industries",
             Category::Competitors => "Competitors",
+            Category::Trains => "Trains",
         }
     }
 
@@ -52,7 +55,8 @@ impl Category {
         match m {
             GameMessage::Scenario(_)
             | GameMessage::Historical { .. }
-            | GameMessage::EconomyChanged { .. } => Category::Scenario,
+            | GameMessage::EconomyChanged { .. }
+            | GameMessage::ThievesArrested { .. } => Category::Scenario,
             GameMessage::FirstOfType { .. } | GameMessage::TownBonusOffer { .. } => Category::Towns,
             GameMessage::CompanyStarted { .. }
             | GameMessage::CompanyConnected { .. }
@@ -66,6 +70,10 @@ impl Category {
             | GameMessage::MarginTrade { .. }
             | GameMessage::DividendSuspended { .. }
             | GameMessage::DividendCut { .. } => Category::Finance,
+            GameMessage::TrainArrived { .. }
+            | GameMessage::TrainBreakdown { .. }
+            | GameMessage::TrainCrashed { .. }
+            | GameMessage::TrainRobbed { .. } => Category::Trains,
         }
     }
 }
@@ -79,6 +87,7 @@ pub struct Notices {
     pub finance: bool,
     pub towns: bool,
     pub competitors: bool,
+    pub trains: bool,
 }
 
 impl Default for Notices {
@@ -88,6 +97,7 @@ impl Default for Notices {
             finance: true,
             towns: true,
             competitors: true,
+            trains: true,
         }
     }
 }
@@ -99,6 +109,7 @@ impl Notices {
             Category::Finance => self.finance,
             Category::Towns => self.towns,
             Category::Competitors => self.competitors,
+            Category::Trains => self.trains,
         }
     }
 
@@ -108,6 +119,7 @@ impl Notices {
             Category::Finance => &mut self.finance,
             Category::Towns => &mut self.towns,
             Category::Competitors => &mut self.competitors,
+            Category::Trains => &mut self.trains,
         };
         *v = !*v;
     }
@@ -154,6 +166,49 @@ mod tests {
         );
         assert_eq!(
             Category::of(&GameMessage::EconomyChanged { from: 0, to: 1 }),
+            Category::Scenario
+        );
+        assert_eq!(
+            Category::of(&GameMessage::TrainArrived {
+                train: 1,
+                company: 1,
+                from_station: 1,
+                to_station: 2,
+                revenue: 1000,
+                speed: 45,
+                speed_record: false,
+            }),
+            Category::Trains
+        );
+        assert_eq!(
+            Category::of(&GameMessage::TrainBreakdown {
+                train: 1,
+                company: 1,
+                train_number: 1,
+            }),
+            Category::Trains
+        );
+        assert_eq!(
+            Category::of(&GameMessage::TrainCrashed {
+                train: 1,
+                company: 1,
+                train_number: 1,
+            }),
+            Category::Trains
+        );
+        assert_eq!(
+            Category::of(&GameMessage::TrainRobbed {
+                train: 1,
+                company: 1,
+                train_number: 1,
+                thief_name: Some("Jesse James".into()),
+            }),
+            Category::Trains
+        );
+        assert_eq!(
+            Category::of(&GameMessage::ThievesArrested {
+                thief_name: Some("Jesse James".into()),
+            }),
             Category::Scenario
         );
     }

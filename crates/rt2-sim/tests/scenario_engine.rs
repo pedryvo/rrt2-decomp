@@ -3,7 +3,7 @@
 
 use rt2_sim::rng::GameRng;
 use rt2_sim::scenario::{
-    Confiscate, EffectRow, EffectTable, Message, N_EFFECTS, Rule, Scenario, ScenarioEnv,
+    Combo, Confiscate, EffectRow, EffectTable, Message, N_EFFECTS, Rule, Scenario, ScenarioEnv,
     ScenarioWorld, Scope, fire_trigger, trigger,
 };
 
@@ -24,6 +24,7 @@ struct Mock {
     crt: u32,
     net: bool,
     outcomes: Vec<(i32, u8, bool)>,
+    choice_button: usize,
 }
 
 impl ScenarioEnv for Mock {
@@ -119,7 +120,7 @@ impl ScenarioWorld for Mock {
     }
     fn show_message(&mut self, m: &Message) -> usize {
         self.messages.push(m.clone());
-        0
+        self.choice_button
     }
     fn credit_company(&mut self, company: i32, amount: i32) {
         self.cash.push((company, amount));
@@ -346,4 +347,69 @@ fn network_victory_is_per_person_and_defeat_eliminates_only_the_target() {
     w.persons = vec![1, 2];
     fire_trigger(trigger::YEAR_END, &mut w, &mut GameRng::new(1));
     assert_eq!(w.sc.game_over.state, 0, "the game goes on after a defeat");
+}
+
+#[test]
+fn substitute_markers_and_rule_text() {
+    let w = world(Vec::new());
+    let c = Combo {
+        company: 0,
+        person: 0,
+        territory: 0,
+        value: 1250000,
+    };
+    let text = "(PLAYER)-(COMPANY)-(GESELLSCHAFT)-(TERRITORY)-(COMPANY_LOADS)-(COMPANY_T2T_LOADS)-(NUMBER_OF_STATIONS_VISITED)-(TRIGGER)-(TRIGGER_MONEY)-(TRIGGER_TF)";
+    let out = rt2_sim::scenario::substitute(&w, text, c, 42);
+    assert_eq!(out, "P0-C0-C0-T0--42-0-1,250,000-$1,250,000-True");
+
+    let c2 = Combo {
+        company: 2,
+        person: 3,
+        territory: 4,
+        value: 0,
+    };
+    let out2 = rt2_sim::scenario::substitute(&w, text, c2, 100);
+    assert_eq!(out2, "P3-C2-C2-T4-0-100-0-0-$0-False");
+}
+
+#[test]
+fn choice_rule_applies_selected_button_effects() {
+    let mut rng = GameRng::new(1234);
+
+    // 1. Button 1 selected -> effects[1] applied
+    let mut rule1 = rule("True", trigger::YEAR_START);
+    rule1.message = "Choose an option".into();
+    rule1.message_kind = rt2_sim::scenario::MessageKind::Choice;
+    rule1.effects[0][7] = 1; // set economy to 1
+    rule1.effects[1][7] = 2; // set economy to 2
+    let mut world1 = world(vec![rule1]);
+    world1.choice_button = 1;
+
+    fire_trigger(trigger::YEAR_START, &mut world1, &mut rng);
+    assert_eq!(world1.economy, 2, "button 1 applies effects[1]");
+
+    // 2. Button 0 selected -> effects[0] applied
+    let mut rule0 = rule("True", trigger::YEAR_START);
+    rule0.message = "Choose an option".into();
+    rule0.message_kind = rt2_sim::scenario::MessageKind::Choice;
+    rule0.effects[0][7] = 1;
+    rule0.effects[1][7] = 2;
+    let mut world0 = world(vec![rule0]);
+    world0.choice_button = 0;
+
+    fire_trigger(trigger::YEAR_START, &mut world0, &mut rng);
+    assert_eq!(world0.economy, 1, "button 0 applies effects[0]");
+
+    // 3. Network game -> forces button 0 regardless of UI choice
+    let mut rule_net = rule("True", trigger::YEAR_START);
+    rule_net.message = "Choose an option".into();
+    rule_net.message_kind = rt2_sim::scenario::MessageKind::Choice;
+    rule_net.effects[0][7] = 1;
+    rule_net.effects[1][7] = 2;
+    let mut world_net = world(vec![rule_net]);
+    world_net.net = true;
+    world_net.choice_button = 1;
+
+    fire_trigger(trigger::YEAR_START, &mut world_net, &mut rng);
+    assert_eq!(world_net.economy, 1, "network forces button 0");
 }

@@ -259,3 +259,70 @@ fn buy_improvements_with_real_clicks() {
         "{before:#x} -> {after:#x}"
     );
 }
+
+/// F2 on a medium station lists Large (row 2) but not Small or Medium (`0x407e80`: own size
+/// bit, exclusion masks); clicking Large and Purchase enlarges the station through command
+/// `0x18` (`station_size_change`): size 2, shape + 8, Large bit, the bigger footprint. A station
+/// whose new footprint is blocked shows LNG 346 and stays as it was.
+#[test]
+fn buy_large_station_with_real_clicks() {
+    let Some(mut s) = state((1920, 1080)) else {
+        return;
+    };
+    let medium: Vec<i32> = s
+        .with_game(|save, _, co| {
+            bt::company_stations(save, co)
+                .into_iter()
+                .filter(|&st| bt::rec(&save.stations, st).is_some_and(|r| r.u8(8) == 1))
+                .collect()
+        })
+        .unwrap();
+    assert!(!medium.is_empty(), "the Example player has medium stations");
+    let st_rec = |s: &AppState, st: i32| {
+        let save = game(s).world.save_ref().unwrap();
+        let r = bt::rec(&save.stations, st).unwrap();
+        let b = bt::rec(&save.objects, r.i32(4)).unwrap();
+        (r.u8(8), r.u32(0x49), b.u8(6))
+    };
+    let mut grown = 0;
+    for st in medium {
+        s.push_dialog(Dialog::StationBuy {
+            station: st,
+            mask: 0,
+            last: u32::MAX,
+        });
+        s.update(0.0);
+        let (year, month) = s.date_ym();
+        let listed: Vec<u32> = s
+            .with_game(|save, data, _| bt::improvements(data, save, st, year, month))
+            .unwrap()
+            .iter()
+            .filter(|i| i.available && !i.owned && !i.excluded)
+            .map(|i| i.row)
+            .collect();
+        assert!(listed.contains(&2) && !listed.contains(&1) && !listed.contains(&0));
+        assert!(labels(&s).iter().any(|t| t == "Large Station"));
+        let before = st_rec(&s, st);
+        click(&mut s, A_SB_PICK + 2);
+        click(&mut s, super::build_dialogs::A_SB_OK);
+        let after = st_rec(&s, st);
+        if after.0 == 2 {
+            assert_eq!(after.2, before.2 + 8, "shape of station {st}");
+            assert_eq!(after.1, before.1 | 4);
+            assert!(!matches!(
+                game(&s).dialogs.last(),
+                Some(Dialog::StationBuy { .. })
+            ));
+            grown += 1;
+        } else {
+            assert_eq!(after, before);
+            let toast = game(&s).toast.clone().map(|t| t.0).unwrap_or_default();
+            assert!(
+                toast.contains("adjoining land") || toast.contains("money"),
+                "{toast}"
+            );
+            s.close_dialog();
+        }
+    }
+    assert!(grown > 0, "no medium station of the Example could grow");
+}

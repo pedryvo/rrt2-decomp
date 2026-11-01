@@ -463,14 +463,18 @@ pub fn substitute<W: ScenarioWorld>(world: &W, text: &str, c: Combo, t2t: i32) -
     rep("(TERRITORY)", world.territory_name(c.territory));
     rep(
         "(COMPANY_LOADS)",
-        world.company_loads_lifetime(c.company).to_string(),
+        if c.company == 0 {
+            String::new()
+        } else {
+            number_text(f64::from(world.company_loads_lifetime(c.company)), 10)
+        },
     );
-    rep("(COMPANY_T2T_LOADS)", t2t.to_string());
+    rep("(COMPANY_T2T_LOADS)", number_text(f64::from(t2t), 10));
     rep(
         "(NUMBER_OF_STATIONS_VISITED)",
-        world.stations_visited().to_string(),
+        number_text(f64::from(world.stations_visited()), 10),
     );
-    rep("(TRIGGER)", c.value.to_string());
+    rep("(TRIGGER)", number_text(f64::from(c.value), 10));
     rep("(TRIGGER_MONEY)", world.format_money(c.value));
     rep(
         "(TRIGGER_TF)",
@@ -713,7 +717,7 @@ pub fn money_text(value: i32) -> String {
 /// `0x475980(x, mode 1, limit)` (`x >= 0`): `%d`, `%d,%03d`, `%d,%03d,%03d` below 1e9, the
 /// thousands plus `",000"` below 1e12, `"Error"` beyond; longer than `limit` characters it
 /// becomes mode 8 (thousands and `"K"`), then mode 9 (millions and `"M"`).
-fn number_text(x: f64, limit: usize) -> String {
+pub fn number_text(x: f64, limit: usize) -> String {
     let v = crate::fp::ftol(x);
     let s = if x < 1000.0 {
         format!("{v}")
@@ -735,4 +739,125 @@ fn number_text(x: f64, limit: usize) -> String {
         return k;
     }
     number_text(x * 1e-6, 999) + "M"
+}
+
+/// Extracts a NUL-terminated Latin-1 string from a byte slice.
+pub fn c_string(raw: &[u8]) -> String {
+    let end = raw.iter().position(|&b| b == 0).unwrap_or(raw.len());
+    raw[..end].iter().map(|&b| b as char).collect()
+}
+
+/// Applies text substitutions to scenario/rule texts from save data and rule parameters
+/// without requiring an active simulation run.
+pub fn substitute_rule_text(save: &rt2_formats::map::Save, rule: &Rule, text: &str) -> String {
+    let person = if rule.date_person != 0 {
+        rule.date_person
+    } else {
+        let human = crate::pool::list_order(&save.persons)
+            .into_iter()
+            .find(|&p| {
+                crate::pool::record(&save.persons, p)
+                    .is_some_and(|r| crate::pool::i32_at(&r.data, 0x122) != 0)
+            })
+            .unwrap_or(0);
+        if human != 0 {
+            human as i32
+        } else {
+            save.persons.records.first().map_or(0, |r| r.slot as i32)
+        }
+    };
+    let company = if rule.date_company != 0 {
+        rule.date_company
+    } else {
+        let chair_co = if person != 0 {
+            crate::pool::record(&save.persons, person as usize)
+                .map_or(0, |r| crate::pool::i32_at(&r.data, 0x263).max(0))
+        } else {
+            0
+        };
+        if chair_co != 0 {
+            chair_co
+        } else {
+            save.companies.records.first().map_or(0, |r| r.slot as i32)
+        }
+    };
+    let territory = if rule.territory_filter > 0 {
+        i32::from(rule.territory_filter)
+    } else {
+        0
+    };
+    let value = rule
+        .values
+        .iter()
+        .rev()
+        .copied()
+        .find(|&v| v != 0)
+        .unwrap_or(0);
+
+    let mut s = text.to_string();
+    let mut rep = |key: &str, val: String| {
+        if s.contains(key) {
+            s = s.replace(key, &val);
+        }
+    };
+    rep(
+        "(PLAYER)",
+        if person == 0 {
+            "All Players".to_owned()
+        } else {
+            crate::pool::record(&save.persons, person as usize)
+                .map_or_else(String::new, |r| c_string(&r.data[8..0x27]))
+        },
+    );
+    let co_name = if company == 0 {
+        "All Companies".to_owned()
+    } else {
+        crate::pool::record(&save.companies, company as usize)
+            .map_or_else(String::new, |r| c_string(&r.data[4..4 + 0x1f]))
+    };
+    rep("(COMPANY)", co_name.clone());
+    rep("(GESELLSCHAFT)", co_name);
+    rep(
+        "(TERRITORY)",
+        if territory == 0 {
+            "All territories".to_owned()
+        } else {
+            crate::pool::record(&save.territories, territory as usize)
+                .map_or_else(String::new, |r| crate::editor::territory_name(&r.data))
+        },
+    );
+    rep(
+        "(COMPANY_LOADS)",
+        if company == 0 {
+            String::new()
+        } else {
+            number_text(
+                f64::from(
+                    crate::pool::record(&save.companies, company as usize)
+                        .map_or(0, |r| crate::pool::i32_at(&r.data, 0x19e)),
+                ),
+                10,
+            )
+        },
+    );
+    rep("(COMPANY_T2T_LOADS)", number_text(0.0, 10));
+    let stations_visited = save
+        .stations
+        .records
+        .iter()
+        .filter(|r| {
+            crate::pool::i32_at(&r.data, 0x45) == 0 && r.data.get(0x4bb).copied().unwrap_or(0) != 0
+        })
+        .count() as i32;
+    rep(
+        "(NUMBER_OF_STATIONS_VISITED)",
+        number_text(f64::from(stations_visited), 10),
+    );
+    rep("(TRIGGER)", number_text(f64::from(value), 10));
+    rep("(TRIGGER_MONEY)", money_text(value));
+    rep(
+        "(TRIGGER_TF)",
+        if value != 0 { "True" } else { "False" }.to_string(),
+    );
+    s
 }

@@ -88,6 +88,37 @@ pub enum GameMessage {
     DividendSuspended { company: i32 },
     /// The board cut the dividend to the `f32` with bits `to_bits` per share (LNG 2713).
     DividendCut { company: i32, to_bits: u32 },
+    /// A train arrived at a station (`0x46abf0`).
+    TrainArrived {
+        train: i32,
+        company: i32,
+        from_station: i32,
+        to_station: i32,
+        revenue: i32,
+        speed: i32,
+        speed_record: bool,
+    },
+    /// A train broke down (`0x4ce4c0`, LNG 2222).
+    TrainBreakdown {
+        train: i32,
+        company: i32,
+        train_number: i32,
+    },
+    /// A train crashed (`0x4ce730`, LNG 2223).
+    TrainCrashed {
+        train: i32,
+        company: i32,
+        train_number: i32,
+    },
+    /// A train was robbed (`0x4ceaa0`, LNG 2224 / 2225).
+    TrainRobbed {
+        train: i32,
+        company: i32,
+        train_number: i32,
+        thief_name: Option<String>,
+    },
+    /// Train robbers were arrested (`0x4cf390`, LNG 2226 / 2227 / 2228).
+    ThievesArrested { thief_name: Option<String> },
 }
 
 /// What a broker's margin trade was ([`GameMessage::MarginTrade`]).

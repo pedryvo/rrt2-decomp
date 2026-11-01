@@ -5,7 +5,7 @@
 # Funcoes: 2945 (1108 thunks do linker incremental, herdam a categoria do alvo)
 # Classificadas (categoria != unknown): 1429 (48.5%)
 # Por categoria: lib=258, platform=180, render=11, audio=53, ui=300, sim=627, unknown=1516
-# Por estado:   unknown=2169, named=159, spec=313, verified=304
+# Por estado:   unknown=2168, named=160, spec=313, verified=304
 # Entradas manuais: 703
 # sim spec coverage: 72.9% (457 de 627 funcoes sim em spec/verified)
 
@@ -16992,9 +16992,10 @@ why = "no-evidence"
 
 [[function]]
 addr = "0x4f03e0"
+name = "replace_string"
 size = 339
 category = "unknown"
-status = "unknown"
+status = "named"
 why = "no-evidence"
 
 [[function]]

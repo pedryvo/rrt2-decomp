@@ -475,10 +475,11 @@ pub struct Improvement {
     pub excluded: bool,
 }
 
-/// The purchasable improvements of a station (rows `3..=11` and `15..=21`: 16 of the 19
-/// items; the three station sizes are rows 0..2 and the size change is not in the simulation
-/// yet, `station_size_change` hook). A row is `excluded` when the station already has one of
-/// the bits of its exclusion mask (`row + 0x17`).
+/// The purchasable improvements of a station (rows `0..=11` and `15..=21`, the 19 items of
+/// `0x407e80`; rows 0..2 are the station sizes: Medium and Large enlarge the station,
+/// `station_size_change`). A row is `excluded` when the station already has one of the bits of
+/// its exclusion mask (`row + 0x17`), so a small station lists Medium and Large, a medium one
+/// Large, and the own size is `owned`.
 pub fn improvements(
     data: &GameData,
     save: &Save,
@@ -493,7 +494,7 @@ pub fn improvements(
     let owner = st.i32(0x39);
     let terr = st.i32(0x4ad);
     let m = effect(save, 8, owner, terr);
-    (3..IMP_ROWS)
+    (0..IMP_ROWS)
         .filter(|&i| data.image.i32(IMP_TABLE + IMP_ROW * i + 0x13) != 0 || i == 22)
         .filter(|&i| !matches!(i, 12..=14 | 22))
         .map(|i| {

@@ -139,6 +139,94 @@ impl DataImage {
         f64::from_le_bytes(self.at(va, 8).try_into().expect("8 bytes"))
     }
 
+    pub fn as_slice(&self) -> &[u8] {
+        &self.bytes
+    }
+
+    pub fn write_bytes(&mut self, va: u32, bytes: &[u8]) {
+        self.at_mut(va, bytes.len()).copy_from_slice(bytes);
+    }
+
+    pub fn write_f32(&mut self, va: u32, v: f32) {
+        self.at_mut(va, 4)
+            .copy_from_slice(&v.to_bits().to_le_bytes());
+    }
+
+    pub fn write_i32(&mut self, va: u32, v: i32) {
+        self.at_mut(va, 4).copy_from_slice(&v.to_le_bytes());
+    }
+
+    pub fn write_engine(&mut self, e: usize, eng: &Engine) {
+        let va = ADDR_ENGINE_TABLE + (e * ENGINE_RECORD_SIZE) as u32;
+        let buf = self.at_mut(va, ENGINE_RECORD_SIZE);
+        buf[0] = if eng.enabled { 1 } else { 0 };
+        buf[1..3].copy_from_slice(&eng.first_year.to_le_bytes());
+        buf[3..5].copy_from_slice(&eng.last_year.to_le_bytes());
+        buf[0x08..0x0c].copy_from_slice(&eng.reliability_class.to_le_bytes());
+        buf[0x0c..0x10].copy_from_slice(&eng.price.to_le_bytes());
+        buf[0x10..0x14].copy_from_slice(&eng.maintenance.to_le_bytes());
+        buf[0x14..0x18].copy_from_slice(&eng.top_mph.to_le_bytes());
+        buf[0x18..0x1c].copy_from_slice(&eng.power.to_le_bytes());
+        buf[0x1c..0x20].copy_from_slice(&eng.accel.to_le_bytes());
+        buf[0x20..0x24].copy_from_slice(&eng.free_tons.to_le_bytes());
+        buf[0x24..0x28].copy_from_slice(&eng.fuel.to_le_bytes());
+        buf[0x28] = eng.kind;
+        buf[0x2e..0x32].copy_from_slice(&eng.base_tons.to_le_bytes());
+    }
+
+    pub fn write_vehicle(&mut self, v: usize, veh: &VehicleType) {
+        let va = ADDR_VEHICLE_TABLE + (v * VEHICLE_RECORD_SIZE) as u32;
+        let buf = self.at_mut(va, VEHICLE_RECORD_SIZE);
+        buf[0x18..0x1a].copy_from_slice(&veh.empty_tons.to_le_bytes());
+        buf[0x1a..0x1c].copy_from_slice(&veh.loaded_tons.to_le_bytes());
+        buf[0x2e] = veh.species;
+        buf[0x2f] = veh.engine as u8;
+        buf[0x30] = veh.cargo;
+    }
+
+    pub fn write_cargo(&mut self, c: usize, cg: &CargoType) {
+        let va = ADDR_CARGO_TABLE + (c * CARGO_RECORD_SIZE) as u32;
+        let buf = self.at_mut(va, CARGO_RECORD_SIZE);
+        buf[0..4].copy_from_slice(&cg.price.to_le_bytes());
+        buf[4..8].copy_from_slice(&cg.days.to_le_bytes());
+        buf[8..12].copy_from_slice(&cg.wait_scale.to_le_bytes());
+        buf[12..16].copy_from_slice(&cg.ship.to_le_bytes());
+        buf[0x10..0x12].copy_from_slice(&cg.first_year.to_le_bytes());
+        buf[0x14..0x16].copy_from_slice(&cg.towns_until.to_le_bytes());
+        buf[0x16..0x18].copy_from_slice(&cg.cities_until.to_le_bytes());
+        buf[0x18..0x1c].copy_from_slice(&cg.demand_per_house.to_le_bytes());
+        buf[0x1c..0x20].copy_from_slice(&cg.storage_bit.to_le_bytes());
+    }
+
+    pub fn write_building_type(&mut self, b: usize, bt: &crate::growth::BuildingType) {
+        let va = crate::growth::ADDR_BUILDING_TYPES + (b * 0x27) as u32;
+        let buf = self.at_mut(va, 0x27);
+        buf[2..6].copy_from_slice(&bt.weight.to_le_bytes());
+        buf[0xa..0xc].copy_from_slice(&bt.size.to_le_bytes());
+        buf[0xc..0x10].copy_from_slice(&bt.first_year.to_le_bytes());
+        for i in 0..4 {
+            buf[0x10 + i] = bt.site[i] as u8;
+        }
+        for i in 0..19 {
+            buf[0x14 + i] = if bt.allowed[i] { 1 } else { 0 };
+        }
+    }
+
+    pub fn write_effect_row(&mut self, r: usize, eff: &crate::scenario::rule::EffectRow) {
+        let va = crate::scenario::rule::ADDR_EFFECT_TABLE
+            + (r * crate::scenario::rule::EFFECT_ROW_SIZE) as u32;
+        let buf = self.at_mut(va, crate::scenario::rule::EFFECT_ROW_SIZE);
+        buf[0..2].copy_from_slice(&eff.ui_id.to_le_bytes());
+        buf[2] = if eff.visible { 1 } else { 0 };
+        buf[3] = if eff.needs_company { 1 } else { 0 };
+        buf[4] = if eff.needs_player { 1 } else { 0 };
+        buf[5] = if eff.needs_territory { 1 } else { 0 };
+        buf[11] = if eff.instant { 1 } else { 0 };
+        buf[12] = eff.min as u8;
+        buf[13] = eff.max as u8;
+        buf[14..16].copy_from_slice(&eff.name_lng.to_le_bytes());
+    }
+
     /// Every `game_load_file` (`0x477a60`, near its end) rewrites the first year of engine 3
     /// (`0x53cf6f`) and of its loco vehicle (`0x53ddd4 + 0x39 * [0x53cf9a]`): 1955 (0x7a3),
     /// or 1973 (0x7b5, the table value) when a network peer is older than 0x2333. A local game

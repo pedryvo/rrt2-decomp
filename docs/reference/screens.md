@@ -94,7 +94,7 @@ Limitação honesta: MobyGames e PCGamingWiki bloquearam o acesso automático e 
 | # | Tela | Propósito e conteúdo | Como se chega | .win | Referências | Status |
 |---|---|---|---|---|---|---|
 | F1 | Detalhe da estação (cena 3D) | Vista 3D pré-renderizada da estação com os prédios comprados compostos; botão Buy; painel inferior Supply / Demand (vagões ofertados, demanda com nível 0..9 no modelo Expert) / From / To (moedas) | duplo clique na estação; ao construir | `statndtl.win` (601, 602, 680, 671..676) | M:C522, SG:C3_STATION, M:C6Station | ✅ (cena 1024x569 composta como no original: fundo `sdmbkg` da classe do sítio e as camadas `SD..` na ordem de `0x55b218`, com os bits derivados de via dupla, catenária, estradas e turntable; ver `sprite-catalog.md` 6.1; tabela de oferta/demanda, Buy) |
-| F2 | Comprar melhorias | Lista de estruturas disponíveis (torre d'água, areia, rotunda, hotel, restaurante, correio, armazéns...) com caixas de seleção e Purchase/Cancel; compra uma ou várias | botão Buy | `buildbuy.win` (3301, 3305..3307; banco `buildbuy.imb`) | M (cap. 5), R5 | 🟡 (arte de `buildbuy.win`: só as melhorias compráveis agora, caixas de seleção, foto `bm*.imb` de cada uma, descrição e custo; `0x18`; faltam as linhas de tamanho Medium/Large: a troca de tamanho não está no `rt2-sim`, `station_size_change`) |
+| F2 | Comprar melhorias | Lista de estruturas disponíveis (torre d'água, areia, rotunda, hotel, restaurante, correio, armazéns...) com caixas de seleção e Purchase/Cancel; compra uma ou várias | botão Buy | `buildbuy.win` (3301, 3305..3307; banco `buildbuy.imb`) | M (cap. 5), R5 | ✅ (arte de `buildbuy.win`: melhorias compráveis, caixas de seleção, foto `bm*.imb` de cada uma, descrição e custo; comando `0x18`; inclui linhas de upgrade de tamanho Medium/Large via `station_size_change` (`0x46aef0`), com validação de espaço `station_size_fits` e recálculo da pegada e links de captação) |
 | F3 | Lista de estações | Tabela de tela cheia | aba Stations | `statnlst.win` (1201, 1271..1286) | M:C401.call | ✅ (tecla G) |
 
 ### G. Empresa, finanças, bolsa e títulos
@@ -123,7 +123,7 @@ Limitação honesta: MobyGames e PCGamingWiki bloquearam o acesso automático e 
 |---|---|---|---|---|---|---|
 | H1 | Detalhe do jogador | Livro com retrato e biografia do magnata, posição, riqueza (caixa, ações, total), poder de compra, estilo | aba Players, duplo clique | `playrdtl.win` (1001, 1002, 1005, 1071..1076) | M:C723 | ⏳ |
 | H2 | Lista de jogadores | Tabela de tela cheia | aba Players | `playrlst.win` (1501, 1571..1586) | M:C401.call | ⏳ |
-| H3 | Seleção/edição do personagem (multiplayer) | Retrato, nome, descrição (botão Change) | lobby | sem `.win` identificado | M (cap. 9) | ⏳ |
+| H3 | Seleção/edição do personagem (multiplayer) | Retrato, nome, descrição (botão Change) | lobby / menu multi | sem `.win` identificado | M (cap. 9) | ✅ (diálogo modal de perfil: navegação pelos 41 retratos de chairman, edição de nome e descrição de até 256 caracteres, salvo na configuração de rede; `mp_ui.rs`) |
 
 ### I. Relatórios, jornais, eventos e mensagens
 
@@ -153,12 +153,12 @@ Limitação honesta: MobyGames e PCGamingWiki bloquearam o acesso automático e 
 
 | # | Tela | Propósito e conteúdo | Como se chega | .win | Referências | Status |
 |---|---|---|---|---|---|---|
-| K1 | Menu multiplayer | TCP/IP, IPX, Modem, Serial | Multi Player | `setup.win` | M:C901 | ⏳ |
-| K2 | Lobby: servidores | Lista de servidores, Change, Server IP, Join, Create, Refresh | escolha do protocolo | `setup.win` | M (cap. 9) | ⏳ |
-| K3 | Preparação do jogo multiplayer | Igual ao Game Setup + luzes de aprovação por jogador e ping; só o anfitrião escolhe mapa | após conectar | `setup.win` | M (cap. 9) | ⏳ |
-| K4 | Chat em jogo | Linha de entrada (TAB, Enter) e texto na tela | TAB | `chat.win` (4900, 4901) | M (cap. 9) | ⏳ |
+| K1 | Menu multiplayer | Hospedar partida, Conectar (IP:porta), Alterar personagem, Voltar | Multi Player | `setup.win` | M:C901 | ✅ (substitui protocolos legados IPX/Modem/Serial por TCP/IP moderno: Hospedar, Conectar direto e Perfil; `mp_ui.rs`) |
+| K2 | Lobby: conexão | Entrada de endereço do servidor (IP:porta) com validação e cancelamento | Multi Player > Conectar | `setup.win` | M (cap. 9) | ✅ (diálogo modal de conexão direta por TCP/IP, porta padrão configurável; `mp_ui.rs`) |
+| K3 | Preparação do jogo multiplayer | Configuração do cenário pelo anfitrião, lista de jogadores com luzes de aprovação e ping, chat de sala, barreira de início sincronizada | após conectar/hospedar | `setup.win` | M (cap. 9) | ✅ (sala de espera completa: escolha de mapa/cenário/dificuldade/IA pelo host, toggle de aprovação por jogador que reseta a cada alteração de regra, chat de sala com histórico; `mp_ui.rs`, `state/mp.rs`) |
+| K4 | Chat em jogo e HUD | Entrada de mensagem (Enter/T/Tab, até 900 caracteres), histórico de até 6 linhas com desvanecimento após 14 s, indicador de jogadores/ping no HUD, avisos de saída de jogador (LNG 2319) e dessincronização (LNG 2320) | Enter / T / Tab em jogo | `chat.win` (4900, 4901) | M (cap. 9) | ✅ (chat em lockstep com timeout de 14 s, badge de ping/jogadores, diálogos com auto-fechamento de 5 s a 8 s e imunidade para votações/escolhas; `state/mp.rs`) |
 
-Fora de escopo do clone de jogo único: K1 a K4, mas ficam registradas.
+Multiplayer implementado: K1 a K4 e H3 com arquitetura em lockstep determinístico via TCP/IP e MemTransport para testes.
 
 ### L. Editor de cenários (menu Editor)
 

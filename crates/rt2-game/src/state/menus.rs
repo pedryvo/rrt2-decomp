@@ -85,6 +85,10 @@ pub(super) enum Page {
     /// High Scores and Credits: not built yet.
     Scores,
     Credits,
+    /// Multiplayer menu (K1: Host, Connect, Change Character).
+    Multi,
+    /// Multiplayer game preparation lobby (K3).
+    MpLobby,
 }
 
 /// The dialog open beside the Game Setup dialog.
@@ -289,7 +293,10 @@ impl AppState {
         }
         match action {
             A_SINGLE => self.open_page(Page::Single),
-            A_MULTI => {}
+            A_MULTI => self.open_page(Page::Multi),
+            a if (15000..16000).contains(&a) => {
+                self.mp_activated(a);
+            }
             A_EDITOR => self.open_page(Page::Editor),
             A_ED_NEW => self.editor_enter(false),
             A_ED_LOAD => self.editor_enter(true),
@@ -601,6 +608,32 @@ impl AppState {
             }
             Page::Scores => self.build_hiscores(ui, layer, cw, ch, z),
             Page::Credits => self.build_credits(ui, layer, cw, ch, z),
+            Page::Multi => {
+                self.build_nav(ui, layer, cw, ch, z, logo_bottom, Some(A_MULTI), &mut tips);
+                let modal = self
+                    .mp_lobby
+                    .as_ref()
+                    .is_some_and(|l| l.connect_dialog_open || l.character_edit.is_some());
+                if !modal {
+                    self.build_multi_menu(ui, layer, cw, ch, z, logo_bottom, &mut tips);
+                }
+                if let Some(lobby) = &self.mp_lobby {
+                    if lobby.connect_dialog_open {
+                        self.build_mp_connect_dialog(ui, layer, cw, ch, z, &lobby.connect_addr);
+                    }
+                    if let Some(edit) = &lobby.character_edit {
+                        self.build_mp_char_dialog(ui, layer, cw, ch, z, edit);
+                    }
+                }
+            }
+            Page::MpLobby => {
+                if let Some(lobby) = &self.mp_lobby {
+                    self.build_mp_lobby_screen(ui, layer, cw, ch, z, lobby, &mut tips);
+                    if let Some(edit) = &lobby.character_edit {
+                        self.build_mp_char_dialog(ui, layer, cw, ch, z, edit);
+                    }
+                }
+            }
         }
         self.menu_handles.tips = tips;
     }
@@ -651,7 +684,7 @@ impl AppState {
                 A_MULTI,
                 1677,
                 "Play a game with multiple human players",
-                false,
+                true,
             ),
             (
                 t.get(1678, "Editor"),

@@ -133,6 +133,8 @@ const C_ANSWER_CHOICE: u8 = 9;
 const C_SET_RULESET: u8 = 10;
 const C_PLAYER_LEFT: u8 = 11;
 const C_PLAYER_JOINED: u8 = 12;
+const C_SET_COMPANY_INFO: u8 = 13;
+const C_SET_THROTTLE: u8 = 14;
 
 /// Encodes a command.
 pub fn put_command(w: &mut Writer, c: &Command) {
@@ -189,6 +191,16 @@ pub fn put_command(w: &mut Writer, c: &Command) {
                 .i32(person)
                 .raw(&name);
         }
+        Command::SetCompanyInfo {
+            company,
+            name,
+            logo,
+        } => {
+            w.u8(C_SET_COMPANY_INFO).u8(company).raw(&name).u8(logo);
+        }
+        Command::SetThrottle { train, throttle } => {
+            w.u8(C_SET_THROTTLE).u16(train).u8(throttle);
+        }
     }
 }
 
@@ -223,6 +235,15 @@ pub fn get_command(r: &mut Reader) -> Result<Command, NetError> {
             identity: r.u32()?,
             person: r.i32()?,
             name: r.raw::<31>()?,
+        },
+        C_SET_COMPANY_INFO => Command::SetCompanyInfo {
+            company: r.u8()?,
+            name: r.raw::<31>()?,
+            logo: r.u8()?,
+        },
+        C_SET_THROTTLE => Command::SetThrottle {
+            train: r.u16()?,
+            throttle: r.u8()?,
         },
         _ => return Err(NetError::Malformed("unknown command tag")),
     })
@@ -354,6 +375,9 @@ fn put_build(w: &mut Writer, b: &BuildCmd) {
         BuildCmd::TrainThrottle { train, value } => {
             w.u8(0x29).i32(train).u8(value);
         }
+        BuildCmd::ConsistCars { train, stop, cars } => {
+            w.u8(0x30).i32(train).i32(stop).raw(&cars);
+        }
     }
 }
 
@@ -454,6 +478,11 @@ fn get_build(r: &mut Reader) -> Result<BuildCmd, NetError> {
         0x29 => BuildCmd::TrainThrottle {
             train: r.i32()?,
             value: r.u8()?,
+        },
+        0x30 => BuildCmd::ConsistCars {
+            train: r.i32()?,
+            stop: r.i32()?,
+            cars: r.raw::<8>()?,
         },
         _ => return Err(NetError::Malformed("unknown construction command")),
     })

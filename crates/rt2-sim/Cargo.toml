@@ -9,6 +9,8 @@ repository.workspace = true
 [dependencies]
 thiserror.workspace = true
 rt2-formats.workspace = true
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
 
 [lints]
 workspace = true

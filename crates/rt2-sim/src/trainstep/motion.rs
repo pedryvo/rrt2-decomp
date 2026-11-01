@@ -15,8 +15,11 @@
 
 use super::anim::STRUCT_CAR;
 use super::mem::{P, Ts, ring};
+use crate::data::{DataImage, GameData};
 use crate::fp::ftol;
-use crate::trains::{SpeedMods, engine_max_speed};
+use crate::pool;
+use crate::trains::{BreakdownInput, Engine, SpeedMods, breakdown_chance, engine_max_speed};
+use rt2_formats::map::Save;
 
 /// State offsets (`0x5704e8 + off`): theft percentage `0x573e02` (i16), the thief table
 /// `0x573da2` (4 entries of 0x18 bytes: name, flags `+0x15`, first year `+0x16`), the news flag
@@ -442,28 +445,12 @@ impl Ts<'_> {
 
     /// `vehicle_weight` (`0x414460`): loaded or empty tons of a car.
     pub fn vehicle_weight(&self, car: i32) -> i32 {
-        let t = self.u8(P::Car, car, 8);
-        if self.i32(P::Car, car, 0x2d) == 0 && self.flag_570236 == 0 {
-            i32::from(self.vt16(t, 0x18))
-        } else {
-            i32::from(self.vt16(t, 0x1a))
-        }
+        vehicle_weight_from_save(self.s, self.img, car)
     }
 
     /// `vehicle_grade` (`0x4144a0`): grade of the car's segment (`0x4284e0`).
     pub fn vehicle_grade(&self, car: i32) -> f64 {
-        let x = i32::from(self.i16(P::Car, car, 9));
-        let y = i32::from(self.i16(P::Car, car, 0xb));
-        let w = self.map_w() + 1;
-        let elev = &self.s.map.elevation;
-        let base = y * w + x;
-        let height = |off: i32| i32::from(elev[(base + off) as usize]);
-        crate::trains::track_segment_grade(
-            &height,
-            [0, 1, w + 1, w],
-            i32::from(self.u8(P::Car, car, 0x23)),
-            i32::from(self.u8(P::Car, car, 0x24)),
-        )
+        vehicle_grade_from_save(self.s, car)
     }
 
     /// `train_grade` (`0x4cfd40`) as computed inline by `0x4d00c0`: weighted grade of the first
@@ -1387,30 +1374,7 @@ impl Ts<'_> {
 
     /// `train_grade` (`0x4cfd40`) as a full x87 value (used by the sand consumption).
     fn train_grade_full(&self, t: i32) -> f64 {
-        if self.u8(P::Train, t, 0x9c) == 0 {
-            return f64::from(self.img.f32(0x0053_500c));
-        }
-        let (mut sum, mut acc) = (0i32, 0f32);
-        let mut c = self.first_car(t);
-        let mut n = 0;
-        while c != 0 {
-            if self.u8(P::Car, c, 0x2a) != 0 {
-                let w = self.vehicle_weight(c);
-                let g = self.vehicle_grade(c);
-                sum += w;
-                acc = (g * f64::from(w) + f64::from(acc)) as f32;
-            }
-            c = self.car_next(c);
-            n += 1;
-            if n == 2 {
-                break;
-            }
-        }
-        if sum == 0 {
-            f64::from(self.img.f32(0x0053_500c))
-        } else {
-            f64::from(acc) / f64::from(sum)
-        }
+        train_grade_full_from_save(self.s, self.img, t)
     }
 
     /// `train_enter_tile` (`0x4d5370`, trains.md 4.5): counters, track wear and the
@@ -1893,9 +1857,15 @@ impl Ts<'_> {
     fn thieves_arrested(&mut self, new_pct: i16, pick: Option<i32>) {
         self.log.ran("thieves_arrested");
         let list = self.eligible_thieves_list();
-        if let Some(&i) = pick.and_then(|k| list.get(k as usize)) {
+        let thief_name = if let Some(&i) = pick.and_then(|k| list.get(k as usize)) {
             self.s.state[ST_THIEVES + i * 0x18 + 0x15] |= 1;
-        }
+            let o = ST_THIEVES + i * 0x18;
+            let b = &self.s.state[o..o + 0x15];
+            let end = b.iter().position(|&c| c == 0).unwrap_or(b.len());
+            Some(b[..end].iter().map(|&c| c as char).collect::<String>())
+        } else {
+            None
+        };
         let _ = self.crt.range(0, 10000);
         self.s.state[ST_NEWS_FLAG] = 1;
         let n = u32::from_le_bytes([
@@ -1907,6 +1877,23 @@ impl Ts<'_> {
         .wrapping_add(1);
         self.s.state[ST_NEWS_COUNTER..ST_NEWS_COUNTER + 4].copy_from_slice(&n.to_le_bytes());
         self.s.state[ST_THEFT_PCT..ST_THEFT_PCT + 2].copy_from_slice(&new_pct.to_le_bytes());
+        self.g
+            .news
+            .push(crate::message::GameMessage::ThievesArrested { thief_name });
+    }
+
+    fn company_train_number(&self, company: i32, train: i32) -> i32 {
+        let mut idx = 1;
+        for tr in crate::pool::list_order(&self.s.trains) {
+            let tr_i32 = tr as i32;
+            if tr_i32 == train {
+                break;
+            }
+            if self.i32(P::Train, tr_i32, 0x41) == company {
+                idx += 1;
+            }
+        }
+        idx
     }
 
     /// The reputation penalty of a breakdown, crash or theft (`0x4ce4c0`, `0x4ce730`,
@@ -1972,12 +1959,12 @@ impl Ts<'_> {
                 let b = self.u8(P::Train, t, 0xbb) & 0xef;
                 self.set8(P::Train, t, 0xbb, b);
             }
-            todo_hook!(
-                self.log,
-                "crash_message",
-                "0x4ce730 message, sound, view and speed cap for the viewed company",
-                "trains.md 5.3"
-            );
+            let train_number = self.company_train_number(company, t);
+            self.g.news.push(crate::message::GameMessage::TrainCrashed {
+                train: t,
+                company,
+                train_number,
+            });
         }
     }
 
@@ -2024,17 +2011,27 @@ impl Ts<'_> {
         self.set8(P::Train, t, 0xa8, 0x14);
         self.incident_penalty(t, 0x0053_5690);
         let n = self.eligible_thieves();
-        if n != 0 {
-            self.rng.range(0, n - 1);
-        }
+        let thief_pick = if n != 0 {
+            Some(self.rng.range(0, n - 1))
+        } else {
+            None
+        };
         let company = self.i32(P::Train, t, 0x41);
         if self.is_ui_company_pub(company) {
-            todo_hook!(
-                self.log,
-                "theft_message",
-                "0x4ceaa0 message LNG 0x8b0/0x8b1 and sound for the viewed company",
-                "trains.md 6.4"
-            );
+            let train_number = self.company_train_number(company, t);
+            let list = self.eligible_thieves_list();
+            let thief_name = thief_pick.and_then(|k| list.get(k as usize)).map(|&i| {
+                let o = ST_THIEVES + i * 0x18;
+                let b = &self.s.state[o..o + 0x15];
+                let end = b.iter().position(|&c| c == 0).unwrap_or(b.len());
+                b[..end].iter().map(|&c| c as char).collect::<String>()
+            });
+            self.g.news.push(crate::message::GameMessage::TrainRobbed {
+                train: t,
+                company,
+                train_number,
+                thief_name,
+            });
         }
     }
 
@@ -2065,12 +2062,14 @@ impl Ts<'_> {
         self.incident_penalty(t, 0x0053_5690);
         let company = self.i32(P::Train, t, 0x41);
         if self.is_ui_company_pub(company) {
-            todo_hook!(
-                self.log,
-                "breakdown_message",
-                "0x4ce4c0 message, sound and 0x4d0870/0x45cd60 for the viewed company",
-                "trains.md 5.3"
-            );
+            let train_number = self.company_train_number(company, t);
+            self.g
+                .news
+                .push(crate::message::GameMessage::TrainBreakdown {
+                    train: t,
+                    company,
+                    train_number,
+                });
         }
     }
 
@@ -2123,4 +2122,213 @@ pub fn ring_ahead(a: i32, b: i32, head: i32, _count: i32) -> bool {
     } else {
         da < head - b + 0x20
     }
+}
+
+/// `vehicle_weight` (`0x414460`): loaded or empty tons of a car, read from [`Save`].
+pub fn vehicle_weight_from_save(save: &Save, img: &DataImage, car: i32) -> i32 {
+    let flag_570236 = save.header.get(0x86FE).copied().unwrap_or(0);
+    let Some(r) = pool::record(&save.pool_70, car as usize) else {
+        return 0;
+    };
+    let t = r.data.get(8).copied().unwrap_or(0);
+    let lot = r
+        .data
+        .get(0x2d..0x31)
+        .map(|b| i32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+        .unwrap_or(0);
+    let off = if lot == 0 && flag_570236 == 0 {
+        0x18
+    } else {
+        0x1a
+    };
+    i32::from(img.i16(0x0053_ddb8 + u32::from(t) * 0x39 + off))
+}
+
+/// `vehicle_grade` (`0x4144a0`): grade of the car's segment (`0x4284e0`), read from [`Save`].
+pub fn vehicle_grade_from_save(save: &Save, car: i32) -> f64 {
+    let Some(r) = pool::record(&save.pool_70, car as usize) else {
+        return 0.0;
+    };
+    let x = r
+        .data
+        .get(9..11)
+        .map(|b| i16::from_le_bytes([b[0], b[1]]))
+        .unwrap_or(0) as i32;
+    let y = r
+        .data
+        .get(0xb..0xd)
+        .map(|b| i16::from_le_bytes([b[0], b[1]]))
+        .unwrap_or(0) as i32;
+    let w = save.map.width as i32 + 1;
+    let elev = &save.map.elevation;
+    let base = y * w + x;
+    let height = |off: i32| {
+        let idx = (base + off) as usize;
+        elev.get(idx).copied().map(i32::from).unwrap_or(0)
+    };
+    let d1 = r.data.get(0x23).copied().unwrap_or(0) as i32;
+    let d2 = r.data.get(0x24).copied().unwrap_or(0) as i32;
+    crate::trains::track_segment_grade(&height, [0, 1, w + 1, w], d1, d2)
+}
+
+/// `train_grade` (`0x4cfd40`) as a full x87 value, read from [`Save`].
+pub fn train_grade_full_from_save(save: &Save, img: &DataImage, t: i32) -> f64 {
+    let Some(tr) = pool::record(&save.trains, t as usize) else {
+        return f64::from(img.f32(0x0053_500c));
+    };
+    if tr.data.get(0x9c).copied().unwrap_or(0) == 0 {
+        return f64::from(img.f32(0x0053_500c));
+    }
+    let (mut sum, mut acc) = (0i32, 0f32);
+    let mut c = tr
+        .data
+        .get(0..4)
+        .map(|b| i32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+        .unwrap_or(0);
+    let mut n = 0;
+    while c != 0 {
+        let Some(cr) = pool::record(&save.pool_70, c as usize) else {
+            break;
+        };
+        if cr.data.get(0x2a).copied().unwrap_or(0) != 0 {
+            let w = vehicle_weight_from_save(save, img, c);
+            let g = vehicle_grade_from_save(save, c);
+            sum += w;
+            acc = (g * f64::from(w) + f64::from(acc)) as f32;
+        }
+        c = cr
+            .data
+            .get(2..4)
+            .map(|b| i16::from_le_bytes([b[0], b[1]]) as i32)
+            .unwrap_or(0);
+        n += 1;
+        if n == 2 {
+            break;
+        }
+    }
+    if sum == 0 {
+        f64::from(img.f32(0x0053_500c))
+    } else {
+        f64::from(acc) / f64::from(sum)
+    }
+}
+
+/// Breakdown chance for train `t` at top speed (`0x4d4790` calling `0x4cf030` for `traindtl.win`).
+pub fn train_breakdown_chance_from_save(
+    save: &Save,
+    data: &GameData,
+    train: i32,
+    year: u16,
+) -> f32 {
+    if train <= 0 {
+        return 0.0;
+    }
+    let Some(tr) = pool::record(&save.trains, train as usize) else {
+        return 0.0;
+    };
+    let first_car = tr
+        .data
+        .get(0..4)
+        .map(|b| i32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+        .unwrap_or(0);
+    if first_car <= 0 {
+        return 0.0;
+    }
+    let Some(cr) = pool::record(&save.pool_70, first_car as usize) else {
+        return 0.0;
+    };
+    let vt = cr.data.get(8).copied().unwrap_or(0);
+    let eng_idx = i32::from(data.image.i8(0x0053_ddb8 + u32::from(vt) * 0x39 + 0x2f));
+    if eng_idx < 0 {
+        return 0.0;
+    }
+    let base = 0x0053_cec0u32.wrapping_add((eng_idx * 0x3a) as u32);
+    let raw: Vec<u8> = (0..0x3a).map(|i| data.image.u8(base + i)).collect();
+    let mut eng = Engine::from_raw(&raw);
+    eng.base_tons = data.image.i32(base + 0x2e);
+
+    let company = tr
+        .data
+        .get(0x41..0x45)
+        .map(|b| i32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+        .unwrap_or(0);
+    let terr = i32::from(tr.data.get(0xf3).copied().unwrap_or(0));
+    let kind = usize::from(data.image.u8(base + 0x28));
+
+    // `0x4d4790` evaluates `engine_max_speed` with:
+    // tons = eng.base_tons + 120, grade = 0.0002, curve = false, age = 0,
+    // mods for company with territory 0.
+    let mods = SpeedMods {
+        power_all: f64::from(super::mem::effect_from_save(save, 0x2a, company, 0, 0)),
+        power_kind: f64::from(super::mem::effect_from_save(
+            save,
+            0x2b + kind,
+            company,
+            0,
+            0,
+        )),
+        speed_all: f64::from(super::mem::effect_from_save(save, 0x23, company, 0, 0)),
+        speed_kind: f64::from(super::mem::effect_from_save(
+            save,
+            0x24 + kind,
+            company,
+            0,
+            0,
+        )),
+    };
+    let speed = engine_max_speed(
+        &eng,
+        eng.base_tons.wrapping_add(120),
+        f32::from_bits(0x3951_b717),
+        false,
+        0,
+        &mods,
+    );
+    let speed_mph = speed >> 16;
+
+    let throttle = tr
+        .data
+        .get(0xdb..0xdf)
+        .map(|b| f32::from_bits(u32::from_le_bytes([b[0], b[1], b[2], b[3]])))
+        .unwrap_or(0.0);
+    let throttle_factor = data.image.f32(0x0053_77d4);
+    let cells = ftol(f64::from(throttle) * f64::from(throttle_factor) * f64::from(speed_mph) * 1.8);
+
+    let bought = tr
+        .data
+        .get(0xbd..0xbf)
+        .map(|b| u16::from_le_bytes([b[0], b[1]]))
+        .unwrap_or(0);
+    let reliability_rate = data
+        .image
+        .f32(0x0055_c52c + 4 * eng.reliability_class as u32);
+    let reliability_mod = f64::from(super::mem::effect_from_save(save, 0x27, company, 0, terr));
+    let grade = train_grade_full_from_save(save, &data.image, train);
+    let tons = tr
+        .data
+        .get(0xaf..0xb3)
+        .map(|b| i32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+        .unwrap_or(0);
+    let caboose = (tr.data.get(0xbb).copied().unwrap_or(0) & 2) != 0;
+    let oil = tr
+        .data
+        .get(0xd3..0xd7)
+        .map(|b| f32::from_bits(u32::from_le_bytes([b[0], b[1], b[2], b[3]])))
+        .unwrap_or(0.0);
+
+    let input = BreakdownInput {
+        tiles: cells,
+        check_age: false,
+        year,
+        bought,
+        reliability_rate,
+        throttle,
+        reliability_mod,
+        grade,
+        tons,
+        caboose,
+        oil,
+        nowreck: false,
+    };
+    breakdown_chance(&eng, &input) as f32
 }

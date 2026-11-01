@@ -346,13 +346,14 @@ impl AppState {
             reports: Default::default(),
             editor: Some(Box::new(ed)),
             campaign: None,
+            mp: None,
         }));
         self.rebuild_ui();
         Ok(())
     }
 
     /// The editor's menu entries: a blank map from a shipped scenario with no companies.
-    fn blank_template(&self) -> anyhow::Result<Save> {
+    pub(crate) fn blank_template(&self) -> anyhow::Result<Save> {
         let maps = self.install.join("maps");
         for name in [
             "Local Industry.MP2",

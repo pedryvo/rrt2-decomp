@@ -11,7 +11,7 @@ use crate::exe::{Exe, ExeError};
 pub const ADDR_EFFECT_TABLE: u32 = 0x0055_0550;
 /// Rows of the effect table.
 pub const N_EFFECTS: usize = 350;
-const EFFECT_ROW_SIZE: usize = 16;
+pub const EFFECT_ROW_SIZE: usize = 16;
 
 /// One row of the effect table (16 bytes at `0x550550`, spec 4.1).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

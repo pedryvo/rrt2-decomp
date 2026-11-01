@@ -538,6 +538,83 @@ impl AppState {
             | GameMessage::MarginTrade { .. }
             | GameMessage::DividendSuspended { .. }
             | GameMessage::DividendCut { .. } => self.fin_message_dialog(m),
+            GameMessage::TrainArrived {
+                speed,
+                speed_record: true,
+                ..
+            } => {
+                let msg = subst(
+                    &t.get(
+                        68,
+                        "One of your trains has set a new speed record:\n\n%1 mph\n\nWhat should we name this record setter?",
+                    ),
+                    &[speed.to_string()],
+                );
+                Some(Dialog::Message(Message {
+                    title: t.get(130, "Train Arrival"),
+                    body: msg,
+                    buttons: vec![(ok, Act::Close)],
+                }))
+            }
+            GameMessage::TrainArrived { .. } => None,
+            GameMessage::TrainBreakdown { train_number, .. } => {
+                let body = subst(
+                    &t.get(2222, "Train #%1 has suffered a breakdown!"),
+                    &[train_number.to_string()],
+                );
+                Some(Dialog::Message(Message {
+                    title: String::new(),
+                    body,
+                    buttons: vec![(ok, Act::Close)],
+                }))
+            }
+            GameMessage::TrainCrashed { train_number, .. } => {
+                let body = subst(
+                    &t.get(2223, "Train #%1 has crashed!"),
+                    &[train_number.to_string()],
+                );
+                Some(Dialog::Message(Message {
+                    title: String::new(),
+                    body,
+                    buttons: vec![(ok, Act::Close)],
+                }))
+            }
+            GameMessage::TrainRobbed {
+                train_number,
+                thief_name,
+                ..
+            } => {
+                let body = if let Some(name) = thief_name {
+                    subst(
+                        &t.get(2224, "Train #%1 has been robbed by %2!"),
+                        &[train_number.to_string(), name.clone()],
+                    )
+                } else {
+                    subst(
+                        &t.get(2225, "Train #%1 has been robbed!"),
+                        &[train_number.to_string()],
+                    )
+                };
+                Some(Dialog::Message(Message {
+                    title: String::new(),
+                    body,
+                    buttons: vec![(ok, Act::Close)],
+                }))
+            }
+            GameMessage::ThievesArrested { thief_name } => {
+                let headline = if let Some(name) = thief_name {
+                    let tmpl = t.get(2226, "%s Captured!").replace("%s", "%1");
+                    subst(&tmpl, std::slice::from_ref(name))
+                } else {
+                    t.get(2227, "Train Robbers Captured!")
+                };
+                let sub = t.get(2228, "Decrease in train robberies expected.");
+                Some(Dialog::Newspaper {
+                    headline,
+                    sub,
+                    body: String::new(),
+                })
+            }
         }
     }
 
@@ -601,6 +678,121 @@ impl AppState {
             | GameMessage::MarginTrade { .. }
             | GameMessage::DividendSuspended { .. }
             | GameMessage::DividendCut { .. } => self.fin_message_line(m),
+            GameMessage::TrainArrived {
+                train,
+                to_station,
+                revenue,
+                speed,
+                speed_record,
+                ..
+            } => {
+                let st_name = if *to_station > 0 {
+                    self.with_info(|i| i.station_name(*to_station as u32))
+                        .unwrap_or_default()
+                } else {
+                    String::new()
+                };
+                let money_str = crate::info::money(f64::from(*revenue));
+                if *speed_record {
+                    subst(
+                        &t.get(68, "New speed record: %1 mph"),
+                        &[speed.to_string()],
+                    )
+                } else if !st_name.is_empty() {
+                    let title = subst(&t.get(130, "Train #%1 Arrival"), &[train.to_string()]);
+                    format!("{}: {} ({})", title, st_name, money_str)
+                } else {
+                    let title = subst(&t.get(130, "Train #%1 Arrival"), &[train.to_string()]);
+                    format!("{}: {}", title, money_str)
+                }
+            }
+            GameMessage::TrainBreakdown { train_number, .. } => subst(
+                &t.get(2222, "Train #%1 has suffered a breakdown!"),
+                &[train_number.to_string()],
+            ),
+            GameMessage::TrainCrashed { train_number, .. } => subst(
+                &t.get(2223, "Train #%1 has crashed!"),
+                &[train_number.to_string()],
+            ),
+            GameMessage::TrainRobbed {
+                train_number,
+                thief_name,
+                ..
+            } => {
+                if let Some(name) = thief_name {
+                    subst(
+                        &t.get(2224, "Train #%1 has been robbed by %2!"),
+                        &[train_number.to_string(), name.clone()],
+                    )
+                } else {
+                    subst(
+                        &t.get(2225, "Train #%1 has been robbed!"),
+                        &[train_number.to_string()],
+                    )
+                }
+            }
+            GameMessage::ThievesArrested { thief_name } => {
+                if let Some(name) = thief_name {
+                    let tmpl = t.get(2226, "%s Captured!").replace("%s", "%1");
+                    subst(&tmpl, std::slice::from_ref(name))
+                } else {
+                    t.get(2227, "Train Robbers Captured!")
+                }
+            }
+        }
+    }
+
+    fn train_message_pos(&self, m: &GameMessage) -> Option<(i32, i32)> {
+        let Screen::Game(g) = &self.screen else {
+            return None;
+        };
+        let save = g.world.save_ref()?;
+        match m {
+            GameMessage::TrainArrived {
+                to_station,
+                from_station,
+                train,
+                ..
+            } => {
+                let st = if *to_station > 0 {
+                    *to_station
+                } else {
+                    *from_station
+                };
+                if st > 0
+                    && let Some(r) = rt2_sim::pool::record(&save.stations, st as usize)
+                {
+                    Some((
+                        rt2_sim::pool::i32_at(&r.data, 0xa),
+                        rt2_sim::pool::i32_at(&r.data, 0xe),
+                    ))
+                } else if *train > 0
+                    && let Some(tr) = rt2_sim::pool::record(&save.trains, *train as usize)
+                {
+                    let head_car = rt2_sim::pool::i32_at(&tr.data, 0).max(0) as usize;
+                    rt2_sim::pool::record(&save.pool_70, head_car).map(|c| {
+                        (
+                            i32::from(rt2_sim::pool::i16_at(&c.data, 9)),
+                            i32::from(rt2_sim::pool::i16_at(&c.data, 0xb)),
+                        )
+                    })
+                } else {
+                    None
+                }
+            }
+            GameMessage::TrainBreakdown { train, .. }
+            | GameMessage::TrainCrashed { train, .. }
+            | GameMessage::TrainRobbed { train, .. } => {
+                let tr = rt2_sim::pool::record(&save.trains, *train as usize)?;
+                let head_car = rt2_sim::pool::i32_at(&tr.data, 0).max(0) as usize;
+                rt2_sim::pool::record(&save.pool_70, head_car).map(|c| {
+                    (
+                        i32::from(rt2_sim::pool::i16_at(&c.data, 9)),
+                        i32::from(rt2_sim::pool::i16_at(&c.data, 0xb)),
+                    )
+                })
+            }
+            _ => None,
         }
     }
 
@@ -638,7 +830,7 @@ impl AppState {
             let full = self.message_line(m);
             let line = activity_line(&full);
             if !line.is_empty() {
-                let pos = self.message_pos(m);
+                let pos = self.train_message_pos(m).or_else(|| self.message_pos(m));
                 self.add_event(category, pos, line, full.trim().to_owned());
             }
             // A category switched off in the options shows no pop-up (docs/ui.md); a scenario

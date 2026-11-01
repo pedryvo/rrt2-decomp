@@ -393,14 +393,12 @@ impl Ai<'_, '_> {
             || self.ts.u8(P::Train, t, 0x94) != 0
     }
 
-    /// Command `0x1c` (`cmd_execute` `0x4b0210`): the cargo of each car of stop `k` (every stop
-    /// with `0xff`); a train working at a station whose current stop changed forgets its
-    /// departure minute and runs `train_arrive` (`0x4d29e0`) again.
-    pub fn train_stop_cargo(&mut self, t: i32, k: i32, cargo: [u8; 6]) {
+    /// Sets the cars of stop `k` (or every stop if `0xff`), up to 8 cars (`0xff` = empty slot).
+    pub fn train_stop_cars(&mut self, t: i32, k: i32, cars: &[u8]) {
         let working = self.train_working(t);
         let cur = self.ts.cur_stop(t);
         let before: Vec<u8> = (0..14).map(|o| self.ts.stop8(t, cur, o)).collect();
-        let n = cargo.iter().filter(|&&c| c != 0xff).count() as u8;
+        let n = cars.iter().take(8).filter(|&&c| c != 0xff).count() as u8;
         let stops = if k == 0xff {
             0..i32::from(self.ts.u8(P::Train, t, 0x3b))
         } else {
@@ -408,8 +406,9 @@ impl Ai<'_, '_> {
         };
         for s in stops {
             self.ts.set_stop8(t, s, 2, n);
-            for (j, c) in cargo.iter().enumerate() {
-                self.ts.set_stop8(t, s, 4 + j, *c);
+            for j in 0..8 {
+                let c = cars.get(j).copied().unwrap_or(0xff);
+                self.ts.set_stop8(t, s, 4 + j, c);
             }
         }
         if working {
@@ -419,6 +418,13 @@ impl Ai<'_, '_> {
                 self.ts.train_arrive(t);
             }
         }
+    }
+
+    /// Command `0x1c` (`cmd_execute` `0x4b0210`): the cargo of each car of stop `k` (every stop
+    /// with `0xff`); a train working at a station whose current stop changed forgets its
+    /// departure minute and runs `train_arrive` (`0x4d29e0`) again.
+    pub fn train_stop_cargo(&mut self, t: i32, k: i32, cargo: [u8; 6]) {
+        self.train_stop_cars(t, k, &cargo);
     }
 
     /// `train_set_class(train, class)` (`0x4d59b0`, command `0x21`): the class goes to `+0xa7`

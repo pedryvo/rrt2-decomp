@@ -69,7 +69,7 @@ impl World {
     }
 
     /// `Command::AnswerChoice`: button 0 (first) or 1 (second) for the pending choice `id`.
-    pub(crate) fn answer_choice(&mut self, id: u32, button: u8) -> bool {
+    pub fn answer_choice(&mut self, id: u32, button: u8) -> bool {
         match &self.choices.pending {
             Some(p) if p.id == id => {
                 self.choices.pending = None;
@@ -77,6 +77,16 @@ impl World {
                 true
             }
             _ => false,
+        }
+    }
+
+    /// Answers the currently pending scenario choice with `button` (0 or 1).
+    pub fn answer_pending_choice(&mut self, button: u8) -> bool {
+        if let Some(p) = self.choices.pending.as_ref() {
+            let id = p.id;
+            self.answer_choice(id, button)
+        } else {
+            false
         }
     }
 }

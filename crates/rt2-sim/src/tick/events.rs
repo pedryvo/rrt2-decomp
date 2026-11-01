@@ -664,20 +664,40 @@ impl ScenarioWorld for ScWorld<'_> {
             });
         }
     }
-    fn person_name(&self, _person: i32) -> String {
-        String::new()
+    fn person_name(&self, id: i32) -> String {
+        if id == 0 {
+            "All Players".to_owned()
+        } else {
+            pool::record(&self.s.save.persons, id as usize)
+                .map_or_else(String::new, |r| crate::scenario::c_string(&r.data[8..0x27]))
+        }
     }
-    fn company_name(&self, _company: i32) -> String {
-        String::new()
+    fn company_name(&self, id: i32) -> String {
+        if id == 0 {
+            "All Companies".to_owned()
+        } else {
+            pool::record(&self.s.save.companies, id as usize).map_or_else(String::new, |r| {
+                crate::scenario::c_string(&r.data[4..4 + 0x1f])
+            })
+        }
     }
-    fn territory_name(&self, _territory: i32) -> String {
-        String::new()
+    fn territory_name(&self, id: i32) -> String {
+        if id == 0 {
+            "All territories".to_owned()
+        } else {
+            pool::record(&self.s.save.territories, id as usize)
+                .map_or_else(String::new, |r| crate::editor::territory_name(&r.data))
+        }
     }
     fn company_loads_lifetime(&self, company: i32) -> i32 {
         self.co(company).map_or(0, |c| i32_at(c, 0x19e))
     }
     fn stations_visited(&self) -> i32 {
-        0
+        pool::list_order(&self.s.save.stations)
+            .into_iter()
+            .filter_map(|s| pool::record(&self.s.save.stations, s))
+            .filter(|r| i32_at(&r.data, 0x45) == 0 && r.data.get(0x4bb).copied().unwrap_or(0) != 0)
+            .count() as i32
     }
     fn status_buffer_active(&self) -> bool {
         self.s.status_buf.is_some()

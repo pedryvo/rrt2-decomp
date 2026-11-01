@@ -9,3 +9,4 @@ __pycache__/
 /dist
 /.flatpak-builder
 /flatpak_app
+/conversation-*

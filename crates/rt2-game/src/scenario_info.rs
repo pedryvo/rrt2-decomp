@@ -117,9 +117,19 @@ impl ScenarioInfo {
             events: Vec::new(),
         };
         for r in &save.rules {
-            info.add_rule(&Rule::from_file(r));
+            info.add_rule_from_save(save, &Rule::from_file(r));
         }
         info
+    }
+
+    fn add_rule_from_save(&mut self, save: &Save, r: &Rule) {
+        let mut sub_r = r.clone();
+        sub_r.title = rt2_sim::scenario::substitute_rule_text(save, r, &r.title);
+        sub_r.message = rt2_sim::scenario::substitute_rule_text(save, r, &r.message);
+        sub_r.condition = rt2_sim::scenario::substitute_rule_text(save, r, &r.condition);
+        sub_r.label1 = rt2_sim::scenario::substitute_rule_text(save, r, &r.label1);
+        sub_r.label2 = rt2_sim::scenario::substitute_rule_text(save, r, &r.label2);
+        self.add_rule(&sub_r);
     }
 
     fn add_rule(&mut self, r: &Rule) {

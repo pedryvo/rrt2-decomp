@@ -19,8 +19,8 @@ pub mod rule;
 pub mod table;
 
 pub use engine::{
-    Combo, Confiscate, Message, ScenarioWorld, Scope, evaluate_rule, fire_trigger, rights,
-    substitute, trigger,
+    Combo, Confiscate, Message, ScenarioWorld, Scope, c_string, evaluate_rule, fire_trigger,
+    number_text, rights, substitute, substitute_rule_text, trigger,
 };
 pub use lang::{
     CompileError, Ctx, Eval, ScenarioEnv, compile, effect_money, err, function_value, lookup,

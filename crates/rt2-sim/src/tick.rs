@@ -70,7 +70,7 @@ const EFFECT_PRIME: usize = 0x20;
 #[derive(Clone, Debug)]
 pub struct SimState {
     pub(crate) save: Save,
-    data: Box<GameData>,
+    pub(crate) data: Box<GameData>,
     /// Industry types of the active set, indices rebuilt for the current year (`0x471880`).
     types: Vec<IndustryType>,
     pub(crate) log: HookLog,
@@ -328,6 +328,9 @@ impl World {
     }
 
     fn advance_step(&mut self, dt: i32) {
+        if dt > 0 {
+            self.last_build_snapshot = None;
+        }
         match self.sim.take() {
             Some(mut sim) => {
                 sim.sim_advance(self, dt);
@@ -364,6 +367,13 @@ impl World {
 }
 
 impl SimState {
+    /// Estimated breakdown probability at top speed for a train (`0x4d4790` calling `0x4cf030`).
+    pub fn train_breakdown_chance(&self, train: i32, year: u16) -> f32 {
+        crate::trainstep::motion::train_breakdown_chance_from_save(
+            &self.save, &self.data, train, year,
+        )
+    }
+
     /// Some rule of the pool is a two-button choice (`+0x60 == 2`).
     fn has_choice_rules(&self) -> bool {
         self.save

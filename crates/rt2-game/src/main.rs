@@ -24,6 +24,7 @@ mod install_detect;
 mod keys;
 mod locales;
 mod logo;
+mod mp_ui;
 mod notices;
 mod options;
 mod overview;

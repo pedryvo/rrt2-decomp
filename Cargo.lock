@@ -2410,6 +2410,7 @@ dependencies = [
  "rfd",
  "rt2-audio",
  "rt2-formats",
+ "rt2-net",
  "rt2-render",
  "rt2-sim",
  "rt2-ui",
@@ -2457,7 +2458,9 @@ name = "rt2-sim"
 version = "0.3.0"
 dependencies = [
  "rt2-formats",
+ "serde",
  "thiserror 2.0.21",
+ "toml",
 ]
 
 [[package]]

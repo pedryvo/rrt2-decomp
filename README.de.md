@@ -57,7 +57,7 @@ _Der Klassiker von 1998, den Sie kennen, aus derselben isometrischen Perspektive
 
 **Originaltreue:** Klon und Original schreiben denselben Spielstand fort, und die Ergebnisse werden Feld für Feld verglichen. Aktuelle Wertung: [`docs/fidelity-status.md`](docs/fidelity-status.md).
 
-**Reverse Engineering:** 2945 Funktionen in der ausführbaren Datei (1837 ohne Linker-Thunks) · 1018 Symbole in [`re/symbols.toml`](re/symbols.toml) · 1428 klassifiziert (48 %), 1517 noch nicht klassifiziert · 616 Funktionen spezifiziert (davon 456 Simulation), 304 bitgenau gegen das Original verifiziert ([`re/coverage.toml`](re/coverage.toml)). Ein Prozentwert für die Simulationsabdeckung wird veröffentlicht, sobald die Klassifizierung abgeschlossen ist.
+**Reverse Engineering:** 2945 Funktionen in der ausführbaren Datei (1837 ohne Linker-Thunks) · 1020 Symbole in [`re/symbols.toml`](re/symbols.toml) · 1429 klassifiziert (48 %), 1516 noch nicht klassifiziert · 617 Funktionen spezifiziert (davon 457 Simulation), 304 bitgenau gegen das Original verifiziert ([`re/coverage.toml`](re/coverage.toml)). Ein Prozentwert für die Simulationsabdeckung wird veröffentlicht, sobald die Klassifizierung abgeschlossen ist.
 
 ## 🧭 Fahrplan
 

@@ -260,3 +260,40 @@ fn build_primitives_match_original_snapshots() {
     assert!(failures.is_empty(), "{failures:#?}");
     eprintln!("{checked} build snapshots match, {partial} partial");
 }
+
+/// The station size change (`0x46aef0`) keeps the building's origin and re-anchors the new
+/// shape (`0x409770`), while the Buy window (`0x407540`) tests the new shape at the old anchor;
+/// and the station record keeps its tile. With the 24 station shapes of the executable the two
+/// agree: for every orientation the three sizes have the same half extents (`+12`/`+13` after
+/// `0x471b10`) and the anchor cell (flag `0x10`) at the same place, so the space test, the new
+/// footprint and the station tile are consistent (docs/spec/terrain-track.md 3.4.1).
+#[test]
+fn station_sizes_share_origin_and_anchor() {
+    let Some(game) = std::env::var_os("RT2_DIR").map(PathBuf::from) else {
+        eprintln!("RT2_DIR not set; skipping");
+        return;
+    };
+    let exe = Exe::from_bytes(std::fs::read(game.join("RT2_PLAT.EXE")).unwrap()).unwrap();
+    let data = GameData::load(&exe).unwrap();
+    let img = &data.image;
+    let anchor = |s: usize| {
+        let e = rt2_sim::tilemark::shape_extents(img, s);
+        let (cx, cy) = (e[0] >> 1, e[1] >> 1);
+        rt2_sim::tilemark::cells()
+            .find(|&(l, c)| rt2_sim::tilemark::shape_cell(img, s, l, c) & 0x10 != 0)
+            .map(|(l, c)| (cx - c, cy - l, cx, cy))
+            .expect("anchor cell")
+    };
+    for o in 0..8 {
+        let small = anchor(o);
+        for size in 1..3 {
+            let a = anchor(o + 8 * size);
+            assert_eq!(
+                (a.0, a.1),
+                (small.0, small.1),
+                "anchor of size {size}, dir {o}"
+            );
+            assert_eq!((a.2, a.3), (small.2, small.3), "half extents, dir {o}");
+        }
+    }
+}

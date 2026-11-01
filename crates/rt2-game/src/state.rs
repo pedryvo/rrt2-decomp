@@ -48,6 +48,9 @@ mod info_ui;
 mod mainwin;
 mod maplabels;
 mod menus;
+pub mod mp;
+#[cfg(test)]
+mod mp_tests;
 mod options_ui;
 mod overview;
 mod reports_ui;
@@ -63,7 +66,7 @@ use menus::{MenuData, Page};
 const A_QUIT: u32 = 3;
 const A_LIST: u32 = 10;
 const A_OK: u32 = 11;
-const A_BACK: u32 = 12;
+pub(crate) const A_BACK: u32 = 12;
 const A_PAUSE: u32 = 20;
 const A_FASTER: u32 = 21;
 const A_SLOWER: u32 = 22;
@@ -118,7 +121,7 @@ enum Overlay {
     Saves(saves_ui::SavesState),
 }
 
-struct MenuState {
+pub(crate) struct MenuState {
     page: Page,
     entries: Vec<Entry>,
     data: MenuData,
@@ -127,7 +130,7 @@ struct MenuState {
 /// Camera (target x, y, zoom, rotation) and viewport the radar outline was drawn for.
 type RadarView = ((f32, f32, f32, u8), (u32, u32));
 
-struct GameState {
+pub(crate) struct GameState {
     world: World,
     name: String,
     map_size: (usize, usize),
@@ -172,6 +175,8 @@ struct GameState {
     editor: Option<Box<editor_ui::EditorState>>,
     /// `(campaign set, scenario index)` when this game is a campaign scenario (medals).
     campaign: Option<(usize, usize)>,
+    /// Multiplayer in-game session and chat overlay.
+    pub mp: Option<Box<crate::state::mp::InGameMp>>,
 }
 
 /// Hash of the parts of the save the static layers are built from: building type and tile,
@@ -202,7 +207,7 @@ fn scene_fingerprint(save: &rt2_formats::map::Save) -> u64 {
 }
 
 #[allow(clippy::large_enum_variant)]
-enum Screen {
+pub(crate) enum Screen {
     Menu(MenuState),
     Game(Box<GameState>),
 }
@@ -225,7 +230,7 @@ pub struct AppState {
     install: PathBuf,
     assets: Arc<GameAssets>,
     backdrop: Option<SpriteId>,
-    icons: crate::artwork::Icons,
+    pub(crate) icons: crate::artwork::Icons,
     dialog_art: crate::artwork::DialogArt,
     /// Sprites to re-upload to the renderer's atlas (the composed station picture), and the key
     /// of what the station sprite holds now. Built from `&self` while the windows are laid out.
@@ -235,7 +240,7 @@ pub struct AppState {
     station_view_key: std::cell::RefCell<Option<(u8, i32, u32)>>,
     /// The engine whose picture is in the Purchase Train window's reserved sprite.
     buy_view_key: std::cell::RefCell<Option<i32>>,
-    texts: Texts,
+    pub(crate) texts: Texts,
     binds: Bindings,
     data: Option<GameData>,
     vehicle_names: Arc<Vec<String>>,
@@ -249,7 +254,7 @@ pub struct AppState {
     scale: UiScale,
     scale_pinned: bool,
     viewport: (u32, u32),
-    screen: Screen,
+    pub(crate) screen: Screen,
     pending_scene: Option<Arc<Scene>>,
     effects: Vec<Effect>,
     keys_down: BTreeSet<KeyCode>,
@@ -288,6 +293,10 @@ pub struct AppState {
     /// Scenario Choice messages wait for the player (the window loop turns this on); off, they
     /// are answered with button 0 at once like a headless run.
     interactive_choices: bool,
+    /// Multiplayer lobby state while hosting or joining a multiplayer session.
+    pub mp_lobby: Option<Box<crate::state::mp::MpLobbyState>>,
+    /// Monotonic logical millisecond clock for networking and simulation.
+    pub clock_ms: u64,
 }
 
 #[derive(Default, Clone)]
@@ -370,6 +379,8 @@ impl AppState {
             persist: false,
             ga: Default::default(),
             interactive_choices: false,
+            mp_lobby: None,
+            clock_ms: 0,
         };
         s.rebuild_ui();
         s
@@ -712,6 +723,9 @@ impl AppState {
             self.saves_key(code, repeat, text);
             return;
         }
+        if self.mp_key(code, repeat, text) {
+            return;
+        }
         let (ctrl, b) = (self.ctrl, self.binds.clone());
         if b.ui_scale_up.matches(code, ctrl) {
             self.step_ui_scale(1);
@@ -817,8 +831,12 @@ impl AppState {
                 m.data.side = menus::Side::None;
                 self.rebuild_ui();
             }
-            Page::Single | Page::Editor | Page::Scores | Page::Credits => {
+            Page::Single | Page::Editor | Page::Scores | Page::Credits | Page::Multi => {
                 self.open_page(Page::Main)
+            }
+            Page::MpLobby => {
+                self.mp_lobby = None;
+                self.open_page(Page::Multi);
             }
             Page::NewScenario | Page::NewCampaign | Page::LoadGame | Page::LoadCampaign => {
                 self.open_page(Page::Single);
@@ -934,7 +952,14 @@ impl AppState {
     /// time since the last call (the only place wall time enters; the simulation itself only
     /// sees whole nominal frames).
     pub fn update(&mut self, dt_ms: f32) {
+        self.clock_ms += dt_ms as u64;
         self.ga_tick(dt_ms);
+        if let Screen::Menu(m) = &self.screen {
+            if m.page == menus::Page::MpLobby {
+                self.mp_lobby_update();
+            }
+            return;
+        }
         let held = |bind: &crate::keys::Binding, keys: &BTreeSet<KeyCode>| bind.held(keys);
         let (b, keys) = (&self.binds, &self.keys_down);
         let axis = |neg: &crate::keys::Binding, pos: &crate::keys::Binding| {
@@ -975,27 +1000,106 @@ impl AppState {
             self.editor_tick(dt_ms);
             return;
         }
-        let on_hold = !g.dialogs.is_empty() || covered;
+        let on_hold = (!g.dialogs.is_empty() || covered) && g.mp.is_none();
         if !on_hold {
             g.accum_ms += dt_ms.min(250.0);
         }
-        let mut steps = 0;
-        while g.accum_ms >= STEP_MS {
-            g.accum_ms -= STEP_MS;
-            if steps < MAX_STEPS_PER_FRAME {
-                g.world.advance(g.speeds.minutes_per_frame(g.world.speed()));
-                steps += 1;
+        if let Some(mp) = &mut g.mp {
+            let now_ms = self.clock_ms;
+            let events = mp.step(now_ms, dt_ms);
+            for ev in events {
+                match ev {
+                    rt2_net::session::Event::PlayerLeft { name, .. } => {
+                        let msg = format!(
+                            "Player {name} has exited the game.\n\nHis position will be assumed by a computer player."
+                        );
+                        g.news.push(NewsItem {
+                            date: format_date(g.world.date(), &self.texts),
+                            detail: msg.clone(),
+                            text: msg,
+                            category: crate::notices::Category::Scenario,
+                            pos: None,
+                            shown: true,
+                        });
+                    }
+                    rt2_net::session::Event::HostChanged { host } => {
+                        let host_name = mp
+                            .backend
+                            .players()
+                            .iter()
+                            .find(|p| p.id == host)
+                            .map_or_else(|| format!("Player {host}"), |p| p.name.clone());
+                        let msg = format!("Host migrated to {host_name}");
+                        g.news.push(NewsItem {
+                            date: format_date(g.world.date(), &self.texts),
+                            detail: msg.clone(),
+                            text: msg,
+                            category: crate::notices::Category::Scenario,
+                            pos: None,
+                            shown: true,
+                        });
+                    }
+                    rt2_net::session::Event::Desync { minute, groups, .. } => {
+                        let msg = format!("Out of Synch at minute {minute}: {:?}", groups);
+                        g.news.push(NewsItem {
+                            date: format_date(g.world.date(), &self.texts),
+                            detail: msg.clone(),
+                            text: msg,
+                            category: crate::notices::Category::Scenario,
+                            pos: None,
+                            shown: true,
+                        });
+                    }
+                    _ => {}
+                }
             }
-        }
-        if steps > 0
-            && let Some(save) = g.world.save_ref()
-        {
-            self.pending_live = Some((LiveFrame::from_save(save), false));
-            let fp = scene_fingerprint(save);
-            if fp != g.scene_fp {
-                // Something was built or removed: rebuild the static layers.
-                g.scene_fp = fp;
-                self.rebuild_scene = true;
+            if let Some(timer) = &mut mp.dialog_timer {
+                *timer -= dt_ms / 1000.0;
+                if *timer <= 0.0 {
+                    mp.dialog_timer = None;
+                    if !g.dialogs.is_empty() {
+                        let can_pop = match g.dialogs.last() {
+                            Some(Dialog::Message(m)) => !m
+                                .buttons
+                                .iter()
+                                .any(|(_, act)| matches!(act, dialogs::Act::Choice { .. })),
+                            Some(Dialog::Newspaper { .. }) => true,
+                            _ => false,
+                        };
+                        if can_pop {
+                            g.dialogs.pop();
+                        }
+                    }
+                }
+            }
+            g.world = mp.backend.world().clone();
+            if let Some(save) = g.world.save_ref() {
+                self.pending_live = Some((LiveFrame::from_save(save), false));
+                let fp = scene_fingerprint(save);
+                if fp != g.scene_fp {
+                    g.scene_fp = fp;
+                    self.rebuild_scene = true;
+                }
+            }
+        } else {
+            let mut steps = 0;
+            while g.accum_ms >= STEP_MS {
+                g.accum_ms -= STEP_MS;
+                if steps < MAX_STEPS_PER_FRAME {
+                    g.world.advance(g.speeds.minutes_per_frame(g.world.speed()));
+                    steps += 1;
+                }
+            }
+            if steps > 0
+                && let Some(save) = g.world.save_ref()
+            {
+                self.pending_live = Some((LiveFrame::from_save(save), false));
+                let fp = scene_fingerprint(save);
+                if fp != g.scene_fp {
+                    // Something was built or removed: rebuild the static layers.
+                    g.scene_fp = fp;
+                    self.rebuild_scene = true;
+                }
             }
         }
         self.live_alpha = (g.accum_ms / STEP_MS).clamp(0.0, 1.0);
@@ -1096,6 +1200,9 @@ impl AppState {
     }
 
     fn activated(&mut self, action: u32) {
+        if self.mp_activated(action) {
+            return;
+        }
         if options_ui::owns(action) && self.options_activated(action) {
             return;
         }
@@ -1140,8 +1247,12 @@ impl AppState {
     }
 
     /// Every change of the simulation goes through a [`Command`].
-    fn apply_command(&mut self, cmd: Command) {
+    pub fn apply_command(&mut self, cmd: Command) {
         if let Screen::Game(g) = &mut self.screen {
+            if let Some(mp) = &mut g.mp {
+                mp.backend.send_command(cmd);
+                return;
+            }
             g.world.apply(cmd);
         }
     }
@@ -1196,6 +1307,19 @@ impl AppState {
             "load" => self.open_page(Page::LoadGame),
             "scores" => self.open_page(Page::Scores),
             "credits" => self.open_page(Page::Credits),
+            "multi" | "mp" | "mp-menu" => self.open_page(Page::Multi),
+            "mp-lobby" | "lobby" => {
+                self.ensure_mock_mp_lobby();
+                self.open_page(Page::MpLobby);
+            }
+            "mp-character" => {
+                self.open_page(Page::Multi);
+                self.open_mp_character_edit();
+            }
+            "mp-connect" => {
+                self.open_page(Page::Multi);
+                self.open_mp_connect_dialog();
+            }
             // Screenshots of the roll and of a clip: `credits@NNN` (design pixels scrolled),
             // `video:NAME[@ms]`.
             n if n.starts_with("credits@") => {
@@ -1224,7 +1348,7 @@ impl AppState {
         self.rebuild_ui();
     }
 
-    fn game_data(&mut self) -> Result<&GameData> {
+    pub(crate) fn game_data(&mut self) -> Result<&GameData> {
         if self.data.is_none() {
             let path = self.install.join("RT2_PLAT.EXE");
             let exe =
@@ -1242,6 +1366,15 @@ impl AppState {
             self.data = Some(GameData::load(&exe).context("loading the data tables")?);
         }
         Ok(self.data.as_ref().expect("just loaded"))
+    }
+
+    pub(crate) fn speed_table(&self) -> SpeedTable {
+        self.data
+            .as_ref()
+            .map(|d| d.speed_table.clone())
+            .unwrap_or(SpeedTable([
+                0.0, 0.3, 0.6, 1.0, 1.7, 2.1, 3.0, 5.0, 8.0, 12.0, 18.0,
+            ]))
     }
 
     /// Opens a game file: a saved game (`.GAM`) loads as it is, a scenario map (`.MAP`, `.MP2`)
@@ -1365,6 +1498,7 @@ impl AppState {
                 StartMode::Campaign(_, c) => Some((c.set, c.index)),
                 _ => None,
             },
+            mp: None,
         }));
         // Scenario choices wait for the player in the real game; headless they answer button 0.
         if let Screen::Game(g) = &mut self.screen {
@@ -1430,6 +1564,9 @@ impl AppState {
                 self.build_mainwin(&mut ui);
                 self.build_info(&mut ui);
                 self.build_dialogs(&mut ui);
+                let (cw, ch) = ui.logical_size();
+                let z = (cw / 1024.0).min(ch / 768.0).clamp(0.65, 2.5);
+                self.build_in_game_mp(&mut ui, cw, ch, z);
             }
         }
         self.build_overlay_screen(&mut ui);

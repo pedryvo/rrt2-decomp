@@ -203,6 +203,10 @@ impl AppState {
                 535,
                 "You can't put a station here!  (It must be on clear ground, next to existing track.)",
             ),
+            CmdError::NoRoomToExpand => t.get(
+                346,
+                "The adjoining land (on the main map) onto which the station must expand is blocked.  Try bulldozing some neighboring structures before upgrading.",
+            ),
             CmdError::NoSuchObject => t.a("That object no longer exists."),
             CmdError::TooFewStations => t.get(352, "You can't add a train until you have at least 2 stations"),
             CmdError::InsufficientCash => t.get(

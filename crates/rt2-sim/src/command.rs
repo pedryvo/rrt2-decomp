@@ -64,6 +64,14 @@ pub enum Command {
         person: i32,
         name: [u8; 31],
     },
+    /// `0x27` set company name and logo (`cmd_set_company_info` `0x4bddb0`).
+    SetCompanyInfo {
+        company: u8,
+        name: [u8; 31],
+        logo: u8,
+    },
+    /// `0x29` set train throttle (`train_set_throttle` `0x4d6080`).
+    SetThrottle { train: u16, throttle: u8 },
 }
 
 impl World {
@@ -124,6 +132,23 @@ impl World {
                     person,
                 );
             }
+            Command::SetCompanyInfo {
+                company,
+                name,
+                logo,
+            } => {
+                let _ = self.apply_build(crate::build::cmd::BuildCmd::SetCompanyInfo {
+                    company: i32::from(company),
+                    name,
+                    logo,
+                });
+            }
+            Command::SetThrottle { train, throttle } => {
+                let _ = self.apply_build(crate::build::cmd::BuildCmd::TrainThrottle {
+                    train: i32::from(train),
+                    value: throttle,
+                });
+            }
         }
     }
 
@@ -135,12 +160,66 @@ impl World {
         &mut self,
         cmd: crate::build::cmd::BuildCmd,
     ) -> Result<i32, crate::build::cmd::CmdError> {
+        let snapshot = if self.net.is_none() && is_undoable_build_cmd(&cmd) {
+            let rng = self.rng.clone();
+            let crt = self.crt.clone();
+            self.sim.as_ref().map(|s| crate::world::UndoBuildSnapshot {
+                sim: s.clone(),
+                rng,
+                crt,
+            })
+        } else {
+            None
+        };
         let Some(mut sim) = self.sim.take() else {
             return Err(crate::build::cmd::CmdError::NoSuchObject);
         };
         let r = sim.apply_build(self, cmd);
         self.sim = Some(sim);
+        if r.is_ok()
+            && let Some(snap) = snapshot
+        {
+            self.last_build_snapshot = Some(snap);
+        }
         r
+    }
+}
+
+fn is_undoable_build_cmd(cmd: &crate::build::cmd::BuildCmd) -> bool {
+    matches!(
+        cmd,
+        crate::build::cmd::BuildCmd::Bulldoze { .. }
+            | crate::build::cmd::BuildCmd::LayTrack { .. }
+            | crate::build::cmd::BuildCmd::Build { .. }
+            | crate::build::cmd::BuildCmd::Improve { .. }
+    )
+}
+
+impl World {
+    /// Changes a company's name and logo (command `0x27`, `cmd_set_company_info` `0x4bddb0`).
+    pub fn set_company_info(
+        &mut self,
+        company: u8,
+        name: [u8; 31],
+        logo: u8,
+    ) -> Result<i32, crate::build::cmd::CmdError> {
+        self.apply_build(crate::build::cmd::BuildCmd::SetCompanyInfo {
+            company: i32::from(company),
+            name,
+            logo,
+        })
+    }
+
+    /// Sets a train's throttle value (command `0x29`, `train_set_throttle` `0x4d6080`).
+    pub fn set_train_throttle(
+        &mut self,
+        train: u16,
+        throttle: u8,
+    ) -> Result<i32, crate::build::cmd::CmdError> {
+        self.apply_build(crate::build::cmd::BuildCmd::TrainThrottle {
+            train: i32::from(train),
+            value: throttle,
+        })
     }
 }
 

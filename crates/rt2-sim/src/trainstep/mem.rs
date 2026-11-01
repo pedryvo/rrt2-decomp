@@ -460,29 +460,58 @@ impl Ts<'_> {
     /// `effect_multiplier(e, company, person, territory)`: the person defaults to the company's
     /// (`+0x23`) when 0 (cargo.md 5).
     pub fn effect(&self, e: usize, company: i32, person: i32, territory: i32) -> f32 {
-        let st = &self.s.state;
-        let o = 0x2de + 2 * e;
-        let global = i16::from_le_bytes([st[o], st[o + 1]]);
-        let mut person = person;
-        let company_pct = if company != 0 && self.exists(P::Company, company) {
-            if person == 0 {
-                person = self.i32(P::Company, company, 0x23);
-            }
-            Some(self.i16(P::Company, company, 0x1ae + 2 * e))
-        } else {
-            None
-        };
-        let person_pct = (person != 0 && self.exists(P::Person, person))
-            .then(|| self.i16(P::Person, person, 0x26b + 2 * e));
-        let terr_pct = (territory != 0 && self.exists(P::Territory, territory))
-            .then(|| self.i16(P::Territory, territory, 0x58 + 2 * e));
-        effect_multiplier(EffectLevels {
-            global,
-            company: company_pct,
-            person: person_pct,
-            territory: terr_pct,
-        })
+        effect_from_save(self.s, e, company, person, territory)
     }
+}
+
+/// `effect_multiplier(e, company, person, territory)` read directly from [`Save`].
+pub fn effect_from_save(save: &Save, e: usize, company: i32, person: i32, territory: i32) -> f32 {
+    let st = &save.state;
+    let o = 0x2de + 2 * e;
+    let global = if o + 1 < st.len() {
+        i16::from_le_bytes([st[o], st[o + 1]])
+    } else {
+        0
+    };
+    let mut person = person;
+    let company_pct = if company > 0
+        && let Some(cr) = pool::record(&save.companies, company as usize)
+    {
+        if person == 0
+            && let Some(b) = cr.data.get(0x23..0x27)
+        {
+            person = i32::from_le_bytes([b[0], b[1], b[2], b[3]]);
+        }
+        cr.data
+            .get(0x1ae + 2 * e..0x1b0 + 2 * e)
+            .map(|b| i16::from_le_bytes([b[0], b[1]]))
+    } else {
+        None
+    };
+    let person_pct = (person > 0)
+        .then(|| {
+            pool::record(&save.persons, person as usize).and_then(|pr| {
+                pr.data
+                    .get(0x26b + 2 * e..0x26d + 2 * e)
+                    .map(|b| i16::from_le_bytes([b[0], b[1]]))
+            })
+        })
+        .flatten();
+    let terr_pct = (territory > 0)
+        .then(|| {
+            pool::record(&save.territories, territory as usize).and_then(|tr| {
+                tr.data
+                    .get(0x58 + 2 * e..0x5a + 2 * e)
+                    .map(|b| i16::from_le_bytes([b[0], b[1]]))
+            })
+        })
+        .flatten();
+    effect_multiplier(EffectLevels {
+        global,
+        company: company_pct,
+        person: person_pct,
+        territory: terr_pct,
+    })
 }
 
 /// `x & 0x8000001f` with the sign fix-up: the C remainder `x % 32` (sign of the dividend).

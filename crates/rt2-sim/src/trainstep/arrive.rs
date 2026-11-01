@@ -878,12 +878,20 @@ impl Ts<'_> {
             if v > 0 {
                 self.crt.range(0, 2);
             }
-            todo_hook!(
-                self.log,
-                "delivery_message",
-                "0x46abf0 (message box, speed record prompt of the viewed company)",
-                "cargo.md 6"
-            );
+            let is_speed_record = self.i32(P::Company, company, 0x15c) + 5 <= speed
+                && self.u8(P::Train, t, 0x29) == 0
+                && n > 0;
+            if v > 0 || n > 0 {
+                self.g.news.push(crate::message::GameMessage::TrainArrived {
+                    train: t,
+                    company,
+                    from_station: prev,
+                    to_station: station,
+                    revenue: v,
+                    speed,
+                    speed_record: is_speed_record,
+                });
+            }
         } else {
             let best = self.i32(P::Company, company, 0x15c).max(speed);
             self.seti32(P::Company, company, 0x15c, best);

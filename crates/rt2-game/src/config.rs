@@ -175,6 +175,33 @@ impl Default for Gameplay {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Network {
+    /// Default TCP port to host and connect (default 7777).
+    pub default_port: u16,
+    /// Player's profile name (up to 30 characters).
+    pub player_name: String,
+    /// Player's profile description (up to 250 characters).
+    pub player_description: String,
+    /// Player's portrait index (0..40).
+    pub player_portrait: u16,
+    /// Persistent identity across games and saves (docs/spec/multiplayer.md 5.3).
+    pub identity: u32,
+}
+
+impl Default for Network {
+    fn default() -> Self {
+        Network {
+            default_port: 7777,
+            player_name: "Player".to_string(),
+            player_description: "Railroad Tycoon".to_string(),
+            player_portrait: 0,
+            identity: 1,
+        }
+    }
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Config {
@@ -192,6 +219,8 @@ pub struct Config {
     pub gameplay: Gameplay,
     /// Which notices to show (`[notices]`, `notices.rs`).
     pub notices: crate::notices::Notices,
+    /// Multiplayer configuration (network port, player profile).
+    pub network: Network,
 }
 
 impl Config {

@@ -84,6 +84,12 @@ pub enum BuildCmd {
         stop: i32,
         cargo: [u8; 6],
     },
+    /// Consist cars for a stop (or 0xff for all stops), up to 8 cars.
+    ConsistCars {
+        train: i32,
+        stop: i32,
+        cars: [u8; 8],
+    },
     /// `0x21`: `train_set_class` (`0x4d59b0`): 0 Halted, 1 Slow, 2 Normal, 3 Express.
     TrainClass { train: i32, class: i8 },
     /// `0x2c`: `train+0x6d = now`, `train+0x9d = 1`: the train may leave (the purchase window
@@ -128,6 +134,8 @@ pub enum CmdError {
     NoPath,
     /// `building_can_place` refused the site.
     InvalidPlacement,
+    /// The bigger footprint of a station size change does not fit (`0x407540`, LNG 346).
+    NoRoomToExpand,
     /// The train, station or building id is not live.
     NoSuchObject,
     /// Fewer than two stations in the world (`train_buy`, LNG 352).
@@ -344,6 +352,27 @@ impl Ai<'_, '_> {
                     return Err(CmdError::InsufficientCash);
                 }
             }
+            BuildCmd::Improve { station, mask } if self.ts.live(P::Station, station) => {
+                // `0x407540` (OK of `buildbuy.win`): the price of the checked rows against the
+                // cash (LNG 345), then the space for a bigger station (LNG 346).
+                let owner = self.ts.i32(P::Station, station, 0x39);
+                let terr = self.ts.i32(P::Station, station, 0x4ad);
+                let mut total = 0i32;
+                for i in 0..super::improve::ROWS {
+                    if mask & (1 << i) != 0 {
+                        let m = self.ts.effect(8, owner, 0, terr);
+                        total = crate::fp::ftol(
+                            f64::from(m) * f64::from(self.improvement_cost(i)) + f64::from(total),
+                        );
+                    }
+                }
+                if f64::from(total) > cash(owner) {
+                    return Err(CmdError::InsufficientCash);
+                }
+                if !self.station_size_fits(station, mask, owner) {
+                    return Err(CmdError::NoRoomToExpand);
+                }
+            }
             _ => {}
         }
         Ok(())
@@ -492,6 +521,16 @@ impl Ai<'_, '_> {
                     return Ok(0);
                 }
                 self.train_stop_cargo(train, stop, cargo);
+                Ok(0)
+            }
+            BuildCmd::ConsistCars { train, stop, cars } => {
+                if !self.ts.live(P::Train, train) {
+                    return Err(CmdError::NoSuchObject);
+                }
+                if stop != 0xff && stop >= i32::from(self.ts.u8(P::Train, train, 0x3b)) {
+                    return Ok(0);
+                }
+                self.train_stop_cars(train, stop, &cars);
                 Ok(0)
             }
             BuildCmd::TrainClass { train, class } => {
