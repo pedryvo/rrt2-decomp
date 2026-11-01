@@ -28,6 +28,7 @@ pub(super) const A_CL_ADD: u32 = 11230;
 pub(super) const A_CL_CLEAR: u32 = 11285;
 pub(super) const A_CL_OK: u32 = 11286;
 pub(super) const A_CL_CANCEL: u32 = 11287;
+pub(super) const A_CL_TEMPLATE: u32 = 11288;
 
 const TEXT: Color = Color::rgb(0xee, 0xe4, 0xc8);
 const MUTED: Color = Color::rgb(0xb4, 0xaa, 0x8e);
@@ -35,7 +36,7 @@ const HEAD: Color = Color::rgb(0xe6, 0xc2, 0x6a);
 const INSET: Color = Color(0x0c, 0x0f, 0x0c, 0xd8);
 
 pub(super) fn owns(a: u32) -> bool {
-    (A_TP_GOTO..=A_CL_CANCEL).contains(&a)
+    (A_TP_GOTO..=A_CL_TEMPLATE).contains(&a)
 }
 
 fn fnt(n: u8, dz: f32) -> FontStyle {
@@ -389,6 +390,18 @@ impl AppState {
                 }
                 return;
             }
+            A_CL_TEMPLATE => {
+                let co = self.player().unwrap_or(0) as u8;
+                self.push_dialog(Dialog::Fleet {
+                    company: co,
+                    tab: 1,
+                    from_engine: None,
+                    to_engine: 0,
+                    template_idx: 0,
+                    train: Some(train),
+                });
+                return;
+            }
             _ => return,
         }
         if let Screen::Game(g) = &mut self.screen
@@ -502,6 +515,7 @@ impl AppState {
         }
         let by = h - pad - 30.0 * dz;
         for (i, (text, action)) in [
+            (t.a("Consist Templates"), A_CL_TEMPLATE),
             (t.a("Clear"), A_CL_CLEAR),
             (t.get(crate::text::id::OK, "OK"), A_CL_OK),
             (t.get(crate::text::id::CANCEL, "Cancel"), A_CL_CANCEL),
@@ -513,9 +527,9 @@ impl AppState {
                 root,
                 button(text, f, action, true),
                 at(
-                    w - pad - (3 - i) as f32 * (124.0 * dz),
+                    w - pad - (4 - i) as f32 * (136.0 * dz),
                     by,
-                    120.0 * dz,
+                    130.0 * dz,
                     30.0 * dz,
                 ),
             );

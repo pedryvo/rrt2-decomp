@@ -257,7 +257,7 @@ O usuário decidiu que todos os itens abaixo entram na 1.0, inclusive o multipla
 **Jogabilidade moderna** (sem alterar o balanceamento padrão)
 - [x] Desfazer a última construção
 - [x] Overlays de mapa: as camadas originais, mais oferta e demanda por carga, lucro por trecho e congestionamento
-- [ ] Gerenciador de frota: modelos de composição e troca de locomotiva em massa
+- [x] Gerenciador de frota: modelos de composição e troca de locomotiva em massa
 - [x] Gráficos e relatórios financeiros mais completos
 - [x] Notificações configuráveis e histórico de eventos
 

@@ -560,3 +560,43 @@ fn a_video_plays_into_its_sprite_and_any_input_skips_it() {
     press_key(&mut s, KeyCode::Space);
     assert!(!s.video_active());
 }
+
+#[test]
+fn fleet_manager_dialog_tabs_and_actions() {
+    let Some(mut s) = state() else { return };
+    s.push_dialog(Dialog::Fleet {
+        company: 0,
+        tab: 0,
+        from_engine: None,
+        to_engine: 0,
+        template_idx: 0,
+        train: None,
+    });
+    assert!(s.has_dialog());
+    assert!(has_text(&s, "FLEET MANAGEMENT"));
+    assert!(has_text(&s, "Bulk Replace"));
+    assert!(has_text(&s, "Consist Templates"));
+    assert!(has_text(&s, "Replace Model:"));
+    assert!(has_text(&s, "New Model:"));
+
+    // Switch to tab 1 (Consist Templates)
+    click(&mut s, build_dialogs::A_FL_TAB + 1);
+    assert!(has_text(&s, "Passenger Express"));
+    assert!(has_text(&s, "Fast Mail"));
+    assert!(has_text(&s, "Coal Hauler"));
+
+    // Select "Coal Hauler" template
+    click(&mut s, build_dialogs::A_FL_TEMPLATE + 2);
+    // Apply to all trains
+    click(&mut s, build_dialogs::A_FL_APPLY_ALL_TRAINS);
+
+    // Switch back to tab 0 (Bulk Replace)
+    click(&mut s, build_dialogs::A_FL_TAB);
+    assert!(has_text(&s, "Replace Model:"));
+    assert!(has_text(&s, "New Model:"));
+    assert!(has_text(&s, "Eligible Trains:"));
+
+    // Close dialog
+    click(&mut s, build_dialogs::A_CLOSE);
+    assert!(!s.has_dialog());
+}

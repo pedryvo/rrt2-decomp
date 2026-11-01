@@ -13,6 +13,38 @@ pub struct ConsistTemplate {
     pub cars: Vec<u8>,
 }
 
+impl ConsistTemplate {
+    /// Built-in consist templates for quick assignment.
+    pub fn defaults() -> Vec<ConsistTemplate> {
+        vec![
+            ConsistTemplate {
+                name: "Passenger Express".into(),
+                cars: vec![0, 0, 0, 1],
+            },
+            ConsistTemplate {
+                name: "Fast Mail".into(),
+                cars: vec![1, 1, 1, 1],
+            },
+            ConsistTemplate {
+                name: "Coal Hauler".into(),
+                cars: vec![4, 4, 4, 4, 4, 4],
+            },
+            ConsistTemplate {
+                name: "Iron & Coal".into(),
+                cars: vec![3, 3, 3, 4, 4, 4],
+            },
+            ConsistTemplate {
+                name: "Grain & Cattle".into(),
+                cars: vec![5, 5, 5, 6, 6, 6],
+            },
+            ConsistTemplate {
+                name: "General Goods".into(),
+                cars: vec![8, 8, 8, 8],
+            },
+        ]
+    }
+}
+
 impl World {
     /// Returns the current cash balance of `company` (account 0, offset `+0x4766`).
     pub fn company_cash(&self, company: u8) -> f64 {

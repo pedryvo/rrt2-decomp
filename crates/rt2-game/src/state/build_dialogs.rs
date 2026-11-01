@@ -32,8 +32,18 @@ pub(super) const A_TE_DELETE: u32 = 5164;
 pub(super) const A_TE_REPLACE: u32 = 5165;
 pub(super) const A_TE_SELL: u32 = 5166;
 pub(super) const A_TE_MAP: u32 = 5167;
+pub(super) const A_TE_FLEET: u32 = 5168;
 pub(super) const A_RT_BUY: u32 = 5180;
 pub(super) const A_CLOSE: u32 = 5199;
+
+pub(super) const A_FL_TAB: u32 = 5200;
+pub(super) const A_FL_FROM: u32 = 5210;
+pub(super) const A_FL_TO: u32 = 5240;
+pub(super) const A_FL_EXEC_REPLACE: u32 = 5270;
+pub(super) const A_FL_TEMPLATE: u32 = 5275;
+pub(super) const A_FL_APPLY_ALL_STOPS: u32 = 5286;
+pub(super) const A_FL_APPLY_ONE_STOP: u32 = 5287;
+pub(super) const A_FL_APPLY_ALL_TRAINS: u32 = 5288;
 
 pub(super) const TEXT: Color = Color::rgb(0xee, 0xe4, 0xc8);
 pub(super) const MUTED: Color = Color::rgb(0xb4, 0xaa, 0x8e);
@@ -171,6 +181,22 @@ impl AppState {
                 pick,
                 confirm,
             } => self.build_train_edit(ui, *train, *sel, *pick, *confirm),
+            Dialog::Fleet {
+                company,
+                tab,
+                from_engine,
+                to_engine,
+                template_idx,
+                train,
+            } => self.build_fleet_dialog(
+                ui,
+                *company,
+                *tab,
+                *from_engine,
+                *to_engine,
+                *template_idx,
+                *train,
+            ),
             Dialog::Rights { territory } => self.build_rights(ui, *territory),
             _ => return false,
         }
@@ -564,6 +590,7 @@ impl AppState {
             ),
             (t.a("Delete stop"), A_TE_DELETE, stops.len() > 1),
             (t.get(429, "Replace engine"), A_TE_REPLACE, true),
+            (t.a("Fleet Manager..."), A_TE_FLEET, true),
             (
                 if confirm {
                     t.a("Click again to sell")
@@ -945,6 +972,38 @@ impl AppState {
             (A_TE_REPLACE, Dialog::TrainEdit { train, .. }) => {
                 self.open_train_buy_dialog(Some(train));
             }
+            (A_TE_FLEET, Dialog::TrainEdit { train, .. }) => {
+                let co = self.player().unwrap_or(0) as u8;
+                self.push_dialog(Dialog::Fleet {
+                    company: co,
+                    tab: 0,
+                    from_engine: None,
+                    to_engine: 0,
+                    template_idx: 0,
+                    train: Some(train),
+                });
+            }
+            (
+                a,
+                Dialog::Fleet {
+                    company,
+                    tab,
+                    from_engine,
+                    to_engine,
+                    template_idx,
+                    train,
+                },
+            ) => {
+                self.fleet_dialog_action(
+                    a,
+                    company,
+                    tab,
+                    from_engine,
+                    to_engine,
+                    template_idx,
+                    train,
+                );
+            }
             (
                 A_TE_SELL,
                 Dialog::TrainEdit {
@@ -1273,6 +1332,22 @@ impl AppState {
                 "rights" => Dialog::Rights {
                     territory: s.territories.ordered().next()?.slot as i32,
                 },
+                "fleet" => Dialog::Fleet {
+                    company: co as u8,
+                    tab: 0,
+                    from_engine: None,
+                    to_engine: 0,
+                    template_idx: 0,
+                    train: bt::company_trains(s, co).first().copied(),
+                },
+                "fleet-templates" => Dialog::Fleet {
+                    company: co as u8,
+                    tab: 1,
+                    from_engine: None,
+                    to_engine: 0,
+                    template_idx: 0,
+                    train: bt::company_trains(s, co).first().copied(),
+                },
                 _ => return None,
             })
         };
@@ -1378,6 +1453,516 @@ impl AppState {
         if let Screen::Game(g) = &mut self.screen {
             g.build.from = None;
         }
+        self.rebuild_ui();
+    }
+
+    // ---- Fleet Management (PLAN section 12) -------------------------------------------------
+
+    #[allow(clippy::too_many_arguments)]
+    fn build_fleet_dialog(
+        &self,
+        ui: &mut Ui,
+        company: u8,
+        tab: usize,
+        from_engine: Option<u8>,
+        to_engine: u8,
+        template_idx: usize,
+        train: Option<i32>,
+    ) {
+        let t = &self.texts;
+        let (cw, ch) = ui.logical_size();
+        let dz = (ch / 620.0).clamp(1.0, 2.0);
+        let w = (740.0 * dz).min(cw - 16.0);
+        let h = (480.0 * dz).min(ch - 16.0);
+        let root = ui.add_root(
+            Kind::Panel { fill: Fill::Panel },
+            Layout::at(Anchor::Center, w, h),
+        );
+        let pad = 14.0 * dz;
+        ui.add(
+            root,
+            lbl(
+                &t.a("Fleet Management").to_uppercase(),
+                fnt(3, dz * 0.7),
+                HEAD,
+                Align::Left,
+            ),
+            at(pad, pad * 0.6, w * 0.5, 28.0 * dz),
+        );
+        ui.add(
+            root,
+            button(t.a("Close"), fnt(1, dz * 0.8), A_CLOSE, true),
+            Layout::at(Anchor::TopRight, 90.0 * dz, 26.0 * dz).offset(pad, pad * 0.6),
+        );
+
+        let tab_w = 160.0 * dz;
+        let tab_h = 26.0 * dz;
+        let tab_y = 36.0 * dz;
+        for (i, title) in [t.a("Bulk Replace"), t.a("Consist Templates")]
+            .into_iter()
+            .enumerate()
+        {
+            ui.add(
+                root,
+                Kind::Toggle {
+                    text: title,
+                    font: fnt(1, dz * 0.82),
+                    action: A_FL_TAB + i as u32,
+                    on: tab == i,
+                    enabled: true,
+                },
+                at(pad + i as f32 * (tab_w + 6.0 * dz), tab_y, tab_w, tab_h),
+            );
+        }
+
+        let body_y = tab_y + tab_h + 10.0 * dz;
+        let body_h = h - body_y - pad;
+
+        if tab == 0 {
+            self.build_fleet_replace_tab(
+                ui,
+                root,
+                company,
+                from_engine,
+                to_engine,
+                pad,
+                body_y,
+                w,
+                body_h,
+                dz,
+            );
+        } else {
+            self.build_fleet_templates_tab(
+                ui,
+                root,
+                company,
+                template_idx,
+                train,
+                pad,
+                body_y,
+                w,
+                body_h,
+                dz,
+            );
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn build_fleet_replace_tab(
+        &self,
+        ui: &mut Ui,
+        root: NodeId,
+        company: u8,
+        from_engine: Option<u8>,
+        to_engine: u8,
+        pad: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+        dz: f32,
+    ) {
+        let t = &self.texts;
+        let col_w = (w - 3.0 * pad) / 2.0;
+
+        let (total_trains, engine_counts) = self.fleet_engine_counts(company);
+
+        // Left Column: Replace Model
+        ui.add(
+            root,
+            lbl(&t.a("Replace Model:"), fnt(1, dz * 0.9), HEAD, Align::Left),
+            at(pad, y, col_w, 20.0 * dz),
+        );
+        let list_y = y + 24.0 * dz;
+        let row_h = 24.0 * dz;
+
+        // "All Models"
+        let all_on = from_engine.is_none();
+        ui.add(
+            root,
+            Kind::Toggle {
+                text: format!(
+                    "{} {}",
+                    t.a("All Models"),
+                    t.af("(%1 trains)", &[total_trains.to_string()])
+                ),
+                font: fnt(1, dz * 0.8),
+                action: A_FL_FROM,
+                on: all_on,
+                enabled: true,
+            },
+            at(pad, list_y, col_w, row_h - 2.0),
+        );
+
+        let mut row_idx = 1usize;
+        for (&eng_id, &count) in &engine_counts {
+            let name = self.fleet_engine_name(eng_id);
+            let on = from_engine == Some(eng_id);
+            ui.add(
+                root,
+                Kind::Toggle {
+                    text: format!("{name} {}", t.af("(%1 trains)", &[count.to_string()])),
+                    font: fnt(1, dz * 0.8),
+                    action: A_FL_FROM + 1 + u32::from(eng_id),
+                    on,
+                    enabled: true,
+                },
+                at(pad, list_y + row_idx as f32 * row_h, col_w, row_h - 2.0),
+            );
+            row_idx += 1;
+            if row_idx >= 7 {
+                break;
+            }
+        }
+
+        // Right Column: New Model
+        let rx = pad + col_w + pad;
+        ui.add(
+            root,
+            lbl(&t.a("New Model:"), fnt(1, dz * 0.9), HEAD, Align::Left),
+            at(rx, y, col_w, 20.0 * dz),
+        );
+
+        let avail = self.available_engines_for_fleet(company);
+        for (i, &(eng_id, ref name, cost, mph, _hp)) in avail.iter().take(7).enumerate() {
+            let on = to_engine == eng_id;
+            ui.add(
+                root,
+                Kind::Toggle {
+                    text: format!("{name} - ${cost} ({mph} mph)"),
+                    font: fnt(1, dz * 0.78),
+                    action: A_FL_TO + u32::from(eng_id),
+                    on,
+                    enabled: true,
+                },
+                at(rx, list_y + i as f32 * row_h, col_w, row_h - 2.0),
+            );
+        }
+
+        let bottom_y = y + h - 65.0 * dz;
+        let matching_trains = match from_engine {
+            None => {
+                total_trains.saturating_sub(engine_counts.get(&to_engine).copied().unwrap_or(0))
+            }
+            Some(fe) => {
+                if fe == to_engine {
+                    0
+                } else {
+                    engine_counts.get(&fe).copied().unwrap_or(0)
+                }
+            }
+        };
+
+        let unit_cost = avail.iter().find(|e| e.0 == to_engine).map_or(0, |e| e.2);
+        let total_cost = unit_cost.saturating_mul(matching_trains as i32);
+        let company_cash = self.game().map_or(0.0, |g| g.world.company_cash(company));
+
+        let summary_text = format!(
+            "{}   {}   {}",
+            t.af("Eligible Trains: %1", &[matching_trains.to_string()]),
+            t.af("Cost per Engine: %1", &[format!("${unit_cost}")]),
+            t.af("Total Cost: %1", &[format!("${total_cost}")]),
+        );
+        ui.add(
+            root,
+            lbl(&summary_text, fnt(1, dz * 0.82), TEXT, Align::Left),
+            at(pad, bottom_y, w - 2.0 * pad, 20.0 * dz),
+        );
+
+        let can_replace = matching_trains > 0 && company_cash >= f64::from(total_cost);
+        ui.add(
+            root,
+            button(
+                t.a("Replace Fleet"),
+                fnt(1, dz * 0.85),
+                A_FL_EXEC_REPLACE,
+                can_replace,
+            ),
+            at(
+                w - pad - 180.0 * dz,
+                bottom_y + 24.0 * dz,
+                180.0 * dz,
+                32.0 * dz,
+            ),
+        );
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn build_fleet_templates_tab(
+        &self,
+        ui: &mut Ui,
+        root: NodeId,
+        _company: u8,
+        template_idx: usize,
+        train: Option<i32>,
+        pad: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+        dz: f32,
+    ) {
+        let t = &self.texts;
+        let col_w = (w - 3.0 * pad) / 2.0;
+
+        let templates = rt2_sim::fleet::ConsistTemplate::defaults();
+        ui.add(
+            root,
+            lbl(
+                &t.a("Consist Templates"),
+                fnt(1, dz * 0.9),
+                HEAD,
+                Align::Left,
+            ),
+            at(pad, y, col_w, 20.0 * dz),
+        );
+        let list_y = y + 24.0 * dz;
+        let row_h = 28.0 * dz;
+
+        for (i, tpl) in templates.iter().enumerate() {
+            let on = template_idx == i;
+            ui.add(
+                root,
+                Kind::Toggle {
+                    text: t.a(&tpl.name),
+                    font: fnt(1, dz * 0.82),
+                    action: A_FL_TEMPLATE + i as u32,
+                    on,
+                    enabled: true,
+                },
+                at(pad, list_y + i as f32 * row_h, col_w, row_h - 2.0),
+            );
+        }
+
+        let rx = pad + col_w + pad;
+        let cur_tpl = templates.get(template_idx).unwrap_or(&templates[0]);
+        ui.add(
+            root,
+            lbl(&t.a(&cur_tpl.name), fnt(2, dz * 0.85), HEAD, Align::Left),
+            at(rx, y, col_w, 24.0 * dz),
+        );
+
+        let cars_y = y + 30.0 * dz;
+        let car_h = 24.0 * dz;
+        for (slot, &cargo_id) in cur_tpl.cars.iter().enumerate() {
+            let cargo_name = self
+                .with_info(|inf| inf.cargo_label(cargo_id))
+                .unwrap_or_else(|| format!("Cargo {cargo_id}"));
+            ui.add(
+                root,
+                lbl(
+                    &format!("{}. {}", slot + 1, cargo_name),
+                    fnt(1, dz * 0.8),
+                    TEXT,
+                    Align::Left,
+                ),
+                at(
+                    rx + 8.0 * dz,
+                    cars_y + slot as f32 * car_h,
+                    col_w - 16.0 * dz,
+                    car_h - 2.0,
+                ),
+            );
+        }
+
+        let bottom_y = y + h - 65.0 * dz;
+        let btn_w = 170.0 * dz;
+        let btn_h = 30.0 * dz;
+        if train.is_some() {
+            ui.add(
+                root,
+                button(
+                    t.a("Apply to Next Stop"),
+                    fnt(1, dz * 0.78),
+                    A_FL_APPLY_ONE_STOP,
+                    true,
+                ),
+                at(rx, bottom_y + 24.0 * dz, btn_w, btn_h),
+            );
+            ui.add(
+                root,
+                button(
+                    t.a("Apply to All Stops"),
+                    fnt(1, dz * 0.78),
+                    A_FL_APPLY_ALL_STOPS,
+                    true,
+                ),
+                at(rx + btn_w + 6.0 * dz, bottom_y + 24.0 * dz, btn_w, btn_h),
+            );
+        } else {
+            ui.add(
+                root,
+                button(
+                    t.a("Apply to Fleet"),
+                    fnt(1, dz * 0.8),
+                    A_FL_APPLY_ALL_TRAINS,
+                    true,
+                ),
+                at(rx, bottom_y + 24.0 * dz, 200.0 * dz, btn_h),
+            );
+        }
+    }
+
+    fn fleet_engine_counts(&self, company: u8) -> (usize, std::collections::BTreeMap<u8, usize>) {
+        let mut total = 0;
+        let mut map = std::collections::BTreeMap::new();
+        if let (Some(s), Some(data)) = (
+            self.game().and_then(|g| g.world.save_ref()),
+            self.data.as_ref(),
+        ) {
+            let img = &data.image;
+            for tr_slot in rt2_sim::pool::list_order(&s.trains) {
+                if let Some(tr) = rt2_sim::pool::record(&s.trains, tr_slot) {
+                    let tr_co =
+                        i32::from_le_bytes(tr.data[0x41..0x45].try_into().unwrap_or_default());
+                    if tr_co == i32::from(company) {
+                        total += 1;
+                        let first_car =
+                            i32::from_le_bytes(tr.data[0..4].try_into().unwrap_or_default());
+                        if first_car > 0
+                            && let Some(cr) = rt2_sim::pool::record(&s.pool_70, first_car as usize)
+                        {
+                            let vt = cr.data.get(8).copied().unwrap_or(0);
+                            let cur_engine = img.i8(0x0053_ddb8 + u32::from(vt) * 0x39 + 0x2f);
+                            if cur_engine >= 0 {
+                                *map.entry(cur_engine as u8).or_insert(0) += 1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        (total, map)
+    }
+
+    fn fleet_engine_name(&self, e: u8) -> String {
+        self.with_game(|_, data, _| self.engine_name(data, e as i32))
+            .unwrap_or_else(|| format!("Engine {e}"))
+    }
+
+    fn available_engines_for_fleet(&self, company: u8) -> Vec<(u8, String, i32, i32, i32)> {
+        let (year, month) = self.date_ym();
+        self.with_game(|s, data, _| {
+            bt::engine_rows(data, s, company as i32, year, month)
+                .into_iter()
+                .map(|r| {
+                    let name = self.engine_name(data, r.index);
+                    (r.index as u8, name, r.price, r.top_mph, r.power)
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn fleet_dialog_action(
+        &mut self,
+        action: u32,
+        company: u8,
+        mut tab: usize,
+        mut from_engine: Option<u8>,
+        mut to_engine: u8,
+        mut template_idx: usize,
+        train: Option<i32>,
+    ) {
+        match action {
+            A_FL_TAB => tab = 0,
+            a if a == A_FL_TAB + 1 => tab = 1,
+            A_FL_FROM => from_engine = None,
+            a if (A_FL_FROM + 1..A_FL_FROM + 30).contains(&a) => {
+                from_engine = Some((a - (A_FL_FROM + 1)) as u8);
+            }
+            a if (A_FL_TO..A_FL_TO + 30).contains(&a) => {
+                to_engine = (a - A_FL_TO) as u8;
+            }
+            A_FL_EXEC_REPLACE => {
+                self.fleet_execute_replace(company, from_engine, to_engine);
+                return;
+            }
+            a if (A_FL_TEMPLATE..A_FL_TEMPLATE + 10).contains(&a) => {
+                template_idx = (a - A_FL_TEMPLATE) as usize;
+            }
+            A_FL_APPLY_ALL_STOPS => {
+                let templates = rt2_sim::fleet::ConsistTemplate::defaults();
+                if let Some(tpl) = templates.get(template_idx) {
+                    self.fleet_apply_template(train, 0xff, &tpl.cars);
+                }
+                return;
+            }
+            A_FL_APPLY_ONE_STOP => {
+                let templates = rt2_sim::fleet::ConsistTemplate::defaults();
+                if let Some(tpl) = templates.get(template_idx) {
+                    self.fleet_apply_template(train, 0, &tpl.cars);
+                }
+                return;
+            }
+            A_FL_APPLY_ALL_TRAINS => {
+                let templates = rt2_sim::fleet::ConsistTemplate::defaults();
+                if let Some(tpl) = templates.get(template_idx) {
+                    self.fleet_apply_template(None, 0xff, &tpl.cars);
+                }
+                return;
+            }
+            _ => return,
+        }
+        self.set_top(Dialog::Fleet {
+            company,
+            tab,
+            from_engine,
+            to_engine,
+            template_idx,
+            train,
+        });
+    }
+
+    pub(super) fn fleet_execute_replace(
+        &mut self,
+        company: u8,
+        from_engine: Option<u8>,
+        to_engine: u8,
+    ) {
+        let res = if let Screen::Game(g) = &mut self.screen {
+            g.world
+                .bulk_replace_engines(company, from_engine, to_engine)
+        } else {
+            return;
+        };
+        match res {
+            Ok(n) => {
+                let msg = if n > 0 {
+                    self.texts
+                        .af("Replaced %1 locomotive(s).", &[n.to_string()])
+                } else {
+                    self.texts.a("No eligible trains to replace.")
+                };
+                self.toast_text(msg);
+                self.rebuild_ui();
+            }
+            Err(_) => {
+                let msg = self.texts.a("Not enough cash to replace engines.");
+                self.toast_text(msg);
+            }
+        }
+    }
+
+    pub(super) fn fleet_apply_template(&mut self, train: Option<i32>, stop: u8, cars: &[u8]) {
+        let co = self.player().unwrap_or(0) as u8;
+        let Screen::Game(g) = &mut self.screen else {
+            return;
+        };
+        if let Some(t) = train {
+            let _ = g.world.apply_consist_template(t as u16, stop, cars);
+        } else if let Some(save) = g.world.save_ref() {
+            let trains: Vec<u16> = save
+                .trains
+                .ordered()
+                .filter(|tr| tr.data.get(0x41).copied() == Some(co))
+                .map(|tr| tr.slot as u16)
+                .collect();
+            for t in trains {
+                let _ = g.world.apply_consist_template(t, 0xff, cars);
+            }
+        }
+        let msg = self.texts.a("Template applied.");
+        self.toast_text(msg);
         self.rebuild_ui();
     }
 }

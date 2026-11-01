@@ -479,7 +479,7 @@ impl AppState {
                 let names = [
                     t.a("Free flow"),
                     t.a("Light delay"),
-                    t.a("Moderate"),
+                    t.a("Moderate delay"),
                     t.a("Heavy queue"),
                     t.a("Bottleneck"),
                 ];

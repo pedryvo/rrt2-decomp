@@ -124,6 +124,15 @@ pub(super) enum Dialog {
         pick: usize,
         confirm: bool,
     },
+    /// Fleet Management (PLAN section 12): bulk engine replacement and consist templates.
+    Fleet {
+        company: u8,
+        tab: usize,
+        from_engine: Option<u8>,
+        to_engine: u8,
+        template_idx: usize,
+        train: Option<i32>,
+    },
     Rights {
         territory: i32,
     },
@@ -1212,6 +1221,7 @@ impl AppState {
             | Dialog::StationBuy { .. }
             | Dialog::TrainBuy { .. }
             | Dialog::TrainEdit { .. }
+            | Dialog::Fleet { .. }
             | Dialog::Rights { .. }) => {
                 self.build_build_dialog(ui, &d);
             }

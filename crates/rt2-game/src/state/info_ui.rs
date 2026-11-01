@@ -14,6 +14,7 @@ use winit::keyboard::KeyCode;
 
 use rt2_ui::{Align, Anchor, Color, Fill, FontStyle, Kind, Layout, NodeId, Ui, game_font};
 
+use super::dialogs::Dialog;
 use super::dialogs::fin::A_FINACT;
 use super::{AppState, Screen};
 use crate::info::{Block, Info, ListPage, Page, Pick, TOTAL, Table};
@@ -26,6 +27,7 @@ pub(super) const A_PREV_CO: u32 = 112;
 pub(super) const A_NEXT_CO: u32 = 113;
 pub(super) const A_ROW: u32 = 120;
 pub(super) const A_TOOL: u32 = 130;
+pub(super) const A_INFO_FLEET: u32 = 140;
 /// Per-row Buy / Sell buttons of the stock list (row = action - base, 60 rows each).
 pub(super) const A_STOCK_BUY: u32 = 6200;
 pub(super) const A_STOCK_SELL: u32 = 6260;
@@ -661,6 +663,17 @@ impl AppState {
                 let row = (a - A_STOCK_BUY) % 60;
                 self.stock_trade_row(row as usize);
             }
+            A_INFO_FLEET => {
+                let co = self.player().unwrap_or(0) as u8;
+                self.push_dialog(Dialog::Fleet {
+                    company: co,
+                    tab: 0,
+                    from_engine: None,
+                    to_engine: 0,
+                    template_idx: 0,
+                    train: None,
+                });
+            }
             A_ROW => {
                 // Enter on the selected row of a list.
                 if let Some(row) = self.ui.focused().and_then(|f| self.ui.selected(f)) {
@@ -887,6 +900,7 @@ impl AppState {
         let acts = match screen {
             InfoScreen::Finance(c) => self.fin_buttons(self.resolved_company(c)),
             InfoScreen::Overview(c) => self.overview_buttons(self.resolved_company(c)),
+            InfoScreen::Trains => vec![(self.texts.a("Fleet Manager..."), A_INFO_FLEET)],
             _ => Vec::new(),
         };
         if !acts.is_empty() {
