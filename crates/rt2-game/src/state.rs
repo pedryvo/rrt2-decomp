@@ -1417,17 +1417,28 @@ impl AppState {
             StartMode::Load | StartMode::Auto => {
                 let mut w = World::from_save_seeded(&save, &data, seed);
                 w.apply(Command::SeedRng(seed));
+                if let Ok((_, rules)) = rt2_sim::ruleset::split_save_trailer(&raw) {
+                    w.set_ruleset(rules);
+                }
                 (w, crate::setup::Setup::default())
             }
             StartMode::Scenario(setup) => {
                 let mut o = setup.new_game_options(&save, &name, None, seed);
                 o.lng = self.texts.english().cloned().map(std::sync::Arc::new);
-                (World::new_game(&save, &o, &data, seed), *setup)
+                let mut w = World::new_game(&save, &o, &data, seed);
+                let rules = rt2_sim::ruleset::Ruleset::from_bits(self.config.ruleset)
+                    .unwrap_or(rt2_sim::ruleset::Ruleset::FAITHFUL);
+                w.set_ruleset(rules);
+                (w, *setup)
             }
             StartMode::Campaign(setup, c) => {
                 let mut o = setup.new_game_options(&save, &name, Some(c), seed);
                 o.lng = self.texts.english().cloned().map(std::sync::Arc::new);
-                (World::new_game(&save, &o, &data, seed), *setup)
+                let mut w = World::new_game(&save, &o, &data, seed);
+                let rules = rt2_sim::ruleset::Ruleset::from_bits(self.config.ruleset)
+                    .unwrap_or(rt2_sim::ruleset::Ruleset::FAITHFUL);
+                w.set_ruleset(rules);
+                (w, *setup)
             }
         };
         // Everything below reads the converted state the world keeps, not the file's layout.

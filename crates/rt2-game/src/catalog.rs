@@ -99,9 +99,11 @@ pub fn list_saves(install: &Path, own: Option<&Path>) -> Vec<Entry> {
 
 /// Parses a file as a save, or as a plain map when it has no game state.
 pub fn load_any(raw: &[u8]) -> anyhow::Result<(Map, Option<Save>)> {
-    match Save::parse(raw) {
+    let (body, _) = rt2_sim::ruleset::split_save_trailer(raw)
+        .unwrap_or((raw, rt2_sim::ruleset::Ruleset::FAITHFUL));
+    match Save::parse(body) {
         Ok(save) => Ok((save.map.clone(), Some(save))),
-        Err(_) => Ok((Map::parse(raw)?, None)),
+        Err(_) => Ok((Map::parse(body)?, None)),
     }
 }
 

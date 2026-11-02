@@ -17,6 +17,7 @@ use super::options_ui::*;
 use super::*;
 use crate::keys::KeyAction;
 use crate::options::{Setting, Tab};
+use crate::saves::SaveKind;
 
 fn install() -> Option<PathBuf> {
     std::env::var_os("RT2_DIR")
@@ -509,4 +510,79 @@ fn a_settings_tab_that_does_not_fit_scrolls() {
     assert!(!s.ui.draw_order().into_iter().any(|(_, id)| {
         matches!(&s.ui.node(id).kind, Kind::Button { action, .. } if *action == A_OPT_SCROLL)
     }));
+}
+
+#[test]
+fn fixes_tab_lists_rules_toggles_and_resets() {
+    let Some(mut s) = state() else { return };
+    s.open_options(Tab::Fixes);
+    assert!(s.options_open());
+    assert_eq!(s.current_ruleset(), rt2_sim::ruleset::Ruleset::FAITHFUL);
+
+    // Click "All Fixes"
+    s.options_activated(A_OPT_FIX_ALL);
+    assert_eq!(s.current_ruleset(), rt2_sim::ruleset::Ruleset::all());
+    assert_eq!(s.config.ruleset, rt2_sim::ruleset::Ruleset::all().bits());
+
+    // Toggle the first fix off
+    s.options_activated(A_OPT_FIX_TOGGLE);
+    assert!(
+        !s.current_ruleset()
+            .has(rt2_sim::ruleset::Fix::AiDividendPolicyOnce)
+    );
+
+    // Reset to faithful via button
+    s.options_activated(A_OPT_FIX_FAITHFUL);
+    assert_eq!(s.current_ruleset(), rt2_sim::ruleset::Ruleset::FAITHFUL);
+    assert_eq!(s.config.ruleset, 0);
+
+    // Reset tab also restores faithful
+    s.options_activated(A_OPT_FIX_ALL);
+    assert_eq!(s.current_ruleset(), rt2_sim::ruleset::Ruleset::all());
+    s.options_activated(A_OPT_RESET);
+    assert_eq!(s.current_ruleset(), rt2_sim::ruleset::Ruleset::FAITHFUL);
+    assert_eq!(s.config.ruleset, 0);
+}
+
+#[test]
+fn ruleset_in_game_command_and_save_trailer_roundtrip() {
+    let save_path = std::env::var_os("RT2_SAVE_2348")
+        .map(PathBuf::from)
+        .or_else(|| {
+            std::env::var_os("HOME")
+                .map(|h| PathBuf::from(h).join(".cache/rrt2/buildwork/ex_dl0.GAM"))
+        })
+        .filter(|p| p.is_file());
+    let Some(save_file) = save_path else { return };
+    let Some(mut s) = state() else { return };
+    let dir = tmp("ruleset");
+    s.set_saves_dir(Some(dir.clone()));
+    s.start(&save_file).expect("starts");
+
+    // Initially faithful
+    assert_eq!(s.current_ruleset(), rt2_sim::ruleset::Ruleset::FAITHFUL);
+
+    // Open options, switch to Fixes, enable All Fixes
+    s.open_options(Tab::Fixes);
+    s.options_activated(A_OPT_FIX_ALL);
+    assert_eq!(s.current_ruleset(), rt2_sim::ruleset::Ruleset::all());
+    s.close_overlay();
+
+    // Verify game's world received the SetRuleset command
+    assert_eq!(
+        s.game().unwrap().world.ruleset(),
+        rt2_sim::ruleset::Ruleset::all()
+    );
+
+    // Save game
+    let save_res = s.write_own_save("test_ruleset_save", SaveKind::Manual);
+    let p = save_res.expect("save succeeded");
+
+    // Load the save back
+    s.start(&p).expect("load succeeded");
+    assert_eq!(s.current_ruleset(), rt2_sim::ruleset::Ruleset::all());
+
+    let _ = std::fs::remove_file(&p);
+    let _ = std::fs::remove_file(p.with_extension("meta"));
+    let _ = std::fs::remove_file(p.with_extension("png"));
 }

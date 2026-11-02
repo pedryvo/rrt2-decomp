@@ -15,16 +15,18 @@ pub enum Tab {
     Keys,
     Gameplay,
     Notices,
+    Fixes,
 }
 
 impl Tab {
-    pub const ALL: [Tab; 6] = [
+    pub const ALL: [Tab; 7] = [
         Tab::Display,
         Tab::Audio,
         Tab::Language,
         Tab::Keys,
         Tab::Gameplay,
         Tab::Notices,
+        Tab::Fixes,
     ];
 
     pub fn english(self) -> &'static str {
@@ -35,6 +37,7 @@ impl Tab {
             Tab::Keys => "Keys",
             Tab::Gameplay => "Gameplay",
             Tab::Notices => "Notices",
+            Tab::Fixes => "Fixes",
         }
     }
 
@@ -67,7 +70,7 @@ impl Tab {
                 Setting::NoticeTowns,
                 Setting::NoticeCompetitors,
             ],
-            Tab::Language | Tab::Keys => &[],
+            Tab::Language | Tab::Keys | Tab::Fixes => &[],
         }
     }
 }
@@ -584,6 +587,7 @@ pub fn reset_tab(c: &mut Config, tab: Tab) -> Effects {
         Tab::Notices => c.notices = d.notices,
         Tab::Keys => c.keys = d.keys,
         Tab::Language => {}
+        Tab::Fixes => c.ruleset = 0,
     }
     fx
 }

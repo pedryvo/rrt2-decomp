@@ -40,6 +40,9 @@ pub(super) const A_OPT_KEYRESET: u32 = 8903;
 /// Scroll buttons of a tab with more rows than the panel shows (up, down).
 pub(super) const A_OPT_SCROLL: u32 = 8904;
 const A_SCROLL_DOWN: u32 = 8905;
+pub(super) const A_OPT_FIX_TOGGLE: u32 = 8920;
+pub(super) const A_OPT_FIX_FAITHFUL: u32 = 8940;
+pub(super) const A_OPT_FIX_ALL: u32 = 8941;
 const PICK_SPAN: u32 = 16;
 /// Whether `a` is an action of this screen.
 pub(super) fn owns(a: u32) -> bool {
@@ -144,6 +147,7 @@ impl AppState {
             "keys" => Tab::Keys,
             "gameplay" => Tab::Gameplay,
             "notices" => Tab::Notices,
+            "fixes" | "rules" => Tab::Fixes,
             // The key tab while rebinding "Pause / resume", then after pressing Q (a clash).
             "keys-rebind" | "keys-conflict" => {
                 self.open_options(Tab::Keys);
@@ -384,16 +388,35 @@ impl AppState {
                     self.config.keys = crate::config::Keys::default();
                     self.keys_changed();
                     self.rebuild_ui();
+                } else if tab == Tab::Fixes {
+                    self.set_active_ruleset(rt2_sim::ruleset::Ruleset::FAITHFUL);
                 } else {
                     let fx = options::reset_tab(&mut self.config, tab);
                     self.config_changed(fx);
                 }
             }
-            a if (A_OPT_TAB..A_OPT_TAB + 5).contains(&a) => {
+            a if (A_OPT_TAB..A_OPT_TAB + Tab::ALL.len() as u32).contains(&a) => {
                 o.tab = Tab::ALL[(a - A_OPT_TAB) as usize];
                 o.rebinding = None;
                 o.scroll = 0;
                 self.rebuild_ui();
+            }
+            A_OPT_FIX_FAITHFUL => {
+                self.set_active_ruleset(rt2_sim::ruleset::Ruleset::FAITHFUL);
+            }
+            A_OPT_FIX_ALL => {
+                self.set_active_ruleset(rt2_sim::ruleset::Ruleset::all());
+            }
+            a if (A_OPT_FIX_TOGGLE..A_OPT_FIX_TOGGLE + rt2_sim::ruleset::FIXES.len() as u32)
+                .contains(&a) =>
+            {
+                let idx = (a - A_OPT_FIX_TOGGLE) as usize;
+                if let Some(fix_info) = rt2_sim::ruleset::FIXES.get(idx) {
+                    let mut rules = self.current_ruleset();
+                    let cur = rules.has(fix_info.fix);
+                    rules.set(fix_info.fix, !cur);
+                    self.set_active_ruleset(rules);
+                }
             }
             A_OPT_SCROLL | A_SCROLL_DOWN => {
                 self.options_scroll(if a == A_OPT_SCROLL { -1 } else { 1 });
@@ -598,6 +621,7 @@ impl AppState {
         match o.tab {
             Tab::Language => self.build_language(ui, panel, &body),
             Tab::Keys => self.build_keys(ui, panel, &body, o),
+            Tab::Fixes => self.build_fixes(ui, panel, &body, o),
             tab => self.build_rows(ui, panel, &body, tab, o.scroll),
         }
     }
@@ -911,6 +935,125 @@ impl AppState {
                     hotkey: None,
                 },
                 at(b.x + i as f32 * (bw + 6.0), by, bw, bar_h),
+            );
+        }
+    }
+
+    pub(super) fn current_ruleset(&self) -> rt2_sim::ruleset::Ruleset {
+        if let Some(g) = self.game() {
+            g.world.ruleset()
+        } else {
+            rt2_sim::ruleset::Ruleset::from_bits(self.config.ruleset)
+                .unwrap_or(rt2_sim::ruleset::Ruleset::FAITHFUL)
+        }
+    }
+
+    pub(super) fn set_active_ruleset(&mut self, rules: rt2_sim::ruleset::Ruleset) {
+        self.config.ruleset = rules.bits();
+        if self.in_game() {
+            self.apply_command(rt2_sim::Command::SetRuleset(rules));
+        }
+        self.rebuild_ui();
+    }
+
+    fn build_fixes(&self, ui: &mut Ui, panel: NodeId, b: &Body, o: &OptionsState) {
+        let t = &self.texts;
+        let rules = self.current_ruleset();
+        let fixes = rt2_sim::ruleset::FIXES;
+
+        // Preset buttons
+        let bar_h = 28.0 * b.u.max(0.85);
+        let btn_font = game_font(2).with_size((12.0 * b.u.max(0.85)).round().max(10.0));
+        let btn_w = 160.0 * b.u.max(0.85);
+
+        ui.add(
+            panel,
+            button(&t.a("Faithful (Default)"), btn_font, A_OPT_FIX_FAITHFUL),
+            at(b.x, b.y, btn_w, bar_h),
+        );
+        ui.add(
+            panel,
+            button(&t.a("All Fixes"), btn_font, A_OPT_FIX_ALL),
+            at(b.x + btn_w + 10.0, b.y, btn_w, bar_h),
+        );
+
+        let list_y = b.y + bar_h + 8.0;
+        let list_h = b.h - bar_h - 8.0;
+
+        let (first, shown) = row_window(fixes.len(), rows_that_fit(list_h), o.scroll);
+        let scrolls = shown < fixes.len();
+        let n = shown.max(1) as f32;
+        let row_h = (list_h / n).clamp(MIN_ROW_H, 46.0 * b.u.max(0.8));
+        let fs = (row_h * 0.44).clamp(11.0, 18.0);
+        let label_font = game_font(8).with_size(fs.round());
+        let desc_font = game_font(1).with_size((fs * 0.76).round().max(9.0));
+
+        let gutter = if scrolls { 34.0 } else { 0.0 };
+        let toggle_w = 70.0 * b.u.max(0.8);
+        let label_w = b.w - toggle_w - 12.0 - gutter;
+
+        if scrolls {
+            let bx = b.x + b.w - 28.0;
+            let bw = 24.0;
+            ui.add(
+                panel,
+                button("^", btn_font, A_OPT_SCROLL),
+                at(bx, list_y, bw, 28.0),
+            );
+            ui.add(
+                panel,
+                button("v", btn_font, A_SCROLL_DOWN),
+                at(bx, list_y + list_h - 28.0, bw, 28.0),
+            );
+            ui.add(
+                panel,
+                text(
+                    &format!("{}-{}/{}", first + 1, first + shown, fixes.len()),
+                    btn_font,
+                    MUTED,
+                    Align::Center,
+                ),
+                at(bx - 8.0, list_y + list_h / 2.0 - 10.0, bw + 16.0, 20.0),
+            );
+        }
+
+        for (i, fix_info) in fixes.iter().enumerate().skip(first).take(shown) {
+            let y = list_y + (i - first) as f32 * row_h;
+            let on = rules.has(fix_info.fix);
+            let name_str = t.a(fix_info.name);
+            let tag_str = if fix_info.gameplay {
+                format!("[{}]", t.a("Gameplay"))
+            } else {
+                format!("[{}]", t.a("Internal"))
+            };
+            let title = format!("{name_str}  {tag_str}");
+
+            ui.add(
+                panel,
+                text(
+                    &title,
+                    label_font.with_shadow(),
+                    if on { CREAM } else { MUTED },
+                    Align::Left,
+                ),
+                at(b.x, y, label_w, row_h * 0.52),
+            );
+            ui.add(
+                panel,
+                text(fix_info.description, desc_font, MUTED, Align::Left),
+                at(b.x, y + row_h * 0.50, label_w, row_h * 0.45),
+            );
+
+            ui.add(
+                panel,
+                Kind::Toggle {
+                    text: if on { t.a("On") } else { t.a("Off") },
+                    font: btn_font,
+                    action: A_OPT_FIX_TOGGLE + i as u32,
+                    on,
+                    enabled: true,
+                },
+                at(b.x + label_w + 8.0, y + 2.0, toggle_w, row_h - 6.0),
             );
         }
     }

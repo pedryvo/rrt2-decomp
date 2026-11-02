@@ -137,14 +137,15 @@ impl AppState {
     }
 
     /// Writes the running game as `stem` (manual or quick save).
-    fn write_own_save(&self, stem: &str, kind: SaveKind) -> Result<PathBuf, String> {
+    pub(super) fn write_own_save(&self, stem: &str, kind: SaveKind) -> Result<PathBuf, String> {
         let Screen::Game(g) = &self.screen else {
             return Err("no game".to_owned());
         };
         let dir = self.own_saves_dir()?;
         let meta = self.current_meta(kind).ok_or("no game")?;
         let thumb = g.radar.as_ref().map(thumbnail_of);
-        let bytes = self.save_with_camera().ok_or("no game")?.to_bytes();
+        let mut bytes = self.save_with_camera().ok_or("no game")?.to_bytes();
+        rt2_sim::ruleset::append_save_trailer(&mut bytes, g.world.ruleset());
         saves::write_save(&dir, stem, &bytes, &meta, thumb.as_ref()).map_err(|e| format!("{e:#}"))
     }
 

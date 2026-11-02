@@ -222,6 +222,9 @@ pub struct Config {
     pub gameplay: Gameplay,
     /// Which notices to show (`[notices]`, `notices.rs`).
     pub notices: crate::notices::Notices,
+    /// Optional bug fixes bitmask ([`rt2_sim::ruleset::Ruleset`]); absent = faithful (0).
+    #[serde(default)]
+    pub ruleset: u64,
     /// Multiplayer configuration (network port, player profile).
     pub network: Network,
 }
