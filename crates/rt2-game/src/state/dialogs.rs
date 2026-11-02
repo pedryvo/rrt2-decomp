@@ -85,6 +85,8 @@ pub(super) enum Act {
         building: i32,
         buy: bool,
     },
+    MainMenu,
+    Quit,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -241,7 +243,7 @@ impl AppState {
         }
     }
 
-    fn top_dialog(&self) -> Option<&Dialog> {
+    pub(super) fn top_dialog(&self) -> Option<&Dialog> {
         match &self.screen {
             Screen::Game(g) => g.dialogs.last(),
             Screen::Menu(_) => None,
@@ -977,6 +979,14 @@ impl AppState {
                         self.close_dialog();
                         self.trade_industry(building, buy);
                     }
+                    Some(Act::MainMenu) => {
+                        self.close_dialog();
+                        self.go_to_menu();
+                    }
+                    Some(Act::Quit) => {
+                        self.close_dialog();
+                        self.effects.push(super::Effect::Quit);
+                    }
                     None => {}
                 }
             }
@@ -1014,9 +1024,32 @@ impl AppState {
             A_FILE_NEW => self.file_new(),
             A_FILE_MENU => {
                 self.close_dialog();
-                self.go_to_menu();
+                self.push_dialog(Dialog::Message(Message {
+                    title: self.texts.a("Main Menu"),
+                    body: self.texts.get(
+                        357,
+                        "Are you sure you want to return to the main menu?\n\n(Unsaved games will be lost.)",
+                    ),
+                    buttons: vec![
+                        (self.texts.get(452, "Yes"), Act::MainMenu),
+                        (self.texts.get(453, "No"), Act::Close),
+                    ],
+                }));
             }
-            A_FILE_QUIT => self.effects.push(super::Effect::Quit),
+            A_FILE_QUIT => {
+                self.close_dialog();
+                self.push_dialog(Dialog::Message(Message {
+                    title: self.texts.get(lng::QUIT, "Quit"),
+                    body: self.texts.get(
+                        358,
+                        "Are you sure you want to quit?\n\n(Unsaved games will be lost.)",
+                    ),
+                    buttons: vec![
+                        (self.texts.get(452, "Yes"), Act::Quit),
+                        (self.texts.get(453, "No"), Act::Close),
+                    ],
+                }));
+            }
             _ => return false,
         }
         true

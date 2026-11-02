@@ -73,16 +73,213 @@ impl Info<'_> {
             .collect()
     }
 
-    /// Portrait index (`bigp00..40`, `brplyr00..40`) of the chairman of `company`: byte `+1` of
+    /// Active companies in the game's company set (`0x570729`, `0x57072d`), matching the
+    /// indices of each person's `PE_HOLDINGS` table.
+    pub(crate) fn company_set(&self) -> Vec<usize> {
+        let n = self
+            .save
+            .state
+            .get(0x241..0x245)
+            .map_or(0, |b| {
+                i32::from_le_bytes(b.try_into().unwrap()).max(0) as usize
+            })
+            .min(36);
+        (0..n)
+            .map(|i| {
+                let off = 0x245 + 2 * i;
+                self.save
+                    .state
+                    .get(off..off + 2)
+                    .map_or(0, |b| u16::from_le_bytes(b.try_into().unwrap()) as usize)
+            })
+            .collect()
+    }
+
+    /// Portrait index (`bigp00..40`, `brplyr00..40`) of person `slot` (`playrdtl.win`): byte `+1` of
     /// the persona's table record (finance.md 14.4), the persona being the person's `+0x52f`.
-    pub fn chairman_portrait(&self, company: u32) -> Option<usize> {
-        let chair = rec(&self.save.companies, company)?.i32(CO_CHAIRMAN);
-        let p = rec(
-            &self.save.persons,
-            u32::try_from(chair).ok().filter(|&c| c > 0)?,
-        )?;
+    pub fn player_portrait(&self, slot: u32) -> Option<usize> {
+        let p = rec(&self.save.persons, slot)?;
+        let img_idx = p.u8(0x132);
+        if img_idx > 0 && usize::from(img_idx) <= 40 {
+            return Some(usize::from(img_idx));
+        }
         let persona = u32::from(p.u8(0x52f)).min(40);
         Some(usize::from(self.data.image.u8(0x0055_1e88 + persona * 0x23 + 1)).min(40))
+    }
+
+    /// Portrait index (`bigp00..40`, `brplyr00..40`) of the chairman of `company`.
+    pub fn chairman_portrait(&self, company: u32) -> Option<usize> {
+        let chair = rec(&self.save.companies, company)?.i32(CO_CHAIRMAN);
+        let slot = u32::try_from(chair).ok().filter(|&c| c > 0)?;
+        self.player_portrait(slot)
+    }
+
+    /// Player detail page (`playrdtl.win`, screens.md H1): tycoon's portrait, bio, position,
+    /// play style, wealth (cash, stock, net worth, purchasing power) and stock portfolio.
+    pub fn player_page(&self, slot: u32) -> Page {
+        let Some(p) = rec(&self.save.persons, slot) else {
+            return Page {
+                title: self.t(1726, "Players"),
+                left: vec![Block::Note(self.a("No such player."))],
+                ..Page::default()
+            };
+        };
+        let is_human = p.u8(PE_HUMAN) != 0;
+        let name = self.person_name(slot);
+        let title = if is_human && self.detailed() {
+            format!("{name} *")
+        } else {
+            name
+        };
+        let chair = p.i32(PE_CHAIR_OF);
+        let subtitle = if chair > 0 {
+            format!(
+                "{}: {}",
+                self.t(112, "Chairman"),
+                self.company_name(chair as u32)
+            )
+        } else {
+            self.a("Independent Tycoon")
+        };
+
+        let bio = {
+            let b = p.text(0x27, 250);
+            if !b.is_empty() {
+                b
+            } else {
+                let persona = u32::from(p.u8(0x52f)).min(40);
+                let bio_id = u32::from(self.data.image.u16(0x0055_1ea9 + 0x23 * persona));
+                let s = if bio_id > 0 {
+                    self.t(bio_id, "")
+                } else {
+                    String::new()
+                };
+                if !s.is_empty() {
+                    s
+                } else {
+                    self.t(1540 + 2 * persona, "")
+                }
+            }
+        };
+
+        let mut left = Vec::new();
+        if !bio.is_empty() {
+            left.push(Block::Note(bio));
+        }
+
+        let facts = vec![
+            (
+                self.a("Type"),
+                if is_human {
+                    self.a("Human Player")
+                } else {
+                    self.a("Computer Tycoon")
+                },
+            ),
+            (
+                self.t(112, "Chairman"),
+                if chair > 0 {
+                    self.company_name(chair as u32)
+                } else {
+                    DASH.to_owned()
+                },
+            ),
+            (self.a("Reputation"), p.i32(PE_REPUTATION).to_string()),
+        ];
+        left.push(Block::Facts(facts));
+
+        let persona = u32::from(p.u8(0x52f)).min(40);
+        let base = 0x0055_1e88 + 0x23 * persona;
+        let trait_val = |off: u32| self.data.image.i32(base + off);
+        let trait_desc = |v: i32| {
+            if v >= 60 {
+                self.a("High")
+            } else if v <= 20 {
+                self.a("Low")
+            } else {
+                self.a("Moderate")
+            }
+        };
+        let traits = vec![
+            (self.a("Aggressiveness"), trait_desc(trait_val(0x03))),
+            (self.a("Margin trading"), trait_desc(trait_val(0x07))),
+            (self.a("Short selling"), trait_desc(trait_val(0x0b))),
+            (self.a("External investments"), trait_desc(trait_val(0x0f))),
+            (self.a("Bond issuance"), trait_desc(trait_val(0x13))),
+            (self.a("Rail expansion"), trait_desc(trait_val(0x17))),
+            (self.a("Industry investment"), trait_desc(trait_val(0x1b))),
+        ];
+        left.push(Block::Facts(traits));
+
+        let cash = p.f64(PE_CASH);
+        let set = self.company_set();
+        let mut stock_total = 0.0f64;
+        let mut weighted_stock = 0.0f64;
+        let mut holdings_rows = Vec::new();
+
+        for (idx, &c) in set.iter().enumerate() {
+            let h = p.i32(PE_HOLDINGS + 4 * idx);
+            if h == 0 {
+                continue;
+            }
+            let price = rec(&self.save.companies, c as u32)
+                .map(|r| self.standing(&r))
+                .and_then(|s| s.price)
+                .unwrap_or(0);
+            let val = f64::from(h) * f64::from(price);
+            stock_total += val;
+            if h > 0 {
+                weighted_stock += val * 0.5;
+            } else {
+                weighted_stock += val * 1.5;
+            }
+            holdings_rows.push((
+                c as u32,
+                vec![
+                    self.company_name(c as u32),
+                    int(i64::from(h)),
+                    money(f64::from(price)),
+                    money(val),
+                ],
+            ));
+        }
+
+        let net_worth = cash + stock_total;
+        let power = cash + weighted_stock;
+
+        let wealth_facts = vec![
+            (self.t(31, "Cash"), money(cash)),
+            (self.t(41, "Stock"), money(stock_total)),
+            (self.t(181, "Net Worth"), money(net_worth)),
+            (self.t(2261, "Purchasing Power"), money(power)),
+        ];
+
+        let mut right = vec![Block::Facts(wealth_facts)];
+
+        let mut table = Table::new(&[
+            (&self.t(178, "Company"), 3.0, false),
+            (&self.a("Shares"), 1.8, true),
+            (&self.t(1005, "Price"), 1.6, true),
+            (&self.a("Value"), 2.0, true),
+        ]);
+        for (id, row) in holdings_rows {
+            table.push(id, row);
+        }
+        if table.rows.is_empty() {
+            right.push(Block::Note(self.a("No stock holdings.")));
+        } else {
+            right.push(Block::Table {
+                title: self.t(40, "Stock Holdings"),
+                table,
+            });
+        }
+
+        Page {
+            title,
+            subtitle,
+            left,
+            right,
+        }
     }
 
     /// Salary of manager `i` from the executable's table (finance.md 14.2).

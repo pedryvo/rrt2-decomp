@@ -1241,7 +1241,7 @@ impl AppState {
     }
 
     /// Double click / Enter on the selected row: its detail screen.
-    fn center_open_row(&mut self) {
+    pub(super) fn center_open_row(&mut self) {
         let Screen::Game(g) = &self.screen else {
             return;
         };
@@ -1256,22 +1256,22 @@ impl AppState {
         match tab {
             0 => self.open_station(id as i32),
             1 => self.open_info(InfoScreen::TrainDetail(id)),
-            // Players and companies: the company report (no player detail screen yet, `docs/
-            // reference/screens.md` H1).
+            2 => self.open_info(InfoScreen::PlayerDetail(id)),
             _ if id > 0 => self.open_info(InfoScreen::Finance(id)),
             _ => {}
         }
     }
 
     /// The "list screen" button: the full-screen list of the current tab.
-    fn center_list_screen(&mut self) {
+    pub(super) fn center_list_screen(&mut self) {
         let Screen::Game(g) = &self.screen else {
             return;
         };
         let screen = match g.center.tab {
             0 => InfoScreen::Stations,
             1 => InfoScreen::Trains,
-            _ => InfoScreen::Stock,
+            2 => InfoScreen::Players,
+            _ => InfoScreen::Companies,
         };
         self.open_info(screen);
     }

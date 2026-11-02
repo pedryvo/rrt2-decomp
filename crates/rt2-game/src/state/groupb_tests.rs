@@ -296,3 +296,100 @@ fn campaign_medals_are_kept_and_shown_on_the_board() {
     assert!(s.campaign_medal_text(&p, 0, 3).is_empty());
     let _ = std::fs::remove_dir_all(dir);
 }
+
+#[test]
+fn players_list_and_player_detail_screens_work() {
+    let Some(mut s) = state() else {
+        return;
+    };
+    // Open full-screen players list (H2 playrlst.win)
+    s.open_info(InfoScreen::Players);
+    assert_eq!(s.info_screen(), Some(InfoScreen::Players));
+
+    // Verify list content
+    let Some(info_ui::Content::List(list)) = s.info_content(InfoScreen::Players) else {
+        panic!("expected Content::List");
+    };
+    assert!(!list.table.rows.is_empty());
+    let first_id = list.table.ids[0];
+
+    // Clicking row 0 opens PlayerDetail (H1 playrdtl.win)
+    s.info_row(0);
+    assert_eq!(s.info_screen(), Some(InfoScreen::PlayerDetail(first_id)));
+
+    // Verify detail page has wealth & bio/style
+    let Some(info_ui::Content::Page(page)) = s.info_content(InfoScreen::PlayerDetail(first_id))
+    else {
+        panic!("expected Content::Page");
+    };
+    assert!(!page.title.is_empty());
+    assert!(!page.left.is_empty());
+    assert!(!page.right.is_empty());
+
+    // Cycling player with next button
+    s.info_activated(info_ui::A_NEXT_CO);
+    assert!(matches!(s.info_screen(), Some(InfoScreen::PlayerDetail(_))));
+
+    // Back returns to players list
+    s.info_activated(info_ui::A_BACK);
+    assert_eq!(s.info_screen(), Some(InfoScreen::Players));
+    s.close_info();
+
+    // From main window center box (tab 2: Players)
+    s.set_center_tab(2);
+    s.center_select(0);
+    s.center_open_row();
+    assert!(matches!(s.info_screen(), Some(InfoScreen::PlayerDetail(_))));
+    s.close_info();
+
+    s.set_center_tab(2);
+    s.center_list_screen();
+    assert_eq!(s.info_screen(), Some(InfoScreen::Players));
+}
+
+#[test]
+fn file_quit_and_menu_confirmations_work() {
+    use super::dialogs::{A_DLG_BTN, A_FILE_MENU, A_FILE_QUIT};
+
+    let Some(mut s) = state() else {
+        return;
+    };
+
+    // Quit confirmation (J2)
+    s.dialog_activated(A_FILE_QUIT);
+    match s.top_dialog() {
+        Some(Dialog::Message(m)) => {
+            assert!(m.title.contains("Quit") || !m.title.is_empty());
+            assert_eq!(m.buttons.len(), 2);
+        }
+        _ => panic!("expected confirmation message dialog"),
+    }
+    // Button 1 is No: dismisses without quitting
+    s.dialog_activated(A_DLG_BTN + 1);
+    assert!(s.top_dialog().is_none());
+    assert!(!s.effects.iter().any(|e| matches!(e, Effect::Quit)));
+
+    // Quit confirmed with Yes (Button 0)
+    s.dialog_activated(A_FILE_QUIT);
+    s.dialog_activated(A_DLG_BTN);
+    assert!(s.effects.iter().any(|e| matches!(e, Effect::Quit)));
+    s.effects.clear();
+
+    // Main Menu confirmation
+    s.dialog_activated(A_FILE_MENU);
+    match s.top_dialog() {
+        Some(Dialog::Message(m)) => {
+            assert_eq!(m.buttons.len(), 2);
+        }
+        _ => panic!("expected menu confirmation dialog"),
+    }
+    // Button 1 is No: stays in game
+    s.dialog_activated(A_DLG_BTN + 1);
+    assert!(s.top_dialog().is_none());
+    assert!(matches!(s.screen, Screen::Game(_)));
+
+    // Button 0 is Yes: returns to main menu
+    s.dialog_activated(A_FILE_MENU);
+    s.dialog_activated(A_DLG_BTN);
+    assert!(matches!(s.screen, Screen::Menu(_)));
+}

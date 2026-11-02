@@ -121,8 +121,8 @@ Limitação honesta: MobyGames e PCGamingWiki bloquearam o acesso automático e 
 
 | # | Tela | Propósito e conteúdo | Como se chega | .win | Referências | Status |
 |---|---|---|---|---|---|---|
-| H1 | Detalhe do jogador | Livro com retrato e biografia do magnata, posição, riqueza (caixa, ações, total), poder de compra, estilo | aba Players, duplo clique | `playrdtl.win` (1001, 1002, 1005, 1071..1076) | M:C723 | ⏳ |
-| H2 | Lista de jogadores | Tabela de tela cheia | aba Players | `playrlst.win` (1501, 1571..1586) | M:C401.call | ⏳ |
+| H1 | Detalhe do jogador | Livro com retrato e biografia do magnata, posição, riqueza (caixa, ações, total), poder de compra, estilo | aba Players, duplo clique | `playrdtl.win` (1001, 1002, 1005, 1071..1076) | M:C723 | ✅ (`InfoScreen::PlayerDetail`: retrato `brplyr`, biografia, cargo/chairman, reputação, tendências da IA, caixa, ações, patrimônio, poder de compra e carteira de ações detalhada) |
+| H2 | Lista de jogadores | Tabela de tela cheia | aba Players | `playrlst.win` (1501, 1571..1586) | M:C401.call | ✅ (`InfoScreen::Players`: tabela com nome, empresa presidida e caixa; duplo clique abre o detalhe do jogador) |
 | H3 | Seleção/edição do personagem (multiplayer) | Retrato, nome, descrição (botão Change) | lobby / menu multi | sem `.win` identificado | M (cap. 9) | ✅ (diálogo modal de perfil: navegação pelos 41 retratos de chairman, edição de nome e descrição de até 256 caracteres, salvo na configuração de rede; `mp_ui.rs`) |
 
 ### I. Relatórios, jornais, eventos e mensagens
@@ -143,7 +143,7 @@ Limitação honesta: MobyGames e PCGamingWiki bloquearam o acesso automático e 
 | # | Tela | Propósito e conteúdo | Como se chega | .win | Referências | Status |
 |---|---|---|---|---|---|---|
 | J1 | Opções de arquivo (File Options) | Load, Save, Main Menu, Quit, Cancel | ícone 8 (disquete) | `fileopt.win` (501..507) | M:C419 | ✅ (Load, Save, New, Options (extra do clone), Main Menu, Quit, Cancel; `state/dialogs.rs`) |
-| J2 | Confirmação de saída | "Tem certeza?" Sim/Não | Quit | `eagled.win` (suposição) | M (cap. 4) | ⏳ |
+| J2 | Confirmação de saída | "Tem certeza?" Sim/Não | Quit | `eagled.win` (suposição) | M (cap. 4) | ✅ (diálogo modal de confirmação com LNG 358 para Quit e 357 para Main Menu, botões Yes (452) e No (453)) |
 | J3 | Control Panel: General | Velocidade do jogo, volume de som e música, profundidade de cor, uso de memória, tela cheia, linhas de grade, cursor colorido, vídeo de abertura | ícone 7 (controles) | `settings.win` (34900.., sliders) | M:C417new, M:C416 | 🟡 (clone: tela Options com abas Display, Audio, Language, Keys, Gameplay, que cobre volumes, tela cheia e velocidade inicial; faltam profundidade de cor, memória, vídeo de abertura e linhas de grade, que o clone não tem) |
 | J4 | Control Panel: Graphics | Detalhe geral (5 níveis) e sliders por item (sombreamento, textura do solo, trilho, trens, prédios, árvores, sombras, animação, borda) | idem | `settings.win` | M:C418new | ⏳ |
 | J5 | Control Panel: Game Play | Sino de chegada, frequência de notícias, logotipos nos trens, manter o jogo em diálogos, diálogos somem sozinhos, dicas, tutorial | idem | `settings.win` | M (cap. 4) | 🟡 (a aba Gameplay do clone tem opções próprias de câmera, autosave e velocidade inicial; as do original ainda não) |

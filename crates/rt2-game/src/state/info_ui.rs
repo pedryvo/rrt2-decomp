@@ -76,6 +76,10 @@ pub(super) enum InfoScreen {
     Territories(u32, u8),
     /// The full-screen company list (`compnlst.win`).
     Companies,
+    /// The full-screen players list (`playrlst.win`).
+    Players,
+    /// Player detail screen (`playrdtl.win`).
+    PlayerDetail(u32),
 }
 
 impl InfoScreen {
@@ -85,7 +89,7 @@ impl InfoScreen {
             | InfoScreen::Overview(_)
             | InfoScreen::Territories(..)
             | InfoScreen::Companies => 0,
-            InfoScreen::Stock => 1,
+            InfoScreen::Stock | InfoScreen::Players | InfoScreen::PlayerDetail(_) => 1,
             InfoScreen::Trains | InfoScreen::TrainDetail(_) => 2,
             InfoScreen::Stations | InfoScreen::StationDetail(_) => 3,
             InfoScreen::Cities | InfoScreen::CityDetail(_) | InfoScreen::Territory(_) => 4,
@@ -100,6 +104,7 @@ impl InfoScreen {
             InfoScreen::StationDetail(_) => InfoScreen::Stations,
             InfoScreen::CityDetail(_) | InfoScreen::Territory(_) => InfoScreen::Cities,
             InfoScreen::IndustryDetail(_) => InfoScreen::Industries,
+            InfoScreen::PlayerDetail(_) => InfoScreen::Players,
             _ => return None,
         })
     }
@@ -123,6 +128,8 @@ impl InfoScreen {
             "territories-access" => InfoScreen::Territories(0, 1),
             "territories-goodwill" => InfoScreen::Territories(0, 2),
             "companies" => InfoScreen::Companies,
+            "players" => InfoScreen::Players,
+            "player" => InfoScreen::PlayerDetail(0),
             _ => return None,
         })
     }
@@ -420,6 +427,11 @@ impl AppState {
                 Content::Page(info.territories_page(slot))
             }
             InfoScreen::Companies => Content::List(info.companies_list()),
+            InfoScreen::Players => Content::List(info.players_list()),
+            InfoScreen::PlayerDetail(s) => Content::Page(info.player_page(first_if_zero(
+                s,
+                save.persons.ordered().next().map(|r| r.slot as u32),
+            ))),
             InfoScreen::Stock => Content::List(info.stock_market()),
             InfoScreen::Trains => Content::List(info.trains_list()),
             InfoScreen::TrainDetail(s) => Content::Page(info.train_page(first_if_zero(
@@ -590,8 +602,20 @@ impl AppState {
         match code {
             KeyCode::Escape => self.close_info(),
             KeyCode::Backspace => self.info_back(screen),
-            KeyCode::ArrowLeft => self.cycle_company(-1),
-            KeyCode::ArrowRight => self.cycle_company(1),
+            KeyCode::ArrowLeft => {
+                if matches!(screen, InfoScreen::PlayerDetail(_)) {
+                    self.cycle_player(-1);
+                } else {
+                    self.cycle_company(-1);
+                }
+            }
+            KeyCode::ArrowRight => {
+                if matches!(screen, InfoScreen::PlayerDetail(_)) {
+                    self.cycle_player(1);
+                } else {
+                    self.cycle_company(1);
+                }
+            }
             KeyCode::PageUp => self.info_scroll(-10),
             KeyCode::PageDown => self.info_scroll(10),
             KeyCode::Home => self.info_scroll(i32::MIN / 2),
@@ -605,6 +629,28 @@ impl AppState {
         if let Some(p) = screen.parent() {
             self.open_info(p);
         }
+    }
+
+    fn cycle_player(&mut self, dir: i32) {
+        let Some(InfoScreen::PlayerDetail(p)) = self.info_screen() else {
+            return;
+        };
+        let slots: Vec<u32> = match &self.screen {
+            Screen::Game(g) => g
+                .world
+                .save_ref()
+                .map(|s| s.persons.ordered().map(|r| r.slot as u32).collect())
+                .unwrap_or_default(),
+            _ => Vec::new(),
+        };
+        if slots.is_empty() {
+            return;
+        }
+        let cur = if p == 0 { slots[0] } else { p };
+        let i = slots.iter().position(|&s| s == cur).unwrap_or(0) as i32;
+        let n = slots.len() as i32;
+        let next = slots[(i + dir).rem_euclid(n) as usize];
+        self.open_info(InfoScreen::PlayerDetail(next));
     }
 
     fn cycle_company(&mut self, dir: i32) {
@@ -650,8 +696,20 @@ impl AppState {
             a if (A_TAB..A_TAB + 6).contains(&a) => self.toggle_tab((a - A_TAB) as usize),
             A_CLOSE => self.close_info(),
             A_BACK => self.info_back(screen),
-            A_PREV_CO => self.cycle_company(-1),
-            A_NEXT_CO => self.cycle_company(1),
+            A_PREV_CO => {
+                if matches!(screen, InfoScreen::PlayerDetail(_)) {
+                    self.cycle_player(-1);
+                } else {
+                    self.cycle_company(-1);
+                }
+            }
+            A_NEXT_CO => {
+                if matches!(screen, InfoScreen::PlayerDetail(_)) {
+                    self.cycle_player(1);
+                } else {
+                    self.cycle_company(1);
+                }
+            }
             a if (A_FINACT..A_FINACT + 12).contains(&a) => {
                 let company = match screen {
                     InfoScreen::Finance(c) | InfoScreen::Overview(c) => self.resolved_company(c),
@@ -735,6 +793,7 @@ impl AppState {
         };
         let next = match screen {
             InfoScreen::Stock | InfoScreen::Companies => InfoScreen::Finance(id),
+            InfoScreen::Players => InfoScreen::PlayerDetail(id),
             InfoScreen::Trains => InfoScreen::TrainDetail(id),
             InfoScreen::Stations => InfoScreen::StationDetail(id),
             InfoScreen::Cities => InfoScreen::CityDetail(id),
@@ -774,6 +833,7 @@ impl AppState {
             screen,
             InfoScreen::Finance(_) | InfoScreen::Overview(_) | InfoScreen::Territories(..)
         );
+        let player_nav = matches!(screen, InfoScreen::PlayerDetail(_));
         let book = super::companybook::is_book(screen);
         let (cw, ch) = ui.logical_size();
         ui.add_root(
@@ -797,7 +857,7 @@ impl AppState {
             Some(Content::Page(p)) => (p.title.clone(), p.subtitle.clone()),
             None => (self.texts.a("Not available"), String::new()),
         };
-        let nav = if company_nav {
+        let nav = if company_nav || player_nav {
             2.0 * 120.0 + 8.0
         } else if screen.parent().is_some() {
             120.0
@@ -834,7 +894,7 @@ impl AppState {
                 at(x, 17.0, 112.0, 30.0),
             );
         };
-        if company_nav {
+        if company_nav || player_nav {
             nbtn(
                 ui,
                 self.texts.get(lng::PREVIOUS, "Previous"),
@@ -1018,12 +1078,47 @@ impl AppState {
                     pw - off,
                 );
             }
+            Content::Page(page) if matches!(screen, InfoScreen::PlayerDetail(_)) => {
+                let InfoScreen::PlayerDetail(p) = screen else {
+                    return;
+                };
+                let portrait = self
+                    .with_info(|i| i.player_portrait(p))
+                    .flatten()
+                    .and_then(|k| self.icons.brand.portraits.get(k).copied().flatten());
+                let off = if portrait.is_some() && inner_w > 700.0 {
+                    186.0
+                } else {
+                    0.0
+                };
+                if let Some(sprite) = portrait.filter(|_| off > 0.0) {
+                    ui.add(
+                        panel,
+                        Kind::Image {
+                            sprite,
+                            fit: rt2_ui::Fit::Contain,
+                        },
+                        at(PAD, body_y, 170.0, 196.0),
+                    );
+                }
+                draw_page(
+                    ui,
+                    panel,
+                    &page,
+                    PAD + off,
+                    body_y,
+                    inner_w - off,
+                    bottom,
+                    pw - off,
+                );
+            }
             Content::Page(page) => draw_page(ui, panel, &page, PAD, body_y, inner_w, bottom, pw),
         }
         let hint = match screen {
             InfoScreen::Finance(_) | InfoScreen::Overview(_) | InfoScreen::Territories(..) => {
                 self.texts.a("Left / Right: company   Esc: close")
             }
+            InfoScreen::PlayerDetail(_) => self.texts.a("Left / Right: player   Esc: close"),
             InfoScreen::Stock => self
                 .texts
                 .a("* = human chairman   Click a row for the company report   Esc: close"),

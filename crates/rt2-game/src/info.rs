@@ -201,9 +201,10 @@ const CO_ACCT: usize = 0x4766;
 const CO_ARCH_METRICS: usize = 0x49b6;
 /// Person record: human flag (finance.md 1, trains.md "Em aberto" 0x43c030).
 const PE_HUMAN: usize = 0x122;
-/// Person record: cash (f64), company chaired (`+0x263`) and reputation (`+0x52b`), finance.md 3.3
+/// Person record: cash (f64), holdings (`+0x1d3`), company chaired (`+0x263`) and reputation (`+0x52b`), finance.md 3.3
 /// and 17.2.
 const PE_CASH: usize = 0x12a;
+const PE_HOLDINGS: usize = 0x1d3;
 const PE_CHAIR_OF: usize = 0x263;
 const PE_REPUTATION: usize = 0x52b;
 
@@ -469,7 +470,7 @@ impl<'a> Info<'a> {
     }
 
     /// The players (`playrlst.win`): name, company chaired and cash, one row per person; the row
-    /// id is the pool slot of the company the person chairs (0 = none).
+    /// id is the person slot.
     pub fn players_list(&self) -> ListPage {
         let mut t = Table::new(&[
             (&self.t(216, "Name"), 3.0, false),
@@ -490,7 +491,7 @@ impl<'a> Info<'a> {
                 ""
             };
             t.push(
-                company,
+                r.slot as u32,
                 vec![
                     format!("{}{mark}", self.person_name(r.slot as u32)),
                     if company > 0 {

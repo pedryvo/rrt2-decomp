@@ -4,6 +4,8 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 
 ## Unreleased
 
+- Feature: full-screen Players list screen (`playrlst.win`, H2) and Player Detail screen (`playrdtl.win`, H1) with tycoon portrait, biography, play style tendencies, net worth, purchasing power and stock portfolio table.
+- Feature: quit and main menu confirmation modal dialogs (J2) preserving game state with Yes and No choices.
 - Feature: Accessibility options tab with colorblind palettes (Protanopia, Deuteranopia, Tritanopia) for map overlays, independent UI font scale, and on-screen visual subtitles for gameplay audio events.
 - Feature: Bug Fixes tab in Options screen with individual toggles for the 15 documented original engine bugs, faithful mode preset as default, and save/replay trailer ruleset persistence.
 - Feature: Fleet Manager dialog for bulk locomotive replacement across the entire company fleet and reusable consist templates.
