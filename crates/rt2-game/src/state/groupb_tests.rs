@@ -161,7 +161,13 @@ fn name_and_logo_dialog_takes_typing_and_arrows() {
     };
     s.open_info(InfoScreen::Overview(0));
     click(&mut s, A_BOOK_BRAND);
-    let Some(Dialog::Brand { name, logo, .. }) = top(&s).cloned() else {
+    let Some(Dialog::Brand {
+        company,
+        name,
+        logo,
+        ..
+    }) = top(&s).cloned()
+    else {
         panic!("{:?}", top(&s));
     };
     type_text(&mut s, "Z");
@@ -175,14 +181,17 @@ fn name_and_logo_dialog_takes_typing_and_arrows() {
         panic!()
     };
     assert_eq!(i32::from(l2), (i32::from(logo) + 1) % 41);
-    // OK reports the missing simulation command instead of faking the change.
+    // OK commits the change through the simulation and closes the dialog.
     click(&mut s, A_BRAND_OK);
-    let Some(Dialog::Brand { error, .. }) = top(&s).cloned() else {
-        panic!()
-    };
-    assert!(error.is_some_and(|e| e.contains("0x27")));
-    s.key(KeyCode::Escape, true, false, None);
     assert!(top(&s).is_none());
+    assert_eq!(
+        s.with_info(|i| i.company_name(company as u32)).unwrap(),
+        name
+    );
+    assert_eq!(
+        s.with_info(|i| i.company_logo(company as u32)).unwrap(),
+        usize::from(l2)
+    );
 }
 
 #[test]

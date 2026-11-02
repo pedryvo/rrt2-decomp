@@ -166,6 +166,26 @@ fn lbl(text: &str, f: FontStyle, color: Color, align: Align) -> Kind {
     }
 }
 
+fn track_endpoint_dir(save: &rt2_formats::map::Save, x: i32, y: i32) -> i32 {
+    let (w, h) = (save.map.width as i32, save.map.height as i32);
+    if x < 0 || y < 0 || x >= w || y >= h {
+        return -1;
+    }
+    let id = save.map.tile(x as usize, y as usize).track_id;
+    if id == 0 {
+        return -1;
+    }
+    let Some(piece) = save.track_pieces.get(id as usize) else {
+        return -1;
+    };
+    let mask = piece.data.first().copied().unwrap_or(0);
+    if mask.count_ones() == 1 {
+        let d = mask.trailing_zeros() as i32;
+        return (d + 4) & 7;
+    }
+    -1
+}
+
 impl AppState {
     // ---- plumbing ---------------------------------------------------------------------------
 
@@ -465,6 +485,8 @@ impl AppState {
                 let bridge = b.bridge.clamp(1, bt::max_bridge_type(year));
                 let electric =
                     b.electric && bt::electric_track_available(data, save, co, year, month);
+                let d1 = track_endpoint_dir(save, from.0, from.1);
+                let d2 = track_endpoint_dir(save, x, y);
                 let p = bt::preview(
                     &g.world,
                     co,
@@ -474,8 +496,8 @@ impl AppState {
                         y1: from.1,
                         x2: x,
                         y2: y,
-                        d1: -1,
-                        d2: -1,
+                        d1,
+                        d2,
                         single: b.single,
                         electric,
                         bridge,
@@ -636,14 +658,17 @@ impl AppState {
                 };
                 let bridge = b.bridge.clamp(1, bt::max_bridge_type(year));
                 let electric = b.electric && self.electric_ok();
+                let save = self.game().and_then(|g| g.world.save_ref());
+                let d1 = save.map_or(-1, |s| track_endpoint_dir(s, from.0, from.1));
+                let d2 = save.map_or(-1, |s| track_endpoint_dir(s, x, y));
                 let cmd = BuildCmd::LayTrack {
                     company: co,
                     x1: from.0,
                     y1: from.1,
                     x2: x,
                     y2: y,
-                    d1: -1,
-                    d2: -1,
+                    d1,
+                    d2,
                     single: b.single,
                     electric,
                     bridge,
@@ -1096,7 +1121,7 @@ impl AppState {
             ui.add(
                 root,
                 Kind::Panel {
-                    fill: Fill::Overlay(c),
+                    fill: Fill::Diamond(c),
                 },
                 at(px, py, w, h),
             );

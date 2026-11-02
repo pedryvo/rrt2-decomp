@@ -102,7 +102,7 @@ fn read_cars(pool: &Pool, out: &mut Vec<CarSample>) {
 
 impl LiveFrame {
     /// Cars of `self` moved a fraction `alpha` (0..=1) of the way towards `next`, matched by slot.
-    /// Cars that did not exist before, changed type, or jumped more than two tiles are taken as
+    /// Cars that did not exist before, changed type, or jumped more than five tiles are taken as
     /// they are in `next`.
     pub fn lerp(&self, next: &LiveFrame, alpha: f32) -> Vec<CarSample> {
         let a = alpha.clamp(0.0, 1.0);
@@ -114,16 +114,43 @@ impl LiveFrame {
                 };
                 let p = &self.cars[i];
                 let (dx, dy) = (c.x - p.x, c.y - p.y);
-                if p.vehicle != c.vehicle || dx * dx + dy * dy > 4.0 {
+                if p.vehicle != c.vehicle || dx * dx + dy * dy > 25.0 {
                     return *c;
                 }
                 CarSample {
                     x: p.x + dx * a,
                     y: p.y + dy * a,
+                    dir: if a < 0.5 { p.dir } else { c.dir },
                     ..*c
                 }
             })
             .collect()
+    }
+
+    /// Smoke puffs of `self` moved towards `next`, matched by slot.
+    pub fn lerp_smoke(&self, next: &LiveFrame, alpha: f32) -> Vec<SmokeSample> {
+        let a = alpha.clamp(0.0, 1.0);
+        let mut out = Vec::with_capacity(next.smoke.len());
+        for c in &next.smoke {
+            if let Ok(i) = self.smoke.binary_search_by_key(&c.slot, |p| p.slot) {
+                let p = &self.smoke[i];
+                let (dx, dy) = (c.x - p.x, c.y - p.y);
+                let dh = c.height - p.height;
+                if dx * dx + dy * dy <= 4.0 {
+                    out.push(SmokeSample {
+                        slot: c.slot,
+                        seq: c.seq,
+                        frame: if a < 0.5 { p.frame } else { c.frame },
+                        x: p.x + dx * a,
+                        y: p.y + dy * a,
+                        height: p.height + dh * a,
+                    });
+                    continue;
+                }
+            }
+            out.push(*c);
+        }
+        out
     }
 }
 

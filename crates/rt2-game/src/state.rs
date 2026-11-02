@@ -1011,7 +1011,8 @@ impl AppState {
             self.editor_tick(dt_ms);
             return;
         }
-        let on_hold = (!g.dialogs.is_empty() || covered) && g.mp.is_none();
+        let paused = g.world.speed() == 0;
+        let on_hold = ((!g.dialogs.is_empty() || covered) && g.mp.is_none()) || paused;
         if !on_hold {
             g.accum_ms += dt_ms.min(250.0);
         }

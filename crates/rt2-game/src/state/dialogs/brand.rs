@@ -6,11 +6,11 @@
 //! the arrows (`brlogo00..40`). **Gap**: `rt2-sim` has no `0x27` command yet, so OK cannot change
 //! the company; it reports that instead of faking the change.
 
-use rt2_ui::{Fit, Kind, Ui, game_font};
+use rt2_ui::{Color, Fill, Fit, Kind, Ui, game_font};
 use winit::keyboard::KeyCode;
 
 use super::super::{AppState, Screen};
-use super::{CREAM, Dialog, E_TEXT, GOLD, at, label};
+use super::{CREAM, Dialog, E_TEXT, GOLD, INK, at, label};
 use crate::artwork::brand::BRAND_COUNT;
 
 pub(in crate::state) const A_BRAND_PREV: u32 = 11100;
@@ -64,12 +64,36 @@ impl AppState {
                 self.rebuild_ui();
             }
             A_BRAND_OK => {
-                // TODO(commands.md 2.1 `0x27`): not in `rt2-sim`; nothing is changed.
-                let msg = self.texts.a(
-                    "The simulation has no command to change a company's name and logo yet (0x27).",
-                );
-                if let Some((_, _, error)) = self.brand_state() {
-                    *error = Some(msg);
+                let Some((company, name, logo)) = (match self.screen {
+                    Screen::Game(ref g) => match g.dialogs.last() {
+                        Some(Dialog::Brand {
+                            company,
+                            name,
+                            logo,
+                            ..
+                        }) => Some((*company, name.clone(), *logo)),
+                        _ => None,
+                    },
+                    _ => None,
+                }) else {
+                    return;
+                };
+                if let Screen::Game(g) = &mut self.screen {
+                    let mut name_buf = [0u8; 31];
+                    let bytes = name.as_bytes();
+                    let len = bytes.len().min(30);
+                    name_buf[..len].copy_from_slice(&bytes[..len]);
+                    match g.world.set_company_info(company as u8, name_buf, logo) {
+                        Ok(_) => {
+                            g.dialogs.pop();
+                        }
+                        Err(e) => {
+                            let msg = self.cmd_error_text(e, 396);
+                            if let Some((_, _, error)) = self.brand_state() {
+                                *error = Some(msg);
+                            }
+                        }
+                    }
                 }
                 self.rebuild_ui();
             }
@@ -143,40 +167,131 @@ impl AppState {
             label(&t.get(543, "Company Name"), f, CREAM, rt2_ui::Align::Left),
             at(x, yy, w * 0.5, lh),
         );
-        yy += lh;
-        ui.add(
+        yy += lh * 1.1;
+        let box_h = (lh * 1.4).round();
+        let name_box = ui.add(
             fr.root,
-            label(&format!("{name}_"), f, GOLD, rt2_ui::Align::Left),
-            at(x, yy, w, lh),
+            Kind::Panel {
+                fill: Fill::Solid(INK),
+            },
+            at(x, yy, w, box_h),
         );
-        yy += lh * 1.4;
+        ui.add(
+            name_box,
+            Kind::Label {
+                text: format!("{name}_"),
+                font: f,
+                color: GOLD,
+                align: rt2_ui::Align::Left,
+                wrap: false,
+            },
+            at(8.0 * sx, (box_h - lh) * 0.5, w - 16.0 * sx, lh),
+        );
+        yy += box_h + lh * 0.4;
         ui.add(
             fr.root,
             label(&t.get(544, "Company Logo:"), f, CREAM, rt2_ui::Align::Left),
             at(x, yy, w * 0.5, lh),
         );
-        yy += lh;
-        let bh = (28.0 * sx).round();
+        yy += lh * 1.1;
+        let bh = (30.0 * sx).round();
         let ph = (lh * 4.2).min(fr.text.3 + 120.0 * sx);
         let pw = ph * 1.1;
         let cx = x + w / 2.0;
         let arrow = game_font(3).with_size((game_font(3).size * sx * 0.7).round().max(10.0));
-        for (text, action, ax) in [
-            ("<", A_BRAND_PREV, cx - pw / 2.0 - bh * 1.4),
-            (">", A_BRAND_NEXT, cx + pw / 2.0 + bh * 0.2),
-        ] {
-            ui.add(
+
+        // Navigation buttons
+        ui.add(
+            fr.root,
+            Kind::Button {
+                text: "<".into(),
+                font: arrow,
+                action: A_BRAND_PREV,
+                enabled: true,
+                hotkey: None,
+            },
+            at(
+                cx - pw / 2.0 - bh * 1.5,
+                yy + ph / 2.0 - bh / 2.0,
+                bh * 1.2,
+                bh,
+            ),
+        );
+        ui.add(
+            fr.root,
+            Kind::Button {
+                text: ">".into(),
+                font: arrow,
+                action: A_BRAND_NEXT,
+                enabled: true,
+                hotkey: None,
+            },
+            at(
+                cx + pw / 2.0 + bh * 0.3,
+                yy + ph / 2.0 - bh / 2.0,
+                bh * 1.2,
+                bh,
+            ),
+        );
+
+        // Previous and Next logo previews (side thumbnails)
+        let side_w = pw * 0.55;
+        let side_h = ph * 0.55;
+        let prev_logo = (i32::from(logo) - 1).rem_euclid(BRAND_COUNT as i32) as usize;
+        let next_logo = (i32::from(logo) + 1).rem_euclid(BRAND_COUNT as i32) as usize;
+        if let Some(Some(sprite)) = self.icons.brand.logos.get(prev_logo) {
+            let side_box = ui.add(
                 fr.root,
-                Kind::Button {
-                    text: text.into(),
-                    font: arrow,
-                    action,
-                    enabled: true,
-                    hotkey: None,
+                Kind::Panel {
+                    fill: Fill::Solid(Color(0x18, 0x12, 0x0a, 0x90)),
                 },
-                at(ax, yy + ph / 2.0 - bh / 2.0, bh * 1.2, bh),
+                at(
+                    cx - pw / 2.0 - bh * 1.5 - side_w - 6.0 * sx,
+                    yy + (ph - side_h) * 0.5,
+                    side_w,
+                    side_h,
+                ),
+            );
+            ui.add(
+                side_box,
+                Kind::Image {
+                    sprite: *sprite,
+                    fit: Fit::Contain,
+                },
+                rt2_ui::Layout::fill(),
             );
         }
+        if let Some(Some(sprite)) = self.icons.brand.logos.get(next_logo) {
+            let side_box = ui.add(
+                fr.root,
+                Kind::Panel {
+                    fill: Fill::Solid(Color(0x18, 0x12, 0x0a, 0x90)),
+                },
+                at(
+                    cx + pw / 2.0 + bh * 1.6 + 6.0 * sx,
+                    yy + (ph - side_h) * 0.5,
+                    side_w,
+                    side_h,
+                ),
+            );
+            ui.add(
+                side_box,
+                Kind::Image {
+                    sprite: *sprite,
+                    fit: Fit::Contain,
+                },
+                rt2_ui::Layout::fill(),
+            );
+        }
+
+        // Active center logo frame
+        let logo_frame = ui.add(
+            fr.root,
+            Kind::Panel {
+                fill: Fill::Solid(INK),
+            },
+            at(cx - pw / 2.0, yy, pw, ph),
+        );
         if let Some(sprite) = self
             .icons
             .brand
@@ -186,12 +301,12 @@ impl AppState {
             .flatten()
         {
             ui.add(
-                fr.root,
+                logo_frame,
                 Kind::Image {
                     sprite,
                     fit: Fit::Contain,
                 },
-                at(cx - pw / 2.0, yy, pw, ph),
+                rt2_ui::Layout::fill(),
             );
         }
         ui.add(
@@ -202,9 +317,9 @@ impl AppState {
                 CREAM,
                 rt2_ui::Align::Center,
             ),
-            at(cx - pw / 2.0, yy + ph, pw, lh),
+            at(cx - pw / 2.0, yy + ph + 4.0 * sx, pw, lh),
         );
-        yy += ph + lh * 1.3;
+        yy += ph + lh * 1.5;
         if let Some(e) = error {
             ui.add(
                 fr.root,
@@ -231,7 +346,7 @@ impl AppState {
                 fr.root,
                 Kind::Button {
                     text,
-                    font: arrow,
+                    font: f,
                     action,
                     enabled: true,
                     hotkey: None,

@@ -423,7 +423,50 @@ pub fn find_station(
     let mut last = None;
     let range: Vec<i32> = match forced {
         Some(o) => vec![o & 7],
-        None => (0..8).collect(),
+        None => {
+            // Find orientations matching existing track within Manhattan distance 0..=3 (RT2 0x468920).
+            let mut candidates = Vec::new();
+            if let Some(save) = world.save_ref() {
+                let (w, h) = (save.map.width as i32, save.map.height as i32);
+                for dist in 0..=3i32 {
+                    for dy in -dist..=dist {
+                        let dx_abs = dist - dy.abs();
+                        for &dx in &[dx_abs, -dx_abs] {
+                            let (tx, ty) = (sx + dx, sy + dy);
+                            if tx >= 0 && ty >= 0 && tx < w && ty < h {
+                                let id = save.map.tile(tx as usize, ty as usize).track_id;
+                                if id != 0
+                                    && let Some(p) = save.track_pieces.get(id as usize)
+                                {
+                                    let mask = p.data.first().copied().unwrap_or(0);
+                                    for d in 0..8 {
+                                        if mask & (1 << d) != 0 {
+                                            let o1 = (d + 2) & 7;
+                                            let o2 = (d + 6) & 7;
+                                            if !candidates.contains(&o1) {
+                                                candidates.push(o1);
+                                            }
+                                            if !candidates.contains(&o2) {
+                                                candidates.push(o2);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            if dx_abs == 0 {
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            for o in 0..8 {
+                if !candidates.contains(&o) {
+                    candidates.push(o);
+                }
+            }
+            candidates
+        }
     };
     for o in range {
         let shape = size.shape(o);

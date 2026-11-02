@@ -180,6 +180,8 @@ pub enum Fill {
     /// A translucent solid fill that does not take the mouse: highlights drawn over the map
     /// (the track preview, the station catchment).
     Overlay(Color),
+    /// An isometric tile diamond fill that does not take the mouse.
+    Diamond(Color),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -614,7 +616,10 @@ impl Ui {
 
     fn blocks(&self, id: NodeId) -> bool {
         match &self.nodes[id.0].kind {
-            Kind::Panel { fill } => !matches!(fill, Fill::None | Fill::Frame(_) | Fill::Overlay(_)),
+            Kind::Panel { fill } => !matches!(
+                fill,
+                Fill::None | Fill::Frame(_) | Fill::Overlay(_) | Fill::Diamond(_)
+            ),
             Kind::Button { .. }
             | Kind::Toggle { .. }
             | Kind::Icon { .. }

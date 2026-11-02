@@ -1295,8 +1295,8 @@ impl AppState {
             p,
             toggle(
                 &format!(
-                    "[{}] {}",
-                    if s.sandbox { "x" } else { " " },
+                    "{} {}",
+                    if s.sandbox { "[x]" } else { "[ ]" },
                     t.get(2595, "Sandbox mode")
                 ),
                 f,
@@ -1325,17 +1325,14 @@ impl AppState {
                 .iter()
                 .enumerate()
             {
+                let is_cur = Model::ALL[i] == current;
                 ui.add(
                     p,
                     toggle(
-                        &format!(
-                            "({}) {}",
-                            if Model::ALL[i] == current { "o" } else { " " },
-                            t.get(*id, en)
-                        ),
+                        &format!("{} {}", if is_cur { "(*)" } else { "( )" }, t.get(*id, en)),
                         mfont(1, z * 0.82),
                         base + i as u32,
-                        Model::ALL[i] == current,
+                        is_cur,
                     ),
                     at(cx, yy + (rowh + 2.0 * z) * (i as f32 + 1.0), col_w, rowh),
                 );
@@ -1396,16 +1393,17 @@ impl AppState {
             );
             yy += rowh + 6.0 * z;
         }
+        let rating_text = format!("{}: {}%", t.get(1749, "Difficulty Rating"), s.rating(0));
         ui.add(
             p,
             Kind::Label {
-                text: t.a("TODO: these options are kept but not applied to the simulation yet."),
-                font: mfont(1, z * 0.62),
-                color: MUTED,
-                align: Align::Left,
-                wrap: true,
+                text: rating_text,
+                font: mfont(2, z * 0.85),
+                color: GOLD,
+                align: Align::Center,
+                wrap: false,
             },
-            at(pad, yy + 2.0 * z, w - 2.0 * pad, 34.0 * z),
+            at(pad, yy + 4.0 * z, w - 2.0 * pad, 26.0 * z),
         );
         let row = ui.add(
             p,

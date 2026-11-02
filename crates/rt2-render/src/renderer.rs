@@ -659,7 +659,8 @@ impl Renderer {
         }
         if let Some(bank) = scene.plan.smoke_bank {
             let recs = &rot.bank_records[bank as usize];
-            for p in &self.live_next.smoke {
+            let smoke = self.live_prev.lerp_smoke(&self.live_next, self.live_alpha);
+            for p in &smoke {
                 let idx = p.seq as usize * SMOKE_GROUPS + p.frame as usize;
                 let Some(Some(e)) = recs.get(idx) else {
                     continue;

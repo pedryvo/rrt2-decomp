@@ -574,6 +574,7 @@ impl UiRenderer {
                 Kind::Panel { fill } => match fill {
                     Fill::None => {}
                     Fill::Solid(c) | Fill::Overlay(c) => self.solid(&mut layer.quads, r, *c),
+                    Fill::Diamond(c) => self.diamond(&mut layer.quads, r, *c),
                     Fill::Frame(c) => self.outline(&mut layer.quads, r, *c, k),
                     Fill::Panel => self.panel(&mut layer.quads, r, k),
                 },
@@ -916,6 +917,32 @@ impl UiRenderer {
     fn solid_tinted(&self, out: &mut Vec<Vertex>, r: Rect, c: Color, tint: f32) {
         let [u, v] = self.skin.white;
         self.quad(out, r, [u, v, u, v], self.col(c, tint));
+    }
+
+    fn diamond(&self, out: &mut Vec<Vertex>, r: Rect, c: Color) {
+        if r.w <= 0.0 || r.h <= 0.0 {
+            return;
+        }
+        let [u, w] = self.skin.white;
+        let color = self.col(c, 1.0);
+        let v = |x: f32, y: f32| Vertex {
+            pos: [x, y],
+            uv: [u, w],
+            color,
+        };
+        let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+        let top = (cx, r.y);
+        let right = (r.right(), cy);
+        let bottom = (cx, r.bottom());
+        let left = (r.x, cy);
+        out.extend([
+            v(top.0, top.1),
+            v(right.0, right.1),
+            v(bottom.0, bottom.1),
+            v(top.0, top.1),
+            v(bottom.0, bottom.1),
+            v(left.0, left.1),
+        ]);
     }
 
     fn outline(&self, out: &mut Vec<Vertex>, r: Rect, c: Color, k: f32) {
