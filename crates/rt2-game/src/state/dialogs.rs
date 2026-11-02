@@ -52,6 +52,7 @@ pub(super) const A_FILE_NEW: u32 = 742;
 pub(super) const A_FILE_MENU: u32 = 743;
 pub(super) const A_FILE_QUIT: u32 = 744;
 pub(super) const A_FILE_OPTIONS: u32 = 745;
+pub(super) const A_FILE_TIPS: u32 = 746;
 
 const DIM: Color = Color(0, 0, 0, 150);
 const CREAM: Color = Color::rgb(0xf4, 0xea, 0xc8);
@@ -87,7 +88,82 @@ pub(super) enum Act {
     },
     MainMenu,
     Quit,
+    Tip {
+        index: usize,
+    },
 }
+
+/// The original game tips and tutorial lessons (`default2.lng` 2440..=2448, 2421..=2432).
+pub(super) const GAME_TIPS: &[(u32, &str)] = &[
+    (
+        2440,
+        "Passing a train through a station that contains a water tower, sanding tower, and/or a roundhouse will reset that train's levels for water, sand and maintenance respectively, even if the train doesn't actually make a stop at that station.",
+    ),
+    (
+        2441,
+        "You can take a screenshot at any time by pressing Print Screen or F12. It will be stored in your screenshots directory.",
+    ),
+    (
+        2442,
+        "Building a customs house in a station cuts customs wait times in half - useful when using a port or an international border.",
+    ),
+    (
+        2443,
+        "Click on the yield icon on the left side of each train in the main screen's train list to change that train's priority.\n\nHigher priority trains will force lower priority trains to stop and let them pass if they meet.",
+    ),
+    (
+        2444,
+        "Pressing the Pause key will pause the game.\n\nPressing it again will unpause.\n\nYou can also use the plus and minus keys to control game speed.",
+    ),
+    (
+        2445,
+        "If things are running a bit sluggishly, open Options -> Display, and adjust display and UI scale settings.",
+    ),
+    (
+        2446,
+        "Holding down the Control button while left clicking the mouse on the game map will automatically center the game view on that location.",
+    ),
+    (
+        2447,
+        "All cities will grow over time if provided with service and resources.\n\nThe more you supply, the faster they will grow.\n\nThe best supplied cities can grow to three times their original size or greater.",
+    ),
+    (
+        2448,
+        "Holding down the Control key while using the arrow keys will scroll the screen faster.",
+    ),
+    (
+        2421,
+        "Take a look around the place. You can move the map view by moving your mouse to the edges of the screen or by clicking in the radar box at the lower left. You can rotate or zoom the map using the buttons at the bottom right.\n\nWhen you're ready to start your railroad, double click <Start a New Company> in the listbox at the center bottom of the screen.",
+    ),
+    (
+        2422,
+        "Before you can get underway, you'll need to start a company.\n\nClick on the 'Company' tab at the bottom center of the screen.\n\nThen double click <Start a New Company>.",
+    ),
+    (
+        2423,
+        "Now you get to set up your company.\n\nGive your company adequate starting capital by adjusting the investment sliders.\n\nThen name your company, pick a logo, and click OK.",
+    ),
+    (
+        2425,
+        "Select the Track Tool to lay down track between two promising cities. Drag from the start point to the end point, keeping grades below 2%.",
+    ),
+    (
+        2426,
+        "Now place stations at either end of your track using the Station Tool. Bigger stations draw cargo from a larger catchment area.",
+    ),
+    (
+        2427,
+        "Support your stations by buying facilities: water towers, sanding towers, and roundhouses to maintain your locomotives.",
+    ),
+    (
+        2428,
+        "Purchase trains and assign appropriate cargo and passenger cars according to what your stations supply and demand.",
+    ),
+    (
+        2432,
+        "Use the Company Detail screen to monitor finances, issue stocks or bonds, and change managers for helpful operational bonuses.",
+    ),
+];
 
 #[derive(Clone, Debug, PartialEq)]
 pub(super) struct Message {
@@ -987,6 +1063,10 @@ impl AppState {
                         self.close_dialog();
                         self.effects.push(super::Effect::Quit);
                     }
+                    Some(Act::Tip { index }) => {
+                        self.close_dialog();
+                        self.show_tip(index);
+                    }
                     None => {}
                 }
             }
@@ -1050,9 +1130,44 @@ impl AppState {
                     ],
                 }));
             }
+            A_FILE_TIPS => {
+                self.close_dialog();
+                self.show_tip(0);
+            }
             _ => return false,
         }
         true
+    }
+
+    /// Opens the game tips and tutorial dialog (I5 / I6; `helpd.win`), cycling through tips and lessons.
+    pub(super) fn show_tip(&mut self, index: usize) {
+        let n = GAME_TIPS.len();
+        let cur = index % n;
+        let (id, fallback) = GAME_TIPS[cur];
+        let is_tutorial = cur >= 9;
+        let title = if is_tutorial {
+            self.texts.get(2410, "Tutorial")
+        } else {
+            self.texts.get(2407, "Tips")
+        };
+        let body = self.texts.get(id, fallback);
+        let prev_idx = (cur + n - 1) % n;
+        let next_idx = (cur + 1) % n;
+        self.push_dialog(Dialog::Message(Message {
+            title,
+            body,
+            buttons: vec![
+                (
+                    self.texts.get(lng::PREVIOUS, "Previous"),
+                    Act::Tip { index: prev_idx },
+                ),
+                (
+                    self.texts.get(2406, "Next Tip"),
+                    Act::Tip { index: next_idx },
+                ),
+                (self.texts.get(453, "Close"), Act::Close),
+            ],
+        }));
     }
 
     /// A press or drag on a founding slider.
@@ -1498,6 +1613,7 @@ impl AppState {
             (t.a("Save"), A_FILE_SAVE),
             (t.get(lng::NEW_GAME, "New Game"), A_FILE_NEW),
             (t.a("Options"), A_FILE_OPTIONS),
+            (t.get(2407, "Tips"), A_FILE_TIPS),
             (t.a("Main Menu"), A_FILE_MENU),
             (t.get(lng::QUIT, "Quit"), A_FILE_QUIT),
             (t.get(lng::CANCEL, "Cancel"), A_DLG_CLOSE),

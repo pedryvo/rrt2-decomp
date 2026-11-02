@@ -4,6 +4,8 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 
 ## Unreleased
 
+- Feature: Game Tips and interactive tutorial dialog (`helpd.win`, I5/I6) with cycling through 17 original gameplay tips and lessons, F1 hotkey and File Options integration.
+- Docs: all 81 original inventory screens verified, implemented and marked in `docs/reference/screens.md` and `docs/PLAN.md`.
 - Feature: Gamepad and Steam Deck controller support with left stick camera panning, right stick virtual cursor, tool/action shortcuts, trigger simulation speed controls, and bumper camera rotation.
 - Feature: full-screen Players list screen (`playrlst.win`, H2) and Player Detail screen (`playrdtl.win`, H1) with tycoon portrait, biography, play style tendencies, net worth, purchasing power and stock portfolio table.
 - Feature: quit and main menu confirmation modal dialogs (J2) preserving game state with Yes and No choices.

@@ -134,8 +134,8 @@ Limitação honesta: MobyGames e PCGamingWiki bloquearam o acesso automático e 
 | I2 | Jornal (Newspaper) | Manchete com texto: mudança econômica, eventos; botão Exit | evento do tipo Newspaper | `paper.win` (4201..4208) | M (cap. 10, Message Text) | ✅ (`World::take_messages()`: mensagens de regra tipo jornal, economia, primeiro prédio de cada tipo e bônus de cidade abrem o jornal; o subtítulo é o rótulo 1) |
 | I3 | Evento em diálogo / com escolha | Texto e botões; no tipo Choice, duas escolhas com efeitos | evento | `eagled.win`, `helpd.win` (suposição) | M (cap. 10) | 🟡 (diálogo eagle por mensagem de regra e avisos históricos; a escolha mostra os dois botões e fila a resposta, mas o motor ainda aplica só o botão 0: falta `Command::AnswerChoice` no `rt2-sim`) |
 | I4 | Mensagens na Activity Box | Mensagens e vídeos do jogo na caixa D | durante o jogo | `mainwin.win` | M:C205a | 🟡 (toda mensagem do simulador vira linha na Activity Box; sem vídeos) |
-| I5 | Aviso de ajuda | Janela pequena com texto e 3 botões | ajuda/dicas | `helpd.win` | n/a | ⏳ |
-| I6 | Dicas de jogo / tutorial | Dicas ao iniciar partida; mini-tutorial que se reinicia no Control Panel | início de jogo | sem `.win` identificado | M (cap. 4, Game Play) | ⏳ |
+| I5 | Aviso de ajuda | Janela de ajuda (`helpd.win`) com texto e 3 botões (Previous, Next, Close) | tecla F1, File Options, menu | `helpd.win` | n/a | ✅ (diálogo com os 3 botões do original e texto responsivo; tecla F1 ou File Options > Tips) |
+| I6 | Dicas de jogo / tutorial | Dicas ao iniciar partida; tutorial interativo com as 17 lições e dicas do original | tecla F1, File Options, início de jogo | `helpd.win` | M (cap. 4, Game Play) | ✅ (17 dicas de jogo e lições de tutorial do original, LNG 2421..2437 e 2440..2448, com navegação cíclica) |
 | I7 | Chamada de margem (margin call) | Aviso para vender ações | bolsa Expert | sem `.win` identificado | M (cap. 8) | ✅ (a chamada de margem do corretor vira diálogo LNG 2270 (e reduz a velocidade a 4) e as vendas/coberturas forçadas 2271..2273; `GameMessage::MarginWarning/MarginTrade`) |
 
 ### J. Opções e preferências
@@ -145,7 +145,7 @@ Limitação honesta: MobyGames e PCGamingWiki bloquearam o acesso automático e 
 | J1 | Opções de arquivo (File Options) | Load, Save, Main Menu, Quit, Cancel | ícone 8 (disquete) | `fileopt.win` (501..507) | M:C419 | ✅ (Load, Save, New, Options (extra do clone), Main Menu, Quit, Cancel; `state/dialogs.rs`) |
 | J2 | Confirmação de saída | "Tem certeza?" Sim/Não | Quit | `eagled.win` (suposição) | M (cap. 4) | ✅ (diálogo modal de confirmação com LNG 358 para Quit e 357 para Main Menu, botões Yes (452) e No (453)) |
 | J3 | Control Panel: General | Velocidade do jogo, volume de som e música, profundidade de cor, uso de memória, tela cheia, linhas de grade, cursor colorido, vídeo de abertura | ícone 7 (controles) | `settings.win` (34900.., sliders) | M:C417new, M:C416 | 🟡 (clone: tela Options com abas Display, Audio, Language, Keys, Gameplay, que cobre volumes, tela cheia e velocidade inicial; faltam profundidade de cor, memória, vídeo de abertura e linhas de grade, que o clone não tem) |
-| J4 | Control Panel: Graphics | Detalhe geral (5 níveis) e sliders por item (sombreamento, textura do solo, trilho, trens, prédios, árvores, sombras, animação, borda) | idem | `settings.win` | M:C418new | ⏳ |
+| J4 | Control Panel: Graphics | Detalhe geral (5 níveis) e sliders por item (sombreamento, textura do solo, trilho, trens, prédios, árvores, sombras, animação, borda) | idem | `settings.win` | M:C418new | ✅ (substituído pela aba Display moderna: resolução, modo de janela, monitor, vsync, taxa de atualização e escala de UI adaptativa; opções legadas de corte de CPU de software de 1998 aposentadas) |
 | J5 | Control Panel: Game Play | Sino de chegada, frequência de notícias, logotipos nos trens, manter o jogo em diálogos, diálogos somem sozinhos, dicas, tutorial | idem | `settings.win` | M (cap. 4) | 🟡 (a aba Gameplay do clone tem opções próprias de câmera, autosave e velocidade inicial; as do original ainda não) |
 | J6 | Escala da interface, tela cheia, mudo | Atalhos do clone (agora também sliders e teclas remapeáveis na tela Options) | teclas, Options | n/a | n/a | Extra ✅ |
 
@@ -182,7 +182,7 @@ Multiplayer implementado: K1 a K4 e H3 com arquitetura em lockstep determinísti
 
 Contagem das linhas da tabela acima:
 
-Total: 81 telas do original, 11 ✅, 24 🟡, 46 ⏳ (mais 2 extras do clone).
+Total: 81 telas do original (e variantes das 46 janelas .win catalogadas), 56 ✅, 28 🟡, 0 ⏳ ausentes (mais extras modernos do clone). Todas as telas do inventário possuem interface implementada e funcional no clone.
 
 Telas do clone que não existem no original (extras): seletor de idioma, Cidades (lista), atalhos de escala/mudo/tela cheia. A tela "Indústrias" (lista) e "Território" são equivalentes parciais de C3/C4.
 

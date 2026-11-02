@@ -446,3 +446,41 @@ fn gamepad_controls_pan_camera_and_control_tools_and_speed() {
     };
     assert_ne!(rot_before, rot_after);
 }
+
+#[test]
+fn help_dialog_and_game_tips_tutorial_work() {
+    use super::dialogs::{A_DLG_BTN, A_FILE_TIPS};
+    use winit::keyboard::KeyCode;
+
+    let Some(mut s) = state() else {
+        return;
+    };
+
+    // Press F1 to open Tips
+    s.key(KeyCode::F1, true, false, None);
+    match s.top_dialog() {
+        Some(Dialog::Message(m)) => {
+            assert!(m.title.contains("Tips") || m.title.contains("Tutorial"));
+            assert_eq!(m.buttons.len(), 3);
+        }
+        _ => panic!("expected tips dialog on F1"),
+    }
+
+    // Button 1 is Next Tip
+    s.dialog_activated(A_DLG_BTN + 1);
+    assert!(s.top_dialog().is_some());
+
+    // Button 0 is Previous Tip
+    s.dialog_activated(A_DLG_BTN);
+    assert!(s.top_dialog().is_some());
+
+    // Button 2 is Close
+    s.dialog_activated(A_DLG_BTN + 2);
+    assert!(s.top_dialog().is_none());
+
+    // File Options > Tips (A_FILE_TIPS)
+    s.dialog_activated(A_FILE_TIPS);
+    assert!(s.top_dialog().is_some());
+    s.dialog_activated(A_DLG_BTN + 2);
+    assert!(s.top_dialog().is_none());
+}

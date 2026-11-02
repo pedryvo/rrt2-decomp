@@ -860,6 +860,10 @@ impl AppState {
         if !ctrl && code == KeyCode::Escape && !self.has_dialog() && self.overview_cancel() {
             return;
         }
+        if !ctrl && code == KeyCode::F1 {
+            self.show_tip(0);
+            return;
+        }
         if !ctrl && self.reports_key(code) {
             return;
         }
