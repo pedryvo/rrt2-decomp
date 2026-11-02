@@ -586,3 +586,42 @@ fn ruleset_in_game_command_and_save_trailer_roundtrip() {
     let _ = std::fs::remove_file(p.with_extension("meta"));
     let _ = std::fs::remove_file(p.with_extension("png"));
 }
+
+#[test]
+fn accessibility_tab_changes_colorblind_font_scale_and_subtitles() {
+    use crate::config::ColorblindMode;
+    use crate::options::{Change, Setting, apply};
+
+    let Some(mut s) = state() else { return };
+
+    // Initially defaults
+    assert_eq!(s.config().accessibility.colorblind, ColorblindMode::Off);
+    assert_eq!(s.config().accessibility.font_scale, 100);
+    assert!(!s.config().accessibility.sound_subtitles);
+
+    // Open accessibility options
+    assert!(s.show_options("accessibility"));
+
+    // Change colorblind mode to Deuteranopia
+    let mut cfg = s.config().clone();
+    apply(&mut cfg, Setting::Colorblind, Change::Pick(2), &s.env());
+    assert_eq!(cfg.accessibility.colorblind, ColorblindMode::Deuteranopia);
+
+    // Change font scale to 120%
+    apply(&mut cfg, Setting::FontScale, Change::Step(2), &s.env());
+    assert_eq!(cfg.accessibility.font_scale, 120);
+
+    // Toggle sound subtitles on
+    apply(&mut cfg, Setting::SoundSubtitles, Change::Toggle, &s.env());
+    assert!(cfg.accessibility.sound_subtitles);
+
+    // Verify palettes for Deuteranopia
+    let colors = crate::state::overview::grade_colors(ColorblindMode::Deuteranopia);
+    assert_ne!(colors[0], crate::state::overview::GRADE_COLORS[0]);
+
+    // Test sound subtitle event generation
+    *s.config_mut() = cfg;
+    assert_eq!(s.font_multiplier(), 1.2);
+    let sub = s.event_sound_subtitle(rt2_audio::Event::TrainBreakdown);
+    assert_eq!(sub.as_deref(), Some("♪ Train Breakdown"));
+}

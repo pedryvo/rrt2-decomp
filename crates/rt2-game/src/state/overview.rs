@@ -20,6 +20,7 @@ use std::collections::BTreeSet;
 use rt2_ui::{Align, Anchor, Color, Fill, FontStyle, Kind, Layout, NodeId, Ui, game_font};
 
 use super::{AppState, Screen};
+use crate::config::ColorblindMode;
 use crate::overview::{self as ov, Building, TrackTile};
 use crate::text::id as lng;
 
@@ -63,6 +64,86 @@ pub(super) const CONGESTION_COLORS: [Color; 5] = [
     Color::rgb(0xfb, 0x92, 0x3c),
     Color::rgb(0xdc, 0x26, 0x26),
 ];
+
+pub(super) fn grade_colors(mode: ColorblindMode) -> [Color; 5] {
+    match mode {
+        ColorblindMode::Off => GRADE_COLORS,
+        ColorblindMode::Protanopia | ColorblindMode::Deuteranopia => [
+            Color::rgb(0x2b, 0x83, 0xba),
+            Color::rgb(0xab, 0xdd, 0xa4),
+            Color::rgb(0xff, 0xff, 0xbf),
+            Color::rgb(0xfd, 0xae, 0x61),
+            Color::rgb(0xd7, 0x19, 0x1c),
+        ],
+        ColorblindMode::Tritanopia => [
+            Color::rgb(0x1b, 0x78, 0x37),
+            Color::rgb(0x7f, 0xbf, 0x7b),
+            Color::rgb(0xe7, 0xd4, 0xe8),
+            Color::rgb(0xaf, 0x8d, 0xc1),
+            Color::rgb(0x76, 0x2a, 0x83),
+        ],
+    }
+}
+
+pub(super) fn traffic_colors(mode: ColorblindMode) -> [Color; 5] {
+    match mode {
+        ColorblindMode::Off => TRAFFIC_COLORS,
+        ColorblindMode::Protanopia | ColorblindMode::Deuteranopia => [
+            Color::rgb(0x2b, 0x83, 0xba),
+            Color::rgb(0x64, 0xb5, 0xf6),
+            Color::rgb(0xff, 0xd5, 0x4f),
+            Color::rgb(0xfb, 0x8c, 0x00),
+            Color::rgb(0xb7, 0x1c, 0x1c),
+        ],
+        ColorblindMode::Tritanopia => [
+            Color::rgb(0x00, 0x69, 0x5c),
+            Color::rgb(0x26, 0xa6, 0x9a),
+            Color::rgb(0xf4, 0x8f, 0xb1),
+            Color::rgb(0xd8, 0x1b, 0x60),
+            Color::rgb(0x88, 0x0e, 0x4f),
+        ],
+    }
+}
+
+pub(super) fn profit_colors(mode: ColorblindMode) -> [Color; 5] {
+    match mode {
+        ColorblindMode::Off => PROFIT_COLORS,
+        ColorblindMode::Protanopia | ColorblindMode::Deuteranopia => [
+            Color::rgb(0x2b, 0x83, 0xba),
+            Color::rgb(0x64, 0xb5, 0xf6),
+            Color::rgb(0xff, 0xd5, 0x4f),
+            Color::rgb(0xfb, 0x8c, 0x00),
+            Color::rgb(0xb7, 0x1c, 0x1c),
+        ],
+        ColorblindMode::Tritanopia => [
+            Color::rgb(0x00, 0x79, 0x6b),
+            Color::rgb(0x4d, 0xb6, 0xac),
+            Color::rgb(0xf4, 0x8f, 0xb1),
+            Color::rgb(0xd8, 0x1b, 0x60),
+            Color::rgb(0x88, 0x0e, 0x4f),
+        ],
+    }
+}
+
+pub(super) fn congestion_colors(mode: ColorblindMode) -> [Color; 5] {
+    match mode {
+        ColorblindMode::Off => CONGESTION_COLORS,
+        ColorblindMode::Protanopia | ColorblindMode::Deuteranopia => [
+            Color::rgb(0x02, 0x88, 0xd1),
+            Color::rgb(0x4f, 0xc3, 0xf7),
+            Color::rgb(0xff, 0xd5, 0x4f),
+            Color::rgb(0xfb, 0x8c, 0x00),
+            Color::rgb(0xb7, 0x1c, 0x1c),
+        ],
+        ColorblindMode::Tritanopia => [
+            Color::rgb(0x00, 0x89, 0x7b),
+            Color::rgb(0x80, 0xcb, 0xc4),
+            Color::rgb(0xf8, 0xbb, 0xd0),
+            Color::rgb(0xd8, 0x1b, 0x60),
+            Color::rgb(0x88, 0x0e, 0x4f),
+        ],
+    }
+}
 /// Most overlay squares drawn per layer (the visible ones come first).
 const MAX_SQUARES: usize = 3000;
 
@@ -431,7 +512,7 @@ impl AppState {
                     rw,
                     dz,
                     &t.a("Steepness of the track"),
-                    &GRADE_COLORS,
+                    &grade_colors(self.config.accessibility.colorblind),
                     &names.map(String::from),
                 );
             }
@@ -451,7 +532,7 @@ impl AppState {
                     rw,
                     dz,
                     &t.a("Traffic on the track"),
-                    &TRAFFIC_COLORS,
+                    &traffic_colors(self.config.accessibility.colorblind),
                     &names,
                 );
             }
@@ -471,7 +552,7 @@ impl AppState {
                     rw,
                     dz,
                     &t.a("Track Profitability"),
-                    &PROFIT_COLORS,
+                    &profit_colors(self.config.accessibility.colorblind),
                     &names,
                 );
             }
@@ -491,7 +572,7 @@ impl AppState {
                     rw,
                     dz,
                     &t.a("Track Congestion & Bottlenecks"),
-                    &CONGESTION_COLORS,
+                    &congestion_colors(self.config.accessibility.colorblind),
                     &names,
                 );
             }
@@ -791,15 +872,17 @@ impl AppState {
                 }
             }
             Layer::Grade => {
+                let colors = grade_colors(self.config.accessibility.colorblind);
                 for t in &o.tiles {
-                    let c = GRADE_COLORS[ov::grade_band(t.grade)];
+                    let c = colors[ov::grade_band(t.grade)];
                     square(ui, t.x, t.y, Color(c.0, c.1, c.2, 0xd0), 0.0);
                 }
             }
             Layer::Traffic => {
+                let colors = traffic_colors(self.config.accessibility.colorblind);
                 for t in &o.tiles {
                     if let Some(b) = ov::traffic_band(t.wear, o.max_wear) {
-                        let c = TRAFFIC_COLORS[b];
+                        let c = colors[b];
                         square(ui, t.x, t.y, Color(c.0, c.1, c.2, 0xd8), 0.0);
                     }
                 }
@@ -825,16 +908,18 @@ impl AppState {
                 }
             }
             Layer::Profit => {
+                let colors = profit_colors(self.config.accessibility.colorblind);
                 for t in &o.tiles {
                     let b = ov::profit_band(t.wear, o.max_wear);
-                    let c = PROFIT_COLORS[b];
+                    let c = colors[b];
                     square(ui, t.x, t.y, Color(c.0, c.1, c.2, 0xd8), 0.0);
                 }
             }
             Layer::Congestion => {
+                let colors = congestion_colors(self.config.accessibility.colorblind);
                 for t in &o.tiles {
                     let b = ov::congestion_band(t.wear, o.max_wear, t.grade);
-                    let c = CONGESTION_COLORS[b];
+                    let c = colors[b];
                     square(ui, t.x, t.y, Color(c.0, c.1, c.2, 0xd8), 0.0);
                 }
             }

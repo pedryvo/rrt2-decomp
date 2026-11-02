@@ -952,6 +952,7 @@ impl AppState {
             cash,
             cash_timer: 500.0,
             toast: None,
+            sound_subtitle: None,
             hud: MainIds::default(),
             scenario: None,
             setup,

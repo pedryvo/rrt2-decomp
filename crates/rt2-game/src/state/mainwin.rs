@@ -129,6 +129,7 @@ pub(super) struct MainIds {
     pub speed: Option<NodeId>,
     pub pause: Option<NodeId>,
     pub toast: Option<NodeId>,
+    pub sound_sub: Option<NodeId>,
     pub status: Option<NodeId>,
     pub radar: Option<NodeId>,
     pub center: Option<NodeId>,
@@ -925,6 +926,19 @@ impl AppState {
         );
         ui.set_visible(toast, false);
 
+        // ---- sound subtitles (for hearing impaired / accessibility) -------------------------
+        let sound_sub = ui.add(
+            root,
+            label(
+                "",
+                game_font(6).with_shadow(),
+                Color::rgb(0x80, 0xdf, 0xff),
+                Align::Center,
+            ),
+            at(gm.x(260.0), gm.y(30.0), gm.xr(764.0) - gm.x(260.0), 28.0),
+        );
+        ui.set_visible(sound_sub, false);
+
         // The tooltip with the name of the tab under the cursor, on top of everything else.
         let tt_root = ui.add_root(panel(Fill::None), Layout::fill());
         let tt = ui.add(
@@ -952,6 +966,7 @@ impl AppState {
                 speed: Some(speed),
                 pause: Some(pause),
                 toast: Some(toast),
+                sound_sub: Some(sound_sub),
                 status: Some(status),
                 radar: radar_node,
                 center: center_node,
@@ -1358,6 +1373,7 @@ impl AppState {
         };
         let paused = g.world.speed() == 0;
         let toast = g.toast.as_ref().map(|t| t.0.clone());
+        let sound_sub = g.sound_subtitle.as_ref().map(|t| t.0.clone());
         // The radar outline follows the camera.
         let view = (
             g.camera.target.x,
@@ -1400,6 +1416,15 @@ impl AppState {
         if let Some(n) = hud.toast {
             self.ui.set_visible(n, toast.is_some());
             self.ui.set_text(n, toast.unwrap_or_default());
+        }
+        if let Some(n) = hud.sound_sub {
+            let active = if self.config.accessibility.sound_subtitles {
+                sound_sub
+            } else {
+                None
+            };
+            self.ui.set_visible(n, active.is_some());
+            self.ui.set_text(n, active.unwrap_or_default());
         }
         if let Some((n, c)) = colors {
             self.ui.set_cells(n, c);

@@ -3,7 +3,7 @@
 //! is testable; `state/options_ui.rs` draws it and applies the side effects (window, audio,
 //! language) of a change.
 
-use crate::config::{Config, RESOLUTIONS, WindowMode};
+use crate::config::{ColorblindMode, Config, RESOLUTIONS, WindowMode};
 use crate::notices::Category;
 use crate::text::Texts;
 
@@ -16,10 +16,11 @@ pub enum Tab {
     Gameplay,
     Notices,
     Fixes,
+    Accessibility,
 }
 
 impl Tab {
-    pub const ALL: [Tab; 7] = [
+    pub const ALL: [Tab; 8] = [
         Tab::Display,
         Tab::Audio,
         Tab::Language,
@@ -27,6 +28,7 @@ impl Tab {
         Tab::Gameplay,
         Tab::Notices,
         Tab::Fixes,
+        Tab::Accessibility,
     ];
 
     pub fn english(self) -> &'static str {
@@ -38,6 +40,7 @@ impl Tab {
             Tab::Gameplay => "Gameplay",
             Tab::Notices => "Notices",
             Tab::Fixes => "Fixes",
+            Tab::Accessibility => "Accessibility",
         }
     }
 
@@ -70,6 +73,11 @@ impl Tab {
                 Setting::NoticeTowns,
                 Setting::NoticeCompetitors,
             ],
+            Tab::Accessibility => &[
+                Setting::Colorblind,
+                Setting::FontScale,
+                Setting::SoundSubtitles,
+            ],
             Tab::Language | Tab::Keys | Tab::Fixes => &[],
         }
     }
@@ -100,10 +108,13 @@ pub enum Setting {
     NoticeFinance,
     NoticeTowns,
     NoticeCompetitors,
+    Colorblind,
+    FontScale,
+    SoundSubtitles,
 }
 
 impl Setting {
-    pub const ALL: [Setting; 23] = [
+    pub const ALL: [Setting; 26] = [
         Setting::WindowMode,
         Setting::Resolution,
         Setting::Monitor,
@@ -127,6 +138,9 @@ impl Setting {
         Setting::NoticeFinance,
         Setting::NoticeTowns,
         Setting::NoticeCompetitors,
+        Setting::Colorblind,
+        Setting::FontScale,
+        Setting::SoundSubtitles,
     ];
 
     pub fn index(self) -> u32 {
@@ -173,6 +187,9 @@ impl Setting {
             Setting::NoticeFinance => Category::Finance.english(),
             Setting::NoticeTowns => Category::Towns.english(),
             Setting::NoticeCompetitors => Category::Competitors.english(),
+            Setting::Colorblind => "Colorblind Mode",
+            Setting::FontScale => "UI Font Scale",
+            Setting::SoundSubtitles => "Sound Subtitles",
         }
     }
 }
@@ -406,6 +423,33 @@ fn row(s: Setting, c: &Config, env: &Env, t: &Texts) -> Row {
             (25, 300, 25),
             percent(g.zoom_speed as i32),
         ),
+        Setting::Colorblind => Row {
+            setting: s,
+            label,
+            control: Control::Choice {
+                options: vec![
+                    t.a("Off"),
+                    t.a("Protanopia (Red-blind)"),
+                    t.a("Deuteranopia (Green-blind)"),
+                    t.a("Tritanopia (Blue-blind)"),
+                ],
+                selected: match c.accessibility.colorblind {
+                    ColorblindMode::Off => 0,
+                    ColorblindMode::Protanopia => 1,
+                    ColorblindMode::Deuteranopia => 2,
+                    ColorblindMode::Tritanopia => 3,
+                },
+                enabled: true,
+            },
+        },
+        Setting::FontScale => slider(
+            s,
+            label,
+            c.accessibility.font_scale as i32,
+            (80, 160, 10),
+            percent(c.accessibility.font_scale as i32),
+        ),
+        Setting::SoundSubtitles => toggle(s, label, c.accessibility.sound_subtitles),
     }
 }
 
@@ -563,6 +607,26 @@ pub fn apply(c: &mut Config, s: Setting, change: Change, env: &Env) -> Effects {
                 c.notices.toggle(cat);
             }
         }
+        Setting::Colorblind => {
+            if let Change::Pick(i) = change {
+                c.accessibility.colorblind = match i {
+                    1 => ColorblindMode::Protanopia,
+                    2 => ColorblindMode::Deuteranopia,
+                    3 => ColorblindMode::Tritanopia,
+                    _ => ColorblindMode::Off,
+                };
+            }
+        }
+        Setting::FontScale => {
+            if let Some(v) = adjust(c.accessibility.font_scale as i32, (80, 160, 10)) {
+                c.accessibility.font_scale = v as u32;
+            }
+        }
+        Setting::SoundSubtitles => {
+            if change == Change::Toggle {
+                c.accessibility.sound_subtitles = !c.accessibility.sound_subtitles;
+            }
+        }
     }
     fx
 }
@@ -588,6 +652,7 @@ pub fn reset_tab(c: &mut Config, tab: Tab) -> Effects {
         Tab::Keys => c.keys = d.keys,
         Tab::Language => {}
         Tab::Fixes => c.ruleset = 0,
+        Tab::Accessibility => c.accessibility = d.accessibility,
     }
     fx
 }

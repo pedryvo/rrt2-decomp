@@ -27,11 +27,11 @@ pub(super) const A_OPT_RESET: u32 = 8001;
 pub(super) const A_OPT_GAMEDIR: u32 = 8002;
 pub(super) const A_OPT_TAB: u32 = 8010;
 pub(super) const A_OPT_TOGGLE: u32 = 8100;
-pub(super) const A_OPT_DEC: u32 = 8200;
-pub(super) const A_OPT_INC: u32 = 8300;
-pub(super) const A_OPT_BAR: u32 = 8400;
+pub(super) const A_OPT_DEC: u32 = 8150;
+pub(super) const A_OPT_INC: u32 = 8200;
+pub(super) const A_OPT_BAR: u32 = 8250;
 /// `A_OPT_PICK + setting * 16 + option`.
-pub(super) const A_OPT_PICK: u32 = 8430;
+pub(super) const A_OPT_PICK: u32 = 8300;
 pub(super) const A_OPT_LANG: u32 = 8820;
 pub(super) const A_OPT_KEYLIST: u32 = 8900;
 pub(super) const A_OPT_REBIND: u32 = 8901;
@@ -148,6 +148,7 @@ impl AppState {
             "gameplay" => Tab::Gameplay,
             "notices" => Tab::Notices,
             "fixes" | "rules" => Tab::Fixes,
+            "accessibility" | "access" => Tab::Accessibility,
             // The key tab while rebinding "Pause / resume", then after pressing Q (a clash).
             "keys-rebind" | "keys-conflict" => {
                 self.open_options(Tab::Keys);
@@ -183,7 +184,12 @@ impl AppState {
         &self.config
     }
 
-    fn env(&self) -> Env {
+    #[cfg(test)]
+    pub fn config_mut(&mut self) -> &mut crate::config::Config {
+        &mut self.config
+    }
+
+    pub(super) fn env(&self) -> Env {
         Env {
             monitors: self.monitors.clone(),
             ui_scale: self.scale.percent(),
@@ -421,17 +427,17 @@ impl AppState {
             A_OPT_SCROLL | A_SCROLL_DOWN => {
                 self.options_scroll(if a == A_OPT_SCROLL { -1 } else { 1 });
             }
-            a if (A_OPT_TOGGLE..A_OPT_TOGGLE + 64).contains(&a) => {
+            a if (A_OPT_TOGGLE..A_OPT_TOGGLE + 32).contains(&a) => {
                 if let Some(s) = Setting::from_index(a - A_OPT_TOGGLE) {
                     self.change_setting(s, Change::Toggle);
                 }
             }
-            a if (A_OPT_DEC..A_OPT_DEC + 64).contains(&a) => {
+            a if (A_OPT_DEC..A_OPT_DEC + 32).contains(&a) => {
                 if let Some(s) = Setting::from_index(a - A_OPT_DEC) {
                     self.change_setting(s, Change::Step(-1));
                 }
             }
-            a if (A_OPT_INC..A_OPT_INC + 64).contains(&a) => {
+            a if (A_OPT_INC..A_OPT_INC + 32).contains(&a) => {
                 if let Some(s) = Setting::from_index(a - A_OPT_INC) {
                     self.change_setting(s, Change::Step(1));
                 }
@@ -487,7 +493,7 @@ impl AppState {
                 self.rebuild_ui();
                 true
             }
-            UiEvent::Pointer(a, fx, _) if (A_OPT_BAR..A_OPT_BAR + 64).contains(&a) => {
+            UiEvent::Pointer(a, fx, _) if (A_OPT_BAR..A_OPT_BAR + 32).contains(&a) => {
                 if let Some(s) = Setting::from_index(a - A_OPT_BAR) {
                     let rows =
                         options::rows(self.options_tab(), &self.config, &self.env(), &self.texts);

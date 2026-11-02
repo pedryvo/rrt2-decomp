@@ -178,6 +178,36 @@ impl Default for Gameplay {
     }
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ColorblindMode {
+    #[default]
+    Off,
+    Protanopia,
+    Deuteranopia,
+    Tritanopia,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Accessibility {
+    pub colorblind: ColorblindMode,
+    /// Font scale percentage (80..=160, default 100), independent of UI scale.
+    pub font_scale: u32,
+    /// Show on-screen visual subtitles/captions for sound cues.
+    pub sound_subtitles: bool,
+}
+
+impl Default for Accessibility {
+    fn default() -> Self {
+        Accessibility {
+            colorblind: ColorblindMode::Off,
+            font_scale: 100,
+            sound_subtitles: false,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Network {
@@ -227,6 +257,8 @@ pub struct Config {
     pub ruleset: u64,
     /// Multiplayer configuration (network port, player profile).
     pub network: Network,
+    /// Accessibility options (colorblind palette, independent font scale, sound subtitles).
+    pub accessibility: Accessibility,
 }
 
 impl Config {
@@ -299,6 +331,11 @@ mod tests {
         c.gameplay.default_speed = 4;
         c.keys.pause = vec!["KeyP".into(), "ctrl+Space".into()];
         c.keys.quick_load = vec!["F8".into()];
+        c.accessibility = Accessibility {
+            colorblind: ColorblindMode::Deuteranopia,
+            font_scale: 120,
+            sound_subtitles: true,
+        };
         assert_eq!(Config::parse(&c.to_toml()).unwrap(), c);
     }
 

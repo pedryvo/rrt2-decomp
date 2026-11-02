@@ -337,6 +337,7 @@ impl AppState {
             accum_ms: 0.0,
             cash_timer: 500.0,
             toast: None,
+            sound_subtitle: None,
             hud: Default::default(),
             over_shown: false,
             info: None,

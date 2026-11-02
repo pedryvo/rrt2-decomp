@@ -140,6 +140,7 @@ pub(crate) struct GameState {
     cash: Option<f64>,
     cash_timer: f32,
     toast: Option<(String, f32)>,
+    sound_subtitle: Option<(String, f32)>,
     hud: MainIds,
     /// The scenario's description, briefing and goals (`scenario_info.rs`).
     scenario: Option<Box<crate::scenario_info::ScenarioInfo>>,
@@ -1123,6 +1124,12 @@ impl AppState {
                 g.toast = None;
             }
         }
+        if let Some((_, left)) = &mut g.sound_subtitle {
+            *left -= dt_ms / 1000.0;
+            if *left <= 0.0 {
+                g.sound_subtitle = None;
+            }
+        }
         // A new year: offer the year-end report (`finance.md` 8: the ledgers were archived).
         let year = g.world.date().year;
         if year > g.last_year {
@@ -1499,6 +1506,7 @@ impl AppState {
             accum_ms: 0.0,
             cash_timer: 500.0,
             toast: None,
+            sound_subtitle: None,
             hud: MainIds::default(),
             over_shown: false,
             info: None,
@@ -1559,6 +1567,43 @@ impl AppState {
         if let Screen::Game(g) = &mut self.screen {
             g.toast = Some((msg, TOAST_SECS));
         }
+    }
+
+    pub(super) fn trigger_sound_cue(&mut self, ev: Event) {
+        self.cues.push(Cue::Event(ev));
+        if self.config.accessibility.sound_subtitles
+            && let Some(sub) = self.event_sound_subtitle(ev)
+            && let Screen::Game(g) = &mut self.screen
+        {
+            g.sound_subtitle = Some((sub, 3.5));
+        }
+    }
+
+    pub(super) fn event_sound_subtitle(&self, ev: Event) -> Option<String> {
+        let text = match ev {
+            Event::TrainBreakdown => self.texts.a("♪ Train Breakdown"),
+            Event::TrainCrash => self.texts.a("♪ Train Crash!"),
+            Event::TrainRobbery => self.texts.a("♪ Train Robbed!"),
+            Event::TrainFire => self.texts.a("♪ Train Fire!"),
+            Event::TrainBrokenSteam | Event::TrainBrokenOther => {
+                self.texts.a("♪ Mechanical Trouble")
+            }
+            Event::BellA | Event::BellB => self.texts.a("♪ Station Bell"),
+            Event::Buy => self.texts.a("♪ Purchase / Cash"),
+            Event::StockTrade => self.texts.a("♪ Stock Bought"),
+            Event::StockSell => self.texts.a("♪ Stock Sold"),
+            Event::LayTrack | Event::AddTrack => self.texts.a("♪ Track Construction"),
+            Event::Bulldoze => self.texts.a("♪ Bulldozer"),
+            Event::BuildBuilding => self.texts.a("♪ Building Construction"),
+            Event::PaperNew => self.texts.a("♪ Newspaper Published"),
+            _ => return None,
+        };
+        Some(text)
+    }
+
+    #[allow(dead_code)]
+    pub fn font_multiplier(&self) -> f32 {
+        (self.config.accessibility.font_scale as f32 / 100.0).clamp(0.8, 1.6)
     }
 
     // ---- UI construction ------------------------------------------------------------------

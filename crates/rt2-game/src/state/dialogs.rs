@@ -842,6 +842,19 @@ impl AppState {
                 let pos = self.train_message_pos(m).or_else(|| self.message_pos(m));
                 self.add_event(category, pos, line, full.trim().to_owned());
             }
+            let sound_ev = match m {
+                GameMessage::TrainBreakdown { .. } => Some(rt2_audio::Event::TrainBreakdown),
+                GameMessage::TrainCrashed { .. } => Some(rt2_audio::Event::TrainCrash),
+                GameMessage::TrainRobbed { .. } => Some(rt2_audio::Event::TrainRobbery),
+                GameMessage::TrainArrived { .. } => Some(rt2_audio::Event::BellA),
+                GameMessage::ThievesArrested { .. } => Some(rt2_audio::Event::BellB),
+                GameMessage::StockSplit { .. } => Some(rt2_audio::Event::StockTrade),
+                GameMessage::EconomyChanged { .. } => Some(rt2_audio::Event::PaperNew),
+                _ => None,
+            };
+            if let Some(ev) = sound_ev {
+                self.trigger_sound_cue(ev);
+            }
             // A category switched off in the options shows no pop-up (docs/ui.md); a scenario
             // choice the world waits for is not one of these (`pending_choice_dialog`).
             if self.config.notices.get(category)
