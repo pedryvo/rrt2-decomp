@@ -408,7 +408,8 @@ impl Ts<'_> {
             .s
             .header
             .get((0x0057_0227 - crate::ai::HDR_BASE) as usize)
-            .is_some_and(|&b| b != 0);
+            .is_some_and(|&b| b != 0)
+            || (self.s.trailer.len() > 0x32 && self.s.trailer[0x32] & 0x40 != 0);
         let waiting = self.i16(P::Industry, ind, OFF_PILE_COUNT + 2 * i);
         if waiting >= 0x32 && !sandbox {
             return;

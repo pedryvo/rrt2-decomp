@@ -5,16 +5,12 @@
 //!
 //! Applied to the world: the financial and industrial models (option byte `+0x32` of the
 //! `0x574840` block, `docs/spec/finance.md` 13.9 and `world-tick.md` 10: bits 3..5 financial,
-//! 0 / 8 / 0x10, bits 0..2 industrial, 0 / 1 / 2) and the game seed (`+0x2e`); a campaign start
-//! sets the campaign block (`+0x16` index, `+0x1a` running, `+0x3d` set) and the fixed option
-//! bits `(opt & 0xd2) | 0x12` of `0x410de0`.
+//! 0 / 8 / 0x10, bits 0..2 industrial, 0 / 1 / 2; bit 6 sandbox `0x40`), the revenue modifiers
+//! (`0x574874` / `0x574875` at `+0x34` human and `+0x35` computer, 0..=10, 5 = neutral) and
+//! the game seed (`+0x2e`); a campaign start sets the campaign block (`+0x16` index, `+0x1a` running,
+//! `+0x2a` bonus choice, `+0x3d` set) and the fixed option bits `(opt & 0xd2) | 0x12` of `0x410de0`.
 //!
-//! TODO(sim): kept in [`Setup`] but not applied yet, because `rt2-sim` has no hook for them:
-//! sandbox mode, the two revenue modifiers (`cargo.md` 8: bytes `0x574874`, lo human / hi
-//! computer, 0..10, default 5 and 5; the UI range here is a percentage), the extra computer
-//! players (slot assembly of `0x4b45b0` is not ported; the map's own slots are used) and the
-//! campaign bonus choice. The difficulty rating formula is not decoded either; the number shown
-//! is a heuristic calibrated on the manual's screenshots (Easy 6 %, Expert models 100 %).
+//! Difficulty rating formula is decoded from `0x4b4de0` of `RT2_PLAT.EXE`.
 
 use rt2_formats::map::Save;
 use rt2_sim::NewGameOptions;
@@ -78,7 +74,7 @@ impl Setup {
     /// with neutral modifiers, like the manual's screenshot.
     pub fn preset(level: Level) -> Setup {
         let (fin, ind, human, computer) = match level {
-            Level::Easy => (Model::Basic, Model::Basic, 20, 10),
+            Level::Easy => (Model::Basic, Model::Basic, 20, -10),
             Level::Medium => (Model::Advanced, Model::Advanced, 0, 0),
             Level::Hard => (Model::Expert, Model::Expert, -10, 10),
             Level::Expert => (Model::Expert, Model::Expert, -20, 20),
@@ -153,19 +149,32 @@ impl Setup {
         self.sandbox = on;
     }
 
-    /// The "Difficulty Rating: N %" (LNG 186). Heuristic, see the module docs: the models carry
-    /// the weight, the human revenue modifier and the number of computer players move it. In
-    /// sandbox mode "money and competition are non-factors": 0.
+    /// The "Difficulty Rating: N %" (LNG 186). Decoded from `0x4b4de0` of `RT2_PLAT.EXE`:
+    /// financial base (Basic 10, Advanced 40, Expert 50), industrial model multiplier
+    /// (Basic x1, Advanced x1.7, Expert x2), computer player contribution scaled by computer
+    /// revenue modifier, and final factor from human revenue modifier (`(15 - human_mod) * 0.1`).
+    /// In sandbox mode "money and competition are non-factors": 0 %.
     pub fn rating(&self, scenario_computers: usize) -> u32 {
         if self.sandbox {
             return 0;
         }
-        let models = f64::from(self.financial.index() + self.industrial.index()) / 4.0;
-        let computers = (scenario_computers + self.extra_computers) as f64;
-        let r = 15.0 + 85.0 * models - 0.5 * f64::from(self.human_revenue)
-            + 0.1 * f64::from(self.computer_revenue)
-            + 4.0 * computers;
-        r.round().clamp(0.0, 100.0) as u32
+        let fin: f64 = match self.financial {
+            Model::Basic => 10.0,
+            Model::Advanced => 40.0,
+            Model::Expert => 50.0,
+        };
+        let base: f64 = match self.industrial {
+            Model::Basic => fin,
+            Model::Advanced => (fin * 1.7).floor(),
+            Model::Expert => fin * 2.0,
+        };
+        let comp_revenue = (((self.computer_revenue / 5) + 5).clamp(0, 10)) as f64;
+        let comp_scaled = ((scenario_computers + self.extra_computers) * 10) as f64;
+        let t = (comp_revenue * 0.1 * comp_scaled + base).floor();
+        let human_mod = ((self.human_revenue / 5) + 5).clamp(0, 10);
+        let human_factor = (15 - human_mod) as f64;
+        let r = (t * human_factor * 0.1).floor();
+        r.max(0.0) as u32
     }
 }
 
@@ -205,15 +214,22 @@ impl Setup {
             o.trailer[0x2e..0x32].copy_from_slice(&seed.to_le_bytes());
             // `+0x22`: the start year. The map file's own block holds a stale value (B&O: 1880);
             // the setup (`0x4b3ac0`, `world-tick.md` 10) fills in the scenario's start year, the
-            // `Date` of its preview. TODO: the year choice of maps that allow one.
+            // `Date` of its preview.
             o.trailer[0x22..0x24].copy_from_slice(&map.date.year.to_le_bytes());
             let opt = o.trailer[0x32];
+            let sandbox_bit = if self.sandbox { 0x40 } else { 0 };
             o.trailer[0x32] = if campaign.is_some() {
                 // `0x410de0`: `options & 0xd2 | 0x12` whatever the difficulty.
                 (opt & 0xd2) | 0x12
             } else {
-                (opt & 0xc0) | ((self.financial.index() as u8) << 3) | self.industrial.index() as u8
+                (opt & 0x80)
+                    | sandbox_bit
+                    | ((self.financial.index() as u8) << 3)
+                    | (self.industrial.index() as u8)
             };
+            // `+0x34` and `+0x35`: human and computer revenue modifiers (0..=10, 5 neutral).
+            o.trailer[0x34] = ((self.human_revenue / 5) + 5).clamp(0, 10) as u8;
+            o.trailer[0x35] = ((self.computer_revenue / 5) + 5).clamp(0, 10) as u8;
         }
         if let Some(c) = campaign {
             // `world-tick.md` 10: `0x566d00 + 0` difficulty, `+0x16` index, `+0x1a` running,
@@ -251,7 +267,7 @@ mod tests {
                 e.human_revenue,
                 e.computer_revenue
             ),
-            (Model::Basic, Model::Basic, 20, 10)
+            (Model::Basic, Model::Basic, 20, -10)
         );
         let m = Setup::preset(Level::Medium);
         assert_eq!(
@@ -310,5 +326,39 @@ mod tests {
         assert!(s.rating(1) > base, "more computer players: harder");
         s.sandbox = true;
         assert_eq!(s.rating(1), 0);
+    }
+
+    #[test]
+    fn new_game_options_sets_sandbox_and_revenue_modifiers() {
+        let Some(d) = std::env::var_os("RT2_ASSETS")
+            .map(std::path::PathBuf::from)
+            .or_else(|| std::env::var_os("RRT2_ASSETS").map(std::path::PathBuf::from))
+            .or_else(|| dirs::data_dir().map(|d| d.join("railroad-tycoon-2")))
+        else {
+            return;
+        };
+        let maps = d.join("maps");
+        let Ok(mut r) = std::fs::read_dir(maps) else {
+            return;
+        };
+        let Some(p) = r
+            .find_map(|e| e.ok().map(|e| e.path()))
+            .filter(|p| p.extension().is_some_and(|e| e.eq_ignore_ascii_case("mp2")))
+        else {
+            return;
+        };
+        let Ok(bytes) = std::fs::read(p) else {
+            return;
+        };
+        let Ok(save) = Save::parse(&bytes) else {
+            return;
+        };
+        let mut s = Setup::preset(Level::Easy);
+        s.sandbox = true;
+        let opt = s.new_game_options(&save, "Test", None, 42);
+        assert_eq!(opt.trailer[0x32] & 0x40, 0x40);
+        // Easy preset: human +20 % => index 9, computer -10 % => index 3.
+        assert_eq!(opt.trailer[0x34], 9);
+        assert_eq!(opt.trailer[0x35], 3);
     }
 }

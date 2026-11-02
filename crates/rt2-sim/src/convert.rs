@@ -355,6 +355,9 @@ impl SimState {
 /// flag `0x5748f8` clear): from the byte at `0x574872` (trailer +0x32), `0x573d72..0x573d78`.
 fn difficulty_flags(s: &mut Save) {
     let opt = s.trailer[0x32];
+    if opt & 0x40 != 0 && s.header.len() > crate::tick::HDR_SANDBOX {
+        s.header[crate::tick::HDR_SANDBOX] = 1;
+    }
     let st = &mut s.state;
     let b73 = u8::from((opt & 0x38) >= 0x10);
     let b75 = u8::from((opt & 0x38) >= 8);

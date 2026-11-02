@@ -325,6 +325,9 @@ impl SimState {
             w.speed_resume = 3;
         }
         let opt = self.save.trailer[0x32];
+        if opt & 0x40 != 0 && self.save.header.len() > super::HDR_SANDBOX {
+            self.save.header[super::HDR_SANDBOX] = 1;
+        }
         {
             let st = &mut self.save.state;
             st[0x388A] = u8::from((opt & 0x38) >= 0x10);

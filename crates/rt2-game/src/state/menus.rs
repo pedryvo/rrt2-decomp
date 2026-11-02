@@ -478,17 +478,21 @@ impl AppState {
         let Some(path) = path else {
             return;
         };
-        // The original asks for the scenarios in order (LNG 2703); without stored progress only
-        // the first is "next", so a later one gets the notice once and then starts.
-        let first_time =
-            scenario > 0 && !matches!(&self.screen, Screen::Menu(m) if m.data.notice.is_some());
+        // The original asks for the scenarios in order (LNG 2703); scenarios beyond the furthest
+        // unlocked get the notice once and can then be bypassed if confirmed.
+        let progress = self.campaign_progress();
+        let furthest = progress.furthest_unlocked(set);
+        let first_time = scenario > furthest
+            && !matches!(&self.screen, Screen::Menu(m) if m.data.notice.is_some());
         if first_time && set == 0 {
-            let names = campaign_text_ids(0).map(|(n, _)| self.texts.get(n, "The Iron Seed"));
+            let name = campaign_text_ids(furthest)
+                .map(|(n, _)| self.texts.get(n, "The Iron Seed"))
+                .unwrap_or_else(|| format!("Scenario {}", furthest + 1));
             let msg = self.texts.get(
                 2703,
                 "You have to at least TRY the maps in order.\n\nIf you lose, you can bypass and play the next map.\n\nTry playing '%1' next.",
             );
-            let msg = crate::text::subst(&msg, &[names.unwrap_or_default()]);
+            let msg = crate::text::subst(&msg, &[name]);
             if let Some(d) = self.menu_data() {
                 d.notice = Some(msg);
             }

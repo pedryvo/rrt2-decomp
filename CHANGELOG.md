@@ -4,6 +4,11 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 
 ## Unreleased
 
+- RE: decoded authentic difficulty rating formula and level presets from `0x4b4de0`, `0x55af5c` and `0x55af60` of `RT2_PLAT.EXE`.
+- Feature: implement Sandbox mode bit (`0x40`) in trailer options byte `+0x32`, disabling bankruptcy, lot expiration and cargo lot caps in `rt2-sim`.
+- Feature: wire human and computer revenue modifiers (`0x574874` / `0x574875` at trailer `+0x34`/`+0x35`) through `Setup::new_game_options` into `rt2-sim` delivery calculations.
+- Feature: sequential campaign scenario unlocking with LNG 2703 progression warning dialog and confirmation bypass.
+
 - Docs: update progress tables and roadmaps across all 6 language READMEs to Phase 6 (modernization and polish).
 - Feature: Game Tips and interactive tutorial dialog (`helpd.win`, I5/I6) with cycling through 17 original gameplay tips and lessons, F1 hotkey and File Options integration.
 - Docs: all 81 original inventory screens verified, implemented and marked in `docs/reference/screens.md` and `docs/PLAN.md`.

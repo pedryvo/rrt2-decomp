@@ -56,7 +56,7 @@ const ST_ECON_DRIFT: usize = 0x23D; // 0x570725 i32
 const ST_GLOBAL_EFFECTS: usize = 0x2DE; // 0x5707c6 i16[]
 const ST_BASIC_MODEL: usize = 0x388F; // 0x573d77
 // Header offsets (VA - 0x567b38).
-const HDR_SANDBOX: usize = 0x86EF; // 0x570227
+pub(crate) const HDR_SANDBOX: usize = 0x86EF; // 0x570227
 const HDR_NO_ECONOMY: usize = 0x86FF; // 0x570237
 const HDR_570238: usize = 0x8700; // 0x570238 (no economy headline as news)
 const HDR_57023A: usize = 0x8702; // 0x57023a (idem)
@@ -392,6 +392,7 @@ impl SimState {
 
     fn sandbox(&self) -> bool {
         self.hdr(HDR_SANDBOX) != 0
+            || (self.save.trailer.len() > 0x32 && self.save.trailer[0x32] & 0x40 != 0)
     }
 
     fn rebuild_types(&mut self, year: i32) {

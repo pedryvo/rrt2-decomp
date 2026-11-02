@@ -70,6 +70,17 @@ impl Progress {
         (n(GOLD), n(SILVER), n(BRONZE))
     }
 
+    /// Returns the index of the furthest unlocked scenario in a campaign set (0..18).
+    /// Scenario 0 is always unlocked. Scenario n requires scenario n - 1 to have been
+    /// completed (holding any medal bronze..=gold).
+    pub fn furthest_unlocked(&self, set: usize) -> usize {
+        let mut idx = 0;
+        while idx < 17 && self.medal(set, idx).is_some() {
+            idx += 1;
+        }
+        idx
+    }
+
     pub fn load(dir: &Path) -> Progress {
         std::fs::read_to_string(dir.join(FILE))
             .map_or_else(|_| Progress::default(), |t| Progress::parse(&t))
@@ -95,6 +106,13 @@ mod tests {
         assert_eq!(p.medal(0, 3), Some(GOLD));
         assert_eq!(p.counts(0), (1, 0, 0));
         assert_eq!(Progress::parse(&p.render()), p);
+
+        let mut seq = Progress::default();
+        assert_eq!(seq.furthest_unlocked(0), 0);
+        seq.record(0, 0, BRONZE);
+        assert_eq!(seq.furthest_unlocked(0), 1);
+        seq.record(0, 1, SILVER);
+        assert_eq!(seq.furthest_unlocked(0), 2);
     }
 
     #[test]
