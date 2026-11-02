@@ -24,13 +24,6 @@ jobs:
           - platform: windows-x86_64
             os: windows-latest
             target: x86_64-pc-windows-msvc
-          - platform: macos-aarch64
-            os: macos-latest
-            target: aarch64-apple-darwin
-          # Cross-compiled on the Apple Silicon runner (Intel runners are being retired).
-          - platform: macos-x86_64
-            os: macos-latest
-            target: x86_64-apple-darwin
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -67,11 +60,11 @@ jobs:
             scripts/fill-winget.sh "$LABEL" "dist/rrt2-$LABEL-windows-x86_64-setup.exe" "dist/winget/$LABEL"
             (cd dist/winget && 7z a -tzip -bso0 "../rrt2-$LABEL-winget-manifests.zip" .)
           fi
-      # macOS: RRT2.app (icon from the logo, ad-hoc signed, not notarized) inside a .dmg.
-      - name: macOS app and dmg
-        if: runner.os == 'macOS'
-        shell: bash
-        run: scripts/package-macos-app.sh "${{ matrix.platform }}" "$LABEL" "target/${{ matrix.target }}/release" dist
+      # macOS build suspended for now due to GitHub Actions runner capacity constraints.
+      # - name: macOS app and dmg
+      #   if: runner.os == 'macOS'
+      #   shell: bash
+      #   run: scripts/package-macos-app.sh "${{ matrix.platform }}" "$LABEL" "target/${{ matrix.target }}/release" dist
       # AppImage (docs/packaging.md): same binary, appimagetool and runtime pinned by sha256.
       - name: AppImage
         if: runner.os == 'Linux'
@@ -89,7 +82,6 @@ jobs:
             dist/*.zip
             dist/*.AppImage
             dist/*.exe
-            dist/*.dmg
           if-no-files-found: error
 
   # Flatpak bundle built from source in the freedesktop SDK (packaging/flatpak, docs/packaging.md).
