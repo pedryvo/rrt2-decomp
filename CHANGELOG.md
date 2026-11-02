@@ -4,6 +4,17 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 
 ## Unreleased
 
+## v0.4.1 — 2026-11-02
+
+- Improved: smooth train movement and directional transitions (`lerp` at midpoint), eliminating snapping on curved tracks.
+- Improved: frame-rate independent smooth smoke animation and drifting (`lerp_smoke`).
+- Improved: station placement automatically searches within Manhattan distance 3 to match tangent track orientation (`(d ± 2) & 7`), matching the original game's `0x468920`.
+- Improved: track laying preview uses authentic isometric tile diamond rendering and automatically detects dead-end tangents for seamless track extensions.
+- Improved: company name and logo customization dialog (`brand.rs`) with styled gold-framed text input, active cursor, previous/next logo thumbnails, and direct integration with simulation command `0x27` (`set_company_info`).
+- Improved: Game Options menu with visual indicator toggles and dynamic difficulty rating calculation.
+- Fix: paused simulation no longer accumulates frame interpolation time, eliminating train jitter while paused.
+- CI: temporarily suspended macOS release builds due to runner capacity constraints while preserving Linux, Windows and Flatpak releases.
+
 ## v0.4.0 — 2026-11-02
 
 - RE: decoded authentic difficulty rating formula and level presets from `0x4b4de0`, `0x55af5c` and `0x55af60` of `RT2_PLAT.EXE`.
