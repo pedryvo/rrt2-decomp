@@ -262,7 +262,7 @@ O usuário decidiu que todos os itens abaixo entram na 1.0, inclusive o multipla
 - [x] Notificações configuráveis e histórico de eventos
 
 **Plataforma**
-- [ ] Controle (gamepad) e Steam Deck
+- [x] Controle (gamepad) e Steam Deck
 - [x] Mods: dados de jogo (locomotivas, cargas, indústrias, construções, efeitos) exportáveis do EXE para TOML e carregáveis de pacotes de mod, com o EXE como padrão
 - [x] Acessibilidade: paletas para daltonismo, tamanho de fonte independente da escala da UI, legendas para avisos sonoros
 - [x] Empacotamento: AppImage e Flatpak no Linux, além dos tarballs e do zip do Windows

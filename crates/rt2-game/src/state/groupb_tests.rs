@@ -393,3 +393,56 @@ fn file_quit_and_menu_confirmations_work() {
     s.dialog_activated(A_DLG_BTN);
     assert!(matches!(s.screen, Screen::Menu(_)));
 }
+
+#[test]
+fn gamepad_controls_pan_camera_and_control_tools_and_speed() {
+    use crate::gamepad::GamepadButton;
+
+    let Some(mut s) = state() else {
+        return;
+    };
+
+    // Right stick moves virtual cursor
+    s.apply_gamepad_stick((0.0, 0.0), (1.0, 1.0), 1000.0);
+    let cursor = s.gamepad.cursor.expect("cursor should be positioned");
+    assert!(cursor.0 > 1920.0 * 0.5);
+    assert!(cursor.1 > 1080.0 * 0.5);
+
+    // Camera panning with left stick
+    let cam_before = match &s.screen {
+        Screen::Game(g) => g.camera.target,
+        _ => panic!("expected game screen"),
+    };
+    s.apply_gamepad_stick((1.0, 0.0), (0.0, 0.0), 500.0);
+    let cam_after = match &s.screen {
+        Screen::Game(g) => g.camera.target,
+        _ => panic!("expected game screen"),
+    };
+    assert_ne!(cam_before, cam_after);
+
+    // West button (X) activates track tool
+    s.apply_gamepad_button(GamepadButton::West, true);
+    assert!(s.tool_active());
+
+    // East button (B) cancels tool
+    s.apply_gamepad_button(GamepadButton::East, true);
+    assert!(!s.tool_active());
+
+    // North button (Y) activates station tool
+    s.apply_gamepad_button(GamepadButton::North, true);
+    assert!(s.tool_active());
+    s.apply_gamepad_button(GamepadButton::East, true);
+    assert!(!s.tool_active());
+
+    // Camera rotation with L1 / R1
+    let rot_before = match &s.screen {
+        Screen::Game(g) => g.camera.rotation,
+        _ => panic!("expected game screen"),
+    };
+    s.apply_gamepad_button(GamepadButton::RightBumper, true);
+    let rot_after = match &s.screen {
+        Screen::Game(g) => g.camera.rotation,
+        _ => panic!("expected game screen"),
+    };
+    assert_ne!(rot_before, rot_after);
+}

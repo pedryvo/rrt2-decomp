@@ -298,6 +298,8 @@ pub struct AppState {
     pub mp_lobby: Option<Box<crate::state::mp::MpLobbyState>>,
     /// Monotonic logical millisecond clock for networking and simulation.
     pub clock_ms: u64,
+    /// Connected gamepad controller and virtual cursor state (Steam Deck & standard gamepads).
+    pub gamepad: crate::gamepad::GamepadState,
 }
 
 #[derive(Default, Clone)]
@@ -382,6 +384,7 @@ impl AppState {
             interactive_choices: false,
             mp_lobby: None,
             clock_ms: 0,
+            gamepad: crate::gamepad::GamepadState::new(),
         };
         s.rebuild_ui();
         s
@@ -955,6 +958,7 @@ impl AppState {
     /// time since the last call (the only place wall time enters; the simulation itself only
     /// sees whole nominal frames).
     pub fn update(&mut self, dt_ms: f32) {
+        self.gamepad_tick(dt_ms);
         self.clock_ms += dt_ms as u64;
         self.ga_tick(dt_ms);
         if let Screen::Menu(m) = &self.screen {
@@ -1144,6 +1148,130 @@ impl AppState {
         self.center_refresh();
         self.info_refresh();
         self.ticker_advance(dt_ms);
+    }
+
+    /// Polls connected gamepad controller and applies analog sticks and action buttons.
+    pub fn gamepad_tick(&mut self, dt_ms: f32) {
+        self.gamepad.poll_os();
+        let left = self.gamepad.left_stick;
+        let right = self.gamepad.right_stick;
+        self.apply_gamepad_stick(left, right, dt_ms);
+        while let Some((btn, pressed)) = self.gamepad.pop_button_event() {
+            self.apply_gamepad_button(btn, pressed);
+        }
+    }
+
+    /// Applies analog sticks: left stick pans camera, right stick moves virtual cursor.
+    pub fn apply_gamepad_stick(&mut self, left: (f32, f32), right: (f32, f32), dt_ms: f32) {
+        let (lx, ly) = left;
+        let (rx, ry) = right;
+
+        // Left stick pans the camera when in game
+        if (lx != 0.0 || ly != 0.0)
+            && let Screen::Game(g) = &mut self.screen
+            && g.info.is_none()
+            && g.dialogs.is_empty()
+        {
+            let pan_pct = self.config.gameplay.pan_speed as f32 / 100.0;
+            let k = PAN_SPEED * pan_pct * dt_ms / 1000.0;
+            g.camera.pan(lx * k, ly * k);
+        }
+
+        // Right stick moves the virtual cursor
+        if rx != 0.0 || ry != 0.0 {
+            let (cw, ch) = (self.viewport.0 as f32, self.viewport.1 as f32);
+            let (cx, cy) = self.gamepad.cursor.unwrap_or((cw * 0.5, ch * 0.5));
+            let speed = crate::gamepad::CURSOR_SPEED * dt_ms / 1000.0;
+            let nx = (cx + rx * speed).clamp(0.0, cw);
+            let ny = (cy + ry * speed).clamp(0.0, ch);
+            self.gamepad.cursor = Some((nx, ny));
+            self.cursor_moved(nx, ny);
+        }
+    }
+
+    /// Applies gamepad button action according to Steam Deck / standard gamepad controls.
+    pub fn apply_gamepad_button(&mut self, btn: crate::gamepad::GamepadButton, pressed: bool) {
+        use crate::gamepad::GamepadButton::*;
+        match (btn, pressed) {
+            // A / South: Primary click at virtual cursor position
+            (South, true) => {
+                self.mouse_button(true, true);
+            }
+            (South, false) => {
+                self.mouse_button(true, false);
+            }
+            // B / East: Cancel / Back / Close
+            (East, true) => {
+                if self.tool_active() {
+                    self.cancel_tool();
+                } else if self.has_dialog() {
+                    self.close_dialog();
+                } else if self.info_screen().is_some() {
+                    self.close_info();
+                } else if self.in_game() {
+                    self.open_options(crate::options::Tab::Display);
+                }
+            }
+            // X / West: Select Track Tool
+            (West, true) => {
+                self.select_tool(crate::state::build_ui::ToolKind::Track);
+            }
+            // Y / North: Select Station Tool
+            (North, true) => {
+                self.select_tool(crate::state::build_ui::ToolKind::Station);
+            }
+            // L1 / Left Bumper: Rotate camera counter-clockwise
+            (LeftBumper, true) => {
+                if let Screen::Game(g) = &mut self.screen {
+                    g.camera.rotate(-1);
+                }
+            }
+            // R1 / Right Bumper: Rotate camera clockwise
+            (RightBumper, true) => {
+                if let Screen::Game(g) = &mut self.screen {
+                    g.camera.rotate(1);
+                }
+            }
+            // L2 / Left Trigger: Speed down
+            (LeftTrigger, true) => {
+                if let Screen::Game(g) = &mut self.screen {
+                    g.world
+                        .apply(rt2_sim::Command::SetSpeed(rt2_sim::SpeedChange::Delta(-1)));
+                }
+            }
+            // R2 / Right Trigger: Speed up
+            (RightTrigger, true) => {
+                if let Screen::Game(g) = &mut self.screen {
+                    g.world
+                        .apply(rt2_sim::Command::SetSpeed(rt2_sim::SpeedChange::Delta(1)));
+                }
+            }
+            // Select: Toggle pause
+            (Select, true) => {
+                if let Screen::Game(g) = &mut self.screen {
+                    g.world.apply(rt2_sim::Command::TogglePause);
+                }
+            }
+            // Start: Options menu
+            (Start, true) => {
+                self.open_options(crate::options::Tab::Display);
+            }
+            // Dpad Up / Down: scroll / wheel
+            (DpadUp, true) => {
+                self.wheel(1.0);
+            }
+            (DpadDown, true) => {
+                self.wheel(-1.0);
+            }
+            // Dpad Left / Right: cycling in books/reports
+            (DpadLeft, true) => {
+                self.key(winit::keyboard::KeyCode::ArrowLeft, true, false, None);
+            }
+            (DpadRight, true) => {
+                self.key(winit::keyboard::KeyCode::ArrowRight, true, false, None);
+            }
+            _ => {}
+        }
     }
 
     // ---- screens --------------------------------------------------------------------------

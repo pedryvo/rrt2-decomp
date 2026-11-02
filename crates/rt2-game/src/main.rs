@@ -17,6 +17,7 @@ mod catalog;
 mod config;
 mod founding;
 mod gamedir;
+mod gamepad;
 mod gfx;
 mod hiscore;
 mod info;
