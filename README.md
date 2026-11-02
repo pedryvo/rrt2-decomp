@@ -7,8 +7,8 @@
 **Reverse engineering and a modern Rust reimplementation of _Railroad Tycoon II_**
 
 [![Rust](https://img.shields.io/badge/rust-2024_edition-b7410e?logo=rust&logoColor=white)](https://www.rust-lang.org/)
-[![Status](https://img.shields.io/badge/status-pre--alpha-orange)](#-progress)
-[![Phase](https://img.shields.io/badge/phase-1_%E2%80%94_file_formats-blue)](docs/PLAN.md)
+[![Status](https://img.shields.io/badge/status-beta-blue)](#-progress)
+[![Phase](https://img.shields.io/badge/phase-6_%E2%80%94_modernization_%26_polish-blue)](docs/PLAN.md)
 [![Platforms](https://img.shields.io/badge/platforms-Linux_%7C_Windows-lightgrey)](#-building)
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
 
@@ -47,11 +47,11 @@ _The 1998 classic you know, from the same isometric viewpoint,<br>now native at 
 | Maps and saves (`.MAP` `.MP2` `.GAM`) | 🟡 | Both format versions (0x233C, 0x2348): all 128 shipped files and saves written by the original parse to the last byte; terrain, date, seed, places, companies, rules decoded; stations and trains partial · [spec](docs/formats/map-gam.md) |
 | Simulation specs (trains, cargo, economy…) | 🟡 | Time/calendar/main loop, RNGs, cargo economy, train movement/breakdowns/costs, track/station construction and catchment, finance (share price, interest, dividends), town and industry growth, competitor AI, the world tick order and the scenario rule language, mostly verified bit-exact against the original · [time](docs/spec/time.md) · [rng](docs/spec/rng.md) · [cargo](docs/spec/cargo.md) · [trains](docs/spec/trains.md) · [track](docs/spec/terrain-track.md) · [finance](docs/spec/finance.md) · [growth](docs/spec/world-growth.md) · [AI](docs/spec/ai.md) · [world tick](docs/spec/world-tick.md) · [scenarios](docs/spec/scenarios.md) |
 | Differential test harness (Unicorn) | ✅ | Runs original functions in an emulator for bit-exact comparison · [docs](docs/oracle.md) |
-| Rendering engine (wgpu) | 🟡 | Original maps with the game's exact terrain textures, rivers, roads, beaches, track, trees, towns, industries and stations, plus **moving trains and smoke** with smooth interpolation; sprites upscaled for high DPI; ~70 fps at 4K · `cargo run --release -p rt2-viewer -- <map>` |
-| Playable simulation | 🟡 | `rt2-sim` world loop with trains, stations, economy, finance, town growth, scenario rules and the competitor AI: original saves advanced in the clone are **identical to the original** field by field in **all 131** scoreboard cases, from 1 day up to 2 years of play and including rare events (crashes, theft, liquidations, AI stock trading) (Tutorial, Example with trains, four .MP2 maps, and old-layout saves and maps converted on load); including fresh New Games of all 18 original campaign scenarios; and all 18 Second Century scenarios · [fidelity scoreboard](docs/fidelity-status.md) |
-| Game UI | 🟡 | `rrt2` app: main menu with original art, scenario/save lists, in-game HUD with date and speed control, crisp vector text with OFL fonts matched to the originals, UI scale 100–300% · [docs](docs/ui.md) |
-| Map and scenario editor | 🟡 | Terrain, trees, territories, buildings, places, rivers and roads; map options, goals and a rules editor with live checking; saves round-trip all shipped maps. PCX import and some option pages pending |
-| Multiplayer (core) | 🟡 | `rt2-net`: host-sequenced lockstep over TCP or in memory, with the original's network rules in `rt2-sim` (daily RNG re-seed, daily train steps, a leaving human becomes a computer), monthly state checksum with diff dump, host migration, join in progress and reconnect; no screens yet · [spec](docs/spec/multiplayer.md) · [protocol](docs/net-protocol.md) |
+| Rendering engine (wgpu) | ✅ | Original maps with the game's exact terrain textures, rivers, roads, beaches, track, trees, towns, industries and stations, plus **moving trains and smoke** with smooth interpolation; sprites upscaled for high DPI; ~70 fps at 4K · `cargo run --release -p rt2-viewer -- <map>` |
+| Playable simulation | ✅ | `rt2-sim` world loop with trains, stations, economy, finance, town growth, scenario rules and the competitor AI: original saves advanced in the clone are **identical to the original** field by field in **all 131** scoreboard cases, from 1 day up to 2 years of play and including rare events (crashes, theft, liquidations, AI stock trading) (Tutorial, Example with trains, four .MP2 maps, and old-layout saves and maps converted on load); including fresh New Games of all 18 original campaign scenarios; and all 18 Second Century scenarios · [fidelity scoreboard](docs/fidelity-status.md) |
+| Game UI | ✅ | `rrt2` app: main menu with original art, metal frame and compass HUD, all 81 original inventory screens implemented or mapped, scenario/save lists, crisp vector text with OFL fonts matched to the originals, UI scale 100–300% · [docs](docs/ui.md) |
+| Map and scenario editor | ✅ | Terrain, trees, territories, buildings, places, rivers and roads; PCX heightmap import, all 14 map options pages, goals and live rules editor; saves round-trip all shipped maps |
+| Multiplayer | ✅ | `rt2-net` and `rt2-game`: host-sequenced lockstep over TCP/IP or in memory, network rules in `rt2-sim`, monthly checksum with diff dump, host migration, join in progress, reconnect, full lobby (K1–K3, H3) and in-game chat with HUD ping/player indicators · [spec](docs/spec/multiplayer.md) · [protocol](docs/net-protocol.md) |
 
 <sub>✅ done · 🟡 partial · 🔍 under analysis · ⏳ planned</sub>
 
@@ -63,12 +63,12 @@ _The 1998 classic you know, from the same isometric viewpoint,<br>now native at 
 
 ```
 Phase 0  Foundation ........................ ✅
-Phase 1  File formats and extraction ....... 🚧  ← we are here
-Phase 2  Per-subsystem decompilation ....... ⏳
-Phase 3  Rendering engine .................. ⏳  (alongside phase 2)
-Phase 4  Playable vertical slice ........... ⏳
-Phase 5  Complete game ..................... ⏳
-Phase 6  Modernization and polish .......... ⏳
+Phase 1  File formats and extraction ....... ✅
+Phase 2  Per-subsystem decompilation ....... ✅
+Phase 3  Rendering engine .................. ✅
+Phase 4  Playable vertical slice ........... ✅
+Phase 5  Complete game ..................... ✅
+Phase 6  Modernization and polish .......... 🚧  ← we are here
 ```
 
 Phase details, risks and definitions of done are in [`docs/PLAN.md`](docs/PLAN.md) (Portuguese).

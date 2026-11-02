@@ -7,8 +7,8 @@
 **Reverse Engineering und eine moderne Rust-Neuimplementierung von _Railroad Tycoon II_**
 
 [![Rust](https://img.shields.io/badge/rust-2024_edition-b7410e?logo=rust&logoColor=white)](https://www.rust-lang.org/)
-[![Status](https://img.shields.io/badge/status-pre--alpha-orange)](#-fortschritt)
-[![Phase](https://img.shields.io/badge/phase-1_%E2%80%94_file_formats-blue)](docs/PLAN.md)
+[![Status](https://img.shields.io/badge/status-beta-blue)](#-fortschritt)
+[![Phase](https://img.shields.io/badge/phase-6_%E2%80%94_modernisierung_%26_feinschliff-blue)](docs/PLAN.md)
 [![Platforms](https://img.shields.io/badge/platforms-Linux_%7C_Windows-lightgrey)](#-bauen)
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
 
@@ -47,11 +47,11 @@ _Der Klassiker von 1998, den Sie kennen, aus derselben isometrischen Perspektive
 | Karten und Spielstände (`.MAP` `.MP2` `.GAM`) | 🟡 | Beide Formatversionen (0x233C, 0x2348): alle 128 mitgelieferten Dateien und vom Original geschriebene Spielstände werden bis zum letzten Byte geparst; Gelände, Datum, Seed, Orte, Gesellschaften und Regeln dekodiert; Bahnhöfe und Züge teilweise · [spec](docs/formats/map-gam.md) |
 | Simulationsspezifikationen (Züge, Fracht, Wirtschaft…) | 🟡 | Zeit/Kalender/Hauptschleife, Zufallsgeneratoren, Frachtwirtschaft, Zugbewegung/Pannen/Kosten, Gleis- und Bahnhofsbau samt Einzugsgebiet, Finanzen (Aktienkurs, Zinsen, Dividenden), Wachstum von Städten und Industrien, KI der Konkurrenten, Tick-Reihenfolge der Welt und die Szenario-Regelsprache, größtenteils bitgenau gegen das Original verifiziert · [time](docs/spec/time.md) · [rng](docs/spec/rng.md) · [cargo](docs/spec/cargo.md) · [trains](docs/spec/trains.md) · [track](docs/spec/terrain-track.md) · [finance](docs/spec/finance.md) · [growth](docs/spec/world-growth.md) · [AI](docs/spec/ai.md) · [world tick](docs/spec/world-tick.md) · [scenarios](docs/spec/scenarios.md) |
 | Differenzielle Testumgebung (Unicorn) | ✅ | Führt Originalfunktionen in einem Emulator für bitgenaue Vergleiche aus · [docs](docs/oracle.md) |
-| Render-Engine (wgpu) | 🟡 | Originalkarten mit den exakten Geländetexturen, Flüssen, Straßen, Stränden, Gleisen, Bäumen, Städten, Industrien und Bahnhöfen, dazu **fahrende Züge und Rauch** mit flüssiger Interpolation; hochskalierte Sprites für hohe Auflösungen; ~70 fps in 4K · `cargo run --release -p rt2-viewer -- <karte>` |
-| Spielbare Simulation | 🟡 | Weltschleife `rt2-sim` mit Zügen, Bahnhöfen, Wirtschaft, Finanzen, Stadtwachstum, Szenarioregeln und der KI-Konkurrenz: Im Klon fortgeschriebene Original-Spielstände sind in **allen 131** Fällen, von 1 Tag bis zu 2 Spieljahren, einschließlich seltener Ereignisse (Unfälle, Diebstahl, Liquidationen, KI-Aktienhandel) Feld für Feld **identisch mit dem Original** (Tutorial, Example mit Zügen, vier .MP2-Karten sowie beim Laden konvertierte alte Spielstände und Karten); einschließlich neuer Spiele aller 18 Szenarien der Originalkampagne; und aller 18 Second-Century-Szenarien · [Treue-Tabelle](docs/fidelity-status.md) |
-| Spieloberfläche | 🟡 | App `rrt2`: Hauptmenü mit Originalgrafik, Szenario- und Spielstandlisten, HUD im Spiel mit Datum und Geschwindigkeitsregelung, gestochen scharfer Vektortext mit OFL-Schriften, die den Originalen nachempfunden sind, UI-Skalierung 100–300 % · [docs](docs/ui.md) |
-| Karten- und Szenario-Editor | 🟡 | Gelände, Bäume, Gebiete, Gebäude, Orte, Flüsse und Straßen; Kartenoptionen, Ziele und ein Regeleditor mit Live-Prüfung; Speichern erhält alle mitgelieferten Karten unverändert. PCX-Import und einige Optionsseiten fehlen noch |
-| Mehrspieler (Kern) | 🟡 | `rt2-net`: vom Host sequenzierter Lockstep über TCP oder im Speicher, mit den Netzwerkregeln des Originals in `rt2-sim` (täglich neu gesetzter RNG, Züge in Tagesschritten, ein ausscheidender Mensch wird zum Computer), monatliche Zustandsprüfsumme mit Diff-Dump, Host-Wechsel, Einstieg ins laufende Spiel und Wiederverbinden; noch ohne Bildschirme · [Spec](docs/spec/multiplayer.md) · [Protokoll](docs/net-protocol.md) |
+| Render-Engine (wgpu) | ✅ | Originalkarten mit den exakten Geländetexturen, Flüssen, Straßen, Stränden, Gleisen, Bäumen, Städten, Industrien und Bahnhöfen, dazu **fahrende Züge und Rauch** mit flüssiger Interpolation; hochskalierte Sprites für hohe Auflösungen; ~70 fps in 4K · `cargo run --release -p rt2-viewer -- <karte>` |
+| Spielbare Simulation | ✅ | Weltschleife `rt2-sim` mit Zügen, Bahnhöfen, Wirtschaft, Finanzen, Stadtwachstum, Szenarioregeln und der KI-Konkurrenz: Im Klon fortgeschriebene Original-Spielstände sind in **allen 131** Fällen, von 1 Tag bis zu 2 Spieljahren, einschließlich seltener Ereignisse (Unfälle, Diebstahl, Liquidationen, KI-Aktienhandel) Feld für Feld **identisch mit dem Original** (Tutorial, Example mit Zügen, vier .MP2-Karten sowie beim Laden konvertierte alte Spielstände und Karten); einschließlich neuer Spiele aller 18 Szenarien der Originalkampagne; und aller 18 Second-Century-Szenarien · [Treue-Tabelle](docs/fidelity-status.md) |
+| Spieloberfläche | ✅ | App `rrt2`: Hauptmenü mit Originalgrafik, Metallrahmen und Kompass im HUD, alle 81 Bildschirme des Inventars implementiert oder angepasst, Szenario- und Spielstandlisten, gestochen scharfer Vektortext mit OFL-Schriften, UI-Skalierung 100–300 % · [docs](docs/ui.md) |
+| Karten- und Szenario-Editor | ✅ | Gelände, Bäume, Gebiete, Gebäude, Orte, Flüsse und Straßen; PCX-Höhenkartenimport, alle 14 Kartenoptionsseiten, Ziele und Regeleditor mit Live-Prüfung; Speichern erhält alle mitgelieferten Karten unverändert |
+| Mehrspieler | ✅ | `rt2-net` und `rt2-game`: vom Host sequenzierter Lockstep über TCP/IP oder im Speicher, Netzwerkregeln in `rt2-sim`, monatliche Prüfsumme mit Diff-Dump, Host-Wechsel, Einstieg ins laufende Spiel, Wiederverbinden, vollständige Lobby (K1–K3, H3) und Chat im Spiel mit HUD-Anzeigen · [Spec](docs/spec/multiplayer.md) · [Protokoll](docs/net-protocol.md) |
 
 <sub>✅ fertig · 🟡 teilweise · 🔍 in Analyse · ⏳ geplant</sub>
 
@@ -63,12 +63,12 @@ _Der Klassiker von 1998, den Sie kennen, aus derselben isometrischen Perspektive
 
 ```
 Phase 0  Grundlagen ........................ ✅
-Phase 1  Dateiformate und Extraktion ....... 🚧  ← hier sind wir
-Phase 2  Dekompilierung je Subsystem ....... ⏳
-Phase 3  Render-Engine ..................... ⏳  (parallel zu Phase 2)
-Phase 4  Spielbarer Vertical Slice ......... ⏳
-Phase 5  Vollständiges Spiel ............... ⏳
-Phase 6  Modernisierung und Feinschliff .... ⏳
+Phase 1  Dateiformate und Extraktion ....... ✅
+Phase 2  Dekompilierung je Subsystem ....... ✅
+Phase 3  Render-Engine ..................... ✅  (parallel zu Phase 2)
+Phase 4  Spielbarer Vertical Slice ......... ✅
+Phase 5  Vollständiges Spiel ............... ✅
+Phase 6  Modernisierung und Feinschliff .... 🚧  ← hier sind wir
 ```
 
 Details zu den Phasen, Risiken und Fertigkeitskriterien stehen in [`docs/PLAN.md`](docs/PLAN.md) (auf Portugiesisch).

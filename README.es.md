@@ -7,8 +7,8 @@
 **Ingeniería inversa y reimplementación moderna en Rust de _Railroad Tycoon II_**
 
 [![Rust](https://img.shields.io/badge/rust-2024_edition-b7410e?logo=rust&logoColor=white)](https://www.rust-lang.org/)
-[![Status](https://img.shields.io/badge/status-pre--alpha-orange)](#-progreso)
-[![Phase](https://img.shields.io/badge/phase-1_%E2%80%94_file_formats-blue)](docs/PLAN.md)
+[![Status](https://img.shields.io/badge/status-beta-blue)](#-progreso)
+[![Fase](https://img.shields.io/badge/fase-6_%E2%80%94_modernizaci%C3%B3n_y_pulido-blue)](docs/PLAN.md)
 [![Platforms](https://img.shields.io/badge/platforms-Linux_%7C_Windows-lightgrey)](#-compilación)
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
 
@@ -47,11 +47,11 @@ _El clásico de 1998 que conoces, desde el mismo punto de vista isométrico,<br>
 | Mapas y partidas guardadas (`.MAP` `.MP2` `.GAM`) | 🟡 | Ambas versiones del formato (0x233C, 0x2348): los 128 archivos incluidos y las partidas guardadas por el original se leen hasta el último byte; terreno, fecha, semilla, lugares, compañías y reglas decodificados; estaciones y trenes parcialmente · [especificación](docs/formats/map-gam.md) |
 | Especificaciones de simulación (trenes, carga, economía…) | 🟡 | Tiempo/calendario/bucle principal, generadores de números aleatorios, economía de la carga, movimiento/averías/costos de los trenes, construcción de vías y estaciones y su área de captación, finanzas (precio de las acciones, intereses, dividendos), crecimiento de pueblos e industrias, IA de la competencia, el orden del ciclo del mundo y el lenguaje de reglas de los escenarios, en su mayoría verificados bit a bit contra el original · [tiempo](docs/spec/time.md) · [rng](docs/spec/rng.md) · [carga](docs/spec/cargo.md) · [trenes](docs/spec/trains.md) · [vías](docs/spec/terrain-track.md) · [finanzas](docs/spec/finance.md) · [crecimiento](docs/spec/world-growth.md) · [IA](docs/spec/ai.md) · [ciclo del mundo](docs/spec/world-tick.md) · [escenarios](docs/spec/scenarios.md) |
 | Banco de pruebas diferenciales (Unicorn) | ✅ | Ejecuta funciones originales en un emulador para compararlas bit a bit · [documentación](docs/oracle.md) |
-| Motor de renderizado (wgpu) | 🟡 | Mapas originales con las texturas exactas de terreno, ríos, caminos, playas, vías, árboles, ciudades, industrias y estaciones, además de **trenes en movimiento y humo** con interpolación suave; sprites escalados para alta resolución; ~70 fps en 4K · `cargo run --release -p rt2-viewer -- <mapa>` |
-| Simulación jugable | 🟡 | Bucle del mundo de `rt2-sim` con trenes, estaciones, economía, finanzas, crecimiento de ciudades, reglas de escenario y la IA rival: las partidas originales avanzadas en el clon son **idénticas al original** campo por campo en **los 131** casos del marcador, desde 1 día hasta 2 años de juego, incluidos eventos raros (accidentes, robos, liquidaciones, la IA operando en bolsa) (Tutorial, Example con trenes, cuatro mapas .MP2 y partidas y mapas antiguos convertidos al cargar); incluidas partidas nuevas de los 18 escenarios de la campaña original; y los 18 escenarios de Second Century · [marcador de fidelidad](docs/fidelity-status.md) |
-| Interfaz del juego | 🟡 | Aplicación `rrt2`: menú principal con el arte original, listas de escenarios y partidas guardadas, HUD en juego con fecha y control de velocidad, texto vectorial nítido con fuentes OFL equivalentes a las originales, escala de interfaz del 100 al 300% · [documentación](docs/ui.md) |
-| Editor de mapas y escenarios | 🟡 | Terreno, árboles, territorios, edificios, lugares, ríos y caminos; opciones del mapa, metas y editor de reglas con validación en vivo; guardar conserva todos los mapas incluidos. Faltan la importación PCX y algunas páginas de opciones |
-| Multijugador (núcleo) | 🟡 | `rt2-net`: lockstep secuenciado por el anfitrión sobre TCP o en memoria, con las reglas de red del original en `rt2-sim` (RNG re-sembrado cada día, trenes en pasos diarios, el humano que se va pasa a ser un ordenador), checksum mensual del estado con volcado de diferencias, migración de anfitrión, entrada a mitad de partida y reconexión; aún sin pantallas · [spec](docs/spec/multiplayer.md) · [protocolo](docs/net-protocol.md) |
+| Motor de renderizado (wgpu) | ✅ | Mapas originales con las texturas exactas de terreno, ríos, caminos, playas, vías, árboles, ciudades, industrias y estaciones, además de **trenes en movimiento y humo** con interpolación suave; sprites escalados para alta resolución; ~70 fps en 4K · `cargo run --release -p rt2-viewer -- <mapa>` |
+| Simulación jugable | ✅ | Bucle del mundo de `rt2-sim` con trenes, estaciones, economía, finanzas, crecimiento de ciudades, reglas de escenario y la IA rival: las partidas originales avanzadas en el clon son **idénticas al original** campo por campo en **los 131** casos del marcador, desde 1 día hasta 2 años de juego, incluidos eventos raros (accidentes, robos, liquidaciones, la IA operando en bolsa) (Tutorial, Example con trenes, cuatro mapas .MP2 y partidas y mapas antiguos convertidos al cargar); incluidas partidas nuevas de los 18 escenarios de la campaña original; y los 18 escenarios de Second Century · [marcador de fidelidad](docs/fidelity-status.md) |
+| Interfaz del juego | ✅ | Aplicación `rrt2`: menú principal con arte original, marco metálico y brújula en el HUD, las 81 pantallas del inventario implementadas o adaptadas, listas de escenarios y partidas guardadas, texto vectorial nítido con fuentes OFL, escala de interfaz del 100 al 300% · [documentación](docs/ui.md) |
+| Editor de mapas y escenarios | ✅ | Terreno, árboles, territorios, edificios, lugares, ríos y caminos; importación de heightmap PCX, las 14 páginas de opciones del mapa, metas y editor de reglas con validación en vivo; guardar conserva todos los mapas incluidos |
+| Multijugador | ✅ | `rt2-net` y `rt2-game`: lockstep secuenciado por el anfitrión sobre TCP/IP o en memoria, reglas de red del original en `rt2-sim`, checksum mensual con volcado de diferencias, migración de anfitrión, entrada a mitad de partida, reconexión, sala de espera completa (K1–K3, H3) y chat en juego con indicadores en el HUD · [spec](docs/spec/multiplayer.md) · [protocolo](docs/net-protocol.md) |
 
 <sub>✅ hecho · 🟡 parcial · 🔍 en análisis · ⏳ planeado</sub>
 
@@ -62,13 +62,13 @@ _El clásico de 1998 que conoces, desde el mismo punto de vista isométrico,<br>
 ## 🧭 Hoja de ruta
 
 ```
-Phase 0  Foundation ........................ ✅
-Phase 1  File formats and extraction ....... 🚧  ← we are here
-Phase 2  Per-subsystem decompilation ....... ⏳
-Phase 3  Rendering engine .................. ⏳  (alongside phase 2)
-Phase 4  Playable vertical slice ........... ⏳
-Phase 5  Complete game ..................... ⏳
-Phase 6  Modernization and polish .......... ⏳
+Fase 0  Fundación ........................ ✅
+Fase 1  Formatos de archivo y extracción . ✅
+Fase 2  Descompilación por subsistema .... ✅
+Fase 3  Motor gráfico .................... ✅  (en paralelo a la fase 2)
+Fase 4  Corte vertical jugable ........... ✅
+Fase 5  Juego completo ................... ✅
+Fase 6  Modernización y pulido ........... 🚧  ← estamos aquí
 ```
 
 Los detalles de cada fase, los riesgos y las definiciones de «terminado» están en [`docs/PLAN.md`](docs/PLAN.md) (en portugués).

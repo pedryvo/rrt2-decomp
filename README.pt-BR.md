@@ -7,8 +7,8 @@
 **Engenharia reversa e reimplementação moderna de _Railroad Tycoon II_ em Rust**
 
 [![Rust](https://img.shields.io/badge/rust-2024_edition-b7410e?logo=rust&logoColor=white)](https://www.rust-lang.org/)
-[![Status](https://img.shields.io/badge/status-pr%C3%A9--alpha-orange)](#-progresso)
-[![Fase](https://img.shields.io/badge/fase-1_%E2%80%94_formatos_de_arquivo-blue)](docs/PLAN.md)
+[![Status](https://img.shields.io/badge/status-beta-blue)](#-progresso)
+[![Fase](https://img.shields.io/badge/fase-6_%E2%80%94_moderniza%C3%A7%C3%A3o_e_polimento-blue)](docs/PLAN.md)
 [![Plataformas](https://img.shields.io/badge/plataformas-Linux_%7C_Windows-lightgrey)](#-compilando)
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
 
@@ -47,11 +47,11 @@ O **rrt2-decomp** estuda o executável original de _Railroad Tycoon II Platinum_
 | Mapas e saves (`.MAP` `.MP2` `.GAM`) | 🟡 | As duas versões do formato (0x233C e 0x2348): os 128 arquivos da instalação e os saves gravados pelo original são lidos até o último byte; terreno, data, semente, lugares, empresas e regras decodificados; estações e trens parciais · [spec](docs/formats/map-gam.md) |
 | Specs de simulação (trens, carga, economia…) | 🟡 | Tempo, calendário, laço principal, RNGs, economia de carga, movimento, quebras e custos dos trens, construção de trilhos e estações, área de captação e finanças (preço das ações, juros, dividendos), crescimento de cidades e indústrias, IA dos concorrentes, a ordem do tick e a linguagem de regras dos cenários, em boa parte verificados bit a bit contra o original · [tempo](docs/spec/time.md) · [rng](docs/spec/rng.md) · [carga](docs/spec/cargo.md) · [trens](docs/spec/trains.md) · [trilhos](docs/spec/terrain-track.md) · [finanças](docs/spec/finance.md) · [crescimento](docs/spec/world-growth.md) · [IA](docs/spec/ai.md) · [ordem do tick](docs/spec/world-tick.md) · [cenários](docs/spec/scenarios.md) |
 | Harness de teste diferencial (Unicorn) | ✅ | Roda funções do original num emulador para comparação bit a bit · [docs](docs/oracle.md) |
-| Motor gráfico (wgpu) | 🟡 | Mapas originais com as texturas exatas de terreno, rios, estradas, praias, trilhos, árvores, cidades, indústrias e estações, mais **trens em movimento e fumaça** com interpolação suave; sprites com upscaling; ~70 fps em 4K · `cargo run --release -p rt2-viewer -- <mapa>` |
-| Simulação jogável | 🟡 | Laço do mundo do `rt2-sim` com trens, estações, economia, finanças, crescimento das cidades, regras de cenário e a IA dos concorrentes: saves originais avançados no clone ficam **idênticos ao original** campo a campo em **todos os 131** casos do placar, de 1 dia até 2 anos de jogo, incluindo eventos raros (acidentes, roubos, liquidações, a IA negociando ações) (Tutorial, Example com trens, quatro mapas .MP2 e saves e mapas antigos convertidos na carga); inclusive New Games dos 18 cenários da campanha original; e os 18 cenários da Second Century · [placar de fidelidade](docs/fidelity-status.md) |
-| Interface do jogo | 🟡 | App `rrt2`: menu principal com a arte original, listas de cenários e saves, HUD com data e controle de velocidade, texto vetorial nítido com fontes OFL equivalentes às originais, escala de UI de 100–300% · [docs](docs/ui.md) |
-| Editor de mapas e cenários | 🟡 | Terreno, árvores, territórios, prédios, lugares, rios e estradas; opções do mapa, metas e editor de regras com validação ao vivo; salvar preserva todos os mapas da instalação. Faltam importar PCX e algumas páginas de opções |
-| Multiplayer (núcleo) | 🟡 | `rt2-net`: lockstep sequenciado pelo anfitrião por TCP ou em memória, com as regras de rede do original no `rt2-sim` (RNG re-semeado por dia, trens em passos diários, humano que sai vira computador), checksum mensal do estado com dump do diff, migração de anfitrião, entrada no meio da partida e reconexão; ainda sem telas · [spec](docs/spec/multiplayer.md) · [protocolo](docs/net-protocol.md) |
+| Motor gráfico (wgpu) | ✅ | Mapas originais com as texturas exatas de terreno, rios, estradas, praias, trilhos, árvores, cidades, indústrias e estações, mais **trens em movimento e fumaça** com interpolação suave; sprites com upscaling; ~70 fps em 4K · `cargo run --release -p rt2-viewer -- <mapa>` |
+| Simulação jogável | ✅ | Laço do mundo do `rt2-sim` com trens, estações, economia, finanças, crescimento das cidades, regras de cenário e a IA dos concorrentes: saves originais avançados no clone ficam **idênticos ao original** campo a campo em **todos os 131** casos do placar, de 1 dia até 2 anos de jogo, incluindo eventos raros (acidentes, roubos, liquidações, a IA negociando ações) (Tutorial, Example com trens, quatro mapas .MP2 e saves e mapas antigos convertidos na carga); inclusive New Games dos 18 cenários da campanha original; e os 18 cenários da Second Century · [placar de fidelidade](docs/fidelity-status.md) |
+| Interface do jogo | ✅ | App `rrt2`: menu principal com a arte original, moldura de metal e bússola no HUD, todas as 81 telas do inventário implementadas ou adaptadas, listas de cenários e saves, texto vetorial nítido com fontes OFL equivalentes às originais, escala de UI de 100–300% · [docs](docs/ui.md) |
+| Editor de mapas e cenários | ✅ | Terreno, árvores, territórios, prédios, lugares, rios e estradas; importação de heightmap PCX, todas as 14 páginas de opções do mapa, metas e editor de regras com validação ao vivo; salvar preserva todos os mapas da instalação |
+| Multiplayer | ✅ | `rt2-net` e `rt2-game`: lockstep sequenciado pelo anfitrião por TCP/IP ou em memória, com as regras de rede do original no `rt2-sim`, checksum mensal com dump do diff, migração de anfitrião, entrada no meio da partida, reconexão, lobby completo (K1–K3, H3) e chat em jogo com indicadores de ping/jogadores no HUD · [spec](docs/spec/multiplayer.md) · [protocolo](docs/net-protocol.md) |
 
 <sub>✅ pronto · 🟡 parcial · 🔍 em análise · ⏳ planejado</sub>
 
@@ -63,12 +63,12 @@ O **rrt2-decomp** estuda o executável original de _Railroad Tycoon II Platinum_
 
 ```
 Fase 0  Fundação ......................... ✅
-Fase 1  Formatos de arquivo e extração ... 🚧  ← estamos aqui
-Fase 2  Decompilação por subsistema ...... ⏳
-Fase 3  Motor gráfico .................... ⏳  (em paralelo à fase 2)
-Fase 4  Fatia vertical jogável ........... ⏳
-Fase 5  Jogo completo .................... ⏳
-Fase 6  Modernização e polimento ......... ⏳
+Fase 1  Formatos de arquivo e extração ... ✅
+Fase 2  Decompilação por subsistema ...... ✅
+Fase 3  Motor gráfico .................... ✅  (em paralelo à fase 2)
+Fase 4  Fatia vertical jogável ........... ✅
+Fase 5  Jogo completo .................... ✅
+Fase 6  Modernização e polimento ......... 🚧  ← estamos aqui
 ```
 
 Detalhes de cada fase, riscos e critérios de pronto em [`docs/PLAN.md`](docs/PLAN.md).

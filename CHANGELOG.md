@@ -4,6 +4,7 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 
 ## Unreleased
 
+- Docs: update progress tables and roadmaps across all 6 language READMEs to Phase 6 (modernization and polish).
 - Feature: Game Tips and interactive tutorial dialog (`helpd.win`, I5/I6) with cycling through 17 original gameplay tips and lessons, F1 hotkey and File Options integration.
 - Docs: all 81 original inventory screens verified, implemented and marked in `docs/reference/screens.md` and `docs/PLAN.md`.
 - Feature: Gamepad and Steam Deck controller support with left stick camera panning, right stick virtual cursor, tool/action shortcuts, trigger simulation speed controls, and bumper camera rotation.

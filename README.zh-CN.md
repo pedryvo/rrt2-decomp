@@ -7,8 +7,8 @@
 **《铁路大亨 II》（_Railroad Tycoon II_）的逆向工程与现代 Rust 重新实现**
 
 [![Rust](https://img.shields.io/badge/rust-2024_edition-b7410e?logo=rust&logoColor=white)](https://www.rust-lang.org/)
-[![Status](https://img.shields.io/badge/status-pre--alpha-orange)](#-progress)
-[![Phase](https://img.shields.io/badge/phase-1_%E2%80%94_file_formats-blue)](docs/PLAN.md)
+[![Status](https://img.shields.io/badge/status-beta-blue)](#-progress)
+[![Phase](https://img.shields.io/badge/phase-6_%E2%80%94_%E7%8E%B0%E4%BB%A3%E5%8C%96%E4%B8%8E%E6%89%93%E7%A3%A8-blue)](docs/PLAN.md)
 [![Platforms](https://img.shields.io/badge/platforms-Linux_%7C_Windows-lightgrey)](#-building)
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0--or--later-blue)](LICENSE)
 
@@ -47,11 +47,11 @@ _您熟悉的 1998 年经典之作，同样的等距视角，<br>如今原生支
 | 地图与存档（`.MAP` `.MP2` `.GAM`） | 🟡 | 两个格式版本（0x233C、0x2348）：随游戏附带的全部 128 个文件以及原版写出的存档均可逐字节完整解析；地形、日期、种子、地点、公司、规则已解码；车站和列车部分解码 · [spec](docs/formats/map-gam.md) |
 | 模拟规格（列车、货物、经济……） | 🟡 | 时间/日历/主循环、随机数生成器、货物经济、列车运行/故障/成本、轨道/车站建设及吸引范围、金融（股价、利息、股息）、城镇与产业增长、竞争对手 AI、世界刻顺序和场景规则语言，大部分已与原版逐位精确验证 · [time](docs/spec/time.md) · [rng](docs/spec/rng.md) · [cargo](docs/spec/cargo.md) · [trains](docs/spec/trains.md) · [track](docs/spec/terrain-track.md) · [finance](docs/spec/finance.md) · [growth](docs/spec/world-growth.md) · [AI](docs/spec/ai.md) · [world tick](docs/spec/world-tick.md) · [scenarios](docs/spec/scenarios.md) |
 | 差分测试框架（Unicorn） | ✅ | 在模拟器中运行原版函数，以进行逐位精确比较 · [docs](docs/oracle.md) |
-| 渲染引擎（wgpu） | 🟡 | 使用游戏原版精确地形纹理渲染原版地图，包括河流、道路、海滩、轨道、树木、城镇、产业和车站，以及平滑插值的**行驶列车与烟雾**；精灵图经高清放大；4K 下约 70 fps · `cargo run --release -p rt2-viewer -- <地图>` |
-| 可玩的模拟 | 🟡 | `rt2-sim` 世界循环，含列车、车站、经济、财务、城市发展、剧本规则和电脑对手 AI：原版存档在克隆版中推进后，在计分板**全部 131 个**用例中（从 1 天到 2 年的游戏时长，并涵盖事故、抢劫、清算、AI 股票交易等罕见事件）逐字段**与原版完全一致**（教程、含列车的示例存档、四张 .MP2 地图，以及加载时转换的旧格式存档和地图）；包括原版战役全部 18 个场景的新游戏；以及 Second Century 全部 18 个场景 · [保真度计分板](docs/fidelity-status.md) |
-| 游戏界面 | 🟡 | `rrt2` 应用：使用原版美术的主菜单、场景/存档列表、带日期和速度控制的游戏内 HUD、采用与原版相匹配的 OFL 字体的清晰矢量文字、100–300% 的界面缩放 · [docs](docs/ui.md) |
-| 地图与场景编辑器 | 🟡 | 地形、树木、领土、建筑、地点、河流和道路；地图选项、目标及带实时校验的规则编辑器；保存可完整保留所有原版地图。PCX 导入和部分选项页尚未完成 |
-| 多人游戏（核心） | 🟡 | `rt2-net`：由主机排序的锁步同步，支持 TCP 或内存传输；`rt2-sim` 中实现原版的联机规则（每天重设 RNG、列车按天步进、离开的玩家由电脑接管），每月状态校验和并导出差异、主机迁移、中途加入与重连；暂无界面 · [规范](docs/spec/multiplayer.md) · [协议](docs/net-protocol.md) |
+| 渲染引擎（wgpu） | ✅ | 使用游戏原版精确地形纹理渲染原版地图，包括河流、道路、海滩、轨道、树木、城镇、产业和车站，以及平滑插值的**行驶列车与烟雾**；精灵图经高清放大；4K 下约 70 fps · `cargo run --release -p rt2-viewer -- <地图>` |
+| 可玩的模拟 | ✅ | `rt2-sim` 世界循环，含列车、车站、经济、财务、城市发展、剧本规则和电脑对手 AI：原版存档在克隆版中推进后，在计分板**全部 131 个**用例中（从 1 天到 2 年的游戏时长，并涵盖事故、抢劫、清算、AI 股票交易等罕见事件）逐字段**与原版完全一致**（教程、含列车的示例存档、四张 .MP2 地图，以及加载时转换的旧格式存档和地图）；包括原版战役全部 18 个场景的新游戏；以及 Second Century 全部 18 个场景 · [保真度计分板](docs/fidelity-status.md) |
+| 游戏界面 | ✅ | `rrt2` 应用：使用原版美术的主菜单、金属框架与罗盘 HUD、已实现或适配库存中全部 81 个界面、场景/存档列表、采用与原版相匹配的 OFL 字体的清晰矢量文字、100–300% 的界面缩放 · [docs](docs/ui.md) |
+| 地图与场景编辑器 | ✅ | 地形、树木、领土、建筑、地点、河流和道路；PCX 高度图导入、全部 14 页地图选项、目标及带实时校验的规则编辑器；保存可完整保留所有原版地图 |
+| 多人游戏 | ✅ | `rt2-net` 与 `rt2-game`：由主机排序的锁步同步，支持 TCP/IP 或内存传输，`rt2-sim` 中实现原版联机规则，每月状态校验和并导出差异、主机迁移、中途加入与重连、完整大厅（K1–K3, H3）及带 HUD 状态指示的游戏内聊天 · [规范](docs/spec/multiplayer.md) · [协议](docs/net-protocol.md) |
 
 <sub>✅ 已完成 · 🟡 部分完成 · 🔍 分析中 · ⏳ 计划中</sub>
 
@@ -63,12 +63,12 @@ _您熟悉的 1998 年经典之作，同样的等距视角，<br>如今原生支
 
 ```
 阶段 0  基础工作 ........................ ✅
-阶段 1  文件格式与提取 .................. 🚧  ← 当前所在
-阶段 2  按子系统反编译 .................. ⏳
-阶段 3  渲染引擎 ........................ ⏳  （与阶段 2 并行）
-阶段 4  可玩的垂直切片 .................. ⏳
-阶段 5  完整游戏 ........................ ⏳
-阶段 6  现代化与打磨 .................... ⏳
+阶段 1  文件格式与提取 .................. ✅
+阶段 2  按子系统反编译 .................. ✅
+阶段 3  渲染引擎 ........................ ✅  （与阶段 2 并行）
+阶段 4  可玩的垂直切片 .................. ✅
+阶段 5  完整游戏 ........................ ✅
+阶段 6  现代化与打磨 .................... 🚧  ← 当前所在
 ```
 
 各阶段的细节、风险和完成标准见 [`docs/PLAN.md`](docs/PLAN.md)（葡萄牙语）。
