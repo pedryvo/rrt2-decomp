@@ -972,6 +972,9 @@ impl AppState {
             editor: None,
             campaign: None,
             mp: Some(in_game_mp),
+            mp_live_frame: None,
+            mp_live_elapsed_ms: 0.0,
+            mp_live_interval_ms: super::STEP_MS,
         }));
         self.rebuild_ui();
     }

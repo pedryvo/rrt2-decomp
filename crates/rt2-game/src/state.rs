@@ -178,6 +178,11 @@ pub(crate) struct GameState {
     campaign: Option<(usize, usize)>,
     /// Multiplayer in-game session and chat overlay.
     pub mp: Option<Box<crate::state::mp::InGameMp>>,
+    /// Last live frame pushed in multiplayer (avoids overwriting `live_prev` between steps).
+    mp_live_frame: Option<LiveFrame>,
+    /// Wall-clock ms since the last multiplayer live-frame update, and measured interval.
+    mp_live_elapsed_ms: f32,
+    mp_live_interval_ms: f32,
 }
 
 /// Hash of the parts of the save the static layers are built from: building type and tile,
@@ -1085,14 +1090,26 @@ impl AppState {
                 }
             }
             g.world = mp.backend.world().clone();
+            if g.world.speed() > 0 {
+                g.mp_live_elapsed_ms += dt_ms.min(250.0);
+            }
             if let Some(save) = g.world.save_ref() {
-                self.pending_live = Some((LiveFrame::from_save(save), false));
+                let frame = LiveFrame::from_save(save);
+                if g.mp_live_frame.as_ref() != Some(&frame) {
+                    if g.mp_live_frame.is_some() && g.mp_live_elapsed_ms > 5.0 {
+                        g.mp_live_interval_ms = g.mp_live_elapsed_ms.clamp(50.0, 2000.0);
+                    }
+                    g.mp_live_elapsed_ms = 0.0;
+                    g.mp_live_frame = Some(frame.clone());
+                    self.pending_live = Some((frame, false));
+                }
                 let fp = scene_fingerprint(save);
                 if fp != g.scene_fp {
                     g.scene_fp = fp;
                     self.rebuild_scene = true;
                 }
             }
+            self.live_alpha = (g.mp_live_elapsed_ms / g.mp_live_interval_ms).clamp(0.0, 1.0);
         } else {
             let mut steps = 0;
             while g.accum_ms >= STEP_MS {
@@ -1113,8 +1130,8 @@ impl AppState {
                     self.rebuild_scene = true;
                 }
             }
+            self.live_alpha = (g.accum_ms / STEP_MS).clamp(0.0, 1.0);
         }
-        self.live_alpha = (g.accum_ms / STEP_MS).clamp(0.0, 1.0);
         g.cash_timer -= dt_ms;
         // Messages and the end of the game, after the steps (and once at the start).
         self.poll_world();
@@ -1653,6 +1670,9 @@ impl AppState {
                 _ => None,
             },
             mp: None,
+            mp_live_frame: None,
+            mp_live_elapsed_ms: 0.0,
+            mp_live_interval_ms: STEP_MS,
         }));
         // Scenario choices wait for the player in the real game; headless they answer button 0.
         if let Screen::Game(g) = &mut self.screen {

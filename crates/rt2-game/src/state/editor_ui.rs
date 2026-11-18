@@ -348,6 +348,9 @@ impl AppState {
             editor: Some(Box::new(ed)),
             campaign: None,
             mp: None,
+            mp_live_frame: None,
+            mp_live_elapsed_ms: 0.0,
+            mp_live_interval_ms: super::STEP_MS,
         }));
         self.rebuild_ui();
         Ok(())

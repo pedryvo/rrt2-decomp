@@ -102,7 +102,7 @@ fn read_cars(pool: &Pool, out: &mut Vec<CarSample>) {
 
 impl LiveFrame {
     /// Cars of `self` moved a fraction `alpha` (0..=1) of the way towards `next`, matched by slot.
-    /// Cars that did not exist before, changed type, or jumped more than five tiles are taken as
+    /// Cars that did not exist before, changed type, or jumped more than 50 tiles are taken as
     /// they are in `next`.
     pub fn lerp(&self, next: &LiveFrame, alpha: f32) -> Vec<CarSample> {
         let a = alpha.clamp(0.0, 1.0);
@@ -114,7 +114,7 @@ impl LiveFrame {
                 };
                 let p = &self.cars[i];
                 let (dx, dy) = (c.x - p.x, c.y - p.y);
-                if p.vehicle != c.vehicle || dx * dx + dy * dy > 25.0 {
+                if p.vehicle != c.vehicle || dx * dx + dy * dy > 2500.0 {
                     return *c;
                 }
                 CarSample {
@@ -136,7 +136,7 @@ impl LiveFrame {
                 let p = &self.smoke[i];
                 let (dx, dy) = (c.x - p.x, c.y - p.y);
                 let dh = c.height - p.height;
-                if dx * dx + dy * dy <= 4.0 {
+                if dx * dx + dy * dy <= 16.0 {
                     out.push(SmokeSample {
                         slot: c.slot,
                         seq: c.seq,
@@ -175,12 +175,12 @@ mod tests {
             smoke: vec![],
         };
         let b = LiveFrame {
-            cars: vec![car(1, 2.0), car(2, 20.0), car(3, 7.0)],
+            cars: vec![car(1, 2.0), car(2, 70.0), car(3, 7.0)],
             smoke: vec![],
         };
         let m = a.lerp(&b, 0.5);
         assert_eq!(m[0].x, 1.5);
-        assert_eq!(m[1].x, 20.0);
+        assert_eq!(m[1].x, 70.0);
         assert_eq!(m[2].x, 7.0);
     }
 
