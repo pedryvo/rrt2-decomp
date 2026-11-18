@@ -507,27 +507,21 @@ impl AppState {
             10.5,
         );
         if let Some(a) = self.dialog_art.buy.small_arrows {
-            for (i, (sp, action, y)) in [(a[0], A_TB_TONS_UP, 358.0), (a[2], A_TB_TONS_DOWN, 369.0)]
-                .into_iter()
-                .enumerate()
-            {
-                let _ = i;
+            for (up, down, action, y) in [
+                (a[0], a[1], A_TB_TONS_UP, 358.0),
+                (a[2], a[3], A_TB_TONS_DOWN, 369.0),
+            ] {
                 ui.add(
                     root,
-                    Kind::Image {
-                        sprite: sp,
-                        fit: Fit::Stretch,
-                    },
-                    f.at(616.0, y, 17.0, 9.0),
-                );
-                ui.add(
-                    root,
-                    Kind::Hotspot {
+                    Kind::Icon {
+                        up: Some(up),
+                        down: Some(down),
+                        fallback: String::new(),
+                        font: f.font(1, 9.0),
                         action,
                         on: false,
-                        enabled: true,
                     },
-                    f.at(614.0, y - 1.0, 21.0, 11.0),
+                    f.at(616.0, y, 17.0, 9.0),
                 );
             }
         }
@@ -553,16 +547,16 @@ impl AppState {
                 10.5,
             );
         }
-        for g in 0..4 {
+        for (g, row) in d.speeds.iter().enumerate() {
             let y = 381.0 + 13.75 * (g + 1) as f32;
             label(ui, 380.0, y, 36.0, format!("{}%", g * 2), Align::Left, 10.5);
-            for c in 0..6 {
+            for (c, &spd) in row.iter().enumerate() {
                 label(
                     ui,
                     col(c) - 19.0,
                     y,
                     38.0,
-                    d.speeds[g][c].to_string(),
+                    spd.to_string(),
                     Align::Center,
                     10.5,
                 );
@@ -825,7 +819,7 @@ impl AppState {
         _dz: f32,
         tips: &mut Vec<(NodeId, String)>,
     ) -> bool {
-        use super::build_ui::{A_BT_CANCEL, A_BT_ORIENT, A_BT_SIZE, A_BT_STYLE, STYLES};
+        use super::build_ui::{A_BT_ORIENT, A_BT_SIZE, A_BT_STYLE, STYLES};
         let art = &self.dialog_art.buy;
         let (Some(bg), Some(misc)) = (art.station_bg, self.dialog_art.editor.misc) else {
             return false;
@@ -897,8 +891,12 @@ impl AppState {
             ui.add(
                 root,
                 Kind::Label {
-                    text: format!("{}: ${}K", t.get(154, "Cost"), price / 1000),
-                    font: f.font(1, 10.5),
+                    text: format!(
+                        "{}: {}",
+                        t.get(154, "Cost"),
+                        crate::info::money(f64::from(price))
+                    ),
+                    font: f.font(1, 10.0),
                     color: TEXT,
                     align: Align::Center,
                     wrap: false,
@@ -948,9 +946,27 @@ impl AppState {
                 tip,
             );
         }
-        // The message field of the strip: the cost, then why the command is refused.
-        let plan = b.plan.as_ref();
-        let (msg, color) = match (plan.and_then(|p| p.error.clone()), &b.message) {
+        // The message field and Cancel plate of the strip (`bpmisc.imb` controls 2016 and 2015).
+        self.paint_bp_strip(
+            ui,
+            &f,
+            b,
+            t.a("Click next to existing track to place the station. The shaded area is its catchment."),
+            tips,
+        );
+        true
+    }
+
+    fn paint_bp_strip(
+        &self,
+        ui: &mut Ui,
+        f: &Frame,
+        b: &super::build_ui::BuildState,
+        default_hint: String,
+        tips: &mut Vec<(NodeId, String)>,
+    ) {
+        let t = &self.texts;
+        let (msg, color) = match (b.plan.as_ref().and_then(|p| p.error.clone()), &b.message) {
             (Some(e), _) => (e, super::build_dialogs::BAD),
             (None, Some((m, good))) => (
                 m.clone(),
@@ -961,17 +977,15 @@ impl AppState {
                 },
             ),
             (None, None) => (
-                match plan {
-                    Some(p) if p.cost > 0.0 => {
-                        t.af("Cost: %1", &[crate::info::money(p.cost)])
-                    }
-                    _ => t.a("Click next to existing track to place the station. The shaded area is its catchment."),
+                match b.plan.as_ref() {
+                    Some(p) if p.cost > 0.0 => t.af("Cost: %1", &[crate::info::money(p.cost)]),
+                    _ => default_hint,
                 },
                 TEXT,
             ),
         };
         ui.add(
-            root,
+            f.root,
             Kind::Label {
                 text: msg,
                 font: f.font(1, 8.0),
@@ -981,11 +995,10 @@ impl AppState {
             },
             f.at(116.0, 175.0, 210.0, 28.0),
         );
-        // The plate of the strip (control 2015).
         let n = ui.add(
-            root,
+            f.root,
             Kind::Hotspot {
-                action: A_BT_CANCEL,
+                action: super::build_ui::A_BT_CANCEL,
                 on: false,
                 enabled: true,
             },
@@ -993,7 +1006,7 @@ impl AppState {
         );
         tips.push((n, t.get(crate::text::id::CANCEL, "Cancel")));
         ui.add(
-            root,
+            f.root,
             Kind::Label {
                 text: t.get(crate::text::id::CANCEL, "Cancel"),
                 font: f.font(1, 11.0),
@@ -1002,6 +1015,304 @@ impl AppState {
                 wrap: false,
             },
             f.at(354.0, 175.0, 84.0, 29.0),
+        );
+    }
+
+    /// The Lay Track palette drawn with the art of `bpaddtr2.win` / `bpaddtra.win` (D1;
+    /// `0x492e40` case 7, `0x491060`). False without the install art.
+    pub(super) fn build_track_art_panel(
+        &self,
+        ui: &mut Ui,
+        parent: NodeId,
+        area: (f32, f32),
+        _dz: f32,
+        tips: &mut Vec<(NodeId, String)>,
+    ) -> bool {
+        use super::build_ui::{
+            A_BT_BRIDGE, A_BT_DOUBLE, A_BT_ELECTRIC, A_BT_MODE_FREE, A_BT_MODE_STRAIGHT,
+            A_BT_PLAIN, A_BT_SINGLE,
+        };
+        let art = &self.dialog_art.buy;
+        let Some(pics) = art.track_pics else {
+            return false;
+        };
+        let Some(misc) = self.dialog_art.editor.misc else {
+            return false;
+        };
+        let Some(g) = self.game() else {
+            return false;
+        };
+        let year = i32::from(g.world.date().year);
+        let elec_ok = self
+            .data
+            .as_ref()
+            .zip(g.world.save_ref())
+            .zip(self.player())
+            .is_some_and(|((data, save), co)| {
+                bt::electric_track_available(data, save, co, year, i32::from(g.world.date().month))
+            });
+        let maxb = bt::max_bridge_type(year).clamp(1, 3);
+        let bg_idx = usize::from(elec_ok) * 3 + (maxb as usize - 1);
+        let Some(bg) = art.track_bgs[bg_idx] else {
+            return false;
+        };
+        let (cw, ch) = (458.0f32, 216.0f32);
+        let k = (area.0 / cw).min(area.1 / ch).max(0.1);
+        let (w, h) = (cw * k, ch * k);
+        let root = ui.add(
+            parent,
+            Kind::Panel { fill: Fill::None },
+            Layout::at(Anchor::TopLeft, w, h)
+                .offset(((area.0 - w) / 2.0).round(), ((area.1 - h) / 2.0).round()),
+        );
+        let f = Frame { root, k };
+        ui.add(
+            root,
+            Kind::Image {
+                sprite: bg,
+                fit: Fit::Stretch,
+            },
+            f.at(0.0, 0.0, 458.0, 166.0),
+        );
+        ui.add(
+            root,
+            Kind::Image {
+                sprite: misc,
+                fit: Fit::Stretch,
+            },
+            f.at(0.0, 166.0, 458.0, 50.0),
+        );
+        // Layout table from `0x491060` (`bpaddtr2.win` for each `(elec_ok, max_bridge)`):
+        // (card_w, pic_x0, pic_x1, lbl_w, power_x).
+        let (card_w, pic_x0, pic_x1, lbl_w, power_x) = match (elec_ok, maxb) {
+            (false, 1) => (180.0, 39.0, 223.0, 170.0, 323.0),
+            (true, 1) => (153.0, 27.0, 184.0, 143.0, 323.0),
+            (false, _) => (153.0, 27.0, 184.0, 143.0, 269.0),
+            (true, _) => (126.0, 13.0, 142.0, 116.0, 269.0),
+        };
+        let card2_x = 5.0 + card_w + 4.0;
+        let b = &g.build;
+        let t = &self.texts;
+        let cards = [
+            (
+                5.0,
+                pic_x0,
+                10.0,
+                pics[0],
+                t.get(243, "Single Track"),
+                A_BT_SINGLE,
+                b.single,
+                t.get(1962, "Lay single track."),
+            ),
+            (
+                card2_x,
+                pic_x1,
+                card2_x + 5.0,
+                pics[1],
+                t.get(242, "Double Track"),
+                A_BT_DOUBLE,
+                !b.single,
+                t.get(1963, "Lay double track."),
+            ),
+        ];
+        for (cx, px, lx, sprite, label, action, on, tip) in cards {
+            ui.add(
+                root,
+                Kind::Image {
+                    sprite,
+                    fit: Fit::Contain,
+                },
+                f.at(px, 26.0, 111.0, 92.0),
+            );
+            ui.add(
+                root,
+                Kind::Label {
+                    text: label,
+                    font: f.font(1, 10.5),
+                    color: TEXT,
+                    align: Align::Center,
+                    wrap: true,
+                },
+                f.at(lx, 125.0, lbl_w, 34.0),
+            );
+            let n = ui.add(
+                root,
+                Kind::Hotspot {
+                    action,
+                    on,
+                    enabled: true,
+                },
+                f.at(cx, 3.0, card_w, 159.0),
+            );
+            tips.push((n, tip));
+        }
+        if elec_ok {
+            for (y, action, on, tip) in [
+                (
+                    4.0,
+                    A_BT_PLAIN,
+                    !b.electric,
+                    t.get(1964, "Lay ordinary, non-electrified track."),
+                ),
+                (
+                    84.0,
+                    A_BT_ELECTRIC,
+                    b.electric,
+                    t.get(1965, "Lay electrified track, to allow electric trains."),
+                ),
+            ] {
+                let n = ui.add(
+                    root,
+                    Kind::Hotspot {
+                        action,
+                        on,
+                        enabled: true,
+                    },
+                    f.at(power_x, y, 46.0, 79.0),
+                );
+                tips.push((n, tip));
+            }
+        }
+        if maxb >= 2 {
+            let bridge_h = if maxb == 2 { 79.0 } else { 52.0 };
+            let bridge_ys = if maxb == 2 {
+                vec![(1i32, 4.0f32, 79.0f32), (2, 84.0, 79.0)]
+            } else {
+                vec![(1, 4.0, bridge_h), (2, 57.0, bridge_h), (3, 110.0, 53.0)]
+            };
+            let active_bridge = b.bridge.clamp(1, maxb);
+            for (id, y, bh) in bridge_ys {
+                let n = ui.add(
+                    root,
+                    Kind::Hotspot {
+                        action: A_BT_BRIDGE + id as u32,
+                        on: active_bridge == id,
+                        enabled: true,
+                    },
+                    f.at(323.0, y, 46.0, bh),
+                );
+                tips.push((n, t.a("The kind of bridge to build over water.")));
+            }
+        }
+        // `bpaddtr2.win` mode controls 2222..2227 on the right strip.
+        let n_free = ui.add(
+            root,
+            Kind::Hotspot {
+                action: A_BT_MODE_FREE,
+                on: !b.straight,
+                enabled: true,
+            },
+            f.at(377.0, 4.0, 75.0, 52.0),
+        );
+        tips.push((n_free, t.get(2908, "Free drag-and-drop track laying.")));
+        let n_straight = ui.add(
+            root,
+            Kind::Hotspot {
+                action: A_BT_MODE_STRAIGHT,
+                on: b.straight,
+                enabled: true,
+            },
+            f.at(377.0, 57.0, 75.0, 52.0),
+        );
+        tips.push((
+            n_straight,
+            t.get(2909, "Straight-line drag-and-drop track laying."),
+        ));
+        let piece_tip = t.get(2910, "Lay track one piece at a time.");
+        for (px, py) in [
+            (377.0, 110.0),
+            (377.0, 137.0),
+            (415.0, 110.0),
+            (415.0, 137.0),
+        ] {
+            let n = ui.add(
+                root,
+                Kind::Hotspot {
+                    action: 0,
+                    on: false,
+                    enabled: false,
+                },
+                f.at(px, py, 37.0, 26.0),
+            );
+            tips.push((n, piece_tip.clone()));
+        }
+        self.paint_bp_strip(
+            ui,
+            &f,
+            b,
+            t.a("Drag from a track end or a station to where the track should go. Esc cancels."),
+            tips,
+        );
+        true
+    }
+
+    /// The Bulldoze palette drawn with the art of `bpbulldz.win` (C7; `0x492e40` case 8). False
+    /// without the install art.
+    pub(super) fn build_bulldoze_art_panel(
+        &self,
+        ui: &mut Ui,
+        parent: NodeId,
+        area: (f32, f32),
+        _dz: f32,
+        tips: &mut Vec<(NodeId, String)>,
+    ) -> bool {
+        use super::build_ui::A_BT_DOZER;
+        let (Some(bg), Some(misc)) = (
+            self.dialog_art.editor.panels[7],
+            self.dialog_art.editor.misc,
+        ) else {
+            return false;
+        };
+        let Some(g) = self.game() else {
+            return false;
+        };
+        let (cw, ch) = (458.0f32, 216.0f32);
+        let k = (area.0 / cw).min(area.1 / ch).max(0.1);
+        let (w, h) = (cw * k, ch * k);
+        let root = ui.add(
+            parent,
+            Kind::Panel { fill: Fill::None },
+            Layout::at(Anchor::TopLeft, w, h)
+                .offset(((area.0 - w) / 2.0).round(), ((area.1 - h) / 2.0).round()),
+        );
+        let f = Frame { root, k };
+        ui.add(
+            root,
+            Kind::Image {
+                sprite: bg,
+                fit: Fit::Stretch,
+            },
+            f.at(0.0, 0.0, 458.0, 166.0),
+        );
+        ui.add(
+            root,
+            Kind::Image {
+                sprite: misc,
+                fit: Fit::Stretch,
+            },
+            f.at(0.0, 166.0, 458.0, 50.0),
+        );
+        let b = &g.build;
+        let t = &self.texts;
+        let tip = t.a("The size of the area the bulldozer clears.");
+        for i in 0..5 {
+            let n = ui.add(
+                root,
+                Kind::Hotspot {
+                    action: A_BT_DOZER + i as u32,
+                    on: b.dozer == i,
+                    enabled: true,
+                },
+                f.at(426.0, 4.0 + 32.0 * i as f32, 27.0, 31.0),
+            );
+            tips.push((n, tip.clone()));
+        }
+        self.paint_bp_strip(
+            ui,
+            &f,
+            b,
+            t.a("Click to bulldoze the shaded area. Stations cannot be bulldozed."),
+            tips,
         );
         true
     }

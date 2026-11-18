@@ -59,6 +59,11 @@ pub struct BuyArt {
     /// 305x72 at (16,14); record 5 has no art), by record.
     pub station_bg: Option<SpriteId>,
     pub station_strips: Vec<Option<Placed>>,
+    /// `bpaddtr2.win` / `bpaddtra.win` (D1): Single/Double track card pictures (records 0..=1)
+    /// and the six 458x166 background variants `2 + electric * 3 + (max_bridge - 1)` (records
+    /// 2..=7).
+    pub track_pics: Option<[SpriteId; 2]>,
+    pub track_bgs: [Option<SpriteId>; 6],
 }
 
 /// The bank name stems of the improvement rows (`improvement_table` `0x5500c8`, first bytes of
@@ -219,6 +224,28 @@ pub fn load(assets: &GameAssets, b: &mut SkinBuilder) -> BuyArt {
             .then(|| ui_record(assets, "bpaddstn.imb", r))
             .flatten();
         art.station_strips.push(img.map(|i| placed(b, &i)));
+    }
+    let track_rec = |r: usize| {
+        ui_record(assets, "bpaddtr2.imb", r).or_else(|| ui_record(assets, "bpaddtra.imb", r))
+    };
+    let crop_track = |img: RgbaImage| -> RgbaImage {
+        if img.width <= 111 {
+            return img;
+        }
+        let x0 = (img.width - 111) / 2;
+        let mut out = blank(111, img.height);
+        for y in 0..img.height {
+            let src = (y * img.width + x0) * 4;
+            let dst = y * 111 * 4;
+            out.rgba[dst..dst + 111 * 4].copy_from_slice(&img.rgba[src..src + 111 * 4]);
+        }
+        out
+    };
+    if let (Some(s), Some(d)) = (track_rec(0), track_rec(1)) {
+        art.track_pics = Some([add2x(b, &crop_track(s)), add2x(b, &crop_track(d))]);
+    }
+    for (i, slot) in art.track_bgs.iter_mut().enumerate() {
+        *slot = track_rec(2 + i).map(|img| add2x(b, &img));
     }
     for stem in IMPROVEMENT_STEMS {
         let img = (!stem.is_empty())

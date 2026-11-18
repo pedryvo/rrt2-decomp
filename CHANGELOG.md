@@ -4,6 +4,10 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 
 ## Unreleased
 
+- Improved: smooth train interpolation in multiplayer and at high game speeds (`LiveFrame::lerp` snap threshold raised from 5 to 50 tiles; multiplayer no longer overwrites `live_prev` between simulation steps or locks `live_alpha` at 1.0).
+- Improved: Lay Track (`bpaddtr2.win`/`bpaddtra.win`) and Bulldoze (`bpbulldz.win`) panels now render with the original `.imb` artwork and exact `0x491060` layout; `bpaddstn.win` uses formatted money (`$50,000`) and `trainbuy.win` arrows show pressed sprites.
+- RE: extracted the 6 dynamic `(electric, max_bridge)` control layouts of `bpaddtr2.win` from `0x491060` in `RT2_PLAT.EXE`.
+
 ## v0.4.1 — 2026-11-02
 
 - Improved: smooth train movement and directional transitions (`lerp` at midpoint), eliminating snapping on curved tracks.
@@ -13,7 +17,7 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 - Improved: company name and logo customization dialog (`brand.rs`) with styled gold-framed text input, active cursor, previous/next logo thumbnails, and direct integration with simulation command `0x27` (`set_company_info`).
 - Improved: Game Options menu with visual indicator toggles and dynamic difficulty rating calculation.
 - Fix: paused simulation no longer accumulates frame interpolation time, eliminating train jitter while paused.
-- CI: temporarily suspended macOS release builds due to runner capacity constraints while preserving Linux, Windows and Flatpak releases.
+- Change: CI temporarily suspended macOS release builds due to runner capacity constraints while preserving Linux, Windows and Flatpak releases.
 
 ## v0.4.0 — 2026-11-02
 

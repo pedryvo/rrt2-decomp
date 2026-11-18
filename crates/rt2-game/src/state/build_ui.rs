@@ -35,6 +35,8 @@ pub(super) const A_BT_STYLE: u32 = 5045;
 /// Bulldozer brush `i` of [`DOZER_RADIUS`].
 pub(super) const A_BT_DOZER: u32 = 5060;
 pub(super) const A_BT_CANCEL: u32 = 5070;
+pub(super) const A_BT_MODE_FREE: u32 = 5071;
+pub(super) const A_BT_MODE_STRAIGHT: u32 = 5072;
 
 /// `0x53656c`: the bulldozer's radius per brush size (commands.md 2.1, `0x0a`).
 pub(super) const DOZER_RADIUS: [i32; 5] = [0, 2, 5, 11, 20];
@@ -115,6 +117,7 @@ pub(super) struct BuildState {
     pub single: bool,
     pub electric: bool,
     pub bridge: i32,
+    pub straight: bool,
     pub size: StationSize,
     /// `None` = try the eight orientations.
     pub orient: Option<i32>,
@@ -135,6 +138,7 @@ impl Default for BuildState {
             single: true,
             electric: false,
             bridge: 1,
+            straight: false,
             size: StationSize::Small,
             orient: None,
             style: 0,
@@ -800,6 +804,8 @@ impl AppState {
             }
             a if (A_BT_STYLE..A_BT_STYLE + 6).contains(&a) => b.style = (a - A_BT_STYLE) as usize,
             a if (A_BT_DOZER..A_BT_DOZER + 5).contains(&a) => b.dozer = (a - A_BT_DOZER) as usize,
+            A_BT_MODE_FREE => b.straight = false,
+            A_BT_MODE_STRAIGHT => b.straight = true,
             A_BT_CANCEL => {
                 b.tool = None;
                 b.from = None;
@@ -831,10 +837,14 @@ impl AppState {
         let Some(kind) = b.tool else {
             return;
         };
-        // `bpaddstn.win`: the Add Station palette in the original's own art, when the install has
-        // it.
-        if kind == ToolKind::Station && self.build_station_art_panel(ui, parent, (w, _h), dz, tips)
-        {
+        // Original bottom panels (`bpaddtr2.win`, `bpaddstn.win`, `bpbulldz.win`) when the install
+        // art is available.
+        let art_ok = match kind {
+            ToolKind::Track => self.build_track_art_panel(ui, parent, (w, _h), dz, tips),
+            ToolKind::Station => self.build_station_art_panel(ui, parent, (w, _h), dz, tips),
+            ToolKind::Bulldoze => self.build_bulldoze_art_panel(ui, parent, (w, _h), dz, tips),
+        };
+        if art_ok {
             return;
         }
         let t = &self.texts;
