@@ -4,6 +4,8 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 
 ## Unreleased
 
+## v0.4.2 — 2026-11-18
+
 - Improved: smooth train interpolation in multiplayer and at high game speeds (`LiveFrame::lerp` snap threshold raised from 5 to 50 tiles; multiplayer no longer overwrites `live_prev` between simulation steps or locks `live_alpha` at 1.0).
 - Improved: Lay Track (`bpaddtr2.win`/`bpaddtra.win`) and Bulldoze (`bpbulldz.win`) panels now render with the original `.imb` artwork and exact `0x491060` layout; `bpaddstn.win` uses formatted money (`$50,000`) and `trainbuy.win` arrows show pressed sprites.
 - RE: extracted the 6 dynamic `(electric, max_bridge)` control layouts of `bpaddtr2.win` from `0x491060` in `RT2_PLAT.EXE`.
