@@ -21,6 +21,10 @@ use crate::buildtools as bt;
 use crate::info::{Block, Table};
 
 pub(super) const A_SD_BUY: u32 = 5100;
+pub(super) const A_SD_PREV: u32 = 5101;
+pub(super) const A_SD_NEXT: u32 = 5102;
+pub(super) const A_SD_LIST: u32 = 5103;
+pub(super) const A_SD_TAB: u32 = 5104;
 pub(super) const A_SB_ITEM: u32 = 5110;
 pub(super) const A_SB_OK: u32 = 5140;
 pub(super) const A_TB_OK: u32 = 5152;
@@ -282,6 +286,13 @@ impl AppState {
     // ---- station detail ---------------------------------------------------------------------
 
     fn build_station_detail(&self, ui: &mut Ui, station: i32) {
+        let Some(page) = self.with_info(|i| i.station_page(station as u32)) else {
+            return;
+        };
+        if self.dialog_art.detail.statndtl_frame.is_some() {
+            self.build_station_detail_art(ui, station, &page);
+            return;
+        }
         let win = self.win(ui, 900.0, 560.0);
         let Win {
             root,
@@ -290,9 +301,6 @@ impl AppState {
             dz,
             pad,
         } = win;
-        let Some(page) = self.with_info(|i| i.station_page(station as u32)) else {
-            return;
-        };
         let t = &self.texts;
         ui.add(
             root,
@@ -384,6 +392,285 @@ impl AppState {
             button(t.a("Close"), fnt(1, dz), A_CLOSE, true),
             at(w - pad - bw, by, bw, bh),
         );
+    }
+
+    /// Station detail window laid out over the original `statndtl.win` + `odbottom.imb` art.
+    fn build_station_detail_art(&self, ui: &mut Ui, station: i32, page: &crate::info::Page) {
+        let (cw, ch) = ui.logical_size();
+        let s = (cw / 1024.0).min(ch / 768.0);
+        let (w, h) = (1024.0 * s, 768.0 * s);
+        let root = ui.add_root(
+            Kind::Panel {
+                fill: Fill::Solid(Color::rgb(0x10, 0x10, 0x10)),
+            },
+            Layout::at(Anchor::Center, w, h),
+        );
+        let det = &self.dialog_art.detail;
+        let t = &self.texts;
+        let (style, site, mask) = match &self.screen {
+            Screen::Game(g) => g
+                .world
+                .save_ref()
+                .and_then(|s| {
+                    let st = bt::rec(&s.stations, station)?;
+                    let b = bt::rec(&s.objects, st.i32(4))?;
+                    let (double, electrified) = bt::station_track_flags(s, station);
+                    Some((
+                        b.u8(0x52),
+                        st.i32(0x4d),
+                        crate::stationview::derive_mask(st.u32(0x49), double, electrified),
+                    ))
+                })
+                .unwrap_or_default(),
+            Screen::Menu(_) => Default::default(),
+        };
+        if let Some(sprite) = self.dialog_art.station_view {
+            let key = (style, site, mask);
+            if *self.station_view_key.borrow() != Some(key)
+                && let Some(rgba) = crate::stationview::compose(&self.assets, site, style, mask)
+            {
+                self.sprite_uploads.borrow_mut().push((sprite, rgba));
+                *self.station_view_key.borrow_mut() = Some(key);
+            }
+            ui.add(
+                root,
+                Kind::Image {
+                    sprite,
+                    fit: Fit::Stretch,
+                },
+                at(0.0, 0.0, 1024.0 * s, 569.0 * s),
+            );
+        }
+        if let Some(p) = det.statndtl_frame {
+            ui.add(
+                root,
+                Kind::Image {
+                    sprite: p.sprite,
+                    fit: Fit::Stretch,
+                },
+                at(p.x as f32 * s, p.y as f32 * s, p.w * s, p.h * s),
+            );
+        }
+        // Control 602: Buy buildings oval button at (929, 509, 82, 46).
+        let own = self.player_station(station);
+        let allowed = self
+            .with_game(|s, _, _| bt::permitted(s, bt::PERM_BUILD_SUPPORT))
+            .unwrap_or(false);
+        let can_buy = own && allowed;
+        let buy_rect = at(929.0 * s, 509.0 * s, 82.0 * s, 46.0 * s);
+        if let Some((up, down)) = det.statndtl_buy {
+            if can_buy {
+                ui.add(
+                    root,
+                    Kind::Icon {
+                        up: Some(up),
+                        down: Some(down),
+                        fallback: t.a("Buy buildings"),
+                        font: fnt(1, s * 0.65),
+                        action: A_SD_BUY,
+                        on: false,
+                    },
+                    buy_rect,
+                );
+            } else {
+                ui.add(
+                    root,
+                    Kind::Image {
+                        sprite: up,
+                        fit: Fit::Stretch,
+                    },
+                    buy_rect,
+                );
+            }
+        } else {
+            ui.add(
+                root,
+                button(t.a("Buy buildings"), fnt(1, s * 0.65), A_SD_BUY, can_buy),
+                buy_rect,
+            );
+        }
+        let ink = Color::rgb(0x1e, 0x16, 0x0a);
+        ui.add(
+            root,
+            lbl(
+                &t.a("Buy buildings"),
+                fnt(1, s * 0.54),
+                if can_buy {
+                    ink
+                } else {
+                    Color::rgb(0x5a, 0x4e, 0x38)
+                },
+                Align::Center,
+            ),
+            at(929.0 * s, 515.0 * s, 82.0 * s, 34.0 * s),
+        );
+
+        // Control 601: Station name at (408, 556, 209, 33).
+        ui.add(
+            root,
+            lbl(&page.title, fnt(1, s * 1.1), HEAD, Align::Center),
+            at(408.0 * s, 556.0 * s, 209.0 * s, 33.0 * s),
+        );
+
+        // Control 680: Supply/Demand/Waiting table + station facts in (26, 586, 973, 123).
+        ui.add(
+            root,
+            Kind::Panel {
+                fill: Fill::Solid(INSET),
+            },
+            at(26.0 * s, 586.0 * s, 973.0 * s, 123.0 * s),
+        );
+        let row = 18.0 * s;
+        let fsize = (12.0_f32 * s).max(10.0);
+        for b in &page.right {
+            if let Block::Table { table, .. } = b {
+                let rows = table.rows.len().min(5);
+                info_ui::draw_table(
+                    ui,
+                    root,
+                    table,
+                    32.0 * s,
+                    589.0 * s,
+                    700.0 * s,
+                    row,
+                    fsize,
+                    0,
+                    rows,
+                    true,
+                );
+                break;
+            }
+        }
+        // Right side of 680: station facts (Owner, Location, Size, Linked buildings).
+        if let Some(Block::Facts(facts)) = page.left.first() {
+            let mut fy = 590.0 * s;
+            let fx = 744.0 * s;
+            let fw = 248.0 * s;
+            for (k, v) in facts.iter().take(5) {
+                ui.add(
+                    root,
+                    lbl(k, fnt(8, s * 0.58), MUTED, Align::Left),
+                    at(fx, fy, fw * 0.48, row),
+                );
+                ui.add(
+                    root,
+                    lbl(v, fnt(8, s * 0.58), TEXT, Align::Right),
+                    at(fx + fw * 0.48, fy, fw * 0.52, row),
+                );
+                fy += row;
+            }
+        }
+
+        // Bottom `odbottom.imb` bar.
+        if let Some(p) = det.odbottom_bg {
+            ui.add(
+                root,
+                Kind::Image {
+                    sprite: p.sprite,
+                    fit: Fit::Stretch,
+                },
+                at(p.x as f32 * s, p.y as f32 * s, p.w * s, p.h * s),
+            );
+        }
+        if let Some(p) = det.odbottom_tabs {
+            ui.add(
+                root,
+                Kind::Image {
+                    sprite: p.sprite,
+                    fit: Fit::Stretch,
+                },
+                at(p.x as f32 * s, p.y as f32 * s, p.w * s, p.h * s),
+            );
+        }
+        // Tabs 672..675: Stations, Trains, Players, Companies.
+        for i in 0..4u32 {
+            ui.add(
+                root,
+                Kind::Hotspot {
+                    action: A_SD_TAB + i,
+                    on: i == 0,
+                    enabled: true,
+                },
+                at((2.0 + 45.0 * i as f32) * s, 730.0 * s, 45.0 * s, 35.0 * s),
+            );
+        }
+        // Control 671: status/improvements summary at (185, 733, 653, 35).
+        let summary = if let Some(Block::Facts(imps)) = page.left.get(1) {
+            let names: Vec<&str> = imps.iter().map(|(k, _)| k.as_str()).collect();
+            format!("{}: {}", t.a("Improvements"), names.join(", "))
+        } else {
+            String::new()
+        };
+        if !summary.is_empty() {
+            ui.add(
+                root,
+                lbl(&summary, fnt(8, s * 0.58), TEXT, Align::Left),
+                at(192.0 * s, 738.0 * s, 640.0 * s, 26.0 * s),
+            );
+        }
+        // Control 676 (<), 677 (>), 679 (List), 678 (OK).
+        let mut add_btn = |rect: Layout, sprites: Option<(rt2_ui::SpriteId, rt2_ui::SpriteId)>, action: u32, fallback: String| {
+            if let Some((up, down)) = sprites {
+                ui.add(
+                    root,
+                    Kind::Icon {
+                        up: Some(up),
+                        down: Some(down),
+                        fallback,
+                        font: fnt(1, s * 0.85),
+                        action,
+                        on: false,
+                    },
+                    rect,
+                );
+            } else {
+                ui.add(root, button(fallback, fnt(1, s * 0.85), action, true), rect);
+            }
+        };
+        add_btn(
+            at(845.0 * s, 735.0 * s, 32.0 * s, 29.0 * s),
+            det.odbottom_prev,
+            A_SD_PREV,
+            "<".into(),
+        );
+        add_btn(
+            at(880.0 * s, 735.0 * s, 32.0 * s, 29.0 * s),
+            det.odbottom_next,
+            A_SD_NEXT,
+            ">".into(),
+        );
+        add_btn(
+            at(916.0 * s, 735.0 * s, 40.0 * s, 31.0 * s),
+            det.odbottom_list,
+            A_SD_LIST,
+            t.a("Stations"),
+        );
+        let ok_rect = at(962.0 * s, 734.0 * s, 60.0 * s, 32.0 * s);
+        let ok_str = t.get(crate::text::id::OK, "OK");
+        add_btn(ok_rect, det.odbottom_ok, A_CLOSE, ok_str.clone());
+        ui.add(
+            root,
+            lbl(&ok_str, fnt(1, s * 0.85), ink, Align::Center),
+            ok_rect,
+        );
+    }
+
+    fn step_station(&self, current: i32, delta: i32) -> i32 {
+        self.with_game(|s, _, co| {
+            let own = bt::rec(&s.stations, current).is_some_and(|st| st.i32(0x39) == co);
+            let slots: Vec<i32> = (0..s.stations.next.len() as i32)
+                .filter(|&i| {
+                    bt::rec(&s.stations, i).is_some_and(|st| !own || st.i32(0x39) == co)
+                })
+                .collect();
+            if slots.is_empty() {
+                return current;
+            }
+            let pos = slots.iter().position(|&i| i == current).unwrap_or(0) as isize;
+            let n = slots.len() as isize;
+            slots[((pos + delta as isize).rem_euclid(n)) as usize]
+        })
+        .unwrap_or(current)
     }
 
     // ---- buy improvements -------------------------------------------------------------------
@@ -868,6 +1155,28 @@ impl AppState {
                     mask: 0,
                     last: u32::MAX,
                 });
+            }
+            (A_SD_PREV, Dialog::Station { station }) => {
+                let next = self.step_station(station, -1);
+                self.set_top(Dialog::Station { station: next });
+            }
+            (A_SD_NEXT, Dialog::Station { station }) => {
+                let next = self.step_station(station, 1);
+                self.set_top(Dialog::Station { station: next });
+            }
+            (A_SD_LIST, Dialog::Station { .. }) => {
+                self.close_dialog();
+                self.open_info(info_ui::InfoScreen::Stations);
+            }
+            (a, Dialog::Station { .. }) if (A_SD_TAB..A_SD_TAB + 4).contains(&a) => {
+                self.close_dialog();
+                let scr = match a - A_SD_TAB {
+                    0 => info_ui::InfoScreen::Stations,
+                    1 => info_ui::InfoScreen::Trains,
+                    2 => info_ui::InfoScreen::Players,
+                    _ => info_ui::InfoScreen::Companies,
+                };
+                self.open_info(scr);
             }
             (
                 a,

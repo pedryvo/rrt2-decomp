@@ -6,6 +6,7 @@ use rt2_render::assets::{GameAssets, LoadedBank, RgbaImage};
 use rt2_render::atlas::scale2x;
 pub mod brand;
 pub mod buywin;
+pub mod detailwin;
 pub mod mainwin;
 
 use rt2_ui::{NineSlice, Skin, SkinBuilder, SkinImage, SpriteId, Theme};
@@ -77,6 +78,8 @@ pub struct DialogArt {
     pub main: mainwin::MainArt,
     /// The purchase windows (`artwork/buywin.rs`).
     pub buy: buywin::BuyArt,
+    /// The detail windows (`artwork/detailwin.rs`).
+    pub detail: detailwin::DetailArt,
 }
 
 /// Size of the video frame sprite (clips are scaled into it).
@@ -238,6 +241,7 @@ pub fn load(assets: &GameAssets) -> Artwork {
     let all = |v: [Option<SpriteId>; 3]| Some([v[0]?, v[1]?, v[2]?]);
     let all6 = |v: [Option<SpriteId>; 6]| Some([v[0]?, v[1]?, v[2]?, v[3]?, v[4]?, v[5]?]);
     let dialogs = DialogArt {
+        detail: Default::default(),
         eagle: all([
             add("eagled.imb", 0),
             add("eagled.imb", 1),
@@ -310,6 +314,7 @@ pub fn load(assets: &GameAssets) -> Artwork {
     }
     dialogs.main = mainwin::load(assets, &mut b);
     dialogs.buy = buywin::load(assets, &mut b);
+    dialogs.detail = detailwin::load(assets, &mut b);
     dialogs.video_frame = Some(b.reserve(VIDEO_FRAME.0, VIDEO_FRAME.1));
     if assets.contains("sdmbkg1.imb") {
         dialogs.station_view =

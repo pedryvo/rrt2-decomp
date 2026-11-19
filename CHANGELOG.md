@@ -4,6 +4,8 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 
 ## Unreleased
 
+- Improved: Station Detail (`statndtl.win`) now renders with the original `statndtl.imb` frame, Buy oval button, Supply/Demand table, and `odbottom.imb` navigation bar (`<`, `>`, list, and tab switches).
+
 ## v0.4.2 — 2026-11-18
 
 - Improved: smooth train interpolation in multiplayer and at high game speeds (`LiveFrame::lerp` snap threshold raised from 5 to 50 tiles; multiplayer no longer overwrites `live_prev` between simulation steps or locks `live_alpha` at 1.0).
