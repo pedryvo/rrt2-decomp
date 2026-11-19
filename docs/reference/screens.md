@@ -182,7 +182,7 @@ Multiplayer implementado: K1 a K4 e H3 com arquitetura em lockstep determinísti
 
 Contagem das linhas da tabela acima:
 
-Total: 81 telas do original (e variantes das 46 janelas .win catalogadas), 56 ✅, 28 🟡, 0 ⏳ ausentes (mais extras modernos do clone). Todas as telas do inventário possuem interface implementada e funcional no clone.
+Total: 84 telas do original catalogadas (mais 6 extras modernos do clone), 59 ✅, 25 🟡, 0 ⏳ ausentes. Todas as telas do inventário possuem interface implementada e funcional no clone.
 
 Telas do clone que não existem no original (extras): seletor de idioma, Cidades (lista), atalhos de escala/mudo/tela cheia. A tela "Indústrias" (lista) e "Território" são equivalentes parciais de C3/C4.
 
@@ -202,3 +202,20 @@ Ordem pensada para fechar o primeiro ciclo jogável (comprar empresa, construir,
 10. **Relatório anual, jornal e eventos (I1 a I3)** e **Control Panel + File Options (J1 a J5)**, **fim de cenário (B4)**, depois demolir (C7), sobreposições do mapa (C6) e compra de indústria (C3, D4).
 
 Em seguida (menor prioridade): jogadores e chairman (H1, H2), territórios e direitos de acesso (G5), recordes e créditos (A8, A9), vídeos (A10); multiplayer (K) e editor (L) por último.
+
+## O que já foi alcançado vs. O que falta alcançar
+
+### Alcançado (interface com arte original `.win`/`.imb`)
+- **Menus e Campanha**: `setup.win` (A1–A5, B1, K1–K3, L1), `campaign.win` (B2), `credits.win` (A8), `hiscore.win` (A9).
+- **HUD e Construção**: `mainwin.win` (C1), `bpovervw.win` (C6), `bpbulldz.win` (C7), `bpaddtr2.win`/`bpaddtra.win` (D1), `bpaddstn.win` (D2), e painéis `bp*.win` do editor (L5–L10).
+- **Compra, Detalhe, Listas, Livros e Bolsa**: `trainbuy.win` (E1), `traindtl.win` (E2), `statndtl.win` (F1), `buildbuy.win` (F2), `statnlst.win` (F3), `trainlst.win` (E5), `compnlst.win` (G13), `playrlst.win` (H2), `compndtl.win` (G2–G6), `playrdtl.win` (H1) e `stockdtl.win` (C8, G14, G15).
+- **Diálogos e Eventos**: `eagled.win` (B3, C3, D4, G1, G7–G10, I3, J2), `fileopt.win` (J1), `helpd.win` (I5, I6), `paper.win` (I2), `winlose.win` (B4), `yearend.win` (I1).
+
+### O que falta alcançar
+1. **Telas que ainda usam UI moderna própria (sem `.win`/`.imb` original)**:
+   - `filerq.win` (A6, A7 — Load/Save moderno com miniaturas), `settings.win` (J3–J5 — Options moderno), `chat.win` (K4 — chat multiplayer), e modais do editor `cityset.win` (L11), `mapset.win` (L12), `eventset.win` (L13).
+2. **Lacunas funcionais e de simulação pendentes**:
+   - **Trens (E2–E4)**: alavanca de acelerador editável (`0x29` no `rt2-sim`), chance de pane, reordenação de paradas por arraste + estrelas numeradas `statnsym.imb` no Map Router (`E3`), e listas de vagões da estação/outros trens no Car List (`E4`).
+   - **Construção e HUD (C1, D1, A10)**: limite de células `+0x4260` e construção peça-a-peça em `D1`; vídeos tutoriais Smacker (`smackwi2..4.win`) na Activity Box e caixa central expandida (`mwexpand`).
+   - **Empresa, Bolsa e Eventos (G2/G12, G13, G15, I3)**: comando `0x27` no `rt2-sim` para aplicar troca de nome/logotipo da empresa; coluna de logotipo em `compnlst.win`; gráficos de 5 anos embutidos na aba Corporate de `stockdtl.win` (já disponíveis em Reports `I8`); `Command::AnswerChoice` no `rt2-sim` para o botão secundário em eventos Choice.
+   - **Setup e Campanha (A3–A5, B2)**: setas de data inicial (`A3`), ganchos completos de sandbox/modificadores de receita/IA extra (`A4`, `A5`), retrato do chairman, bloqueio de cenários não concluídos e bônus da 2ª campanha (`B2`).
