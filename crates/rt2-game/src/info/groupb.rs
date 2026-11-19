@@ -475,6 +475,21 @@ impl Info<'_> {
             (&self.a("Founded"), 0.9, true),
         ]);
         let d = self.detailed();
+        if d && crate::buildtools::human_company(self.save).is_none() {
+            t.push(
+                0,
+                vec![
+                    self.t(519, "<<<Start a new company>>>"),
+                    DASH.into(),
+                    DASH.into(),
+                    DASH.into(),
+                    DASH.into(),
+                    DASH.into(),
+                    DASH.into(),
+                    DASH.into(),
+                ],
+            );
+        }
         for r in self.save.companies.ordered() {
             let rr = Rec(&r.data);
             if d && rr.i32(CO_ACTIVE) == 0 {

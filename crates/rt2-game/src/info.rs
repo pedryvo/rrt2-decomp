@@ -521,27 +521,38 @@ impl<'a> Info<'a> {
     /// same figure as the company report's "This year" profit). Same order and ids as
     /// [`Info::stock_market`].
     pub fn company_rows(&self) -> Vec<CompanyRow> {
-        self.save
-            .companies
-            .ordered()
-            .map(|r| {
-                let rr = Rec(&r.data);
-                let s = self.standing(&rr);
-                let d = self.detailed();
-                CompanyRow {
-                    slot: r.slot as u32,
-                    name: self.company_name(r.slot as u32),
-                    logo: self.company_logo(r.slot as u32),
-                    cash: rr.f64(crate::buildtools::CO_CASH),
-                    profit: if d {
-                        s.co.cats.iter().sum::<f64>()
-                    } else {
-                        0.0
-                    },
-                    human: self.is_human_company(&rr),
-                }
+        let d = self.detailed();
+        let mut rows = Vec::new();
+        if d && crate::buildtools::human_company(self.save).is_none() {
+            rows.push(CompanyRow {
+                slot: 0,
+                name: self.t(519, "<<<Start a new company>>>"),
+                logo: usize::MAX,
+                cash: 0.0,
+                profit: 0.0,
+                human: true,
+            });
+        }
+        rows.extend(self.save.companies.ordered().filter_map(|r| {
+            let rr = Rec(&r.data);
+            if d && rr.i32(crate::buildtools::CO_ACTIVE) == 0 {
+                return None;
+            }
+            let s = self.standing(&rr);
+            Some(CompanyRow {
+                slot: r.slot as u32,
+                name: self.company_name(r.slot as u32),
+                logo: self.company_logo(r.slot as u32),
+                cash: rr.f64(crate::buildtools::CO_CASH),
+                profit: if d {
+                    s.co.cats.iter().sum::<f64>()
+                } else {
+                    0.0
+                },
+                human: self.is_human_company(&rr),
             })
-            .collect()
+        }));
+        rows
     }
 
     /// Stock market overview (`stockdtl.win`, LNG 56 "Market Overview"): one row per company.

@@ -530,14 +530,15 @@ impl AppState {
         if let Some(d) = founding {
             g.dialogs.push(d);
         }
+        let before = g.dialogs.len();
         // ...then what the start sequence said (a new game runs the briefing rule, trigger 6,
         // which arrives as a message dialog)...
-        let shown = self.poll_world();
+        self.poll_world();
         let Screen::Game(g) = &mut self.screen else {
             return;
         };
         // ...else (a loaded game) the briefing and goals from the file's rules.
-        if !shown
+        if g.dialogs.len() == before
             && g.scenario
                 .as_ref()
                 .is_some_and(|s| !s.briefing.is_empty() || !s.goals.is_empty())
@@ -1965,7 +1966,7 @@ impl AppState {
                 A_CAMP_PLAY,
                 Some('p'),
             ),
-            at(rx, 540.0 * s, 108.0 * s, 26.0 * s),
+            at(rx, 512.0 * s, 108.0 * s, 26.0 * s),
         );
         ui.add(
             root,
@@ -1975,7 +1976,7 @@ impl AppState {
                 super::A_BACK,
                 Some('c'),
             ),
-            at(rx + 112.0 * s, 540.0 * s, 60.0 * s, 26.0 * s),
+            at(rx + 112.0 * s, 512.0 * s, 60.0 * s, 26.0 * s),
         );
         if let Some(msg) = notice {
             self.build_notice(ui, layer, cw, ch, z, &msg);

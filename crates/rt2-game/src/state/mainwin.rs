@@ -361,7 +361,13 @@ impl AppState {
             0 => i.stations_list().table,
             1 => i.trains_list().table,
             2 => i.players_list().table,
-            _ => i.stock_market().table,
+            _ => {
+                let mut t = Table::new(&[("", 1.0, false)]);
+                for c in i.company_rows() {
+                    t.push(c.slot, vec![c.name]);
+                }
+                t
+            }
         })
         .unwrap_or_default()
     }
@@ -1088,6 +1094,19 @@ impl AppState {
                 })),
                 at(2.0, y + 2.0, w - 4.0, rowh - 4.0),
             );
+            if c.slot == 0 {
+                ui.add(
+                    parent,
+                    label(
+                        &c.name,
+                        f.with_shadow(),
+                        Color::rgb(0xe6, 0xc2, 0x6a),
+                        Align::Left,
+                    ),
+                    at(10.0 * dz, y + 2.0, w - 20.0 * dz, rowh - 4.0),
+                );
+                continue;
+            }
             if let Some(Some(s)) = self.icons.brand.logos.get(c.logo) {
                 ui.add(
                     parent,
@@ -1219,11 +1238,19 @@ impl AppState {
         self.rebuild_ui();
     }
 
-    /// A row of the center list was clicked: select it.
+    /// A row of the center list was clicked: select it (and open Start New Company if row 0 is the
+    /// `<<<Start a new company>>>` prompt).
     pub(super) fn center_select(&mut self, row: usize) {
         let first = self.center_first();
+        let idx = first + row;
         if let Screen::Game(g) = &mut self.screen {
-            g.center.sel = Some(first + row);
+            g.center.sel = Some(idx);
+        }
+        let open_founding = matches!(&self.screen, Screen::Game(g) if g.center.tab == 3)
+            && self.center_table(3).ids.get(idx) == Some(&0);
+        if open_founding && let Some(d) = self.founding_dialog_any() {
+            self.push_dialog(d);
+            return;
         }
         self.rebuild_ui();
     }
@@ -1258,7 +1285,11 @@ impl AppState {
             1 => self.open_info(InfoScreen::TrainDetail(id)),
             2 => self.open_info(InfoScreen::PlayerDetail(id)),
             _ if id > 0 => self.open_info(InfoScreen::Finance(id)),
-            _ => {}
+            _ => {
+                if let Some(d) = self.founding_dialog_any() {
+                    self.push_dialog(d);
+                }
+            }
         }
     }
 

@@ -260,6 +260,7 @@ impl App {
                 event_loop.exit();
                 return;
             }
+            state.queue_opening_dialogs();
         } else {
             state.play_intro();
         }

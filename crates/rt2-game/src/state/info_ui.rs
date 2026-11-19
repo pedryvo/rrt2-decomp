@@ -861,6 +861,13 @@ impl AppState {
         let Some(&id) = list.table.ids.get(abs) else {
             return;
         };
+        if matches!(screen, InfoScreen::Companies | InfoScreen::Stock) && id == 0 {
+            if let Some(d) = self.founding_dialog_any() {
+                self.close_info();
+                self.push_dialog(d);
+            }
+            return;
+        }
         let next = match screen {
             InfoScreen::Stock | InfoScreen::Companies => InfoScreen::Finance(id),
             InfoScreen::Players => InfoScreen::PlayerDetail(id),
