@@ -182,6 +182,13 @@ pub enum Fill {
     Overlay(Color),
     /// An isometric tile diamond fill that does not take the mouse.
     Diamond(Color),
+    /// A non-interactive line segment (`a` to `b` in pixels relative to the node's top-left).
+    Segment {
+        a: [i16; 2],
+        b: [i16; 2],
+        width_tenths: u16,
+        color: Color,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -618,7 +625,11 @@ impl Ui {
         match &self.nodes[id.0].kind {
             Kind::Panel { fill } => !matches!(
                 fill,
-                Fill::None | Fill::Frame(_) | Fill::Overlay(_) | Fill::Diamond(_)
+                Fill::None
+                    | Fill::Frame(_)
+                    | Fill::Overlay(_)
+                    | Fill::Diamond(_)
+                    | Fill::Segment { .. }
             ),
             Kind::Button { .. }
             | Kind::Toggle { .. }

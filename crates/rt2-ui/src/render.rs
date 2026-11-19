@@ -575,6 +575,19 @@ impl UiRenderer {
                     Fill::None => {}
                     Fill::Solid(c) | Fill::Overlay(c) => self.solid(&mut layer.quads, r, *c),
                     Fill::Diamond(c) => self.diamond(&mut layer.quads, r, *c),
+                    Fill::Segment {
+                        a,
+                        b,
+                        width_tenths,
+                        color,
+                    } => self.segment(
+                        &mut layer.quads,
+                        r,
+                        [f32::from(a[0]), f32::from(a[1])],
+                        [f32::from(b[0]), f32::from(b[1])],
+                        f32::from(*width_tenths) * 0.1,
+                        *color,
+                    ),
                     Fill::Frame(c) => self.outline(&mut layer.quads, r, *c, k),
                     Fill::Panel => self.panel(&mut layer.quads, r, k),
                 },
@@ -942,6 +955,41 @@ impl UiRenderer {
             v(top.0, top.1),
             v(bottom.0, bottom.1),
             v(left.0, left.1),
+        ]);
+    }
+
+    fn segment(
+        &self,
+        out: &mut Vec<Vertex>,
+        r: Rect,
+        a: [f32; 2],
+        b: [f32; 2],
+        width: f32,
+        c: Color,
+    ) {
+        let (ax, ay) = (r.x + a[0], r.y + a[1]);
+        let (bx, by) = (r.x + b[0], r.y + b[1]);
+        let (dx, dy) = (bx - ax, by - ay);
+        let len = (dx * dx + dy * dy).sqrt();
+        if len < 0.5 || width <= 0.0 {
+            return;
+        }
+        let hw = width * 0.5;
+        let (nx, ny) = (-dy / len * hw, dx / len * hw);
+        let [u, w] = self.skin.white;
+        let color = self.col(c, 1.0);
+        let v = |x: f32, y: f32| Vertex {
+            pos: [x, y],
+            uv: [u, w],
+            color,
+        };
+        out.extend([
+            v(ax + nx, ay + ny),
+            v(bx + nx, by + ny),
+            v(bx - nx, by - ny),
+            v(ax + nx, ay + ny),
+            v(bx - nx, by - ny),
+            v(ax - nx, ay - ny),
         ]);
     }
 

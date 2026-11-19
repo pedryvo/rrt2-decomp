@@ -88,6 +88,8 @@ impl ToolKind {
 pub(super) struct Plan {
     /// Tiles the command would change (track path, bulldozed area).
     pub tiles: Vec<(i32, i32)>,
+    /// Resulting track geometry on the changed tiles for the track-laying preview.
+    pub track: Vec<bt::TrackPreviewTile>,
     pub footprint: Vec<(i32, i32)>,
     pub cost: f64,
     /// Why the command is refused, if it is.
@@ -509,6 +511,7 @@ impl AppState {
                 );
                 plan.cost = p.cost;
                 plan.tiles = p.tiles;
+                plan.track = p.track;
                 if let Err(e) = p.result {
                     plan.error = Some(self.cmd_error_text(e, 396));
                 }
@@ -1175,9 +1178,84 @@ impl AppState {
             }
             ToolKind::Track => {
                 if let Some(p) = plan {
+                    let rail_c = if ok {
+                        Color(0xf5, 0xf0, 0xd8, 0xe8)
+                    } else {
+                        Color(0xff, 0x70, 0x60, 0xe8)
+                    };
+                    let k = self.scale.factor();
+                    let w_rail = (2.0 * (g.camera.zoom / 64.0).clamp(0.7, 2.5)).max(1.5);
+                    let to_logical = |fx: f32, fy: f32| -> [f32; 2] {
+                        let (px, py) =
+                            crate::pick::tile_to_screen(&g.camera, self.viewport, map, fx, fy);
+                        [px / k, py / k]
+                    };
+                    const DIRS: [(f32, f32); 8] = [
+                        (0.0, -1.0),
+                        (1.0, -1.0),
+                        (1.0, 0.0),
+                        (1.0, 1.0),
+                        (0.0, 1.0),
+                        (-1.0, 1.0),
+                        (-1.0, 0.0),
+                        (-1.0, -1.0),
+                    ];
                     for &(x, y) in p.tiles.iter().take(800) {
                         tile(ui, x, y, if ok { good } else { bad }, 0.1);
                     }
+                    for tp in p.track.iter().take(800) {
+                        let c = to_logical(tp.x as f32 + 0.5, tp.y as f32 + 0.5);
+                        for (bit, &(dx, dy)) in DIRS.iter().enumerate() {
+                            if tp.mask & (1 << bit) == 0 {
+                                continue;
+                            }
+                            let e = to_logical(
+                                tp.x as f32 + 0.5 + dx * 0.5,
+                                tp.y as f32 + 0.5 + dy * 0.5,
+                            );
+                            if tp.double {
+                                let (vx, vy) = (e[0] - c[0], e[1] - c[1]);
+                                let len = (vx * vx + vy * vy).sqrt().max(1.0);
+                                let off = (w_rail * 1.1).max(1.8);
+                                let (nx, ny) = (-vy / len * off, vx / len * off);
+                                for sgn in [-1.0f32, 1.0] {
+                                    ui.add(
+                                        root,
+                                        Kind::Panel {
+                                            fill: Fill::Segment {
+                                                a: [
+                                                    (c[0] + nx * sgn).round() as i16,
+                                                    (c[1] + ny * sgn).round() as i16,
+                                                ],
+                                                b: [
+                                                    (e[0] + nx * sgn).round() as i16,
+                                                    (e[1] + ny * sgn).round() as i16,
+                                                ],
+                                                width_tenths: (w_rail * 8.5).round() as u16,
+                                                color: rail_c,
+                                            },
+                                        },
+                                        Layout::fill(),
+                                    );
+                                }
+                            } else {
+                                ui.add(
+                                    root,
+                                    Kind::Panel {
+                                        fill: Fill::Segment {
+                                            a: [c[0].round() as i16, c[1].round() as i16],
+                                            b: [e[0].round() as i16, e[1].round() as i16],
+                                            width_tenths: (w_rail * 10.0).round() as u16,
+                                            color: rail_c,
+                                        },
+                                    },
+                                    Layout::fill(),
+                                );
+                            }
+                        }
+                    }
+                } else if let Some((hx, hy)) = g.build.hover {
+                    tile(ui, hx, hy, Color(0xff, 0xff, 0xff, 0x60), 0.1);
                 }
                 if let Some((x, y)) = g.build.from {
                     tile(ui, x, y, Color(0xff, 0xff, 0xff, 0xa0), 0.0);
@@ -1226,6 +1304,25 @@ impl AppState {
         let z = g.camera.zoom / k;
         let (w, h) = (z * (1.0 - shrink), z * 0.5 * (1.0 - shrink));
         (px / k - w / 2.0, py / k - h / 2.0, w.max(2.0), h.max(1.0))
+    }
+
+    /// Translucent station building sprite preview when hovering with the Station tool.
+    pub(crate) fn station_ghost(&self) -> Option<rt2_render::GhostStation> {
+        let g = self.game()?;
+        if g.build.tool != Some(ToolKind::Station) {
+            return None;
+        }
+        g.build.hover?;
+        let p = g.build.plan.as_ref()?;
+        let (sx, sy, orient) = p.station?;
+        Some(rt2_render::GhostStation {
+            x: sx,
+            y: sy,
+            size: g.build.size.index() as usize,
+            orient: orient.clamp(0, 7) as usize,
+            style: g.build.style,
+            shade: if p.ok() { -0.88 } else { -0.45 },
+        })
     }
 }
 

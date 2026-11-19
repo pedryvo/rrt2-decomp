@@ -87,6 +87,7 @@ impl Gfx {
                 }
                 map.set_live_alpha(state.live_alpha());
                 map.set_water_frame(water_frame);
+                map.set_ghost_station(state.station_ghost());
                 map.render(&self.device, &self.queue, target, &camera);
                 self.ui.render(
                     &self.device,

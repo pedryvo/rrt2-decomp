@@ -13,6 +13,20 @@ use crate::ground_map::{cell_look, tile_hash, track_record};
 use crate::mesh::{TerrainMesh, TileLook, height_scale, surface_elevation};
 use crate::textures::{TRACK_DOUBLE_BASE, TerrainTextures};
 
+/// Resolves the `BankKind::Station` stem for a station of `size` (0..3), `orient` (0..8) and
+/// `style` (0..6).
+pub fn station_bank_stem(size: usize, orient: usize, style: usize) -> Option<String> {
+    let idx = size.checked_mul(8)?.checked_add(orient)?;
+    if idx >= 24 {
+        return None;
+    }
+    let name = BUILDING_NAMES.get(idx)?;
+    let mut s: Vec<char> = name.chars().collect();
+    let ch = STATION_STYLES.get(style).copied().unwrap_or('V');
+    s[2] = if ch == 'B' { 'V' } else { ch };
+    Some(s.into_iter().collect())
+}
+
 /// Building names by `building_type_table` index (`0x5457e8`, `sprite-catalog.md` section 7). The
 /// first 24 entries are the station designs `sta10..sta37`.
 const BUILDING_NAMES: [&str; 122] = [

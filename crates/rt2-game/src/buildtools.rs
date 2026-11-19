@@ -249,6 +249,15 @@ pub fn check_track(save: &Save, company: i32, ends: [(i32, i32); 2]) -> Result<(
 
 // ---- preview ----------------------------------------------------------------------------------
 
+/// One tile of a track-laying preview with its resulting edge bitmask and double-track flag.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TrackPreviewTile {
+    pub x: i32,
+    pub y: i32,
+    pub mask: u8,
+    pub double: bool,
+}
+
 /// What a command would do, found by running it on a clone of the world.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Preview {
@@ -257,6 +266,8 @@ pub struct Preview {
     pub cost: f64,
     /// Tiles whose track, structure or ground changed.
     pub tiles: Vec<(i32, i32)>,
+    /// Resulting track geometry on the changed tiles.
+    pub track: Vec<TrackPreviewTile>,
 }
 
 /// Runs `cmd` on a copy of `world` (`World::apply_build`) and reports the result, the cash it
@@ -267,6 +278,7 @@ pub fn preview(world: &World, company: i32, cmd: BuildCmd) -> Preview {
             result: Err(CmdError::NoSuchObject),
             cost: 0.0,
             tiles: Vec::new(),
+            track: Vec::new(),
         };
     };
     let cash0 = cash(before, company);
@@ -277,13 +289,14 @@ pub fn preview(world: &World, company: i32, cmd: BuildCmd) -> Preview {
             result,
             cost: 0.0,
             tiles: Vec::new(),
+            track: Vec::new(),
         };
     };
     let width = before.map.width;
     // A tile changed when its structure or track piece changed (the earthwork around a path
     // also moves other fields of the neighbours, which a preview must not paint).
     let piece = |s: &Save, id: u8| s.track_pieces.get(usize::from(id)).map(|r| r.data.clone());
-    let tiles = before
+    let tiles: Vec<(i32, i32)> = before
         .map
         .tiles
         .iter()
@@ -296,10 +309,25 @@ pub fn preview(world: &World, company: i32, cmd: BuildCmd) -> Preview {
         })
         .map(|(i, _)| ((i % width) as i32, (i / width) as i32))
         .collect();
+    let track = tiles
+        .iter()
+        .filter_map(|&(x, y)| {
+            let idx = y as usize * width + x as usize;
+            let tid = after.map.tiles.get(idx)?.track_id;
+            if tid == 0 {
+                return None;
+            }
+            let r = after.track_pieces.get(usize::from(tid))?;
+            let mask = *r.data.first()?;
+            let double = r.data.get(0x23).is_some_and(|b| b & 1 != 0);
+            Some(TrackPreviewTile { x, y, mask, double })
+        })
+        .collect();
     Preview {
         result,
         cost: cash0 - cash(after, company),
         tiles,
+        track,
     }
 }
 

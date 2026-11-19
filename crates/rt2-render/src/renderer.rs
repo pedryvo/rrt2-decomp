@@ -39,6 +39,25 @@ struct Uniforms {
     _pad: [u32; 3],
 }
 
+/// Ghost station sprite drawn over the map while placing a station.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct GhostStation {
+    pub x: i32,
+    pub y: i32,
+    pub size: usize,
+    pub orient: usize,
+    pub style: usize,
+    /// Negative shade (`-0.85` etc.) renders translucent via `sprite.wgsl`.
+    pub shade: f32,
+}
+
+struct GhostGpu {
+    key: (u8, usize, usize, usize),
+    bind_group: wgpu::BindGroup,
+    entry: crate::atlas::AtlasEntry,
+    buffer: wgpu::Buffer,
+}
+
 /// Sprites of one view rotation on the GPU, already in back-to-front order.
 struct RotationGpu {
     bind_group: wgpu::BindGroup,
@@ -85,6 +104,8 @@ pub struct Renderer {
     live_instances: Vec<Instance>,
     /// Index into the static instances before which each live instance is drawn.
     live_split: Vec<u32>,
+    ghost_station: Option<GhostStation>,
+    ghost_gpu: Option<GhostGpu>,
 }
 
 fn live_buffer(device: &wgpu::Device, capacity: usize) -> wgpu::Buffer {
@@ -494,6 +515,8 @@ impl Renderer {
             live_scratch: Vec::new(),
             live_instances: Vec::new(),
             live_split: Vec::new(),
+            ghost_station: None,
+            ghost_gpu: None,
         }
     }
 
@@ -533,6 +556,11 @@ impl Renderer {
         self.live_prev = frame.clone();
         self.live_next = frame;
         self.live_alpha = 1.0;
+    }
+
+    /// Sets or clears the translucent station building preview drawn over the map.
+    pub fn set_ghost_station(&mut self, ghost: Option<GhostStation>) {
+        self.ghost_station = ghost;
     }
 
     /// Call when the target size (physical pixels) changes.
@@ -714,6 +742,8 @@ impl Renderer {
             self.ensure_rotation(device, queue, camera.rotation);
             self.build_live(device, queue, camera.rotation);
         }
+        let draw_ghost =
+            sprite_scale >= MIN_SPRITE_SCALE && self.ensure_ghost(device, queue, camera.rotation);
         // Direction towards the light: from the north, high in the sky (up-left on screen).
         let light = Vec3::new(-0.3, 0.7, -0.65).normalize();
         let data = Uniforms {
@@ -790,8 +820,88 @@ impl Renderer {
                     pass.draw(0..4, s..rot.count);
                 }
             }
+            if draw_ghost && let Some(g) = &self.ghost_gpu {
+                pass.set_pipeline(&self.sprite_pipeline);
+                pass.set_bind_group(0, &self.bind_group, &[]);
+                pass.set_bind_group(1, &g.bind_group, &[]);
+                pass.set_vertex_buffer(0, g.buffer.slice(..));
+                pass.draw(0..4, 0..1);
+            }
         }
         queue.submit([encoder.finish()]);
+    }
+
+    fn ensure_ghost(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, rotation: u8) -> bool {
+        let Some(g) = self.ghost_station else {
+            return false;
+        };
+        if g.x < 0
+            || g.y < 0
+            || g.x as usize >= self.scene.map.width
+            || g.y as usize >= self.scene.map.height
+        {
+            return false;
+        }
+        let r = rotation % 4;
+        let key = (r, g.size, g.orient, g.style);
+        if self.ghost_gpu.as_ref().is_none_or(|c| c.key != key) {
+            let Some(stem) = crate::scene::station_bank_stem(g.size, g.orient, g.style) else {
+                return false;
+            };
+            let dir = ['n', 'e', 's', 'w'][usize::from(r)];
+            let name = format!("bl{dir}{stem}.imb");
+            let Some(bank) = crate::assets::LoadedBank::open(&self.scene.assets, &name) else {
+                return false;
+            };
+            let Some(img) = bank.image(0, 0, 0, 0) else {
+                return false;
+            };
+            let atlas = crate::atlas::bake_atlas(&[img]);
+            let Some(entry) = atlas.entries.first().copied().flatten() else {
+                return false;
+            };
+            let view = upload_atlas(device, queue, &atlas);
+            let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("ghost station atlas"),
+                layout: &self.sprite_bind_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: wgpu::BindingResource::TextureView(&view),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::Sampler(&self.sprite_sampler),
+                    },
+                ],
+            });
+            let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("ghost station instance"),
+                size: std::mem::size_of::<Instance>() as u64,
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            });
+            self.ghost_gpu = Some(GhostGpu {
+                key,
+                bind_group,
+                entry,
+                buffer,
+            });
+        }
+        let Some(gpu) = &self.ghost_gpu else {
+            return false;
+        };
+        let (tx, ty) = (g.x as usize, g.y as usize);
+        let elev = crate::mesh::surface_elevation(&self.scene.map, tx, ty, 0.5, 0.5)
+            * self.scene.height_scale;
+        let inst = Instance {
+            pos: [tx as f32 + 0.5, elev, ty as f32 + 0.5],
+            uv: gpu.entry.uv,
+            rect: gpu.entry.rect,
+            shade: g.shade,
+        };
+        queue.write_buffer(&gpu.buffer, 0, bytemuck::bytes_of(&inst));
+        true
     }
 }
 
