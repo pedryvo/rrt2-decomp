@@ -70,6 +70,9 @@ fn center_of(s: &AppState, action: u32) -> Option<(f32, f32)> {
             Kind::Toggle {
                 action: a, enabled, ..
             } => *a == action && *enabled,
+            Kind::Hotspot {
+                action: a, enabled, ..
+            } => *a == action && *enabled,
             Kind::Icon { action: a, .. } | Kind::Cells { action: a, .. } => *a == action,
             _ => false,
         };

@@ -73,6 +73,10 @@ pub(super) enum InfoScreen {
     Territory(u32),
     /// Company book, Overview tab (`compndtl.win`).
     Overview(u32),
+    /// Company book, Income tab (`compndtl.win`).
+    Income(u32),
+    /// Company book, Balance tab (`compndtl.win`).
+    Balance(u32),
     /// Company book, Territories tab with its view mode (0 political, 1 access, 2 goodwill).
     Territories(u32, u8),
     /// The full-screen company list (`compnlst.win`).
@@ -88,6 +92,8 @@ impl InfoScreen {
         match self {
             InfoScreen::Finance(_)
             | InfoScreen::Overview(_)
+            | InfoScreen::Income(_)
+            | InfoScreen::Balance(_)
             | InfoScreen::Territories(..)
             | InfoScreen::Companies => 0,
             InfoScreen::Stock | InfoScreen::Players | InfoScreen::PlayerDetail(_) => 1,
@@ -125,6 +131,8 @@ impl InfoScreen {
             "industry" => InfoScreen::IndustryDetail(0),
             "territory" => InfoScreen::Territory(0),
             "overview" => InfoScreen::Overview(0),
+            "income" => InfoScreen::Income(0),
+            "balance" => InfoScreen::Balance(0),
             "territories" => InfoScreen::Territories(0, 0),
             "territories-access" => InfoScreen::Territories(0, 1),
             "territories-goodwill" => InfoScreen::Territories(0, 2),
@@ -419,6 +427,30 @@ impl AppState {
                 };
                 Content::Page(info.overview_page(slot))
             }
+            InfoScreen::Income(c) => {
+                let slot = if c == 0 {
+                    info.player_company().unwrap_or(0)
+                } else {
+                    c
+                };
+                let mut page = info.finance_page(slot);
+                if page.right.len() > 1 {
+                    page.right.remove(0);
+                }
+                Content::Page(page)
+            }
+            InfoScreen::Balance(c) => {
+                let slot = if c == 0 {
+                    info.player_company().unwrap_or(0)
+                } else {
+                    c
+                };
+                let mut page = info.finance_page(slot);
+                if !page.right.is_empty() {
+                    page.left = vec![page.right.remove(0)];
+                }
+                Content::Page(page)
+            }
             InfoScreen::Territories(c, _) => {
                 let slot = if c == 0 {
                     info.player_company().unwrap_or(0)
@@ -658,6 +690,8 @@ impl AppState {
         let (c, mk): (u32, fn(u32) -> InfoScreen) = match self.info_screen() {
             Some(InfoScreen::Finance(c)) => (c, InfoScreen::Finance),
             Some(InfoScreen::Overview(c)) => (c, InfoScreen::Overview),
+            Some(InfoScreen::Income(c)) => (c, InfoScreen::Income),
+            Some(InfoScreen::Balance(c)) => (c, InfoScreen::Balance),
             Some(InfoScreen::Territories(c, m)) => {
                 let _ = m;
                 (c, |c| InfoScreen::Territories(c, 0))
@@ -713,10 +747,22 @@ impl AppState {
             }
             a if (A_FINACT..A_FINACT + 12).contains(&a) => {
                 let company = match screen {
-                    InfoScreen::Finance(c) | InfoScreen::Overview(c) => self.resolved_company(c),
+                    InfoScreen::Finance(c)
+                    | InfoScreen::Overview(c)
+                    | InfoScreen::Income(c)
+                    | InfoScreen::Balance(c) => self.resolved_company(c),
                     _ => 0,
                 };
                 return self.fin_book_activated(a, company);
+            }
+            a if (super::book_art::A_OD_TAB..super::book_art::A_OD_TAB + 4).contains(&a) => {
+                let next = match a - super::book_art::A_OD_TAB {
+                    0 => InfoScreen::Stations,
+                    1 => InfoScreen::Trains,
+                    2 => InfoScreen::Players,
+                    _ => InfoScreen::Companies,
+                };
+                self.open_info(next);
             }
             a if (A_STOCK_BUY..A_STOCK_SELL + 60).contains(&a) => {
                 let row = (a - A_STOCK_BUY) % 60;
@@ -856,6 +902,32 @@ impl AppState {
             return self.build_list_art(ui, screen);
         }
         let content = self.info_content(screen);
+        if matches!(
+            screen,
+            InfoScreen::Finance(_)
+                | InfoScreen::Overview(_)
+                | InfoScreen::Income(_)
+                | InfoScreen::Balance(_)
+                | InfoScreen::Territories(..)
+        ) && self.dialog_art.book.compndtl_bg.is_some()
+        {
+            let page = match &content {
+                Some(Content::Page(p)) => Some(p),
+                _ => None,
+            };
+            self.build_company_book_art(ui, screen, page);
+            return;
+        }
+        if let InfoScreen::PlayerDetail(p) = screen
+            && self.dialog_art.book.playrdtl_bg.is_some()
+        {
+            let page = match &content {
+                Some(Content::Page(pg)) => Some(pg),
+                _ => None,
+            };
+            self.build_player_book_art(ui, p, page);
+            return;
+        }
         let first_scroll = match &self.screen {
             Screen::Game(g) => g.info.map_or(0, |i| i.scroll),
             Screen::Menu(_) => 0,

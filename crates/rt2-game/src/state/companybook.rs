@@ -203,17 +203,23 @@ impl AppState {
     pub(super) fn book_activated(&mut self, action: u32, screen: Option<InfoScreen>) -> bool {
         let company = match screen {
             Some(
-                InfoScreen::Finance(c) | InfoScreen::Overview(c) | InfoScreen::Territories(c, _),
+                InfoScreen::Finance(c)
+                | InfoScreen::Overview(c)
+                | InfoScreen::Income(c)
+                | InfoScreen::Balance(c)
+                | InfoScreen::Territories(c, _),
             ) => self.book_company(c),
             _ => self.book_company(0),
         };
         match action {
-            a if (A_BOOK..A_BOOK + 4).contains(&a) => {
+            a if (A_BOOK..A_BOOK + 6).contains(&a) => {
                 let next = match a - A_BOOK {
                     0 => InfoScreen::Overview(company),
                     1 => InfoScreen::Finance(company),
                     2 => InfoScreen::Territories(company, 0),
-                    _ => InfoScreen::Companies,
+                    3 => InfoScreen::Companies,
+                    4 => InfoScreen::Income(company),
+                    _ => InfoScreen::Balance(company),
                 };
                 self.open_info(next);
             }
@@ -485,6 +491,8 @@ pub(super) fn is_book(screen: InfoScreen) -> bool {
         screen,
         InfoScreen::Finance(_)
             | InfoScreen::Overview(_)
+            | InfoScreen::Income(_)
+            | InfoScreen::Balance(_)
             | InfoScreen::Territories(..)
             | InfoScreen::Companies
     )

@@ -30,6 +30,7 @@ use crate::sound::{Cue, MusicRequester};
 use crate::text::Texts;
 
 mod bldinfo;
+mod book_art;
 mod build_dialogs;
 mod stock_art;
 mod build_ui;

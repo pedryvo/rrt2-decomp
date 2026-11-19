@@ -4,6 +4,7 @@
 
 use rt2_render::assets::{GameAssets, LoadedBank, RgbaImage};
 use rt2_render::atlas::scale2x;
+pub mod bookwin;
 pub mod brand;
 pub mod buywin;
 pub mod campwin;
@@ -89,6 +90,8 @@ pub struct DialogArt {
     pub stock: stockwin::StockArt,
     /// Campaign, File Options, and Help dialogs (`artwork/campwin.rs`).
     pub camp: campwin::CampModalArt,
+    /// The book detail windows (`artwork/bookwin.rs`).
+    pub book: bookwin::BookArt,
 }
 
 /// Size of the video frame sprite (clips are scaled into it).
@@ -284,6 +287,7 @@ pub fn load(assets: &GameAssets) -> Artwork {
         main: mainwin::MainArt::default(),
         buy: buywin::BuyArt::default(),
         camp: campwin::CampModalArt::default(),
+        book: bookwin::BookArt::default(),
     };
     let mut dialogs = dialogs;
     for (i, name) in EDITOR_PANELS.iter().enumerate() {
@@ -330,6 +334,7 @@ pub fn load(assets: &GameAssets) -> Artwork {
     dialogs.list = listwin::load(assets, &mut b);
     dialogs.stock = stockwin::load(assets, &mut b);
     dialogs.camp = campwin::load(assets, &mut b);
+    dialogs.book = bookwin::load(assets, &mut b);
     dialogs.video_frame = Some(b.reserve(VIDEO_FRAME.0, VIDEO_FRAME.1));
     if assets.contains("sdmbkg1.imb") {
         dialogs.station_view =
