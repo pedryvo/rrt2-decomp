@@ -18,6 +18,8 @@ pub struct DetailArt {
     pub odbottom_bg: Option<Placed>,
     /// `odbottom.imb` rec 11: 4-tab strip with Stations active at `(0, 729)`.
     pub odbottom_tabs: Option<Placed>,
+    /// `odbottom.imb` rec 12: 4-tab strip with Trains active at `(0, 729)`.
+    pub odbottom_tabs_trains: Option<Placed>,
     /// `odbottom.imb` rec 5, 6: previous item button `<` at `(845, 735, 32, 29)`.
     pub odbottom_prev: Option<(SpriteId, SpriteId)>,
     /// `odbottom.imb` rec 7, 8: next item button `>` at `(880, 735, 32, 29)`.
@@ -32,6 +34,27 @@ pub struct DetailArt {
     pub bpovervw_all: Option<(SpriteId, SpriteId)>,
     /// `bpovervw.win` control 3604: Clear button (up, down) at `(323, 138, 60, 21)`.
     pub bpovervw_clear: Option<(SpriteId, SpriteId)>,
+    /// `traindtl.win` art and exact control rectangles.
+    pub traindtl: Option<TrainDtlArt>,
+}
+
+/// Art and exact `.win` control rectangles for `traindtl.win` (1024x768).
+#[derive(Clone, Debug)]
+pub struct TrainDtlArt {
+    pub frame: SpriteId,
+    pub btn_replace: Option<(SpriteId, SpriteId)>,
+    pub btn_sell: Option<(SpriteId, SpriteId)>,
+    pub btn_fleet: Option<(SpriteId, SpriteId)>,
+    pub r_stops: [f32; 4],
+    pub r_map: [f32; 4],
+    pub r_info: [f32; 4],
+    pub r_name: [f32; 4],
+    pub r_stat1: [f32; 4],
+    pub r_stat2: [f32; 4],
+    pub r_bar: [f32; 4],
+    pub r_btn_replace: [f32; 4],
+    pub r_btn_sell: [f32; 4],
+    pub r_btn_fleet: [f32; 4],
 }
 
 fn crop_if_needed(img: RgbaImage, max_w: Option<usize>, max_h: Option<usize>) -> RgbaImage {
@@ -115,12 +138,96 @@ fn win_img(assets: &GameAssets, win: &str, id: u16, b: &mut SkinBuilder) -> Opti
     add2x(assets, &c.bank, rec, None, None, b).map(|(id, _)| id)
 }
 
+fn blend(dst: &mut RgbaImage, src: &RgbaImage, dx: i32, dy: i32) {
+    for sy in 0..src.height {
+        let ty = dy + src.y + sy as i32;
+        if ty < 0 || ty >= dst.height as i32 {
+            continue;
+        }
+        for sx in 0..src.width {
+            let tx = dx + src.x + sx as i32;
+            if tx < 0 || tx >= dst.width as i32 {
+                continue;
+            }
+            let si = (sy * src.width + sx) * 4;
+            if src.rgba[si + 3] == 0 {
+                continue;
+            }
+            let di = (ty as usize * dst.width + tx as usize) * 4;
+            dst.rgba[di..di + 4].copy_from_slice(&src.rgba[si..si + 4]);
+        }
+    }
+}
+
+fn load_traindtl(assets: &GameAssets, b: &mut SkinBuilder) -> Option<TrainDtlArt> {
+    use rt2_formats::ui::{ControlKind, Window};
+    let w = Window::parse(assets.blob("traindtl.win")?).ok()?;
+    let mut canvas = RgbaImage {
+        width: 1024,
+        height: 768,
+        rgba: vec![0; 1024 * 768 * 4],
+        x: 0,
+        y: 0,
+    };
+    let mut any = false;
+    for c in &w.controls {
+        if c.kind != ControlKind::Image
+            || c.bank == "odbottom.imb"
+            || matches!(c.id, 729 | 730 | 717)
+        {
+            continue;
+        }
+        let Some(rec) = c.image_record() else {
+            continue;
+        };
+        let Some(img) = ui_record_pub(assets, &c.bank, usize::from(rec)) else {
+            continue;
+        };
+        blend(&mut canvas, &img, i32::from(c.rect.x), i32::from(c.rect.y));
+        any = true;
+    }
+    if !any {
+        return None;
+    }
+    let frame = b.add(to_skin_image(&scale2x(&canvas), 2));
+    let rect = |id: u16, fallback: [f32; 4]| -> [f32; 4] {
+        w.controls
+            .iter()
+            .find(|c| c.id == id)
+            .map_or(fallback, |c| {
+                [
+                    f32::from(c.rect.x),
+                    f32::from(c.rect.y),
+                    f32::from(c.rect.w),
+                    f32::from(c.rect.h),
+                ]
+            })
+    };
+    Some(TrainDtlArt {
+        frame,
+        btn_replace: win_btn(assets, "traindtl.win", 714, b),
+        btn_sell: win_btn(assets, "traindtl.win", 715, b),
+        btn_fleet: win_btn(assets, "traindtl.win", 716, b),
+        r_stops: rect(730, [24.0, 295.0, 422.0, 285.0]),
+        r_map: rect(729, [494.0, 250.0, 498.0, 408.0]),
+        r_info: rect(717, [24.0, 588.0, 974.0, 128.0]),
+        r_name: rect(718, [564.0, 100.0, 100.0, 25.0]),
+        r_stat1: rect(727, [690.0, 92.0, 160.0, 46.0]),
+        r_stat2: rect(728, [854.0, 92.0, 160.0, 46.0]),
+        r_bar: rect(735, [588.0, 214.0, 336.0, 36.0]),
+        r_btn_replace: rect(714, [494.0, 658.0, 92.0, 54.0]),
+        r_btn_sell: rect(715, [804.0, 658.0, 92.0, 54.0]),
+        r_btn_fleet: rect(716, [904.0, 658.0, 92.0, 54.0]),
+    })
+}
+
 pub(crate) fn load(assets: &GameAssets, b: &mut SkinBuilder) -> DetailArt {
     DetailArt {
         statndtl_frame: placed(assets, "statndtl.imb", 0, 0, 0, b),
         statndtl_buy: pair(assets, "statndtl.imb", 1, 2, None, None, b),
         odbottom_bg: placed(assets, "odbottom.imb", 0, 0, 728, b),
         odbottom_tabs: placed(assets, "odbottom.imb", 11, 0, 729, b),
+        odbottom_tabs_trains: placed(assets, "odbottom.imb", 12, 0, 729, b),
         odbottom_prev: pair(assets, "odbottom.imb", 5, 6, None, None, b),
         odbottom_next: pair(assets, "odbottom.imb", 7, 8, None, None, b),
         odbottom_list: pair(assets, "odbottom.imb", 1, 2, Some(40), Some(31), b),
@@ -128,5 +235,6 @@ pub(crate) fn load(assets: &GameAssets, b: &mut SkinBuilder) -> DetailArt {
         bpovervw_bg: win_img(assets, "bpovervw.win", 2000, b),
         bpovervw_all: win_btn(assets, "bpovervw.win", 3603, b),
         bpovervw_clear: win_btn(assets, "bpovervw.win", 3604, b),
+        traindtl: load_traindtl(assets, b),
     }
 }

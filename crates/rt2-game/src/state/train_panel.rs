@@ -164,6 +164,23 @@ impl AppState {
         train: i32,
         sel: usize,
     ) {
+        self.draw_train_stop_buttons(ui, root, x, y, w, dz, train, sel);
+        let gy = y + (24.0 * dz) * 2.0 + 4.0 * dz + 44.0 * dz;
+        self.draw_train_gauges(ui, root, x, gy, w, dz, train);
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn draw_train_stop_buttons(
+        &self,
+        ui: &mut Ui,
+        root: NodeId,
+        x: f32,
+        y: f32,
+        w: f32,
+        dz: f32,
+        train: i32,
+        sel: usize,
+    ) {
         let t = &self.texts;
         let panel = self.with_info(|i| i.train_panel(train as u32)).flatten();
         let stops = self
@@ -239,9 +256,24 @@ impl AppState {
                 at(x, by2 + bh + 4.0 * dz, w, 34.0 * dz),
             );
         }
-        // Gauges.
-        let gy = by2 + bh + 44.0 * dz;
-        let Some(p) = panel else { return };
+    }
+
+    /// Oil, sand, water and throttle gauges for `train`.
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn draw_train_gauges(
+        &self,
+        ui: &mut Ui,
+        root: NodeId,
+        x: f32,
+        gy: f32,
+        w: f32,
+        dz: f32,
+        train: i32,
+    ) {
+        let t = &self.texts;
+        let Some(p) = self.with_info(|i| i.train_panel(train as u32)).flatten() else {
+            return;
+        };
         let steam = p.kind.is_none_or(|k| k == 0);
         let n = if steam { 4.0 } else { 3.0 };
         let gw = (w - (n - 1.0) * 8.0 * dz) / n;

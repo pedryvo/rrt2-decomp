@@ -37,6 +37,10 @@ pub(super) const A_TE_REPLACE: u32 = 5165;
 pub(super) const A_TE_SELL: u32 = 5166;
 pub(super) const A_TE_MAP: u32 = 5167;
 pub(super) const A_TE_FLEET: u32 = 5168;
+pub(super) const A_TE_PREV: u32 = 5169;
+pub(super) const A_TE_NEXT: u32 = 5170;
+pub(super) const A_TE_LIST: u32 = 5171;
+pub(super) const A_TE_TAB: u32 = 5172;
 pub(super) const A_RT_BUY: u32 = 5180;
 pub(super) const A_CLOSE: u32 = 5199;
 
@@ -700,6 +704,13 @@ impl AppState {
     // ---- train detail (editable) ------------------------------------------------------------
 
     fn build_train_edit(&self, ui: &mut Ui, train: i32, sel: usize, pick: usize, confirm: bool) {
+        let Some(page) = self.with_info(|i| i.train_page(train as u32)) else {
+            return;
+        };
+        if self.dialog_art.detail.traindtl.is_some() {
+            self.build_train_edit_art(ui, train, sel, pick, confirm, &page);
+            return;
+        }
         let Win {
             root,
             w,
@@ -708,9 +719,6 @@ impl AppState {
             pad,
         } = self.win(ui, 1000.0, 580.0);
         let t = &self.texts;
-        let Some(page) = self.with_info(|i| i.train_page(train as u32)) else {
-            return;
-        };
         ui.add(
             root,
             lbl(
@@ -900,6 +908,438 @@ impl AppState {
             button(t.a("Close"), fnt(1, dz), A_CLOSE, true),
             at(w - pad - 120.0 * dz, h - foot, 120.0 * dz, 30.0 * dz),
         );
+    }
+
+    /// Train detail window laid out over the original `traindtl.win` + `odbottom.imb` art.
+    fn build_train_edit_art(
+        &self,
+        ui: &mut Ui,
+        train: i32,
+        sel: usize,
+        pick: usize,
+        confirm: bool,
+        page: &crate::info::Page,
+    ) {
+        let Some(td) = &self.dialog_art.detail.traindtl else {
+            return;
+        };
+        let det = &self.dialog_art.detail;
+        let (cw, ch) = ui.logical_size();
+        let s = (cw / 1024.0).min(ch / 768.0);
+        let (w, h) = (1024.0 * s, 768.0 * s);
+        let root = ui.add_root(
+            Kind::Panel {
+                fill: Fill::Solid(Color::rgb(0x10, 0x10, 0x10)),
+            },
+            Layout::at(Anchor::Center, w, h),
+        );
+        let r_at = |r: [f32; 4]| at(r[0] * s, r[1] * s, r[2] * s, r[3] * s);
+        let t = &self.texts;
+
+        ui.add(
+            root,
+            Kind::Image {
+                sprite: td.frame,
+                fit: Fit::Stretch,
+            },
+            at(0.0, 0.0, w, h),
+        );
+
+        // Train name (`718`).
+        ui.add(
+            root,
+            lbl(&page.title, fnt(1, s * 0.95), HEAD, Align::Left),
+            at(td.r_name[0] * s, td.r_name[1] * s, 260.0 * s, td.r_name[3] * s),
+        );
+
+        // Top-right facts (`727`, `728`).
+        if let Some(Block::Facts(facts)) = page.left.first() {
+            let mut draw_facts = |slice: &[(String, String)], rect: [f32; 4]| {
+                let mut fy = rect[1] * s + 2.0 * s;
+                let row = 14.0 * s;
+                for (k, v) in slice {
+                    ui.add(
+                        root,
+                        lbl(k, fnt(8, s * 0.5), MUTED, Align::Left),
+                        at(rect[0] * s + 4.0 * s, fy, rect[2] * s * 0.45, row),
+                    );
+                    ui.add(
+                        root,
+                        lbl(v, fnt(8, s * 0.5), TEXT, Align::Right),
+                        at(
+                            rect[0] * s + rect[2] * s * 0.45,
+                            fy,
+                            rect[2] * s * 0.52,
+                            row,
+                        ),
+                    );
+                    fy += row;
+                }
+            };
+            let mid = facts.len().div_ceil(2).min(3);
+            draw_facts(&facts[..mid.min(facts.len())], td.r_stat1);
+            if mid < facts.len() {
+                draw_facts(&facts[mid..facts.len().min(mid + 3)], td.r_stat2);
+            }
+        }
+
+        // Stop controls (`train_panel.rs`) above the Map Router.
+        self.draw_train_stop_buttons(
+            ui,
+            root,
+            498.0 * s,
+            142.0 * s,
+            502.0 * s,
+            s * 0.82,
+            train,
+            sel,
+        );
+
+        let (stops, stations, _) = self
+            .with_game(|s, _, co| (bt::train_stops(s, train), bt::company_stations(s, co), co))
+            .unwrap_or_default();
+
+        // Map router (`729`).
+        let map_box = ui.add(
+            root,
+            Kind::Panel {
+                fill: Fill::Solid(INSET),
+            },
+            r_at(td.r_map),
+        );
+        if let Screen::Game(g) = &self.screen
+            && let Some(r) = &g.radar
+            && let Some(save) = g.world.save_ref()
+        {
+            let colors = self.router_colors(r, save, &stops, &stations);
+            let (cols, rows) = (r.cols as f32, r.rows as f32);
+            let fit = (td.r_map[2] * s - 8.0).min(td.r_map[3] * s - 8.0) / cols.max(rows);
+            ui.add(
+                map_box,
+                Kind::Cells {
+                    cols: r.cols,
+                    rows: r.rows,
+                    colors: std::sync::Arc::new(colors),
+                    action: A_TE_MAP,
+                },
+                Layout::at(Anchor::Center, cols * fit, rows * fit),
+            );
+        }
+
+        // Route stops list (`730`).
+        ui.add(
+            root,
+            Kind::Panel {
+                fill: Fill::Solid(INSET),
+            },
+            r_at(td.r_stops),
+        );
+        let cur = self
+            .with_game(|s, _, _| {
+                bt::rec(&s.trains, train).map_or(-1, |r| i32::from(r.u8(0x3c) as i8))
+            })
+            .unwrap_or(-1);
+        let items: Vec<String> = stops
+            .iter()
+            .enumerate()
+            .map(|(i, st)| {
+                let name = if st.waypoint {
+                    t.a("waypoint")
+                } else {
+                    self.with_info(|inf| inf.station_page(st.station as u32).title)
+                        .unwrap_or_default()
+                };
+                let wait = [t.a("no wait"), t.a("half full"), t.a("full")]
+                    [usize::from(st.wait.min(2))]
+                .clone();
+                format!(
+                    "{}{} {}  [{} cargo]  {}",
+                    i + 1,
+                    if i as i32 == cur { ">" } else { "" },
+                    name,
+                    st.cargo.len(),
+                    wait
+                )
+            })
+            .collect();
+        ui.add(
+            root,
+            Kind::List {
+                items,
+                selected: (!stops.is_empty()).then(|| sel.min(stops.len() - 1)),
+                scroll: 0,
+                row_h: (22.0 * s).round(),
+                font: fnt(1, s * 0.8),
+                action: A_TE_STOPS,
+            },
+            at(
+                (td.r_stops[0] + 6.0) * s,
+                (td.r_stops[1] + 6.0) * s,
+                (td.r_stops[2] - 12.0) * s,
+                (td.r_stops[3] - 12.0) * s,
+            ),
+        );
+
+        // Bottom info & station-add box (`717`).
+        ui.add(
+            root,
+            Kind::Panel {
+                fill: Fill::Solid(INSET),
+            },
+            r_at(td.r_info),
+        );
+        let ix = (td.r_info[0] + 8.0) * s;
+        let iy = (td.r_info[1] + 6.0) * s;
+        let ih = (td.r_info[3] - 12.0) * s;
+        let names: Vec<String> = stations
+            .iter()
+            .map(|&st| {
+                self.with_info(|inf| inf.station_page(st as u32).title)
+                    .unwrap_or_default()
+            })
+            .collect();
+        ui.add(
+            root,
+            Kind::List {
+                items: names,
+                selected: (!stations.is_empty()).then(|| pick.min(stations.len() - 1)),
+                scroll: 0,
+                row_h: (20.0 * s).round(),
+                font: fnt(1, s * 0.78),
+                action: A_TE_PICK,
+            },
+            at(ix, iy, 280.0 * s, ih),
+        );
+        let bx = ix + 290.0 * s;
+        let bw = 150.0 * s;
+        let bh = 26.0 * s;
+        let can_edit = !stations.is_empty();
+        for (idx, (text, action, enabled)) in [
+            (t.a("Add stop"), A_TE_ADD, can_edit),
+            (
+                t.a("Insert before"),
+                A_TE_INSERT,
+                can_edit && !stops.is_empty(),
+            ),
+            (t.a("Delete stop"), A_TE_DELETE, stops.len() > 1),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            ui.add(
+                root,
+                button(text, fnt(1, s * 0.78), action, enabled),
+                at(bx, iy + idx as f32 * (bh + 4.0 * s), bw, bh),
+            );
+        }
+        // Remaining facts + gauges on the right side of `717`.
+        let fx = bx + bw + 14.0 * s;
+        let fw = (td.r_info[0] + td.r_info[2] - 8.0) * s - fx;
+        if fw > 180.0 * s {
+            let fact_w = (fw * 0.42).min(200.0 * s);
+            if let Some(Block::Facts(facts)) = page.left.first() {
+                let mut fy = iy;
+                let row = 16.0 * s;
+                for (k, v) in facts.iter().skip(6).take(5) {
+                    ui.add(
+                        root,
+                        lbl(k, fnt(8, s * 0.54), MUTED, Align::Left),
+                        at(fx, fy, fact_w * 0.5, row),
+                    );
+                    ui.add(
+                        root,
+                        lbl(v, fnt(8, s * 0.54), TEXT, Align::Right),
+                        at(fx + fact_w * 0.5, fy, fact_w * 0.5, row),
+                    );
+                    fy += row;
+                }
+            }
+            let gx = fx + fact_w + 14.0 * s;
+            let gw = (td.r_info[0] + td.r_info[2] - 8.0) * s - gx;
+            if gw > 120.0 * s {
+                self.draw_train_gauges(ui, root, gx, iy + 6.0 * s, gw, s * 0.72, train);
+            }
+        }
+
+        // Three oval buttons (`714` Replace, `715` Retire, `716` Fleet).
+        let allowed_sell = self
+            .with_game(|s, _, _| bt::permitted(s, bt::PERM_RETIRE_TRAIN))
+            .unwrap_or(false);
+        let ink = Color::rgb(0x1e, 0x16, 0x0a);
+        let mut oval_btn = |rect: [f32; 4],
+                            sprites: Option<(rt2_ui::SpriteId, rt2_ui::SpriteId)>,
+                            action: u32,
+                            text: String,
+                            enabled: bool| {
+            let l = r_at(rect);
+            if let Some((up, down)) = sprites {
+                if enabled {
+                    ui.add(
+                        root,
+                        Kind::Icon {
+                            up: Some(up),
+                            down: Some(down),
+                            fallback: text.clone(),
+                            font: fnt(1, s * 0.65),
+                            action,
+                            on: false,
+                        },
+                        l,
+                    );
+                } else {
+                    ui.add(
+                        root,
+                        Kind::Image {
+                            sprite: up,
+                            fit: Fit::Stretch,
+                        },
+                        l,
+                    );
+                }
+            } else {
+                ui.add(root, button(text.clone(), fnt(1, s * 0.65), action, enabled), l);
+            }
+            ui.add(
+                root,
+                lbl(
+                    &text,
+                    fnt(1, s * 0.46),
+                    if enabled {
+                        ink
+                    } else {
+                        Color::rgb(0x5a, 0x4e, 0x38)
+                    },
+                    Align::Center,
+                ),
+                at(rect[0] * s, (rect[1] + 6.0) * s, rect[2] * s, (rect[3] - 12.0) * s),
+            );
+        };
+        oval_btn(
+            td.r_btn_replace,
+            td.btn_replace,
+            A_TE_REPLACE,
+            t.get(429, "Replace engine"),
+            true,
+        );
+        oval_btn(
+            td.r_btn_sell,
+            td.btn_sell,
+            A_TE_SELL,
+            if confirm {
+                t.a("Click again to sell")
+            } else {
+                t.get(427, "Retire")
+            },
+            allowed_sell,
+        );
+        oval_btn(
+            td.r_btn_fleet,
+            td.btn_fleet,
+            A_TE_FLEET,
+            t.a("Fleet Manager..."),
+            true,
+        );
+
+        // Bottom `odbottom.imb` bar (Trains tab active).
+        if let Some(p) = det.odbottom_bg {
+            ui.add(
+                root,
+                Kind::Image {
+                    sprite: p.sprite,
+                    fit: Fit::Stretch,
+                },
+                at(p.x as f32 * s, p.y as f32 * s, p.w * s, p.h * s),
+            );
+        }
+        if let Some(p) = det.odbottom_tabs_trains {
+            ui.add(
+                root,
+                Kind::Image {
+                    sprite: p.sprite,
+                    fit: Fit::Stretch,
+                },
+                at(p.x as f32 * s, p.y as f32 * s, p.w * s, p.h * s),
+            );
+        }
+        for i in 0..4u32 {
+            ui.add(
+                root,
+                Kind::Hotspot {
+                    action: A_TE_TAB + i,
+                    on: i == 1,
+                    enabled: true,
+                },
+                at((2.0 + 45.0 * i as f32) * s, 730.0 * s, 45.0 * s, 35.0 * s),
+            );
+        }
+        let mut add_od_btn = |rect: Layout,
+                              sprites: Option<(rt2_ui::SpriteId, rt2_ui::SpriteId)>,
+                              action: u32,
+                              fallback: String| {
+            if let Some((up, down)) = sprites {
+                ui.add(
+                    root,
+                    Kind::Icon {
+                        up: Some(up),
+                        down: Some(down),
+                        fallback,
+                        font: fnt(1, s * 0.85),
+                        action,
+                        on: false,
+                    },
+                    rect,
+                );
+            } else {
+                ui.add(root, button(fallback, fnt(1, s * 0.85), action, true), rect);
+            }
+        };
+        add_od_btn(
+            at(845.0 * s, 735.0 * s, 32.0 * s, 29.0 * s),
+            det.odbottom_prev,
+            A_TE_PREV,
+            "<".into(),
+        );
+        add_od_btn(
+            at(880.0 * s, 735.0 * s, 32.0 * s, 29.0 * s),
+            det.odbottom_next,
+            A_TE_NEXT,
+            ">".into(),
+        );
+        add_od_btn(
+            at(916.0 * s, 735.0 * s, 40.0 * s, 31.0 * s),
+            det.odbottom_list,
+            A_TE_LIST,
+            t.a("Trains"),
+        );
+        let ok_rect = at(962.0 * s, 734.0 * s, 60.0 * s, 32.0 * s);
+        let ok_str = t.get(crate::text::id::OK, "OK");
+        add_od_btn(ok_rect, det.odbottom_ok, A_CLOSE, ok_str.clone());
+        ui.add(
+            root,
+            lbl(&ok_str, fnt(1, s * 0.85), ink, Align::Center),
+            ok_rect,
+        );
+    }
+
+    fn step_train(&self, current: i32, delta: i32) -> i32 {
+        self.with_game(|s, _, co| {
+            let slots: Vec<i32> = (0..s.trains.next.len() as i32)
+                .filter(|&i| bt::rec(&s.trains, i).is_some())
+                .collect();
+            let own: Vec<i32> = slots
+                .iter()
+                .copied()
+                .filter(|&i| bt::rec(&s.trains, i).is_some_and(|tr| tr.u8(0x28) as i32 == co))
+                .collect();
+            let list = if own.is_empty() { &slots } else { &own };
+            if list.is_empty() {
+                return current;
+            }
+            let pos = list.iter().position(|&i| i == current).unwrap_or(0) as isize;
+            let n = list.len() as isize;
+            list[((pos + delta as isize).rem_euclid(n)) as usize]
+        })
+        .unwrap_or(current)
     }
 
     /// The router's cells: the radar's terrain, the route as a white line between the stops,
@@ -1291,6 +1731,38 @@ impl AppState {
                     template_idx: 0,
                     train: Some(train),
                 });
+            }
+            (A_TE_PREV, Dialog::TrainEdit { train, .. }) => {
+                let next = self.step_train(train, -1);
+                self.set_top(Dialog::TrainEdit {
+                    train: next,
+                    sel: 0,
+                    pick: 0,
+                    confirm: false,
+                });
+            }
+            (A_TE_NEXT, Dialog::TrainEdit { train, .. }) => {
+                let next = self.step_train(train, 1);
+                self.set_top(Dialog::TrainEdit {
+                    train: next,
+                    sel: 0,
+                    pick: 0,
+                    confirm: false,
+                });
+            }
+            (A_TE_LIST, Dialog::TrainEdit { .. }) => {
+                self.close_dialog();
+                self.open_info(info_ui::InfoScreen::Trains);
+            }
+            (a, Dialog::TrainEdit { .. }) if (A_TE_TAB..A_TE_TAB + 4).contains(&a) => {
+                self.close_dialog();
+                let scr = match a - A_TE_TAB {
+                    0 => info_ui::InfoScreen::Stations,
+                    1 => info_ui::InfoScreen::Trains,
+                    2 => info_ui::InfoScreen::Players,
+                    _ => info_ui::InfoScreen::Companies,
+                };
+                self.open_info(scr);
             }
             (
                 a,
