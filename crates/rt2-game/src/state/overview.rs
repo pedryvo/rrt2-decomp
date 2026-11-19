@@ -923,9 +923,9 @@ impl AppState {
             }
             Layer::Traffic => {
                 let names = [
+                    t.a("Very light"),
                     t.a("Light"),
                     t.a("Moderate"),
-                    t.a("Busy"),
                     t.a("Heavy"),
                     t.a("Very heavy"),
                 ];
@@ -936,7 +936,7 @@ impl AppState {
                     ly,
                     lw,
                     dz,
-                    &t.a("Traffic Density"),
+                    &t.a("Traffic on the track"),
                     &traffic_colors(self.config.accessibility.colorblind),
                     &names,
                 );

@@ -315,7 +315,7 @@ mod tests {
     #[test]
     fn oversized_images_are_dropped_not_fatal() {
         let mut b = SkinBuilder::new();
-        let big = b.add(solid(5000, 10, [1, 2, 3, 255]));
+        let big = b.add(solid(ATLAS_WIDTH + 100, 10, [1, 2, 3, 255]));
         let s = b.build(Theme::dark());
         assert!(s.sprite(big).is_none());
     }
