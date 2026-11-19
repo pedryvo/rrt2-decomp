@@ -4,6 +4,9 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 
 ## Unreleased
 
+- Improved: Control Panel (`settings.win`, main-window icon 6) now opens the Options screen instead of a placeholder dialog, and renders with the original `settings.win`, `trainbuy.imb`, `horsb_2.imb`, `eventset.imb`, and `trndbut.imb` artwork.
+- Fix: prevent `message_dialog` from suppressing trigger 6 (`MessageKind::Choice`) opening briefings while still keeping interactive replayed choices suppressed.
+
 ## v0.5.3 — 2026-11-19
 
 - Fix: guard opening briefing and `Start New Company` dialogs against buffered mouse/key clicks during scenario load (`<Play this Scenario>` overlaps the Eagle Dialog `OK` button), require a real 500 ms double-click on pre-selected menu list rows, and fix the campaign order notice bypass so scenarios beyond `#01 B&O` (such as `#03 Joining a Nation`, which starts with `Start New Company`) can be played.

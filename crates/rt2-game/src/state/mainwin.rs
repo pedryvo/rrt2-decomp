@@ -1207,6 +1207,7 @@ impl AppState {
             3 => self.overview_toggle(),
             4 => self.open_train_buy(),
             5 => self.toggle_tab(1),
+            6 => self.open_options(crate::options::Tab::Display),
             7 => self.push_dialog(Dialog::FileOptions),
             n => self.push_dialog(Dialog::Tool(n)),
         }

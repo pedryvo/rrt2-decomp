@@ -562,7 +562,9 @@ impl AppState {
                 MessageKind::Choice => {
                     // Interactive games show the pending choice instead (`pending_choice_dialog`):
                     // the message of the replayed step is only a line of the activity box.
-                    if self.interactive_choices && self.pending_choice_dialog().is_some() {
+                    // Trigger 6 is the opening briefing emitted inside `World::new_game` before
+                    // `set_interactive_choices(true)` takes effect.
+                    if self.interactive_choices && sm.trigger != 6 {
                         return None;
                     }
                     let first = |button| Act::Choice {

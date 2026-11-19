@@ -54,6 +54,7 @@ const CREAM: Color = Color::rgb(0xf2, 0xe9, 0xd0);
 const GOLD: Color = Color::rgb(0xe6, 0xc2, 0x6a);
 const MUTED: Color = Color::rgb(0xb4, 0xaa, 0x8e);
 const WARN: Color = Color::rgb(0xff, 0xb0, 0x60);
+const BROWN: Color = Color::rgb(0x2a, 0x1c, 0x0c);
 const BAR_ON: Color = Color::rgb(0xd8, 0xb0, 0x40);
 const BAR_OFF: Color = Color::rgb(0x30, 0x2c, 0x18);
 const BAR_CELLS: usize = 20;
@@ -533,6 +534,10 @@ impl AppState {
             },
             Layout::fill(),
         );
+        if let Some(frame) = self.dialog_art.buy.frame_settings {
+            self.build_options_art(ui, o, frame, cw, ch);
+            return;
+        }
         let (pw, ph) = ((cw - 16.0).min(800.0), (ch - 16.0).min(620.0));
         let panel = ui.add_root(
             Kind::Panel { fill: Fill::Panel },
@@ -632,6 +637,203 @@ impl AppState {
         }
     }
 
+    /// Renders the Control Panel / Options screen using the original `settings.win` artwork
+    /// (774x578 brass/boiler frame, category list on the left, settings on the right, and the two
+    /// oval brass buttons along the bottom).
+    fn build_options_art(
+        &self,
+        ui: &mut Ui,
+        o: &OptionsState,
+        frame: rt2_ui::SpriteId,
+        cw: f32,
+        ch: f32,
+    ) {
+        use crate::artwork::buywin::{WIN_H, WIN_W};
+        let t = &self.texts;
+        let s = ((cw - 16.0) / WIN_W)
+            .min((ch - 16.0) / WIN_H)
+            .clamp(0.25, 1.45);
+        let (pw, ph) = (WIN_W * s, WIN_H * s);
+        let root = ui.add_root(
+            Kind::Panel { fill: Fill::None },
+            Layout::at(Anchor::Center, pw, ph),
+        );
+        ui.add(
+            root,
+            Kind::Image {
+                sprite: frame,
+                fit: rt2_ui::Fit::Stretch,
+            },
+            at(0.0, 0.0, pw, ph),
+        );
+
+        // Left list (`68, 44, 229x450` in `settings.win`, leaving 27px right for the scrollbar).
+        let (lx, ly, lw) = (74.0 * s, 52.0 * s, 192.0 * s);
+        let cat_h = 38.0 * s;
+        let cat_font = game_font(2).with_size((15.0 * s).round().max(10.0));
+        for (i, tab) in Tab::ALL.iter().enumerate() {
+            let cy = ly + i as f32 * (cat_h + 4.0 * s);
+            let active = *tab == o.tab;
+            if active {
+                ui.add(
+                    root,
+                    Kind::Panel {
+                        fill: Fill::Solid(Color(0x52, 0x48, 0x20, 180)),
+                    },
+                    at(lx, cy, lw, cat_h),
+                );
+            }
+            if let Some((off, on)) = self.dialog_art.buy.radio {
+                ui.add(
+                    root,
+                    Kind::Icon {
+                        up: Some(if active { on } else { off }),
+                        down: Some(on),
+                        fallback: String::new(),
+                        font: cat_font,
+                        action: A_OPT_TAB + i as u32,
+                        on: active,
+                    },
+                    at(
+                        lx + 6.0 * s,
+                        cy + (cat_h - 14.0 * s) / 2.0,
+                        14.0 * s,
+                        14.0 * s,
+                    ),
+                );
+            }
+            ui.add(
+                root,
+                Kind::Hotspot {
+                    action: A_OPT_TAB + i as u32,
+                    on: active,
+                    enabled: true,
+                },
+                at(lx + 24.0 * s, cy, lw - 28.0 * s, cat_h),
+            );
+            ui.add(
+                root,
+                text(
+                    &t.a(tab.english()),
+                    cat_font.with_shadow(),
+                    if active { GOLD } else { CREAM },
+                    Align::Left,
+                ),
+                at(lx + 24.0 * s, cy, lw - 28.0 * s, cat_h),
+            );
+        }
+        // "Game folder..." button at the bottom of the left list (`y = 446`).
+        let fbtn = game_font(2).with_size((13.0 * s).round().max(10.0));
+        if let Some((up, down)) = self.dialog_art.buy.pill_btn {
+            ui.add(
+                root,
+                Kind::Icon {
+                    up: Some(up),
+                    down: Some(down),
+                    fallback: String::new(),
+                    font: fbtn,
+                    action: A_OPT_GAMEDIR,
+                    on: false,
+                },
+                at(lx + 8.0 * s, 448.0 * s, lw - 16.0 * s, 32.0 * s),
+            );
+            ui.add(
+                root,
+                text(&t.a("Game folder..."), fbtn, BROWN, Align::Center),
+                at(lx + 12.0 * s, 448.0 * s, lw - 24.0 * s, 32.0 * s),
+            );
+        } else {
+            ui.add(
+                root,
+                button(&t.a("Game folder..."), fbtn, A_OPT_GAMEDIR),
+                at(lx + 8.0 * s, 448.0 * s, lw - 16.0 * s, 32.0 * s),
+            );
+        }
+
+        // Right panel header (`314, 46, 394x28` in `settings.win`).
+        let title_font = game_font(3)
+            .with_size((20.0 * s).round().max(12.0))
+            .with_shadow();
+        ui.add(
+            root,
+            text(
+                &format!(
+                    "{} — {}",
+                    t.get(1786, "Control panel"),
+                    t.a(o.tab.english())
+                ),
+                title_font,
+                GOLD,
+                Align::Center,
+            ),
+            at(314.0 * s, 46.0 * s, 394.0 * s, 28.0 * s),
+        );
+
+        let body = Body {
+            x: 316.0 * s,
+            y: 80.0 * s,
+            w: 390.0 * s,
+            h: 368.0 * s,
+            u: s * 0.88,
+        };
+        match o.tab {
+            Tab::Language => self.build_language(ui, root, &body),
+            Tab::Keys => self.build_keys(ui, root, &body, o),
+            Tab::Fixes => self.build_fixes(ui, root, &body, o),
+            tab => self.build_rows(ui, root, &body, tab, o.scroll),
+        }
+
+        // Bottom brass oval buttons (`336, 472, 138x63` and `534, 472, 138x63` in `settings.win`).
+        let reset_text = if o.tab == Tab::Keys {
+            t.a("Reset all keys")
+        } else {
+            t.a("Reset this tab")
+        };
+        let oval_font = game_font(3).with_size((15.0 * s).round().max(10.0));
+        let ovals = [
+            (336.0 * s, t.a("Close"), A_OPT_CLOSE, 0usize, true),
+            (
+                534.0 * s,
+                reset_text,
+                A_OPT_RESET,
+                1usize,
+                o.tab != Tab::Language,
+            ),
+        ];
+        for (bx, label_str, action, bi, enabled) in ovals {
+            if !enabled {
+                continue;
+            }
+            let (bw, bh) = (138.0 * s, 63.0 * s);
+            if let Some(plates) = self.dialog_art.buy.buttons {
+                let (up, down) = plates[bi];
+                ui.add(
+                    root,
+                    Kind::Icon {
+                        up: Some(up),
+                        down: Some(down),
+                        fallback: label_str.clone(),
+                        font: oval_font,
+                        action,
+                        on: false,
+                    },
+                    at(bx, 472.0 * s, bw, bh),
+                );
+                ui.add(
+                    root,
+                    text(&label_str, oval_font, BROWN, Align::Center),
+                    at(bx + bw * 0.12, 472.0 * s, bw * 0.76, bh),
+                );
+            } else {
+                ui.add(
+                    root,
+                    button(&label_str, oval_font, action),
+                    at(bx, 480.0 * s, bw, 40.0 * s),
+                );
+            }
+        }
+    }
+
     fn build_rows(&self, ui: &mut Ui, panel: NodeId, b: &Body, tab: Tab, scroll: usize) {
         let t = &self.texts;
         let rows = options::rows(tab, &self.config, &self.env(), t);
@@ -648,30 +850,6 @@ impl AppState {
         let cx = b.x + label_w + 8.0;
         let gutter = if scrolls { 34.0 } else { 0.0 };
         let cw = b.w - label_w - 8.0 - gutter;
-        if scrolls {
-            let bw = 28.0;
-            let bx = b.x + b.w - bw;
-            ui.add(
-                panel,
-                button("^", btn_font, A_OPT_SCROLL),
-                at(bx, b.y, bw, 28.0),
-            );
-            ui.add(
-                panel,
-                button("v", btn_font, A_SCROLL_DOWN),
-                at(bx, b.y + b.h - 28.0, bw, 28.0),
-            );
-            ui.add(
-                panel,
-                text(
-                    &format!("{}-{}/{}", first + 1, first + shown, rows.len()),
-                    btn_font,
-                    MUTED,
-                    Align::Center,
-                ),
-                at(bx - 8.0, b.y + b.h / 2.0 - 10.0, bw + 16.0, 20.0),
-            );
-        }
         for (i, r) in rows.iter().enumerate().skip(first).take(shown) {
             let y = b.y + (i - first) as f32 * row_h;
             let h = row_h - 6.0;
@@ -689,17 +867,54 @@ impl AppState {
             );
             match &r.control {
                 Control::Toggle(on) => {
-                    ui.add(
-                        panel,
-                        Kind::Toggle {
-                            text: if *on { t.a("On") } else { t.a("Off") },
-                            font: btn_font,
-                            action: A_OPT_TOGGLE + idx,
-                            on: *on,
-                            enabled: true,
-                        },
-                        at(cx, y, 120.0, h),
-                    );
+                    if self.dialog_art.buy.frame_settings.is_some()
+                        && let Some((off, chk)) = self.dialog_art.buy.checkbox
+                    {
+                        let cb = h.min(20.0 * b.u.max(0.85));
+                        ui.add(
+                            panel,
+                            Kind::Icon {
+                                up: Some(if *on { chk } else { off }),
+                                down: Some(chk),
+                                fallback: String::new(),
+                                font: btn_font,
+                                action: A_OPT_TOGGLE + idx,
+                                on: *on,
+                            },
+                            at(cx, y + (h - cb) / 2.0, cb, cb),
+                        );
+                        ui.add(
+                            panel,
+                            Kind::Hotspot {
+                                action: A_OPT_TOGGLE + idx,
+                                on: *on,
+                                enabled: true,
+                            },
+                            at(cx + cb + 8.0, y, 90.0, h),
+                        );
+                        ui.add(
+                            panel,
+                            text(
+                                &if *on { t.a("On") } else { t.a("Off") },
+                                btn_font,
+                                if *on { GOLD } else { CREAM },
+                                Align::Left,
+                            ),
+                            at(cx + cb + 8.0, y, 90.0, h),
+                        );
+                    } else {
+                        ui.add(
+                            panel,
+                            Kind::Toggle {
+                                text: if *on { t.a("On") } else { t.a("Off") },
+                                font: btn_font,
+                                action: A_OPT_TOGGLE + idx,
+                                on: *on,
+                                enabled: true,
+                            },
+                            at(cx, y, 120.0, h),
+                        );
+                    }
                 }
                 Control::Choice {
                     options,
@@ -745,43 +960,143 @@ impl AppState {
                     text: value_text,
                     ..
                 } => {
-                    let bw = h.max(28.0);
-                    let val_w = 120.0;
-                    ui.add(
-                        panel,
-                        button("-", btn_font, A_OPT_DEC + idx),
-                        at(cx, y, bw, h),
-                    );
-                    let bar_x = cx + bw + 6.0;
-                    let bar_w = (cw - 2.0 * bw - val_w - 18.0).max(40.0);
-                    let filled = (((value - min) as f32 / (max - min).max(1) as f32)
-                        * BAR_CELLS as f32)
-                        .round() as usize;
-                    let colors: Vec<Color> = (0..BAR_CELLS)
-                        .map(|c| if c < filled { BAR_ON } else { BAR_OFF })
-                        .collect();
-                    ui.add(
-                        panel,
-                        Kind::Cells {
-                            cols: BAR_CELLS,
-                            rows: 1,
-                            colors: Arc::new(colors),
-                            action: A_OPT_BAR + idx,
-                        },
-                        at(bar_x, y + 4.0, bar_w, h - 8.0),
-                    );
-                    ui.add(
-                        panel,
-                        button("+", btn_font, A_OPT_INC + idx),
-                        at(bar_x + bar_w + 6.0, y, bw, h),
-                    );
-                    ui.add(
-                        panel,
-                        text(value_text, label_font.with_shadow(), GOLD, Align::Left),
-                        at(bar_x + bar_w + 6.0 + bw + 8.0, y, val_w, h),
-                    );
+                    let bw = h.min(24.0 * b.u.max(0.85)).max(18.0);
+                    let val_w = 72.0 * b.u.max(0.85);
+                    if self.dialog_art.buy.frame_settings.is_some()
+                        && let (Some((lu, ld)), Some((ru, rd)), Some(track), Some(thumb)) = (
+                            self.dialog_art.buy.slider_left,
+                            self.dialog_art.buy.slider_right,
+                            self.dialog_art.buy.slider_track,
+                            self.dialog_art.buy.slider_thumb,
+                        )
+                    {
+                        ui.add(
+                            panel,
+                            Kind::Icon {
+                                up: Some(lu),
+                                down: Some(ld),
+                                fallback: "-".to_owned(),
+                                font: btn_font,
+                                action: A_OPT_DEC + idx,
+                                on: false,
+                            },
+                            at(cx, y + (h - bw) / 2.0, bw, bw),
+                        );
+                        let bar_x = cx + bw + 4.0;
+                        let bar_w = (cw - 2.0 * bw - val_w - 14.0).max(40.0);
+                        let bar_h = 18.0 * b.u.max(0.8);
+                        let bar_y = y + (h - bar_h) / 2.0;
+                        ui.add(
+                            panel,
+                            Kind::Image {
+                                sprite: track,
+                                fit: rt2_ui::Fit::Stretch,
+                            },
+                            at(bar_x, bar_y, bar_w, bar_h),
+                        );
+                        let frac =
+                            ((value - min) as f32 / (max - min).max(1) as f32).clamp(0.0, 1.0);
+                        let colors = vec![Color(0, 0, 0, 0); BAR_CELLS];
+                        ui.add(
+                            panel,
+                            Kind::Cells {
+                                cols: BAR_CELLS,
+                                rows: 1,
+                                colors: Arc::new(colors),
+                                action: A_OPT_BAR + idx,
+                            },
+                            at(bar_x, bar_y, bar_w, bar_h),
+                        );
+                        let tw = 16.0 * b.u.max(0.8);
+                        let tx = bar_x + frac * (bar_w - tw).max(0.0);
+                        ui.add(
+                            panel,
+                            Kind::Image {
+                                sprite: thumb,
+                                fit: rt2_ui::Fit::Stretch,
+                            },
+                            at(tx, bar_y + 1.0, tw, bar_h - 2.0),
+                        );
+                        ui.add(
+                            panel,
+                            Kind::Icon {
+                                up: Some(ru),
+                                down: Some(rd),
+                                fallback: "+".to_owned(),
+                                font: btn_font,
+                                action: A_OPT_INC + idx,
+                                on: false,
+                            },
+                            at(bar_x + bar_w + 4.0, y + (h - bw) / 2.0, bw, bw),
+                        );
+                        ui.add(
+                            panel,
+                            text(value_text, label_font.with_shadow(), GOLD, Align::Left),
+                            at(bar_x + bar_w + bw + 8.0, y, val_w, h),
+                        );
+                    } else {
+                        let bw = h.max(28.0);
+                        let val_w = 120.0;
+                        ui.add(
+                            panel,
+                            button("-", btn_font, A_OPT_DEC + idx),
+                            at(cx, y, bw, h),
+                        );
+                        let bar_x = cx + bw + 6.0;
+                        let bar_w = (cw - 2.0 * bw - val_w - 18.0).max(40.0);
+                        let filled = (((value - min) as f32 / (max - min).max(1) as f32)
+                            * BAR_CELLS as f32)
+                            .round() as usize;
+                        let colors: Vec<Color> = (0..BAR_CELLS)
+                            .map(|c| if c < filled { BAR_ON } else { BAR_OFF })
+                            .collect();
+                        ui.add(
+                            panel,
+                            Kind::Cells {
+                                cols: BAR_CELLS,
+                                rows: 1,
+                                colors: Arc::new(colors),
+                                action: A_OPT_BAR + idx,
+                            },
+                            at(bar_x, y + 4.0, bar_w, h - 8.0),
+                        );
+                        ui.add(
+                            panel,
+                            button("+", btn_font, A_OPT_INC + idx),
+                            at(bar_x + bar_w + 6.0, y, bw, h),
+                        );
+                        ui.add(
+                            panel,
+                            text(value_text, label_font.with_shadow(), GOLD, Align::Left),
+                            at(bar_x + bar_w + 6.0 + bw + 8.0, y, val_w, h),
+                        );
+                    }
                 }
             }
+        }
+        if scrolls {
+            let bw = 28.0;
+            let bx = b.x + b.w - bw;
+            ui.add(
+                panel,
+                button("^", btn_font, A_OPT_SCROLL),
+                at(bx, b.y, bw, 28.0),
+            );
+            ui.add(
+                panel,
+                button("v", btn_font, A_SCROLL_DOWN),
+                at(bx, b.y + b.h - 28.0, bw, 28.0),
+            );
+            ui.add(
+                panel,
+                text(
+                    &format!("{}-{}/{}", first + 1, first + shown, rows.len()),
+                    btn_font,
+                    MUTED,
+                    Align::Center,
+                ),
+                at(bx - 8.0, b.y + b.h / 2.0 - 10.0, bw + 16.0, 20.0),
+            );
         }
         // A hint under the rows of the display and notices tabs.
         if matches!(tab, Tab::Display | Tab::Notices) {

@@ -64,6 +64,16 @@ pub struct BuyArt {
     /// 2..=7).
     pub track_pics: Option<[SpriteId; 2]>,
     pub track_bgs: [Option<SpriteId>; 6],
+    /// `settings.win` (Control Panel, J3..J5): 774x578 composed frame plus original slider
+    /// (`horsb_2.imb`), checkbox (`eventset.imb`), radio, and pill button (`trndbut.imb`) sprites.
+    pub frame_settings: Option<SpriteId>,
+    pub slider_left: Option<(SpriteId, SpriteId)>,
+    pub slider_right: Option<(SpriteId, SpriteId)>,
+    pub slider_track: Option<SpriteId>,
+    pub slider_thumb: Option<SpriteId>,
+    pub checkbox: Option<(SpriteId, SpriteId)>,
+    pub radio: Option<(SpriteId, SpriteId)>,
+    pub pill_btn: Option<(SpriteId, SpriteId)>,
 }
 
 /// The bank name stems of the improvement rows (`improvement_table` `0x5500c8`, first bytes of
@@ -190,6 +200,20 @@ pub fn load(assets: &GameAssets, b: &mut SkinBuilder) -> BuyArt {
         art.frame = Some(add2x(b, &img));
         art.frame_build = compose_frame(assets, "buildbuy.win", &[6]).map(|i| add2x(b, &i));
     }
+    art.frame_settings = compose_frame(assets, "settings.win", &[]).map(|i| add2x(b, &i));
+    let bank_pair = |b: &mut SkinBuilder, bank: &str, u: usize, d: usize| {
+        Some((
+            add2x(b, &ui_record(assets, bank, u)?),
+            add2x(b, &ui_record(assets, bank, d)?),
+        ))
+    };
+    art.slider_left = bank_pair(b, "horsb_2.imb", 0, 1);
+    art.slider_right = bank_pair(b, "horsb_2.imb", 2, 3);
+    art.slider_track = ui_record(assets, "horsb_2.imb", 4).map(|i| add2x(b, &i));
+    art.slider_thumb = ui_record(assets, "horsb_2.imb", 5).map(|i| add2x(b, &i));
+    art.checkbox = bank_pair(b, "eventset.imb", 2, 3);
+    art.radio = bank_pair(b, "trndbut.imb", 6, 7);
+    art.pill_btn = bank_pair(b, "trndbut.imb", 0, 1);
     let rec = |r: usize| ui_record(assets, "trainbuy.imb", r);
     let pair =
         |b: &mut SkinBuilder, u: usize, d: usize| Some((add2x(b, &rec(u)?), add2x(b, &rec(d)?)));
