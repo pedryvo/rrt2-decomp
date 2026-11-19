@@ -4,6 +4,10 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 
 ## Unreleased
 
+## v0.5.5 — 2026-11-19
+
+- Feature: route- and demand-aware car suggestions (`Info::suggested_cars_for_stop` and `Info::auto_consist_for_stop`) in Train Detail (`Suggest` stop button) and Car List (`Suggested: ...` summary, `* ` cargo highlights, and `Suggest` auto-fill button).
+
 ## v0.5.4 — 2026-11-19
 
 - Improved: Control Panel (`settings.win`, main-window icon 6) now opens the Options screen instead of a placeholder dialog, and renders with the original `settings.win`, `trainbuy.imb`, `horsb_2.imb`, `eventset.imb`, and `trndbut.imb` artwork.

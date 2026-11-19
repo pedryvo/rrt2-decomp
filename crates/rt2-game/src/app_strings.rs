@@ -769,6 +769,8 @@ pub static APP_EN: &[&str] = &[
     "Personal",
     "Corporate",
     "View",
+    "Suggest",
+    "Suggested: %1",
 ];
 
 /// The id of an English default.

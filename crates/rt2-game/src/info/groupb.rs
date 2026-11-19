@@ -588,6 +588,82 @@ impl Info<'_> {
         self.cargo_name(c)
     }
 
+    /// Suggests car cargo types for `stop` of `train` based on what the stop's station supplies
+    /// or has waiting and what the other stations on the train's route demand.
+    ///
+    /// Returns `(cargo_id, score, cargo_name)` sorted descending by score (`score >= 1000` when
+    /// another stop on the route demands the cargo; `score >= 100` when supplied/waiting locally).
+    pub fn suggested_cars_for_stop(&self, train: i32, stop: usize) -> Vec<(u8, u32, String)> {
+        let stops = crate::buildtools::train_stops(self.save, train);
+        let Some(cur) = stops.get(stop).filter(|s| !s.waypoint) else {
+            return Vec::new();
+        };
+        let Some(cur_st) = rec(&self.save.stations, cur.station as u32) else {
+            return Vec::new();
+        };
+        let other_stations: Vec<_> = stops
+            .iter()
+            .enumerate()
+            .filter(|(i, s)| *i != stop && !s.waypoint && s.station != cur.station)
+            .filter_map(|(_, s)| rec(&self.save.stations, s.station as u32))
+            .collect();
+        let mut out = Vec::new();
+        for (c, name) in self.car_cargo_choices() {
+            let ci = usize::from(c);
+            let prod = cur_st.u8(0x169 + ci) > 0;
+            let waiting = self.waiting_lots(&cur_st, ci) as u32;
+            if !prod && waiting == 0 {
+                continue;
+            }
+            let route_demand: f32 = other_stations
+                .iter()
+                .map(|ost| {
+                    if ost.u8(0x195 + ci) > 0 {
+                        ost.f32(0x1c1 + 4 * ci).max(1.0)
+                    } else {
+                        0.0
+                    }
+                })
+                .sum();
+            let score = if route_demand > 0.0 {
+                1000 + waiting * 100 + (route_demand * 10.0) as u32 + if prod { 50 } else { 0 }
+            } else {
+                100 + waiting * 10 + if prod { 20 } else { 0 }
+            };
+            out.push((c, score, name));
+        }
+        out.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(&b.0)));
+        out
+    }
+
+    /// Builds an automatic 6-car consist for `stop` of `train` from `suggested_cars_for_stop`.
+    pub fn auto_consist_for_stop(&self, train: i32, stop: usize) -> Vec<u8> {
+        let suggested = self.suggested_cars_for_stop(train, stop);
+        if suggested.is_empty() {
+            return Vec::new();
+        }
+        let route_matched: Vec<(u8, u32)> = suggested
+            .iter()
+            .filter(|(_, score, _)| *score >= 1000)
+            .map(|(c, score, _)| (*c, *score))
+            .collect();
+        let pool: Vec<(u8, u32)> = if !route_matched.is_empty() {
+            route_matched
+        } else {
+            suggested.iter().map(|(c, score, _)| (*c, *score)).collect()
+        };
+        let mut cars = Vec::with_capacity(6);
+        while cars.len() < 6 {
+            for &(c, _) in &pool {
+                cars.push(c);
+                if cars.len() == 6 {
+                    break;
+                }
+            }
+        }
+        cars
+    }
+
     /// Stop `k` of a train: station name, sell mode (flags bits 4..5).
     pub fn stop_sell_mode(&self, train: u32, k: usize) -> u8 {
         self.save

@@ -496,3 +496,46 @@ fn help_dialog_and_game_tips_tutorial_work() {
     s.dialog_activated(A_DLG_BTN + 2);
     assert!(s.top_dialog().is_none());
 }
+
+#[test]
+fn suggested_cars_match_station_supply_and_route_demand() {
+    use super::train_panel::{A_CL_CLEAR, A_CL_OK, A_CL_SUGGEST, A_TP_CARS, A_TP_SUGGEST};
+    let Some(mut s) = state() else {
+        return;
+    };
+    let train = s
+        .with_game(|sv, _, co| *bt::company_trains(sv, co).first().unwrap())
+        .unwrap();
+    let suggested = s
+        .with_info(|i| i.suggested_cars_for_stop(train, 0))
+        .unwrap();
+    assert!(
+        !suggested.is_empty(),
+        "stop 0 should have cargo suggestions"
+    );
+    let auto = s.with_info(|i| i.auto_consist_for_stop(train, 0)).unwrap();
+    assert!(!auto.is_empty() && auto.len() <= 6);
+
+    s.push_dialog(Dialog::TrainEdit {
+        train,
+        sel: 0,
+        pick: 0,
+        confirm: false,
+    });
+    // Suggest button directly in TrainEdit applies auto consist to stop 0.
+    click(&mut s, A_TP_SUGGEST);
+    let stop0_cargo = s
+        .with_game(|sv, _, _| bt::train_stops(sv, train)[0].cargo.clone())
+        .unwrap();
+    assert_eq!(stop0_cargo, auto);
+
+    // CarList: Clear then Suggest refills with auto consist and OK saves it.
+    click(&mut s, A_TP_CARS);
+    assert!(matches!(top(&s), Some(Dialog::CarList { .. })));
+    click(&mut s, A_CL_CLEAR);
+    assert!(matches!(top(&s), Some(Dialog::CarList { cargo, .. }) if cargo.is_empty()));
+    click(&mut s, A_CL_SUGGEST);
+    assert!(matches!(top(&s), Some(Dialog::CarList { cargo, .. }) if cargo == &auto));
+    click(&mut s, A_CL_OK);
+    assert!(matches!(top(&s), Some(Dialog::TrainEdit { .. })));
+}

@@ -21,6 +21,7 @@ pub(super) const A_TP_WAIT: u32 = 11201;
 pub(super) const A_TP_SELL: u32 = 11202;
 pub(super) const A_TP_CLASS: u32 = 11203;
 pub(super) const A_TP_CARS: u32 = 11204;
+pub(super) const A_TP_SUGGEST: u32 = 11205;
 /// Car list: remove the car in slot `a - A_CL_REMOVE` (6 slots).
 pub(super) const A_CL_REMOVE: u32 = 11220;
 /// Car list: add the cargo `a - A_CL_ADD` (cargo ids below 0x2c).
@@ -29,6 +30,7 @@ pub(super) const A_CL_CLEAR: u32 = 11285;
 pub(super) const A_CL_OK: u32 = 11286;
 pub(super) const A_CL_CANCEL: u32 = 11287;
 pub(super) const A_CL_TEMPLATE: u32 = 11288;
+pub(super) const A_CL_SUGGEST: u32 = 11289;
 
 const TEXT: Color = Color::rgb(0xee, 0xe4, 0xc8);
 const MUTED: Color = Color::rgb(0xb4, 0xaa, 0x8e);
@@ -36,7 +38,7 @@ const HEAD: Color = Color::rgb(0xe6, 0xc2, 0x6a);
 const INSET: Color = Color(0x0c, 0x0f, 0x0c, 0xd8);
 
 pub(super) fn owns(a: u32) -> bool {
-    (A_TP_GOTO..=A_CL_TEMPLATE).contains(&a)
+    (A_TP_GOTO..=A_CL_SUGGEST).contains(&a)
 }
 
 fn fnt(n: u8, dz: f32) -> FontStyle {
@@ -242,6 +244,15 @@ impl AppState {
             button(t.a("Car list"), f, A_TP_CARS, has),
             at(x + bw + 4.0 * dz, by2, bw, bh),
         );
+        let has_suggest = has
+            && self
+                .with_info(|i| !i.auto_consist_for_stop(train, sel).is_empty())
+                .unwrap_or(false);
+        ui.add(
+            root,
+            button(t.a("Suggest"), f, A_TP_SUGGEST, has_suggest),
+            at(x + 2.0 * (bw + 4.0 * dz), by2, bw, bh),
+        );
         // The wait / sell explanation of the selected stop, in the original's words.
         if let Some(s) = stop {
             ui.add(
@@ -383,6 +394,24 @@ impl AppState {
                     cargo,
                 });
             }
+            A_TP_SUGGEST => {
+                let Some(suggested) = self.with_info(|i| i.auto_consist_for_stop(train, sel))
+                else {
+                    return;
+                };
+                if suggested.is_empty() {
+                    return;
+                }
+                let mut c = [0xffu8; 6];
+                for (slot, v) in c.iter_mut().zip(&suggested) {
+                    *slot = *v;
+                }
+                BuildCmd::StopCargo {
+                    train,
+                    stop,
+                    cargo: c,
+                }
+            }
             _ => return,
         };
         match self.issue(cmd) {
@@ -405,6 +434,13 @@ impl AppState {
                 }
             }
             A_CL_CLEAR => cargo.clear(),
+            A_CL_SUGGEST => {
+                if let Some(suggested) = self.with_info(|i| i.auto_consist_for_stop(train, stop))
+                    && !suggested.is_empty()
+                {
+                    cargo = suggested;
+                }
+            }
             A_CL_CANCEL => return self.close_dialog(),
             A_CL_OK => {
                 let mut c = [0xffu8; 6];
@@ -515,55 +551,82 @@ impl AppState {
         );
         let ax = pad * 2.0 + lw;
         let aw = w - ax - pad;
+        let suggested = self
+            .with_info(|i| i.suggested_cars_for_stop(train, stop))
+            .unwrap_or_default();
         ui.add(
             root,
             lbl(&t.a("Cars that can be added"), f, HEAD, Align::Left),
             at(ax, 40.0 * dz, aw, 18.0 * dz),
         );
+        let grid_y = if !suggested.is_empty() {
+            let names: Vec<String> = suggested
+                .iter()
+                .take(4)
+                .map(|(_, _, n)| n.clone())
+                .collect();
+            ui.add(
+                root,
+                lbl(
+                    &t.af("Suggested: %1", &[names.join(", ")]),
+                    fnt(8, dz * 0.5),
+                    HEAD,
+                    Align::Left,
+                ),
+                at(ax, 58.0 * dz, aw, 16.0 * dz),
+            );
+            76.0 * dz
+        } else {
+            62.0 * dz
+        };
         let choices = self
             .with_info(|i| i.car_cargo_choices())
             .unwrap_or_default();
         let cols = 4usize;
         let bw = (aw - (cols as f32 - 1.0) * 4.0 * dz) / cols as f32;
-        let bh = 26.0 * dz;
+        let bh = 24.0 * dz;
         for (k, (c, n)) in choices.iter().enumerate() {
             let (cx, cy) = (k % cols, k / cols);
-            let fit = (bw * 0.92 / (0.66 * f.size * n.chars().count().max(1) as f32)).min(1.0);
+            let is_suggested = suggested.iter().any(|(sc, _, _)| sc == c);
+            let label = if is_suggested {
+                format!("* {n}")
+            } else {
+                n.clone()
+            };
+            let fit = (bw * 0.92 / (0.66 * f.size * label.chars().count().max(1) as f32)).min(1.0);
             ui.add(
                 root,
                 button(
-                    n.clone(),
+                    label,
                     f.with_size((f.size * fit).round().max(9.0)),
                     A_CL_ADD + u32::from(*c),
                     cargo.len() < 6,
                 ),
                 at(
                     ax + cx as f32 * (bw + 4.0 * dz),
-                    62.0 * dz + cy as f32 * (bh + 4.0 * dz),
+                    grid_y + cy as f32 * (bh + 4.0 * dz),
                     bw,
                     bh,
                 ),
             );
         }
         let by = h - pad - 30.0 * dz;
-        for (i, (text, action)) in [
-            (t.a("Consist Templates"), A_CL_TEMPLATE),
-            (t.a("Clear"), A_CL_CLEAR),
-            (t.get(crate::text::id::OK, "OK"), A_CL_OK),
-            (t.get(crate::text::id::CANCEL, "Cancel"), A_CL_CANCEL),
-        ]
-        .into_iter()
-        .enumerate()
-        {
+        let btns = [
+            (t.a("Suggest"), A_CL_SUGGEST, !suggested.is_empty()),
+            (t.a("Consist Templates"), A_CL_TEMPLATE, true),
+            (t.a("Clear"), A_CL_CLEAR, true),
+            (t.get(crate::text::id::OK, "OK"), A_CL_OK, true),
+            (t.get(crate::text::id::CANCEL, "Cancel"), A_CL_CANCEL, true),
+        ];
+        let b_gap = 6.0 * dz;
+        let b_w = ((w - 2.0 * pad - b_gap * (btns.len() as f32 - 1.0)) / btns.len() as f32)
+            .min(132.0 * dz);
+        let x0 = w - pad - btns.len() as f32 * b_w - (btns.len() as f32 - 1.0) * b_gap;
+        for (i, (text, action, enabled)) in btns.into_iter().enumerate() {
             ui.add(
                 root,
-                button(text, f, action, true),
-                at(
-                    w - pad - (4 - i) as f32 * (136.0 * dz),
-                    by,
-                    130.0 * dz,
-                    30.0 * dz,
-                ),
+                button(text, f, action, enabled),
+                at(x0 + i as f32 * (b_w + b_gap), by, b_w, 30.0 * dz),
             );
         }
         let _ = TEXT;
