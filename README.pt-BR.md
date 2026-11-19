@@ -49,7 +49,7 @@ O **rrt2-decomp** estuda o executável original de _Railroad Tycoon II Platinum_
 | Harness de teste diferencial (Unicorn) | ✅ | Roda funções do original num emulador para comparação bit a bit · [docs](docs/oracle.md) |
 | Motor gráfico (wgpu) | ✅ | Mapas originais com as texturas exatas de terreno, rios, estradas, praias, trilhos, árvores, cidades, indústrias e estações, mais **trens em movimento e fumaça** com interpolação suave; sprites com upscaling; ~70 fps em 4K · `cargo run --release -p rt2-viewer -- <mapa>` |
 | Simulação jogável | ✅ | Laço do mundo do `rt2-sim` com trens, estações, economia, finanças, crescimento das cidades, regras de cenário e a IA dos concorrentes: saves originais avançados no clone ficam **idênticos ao original** campo a campo em **todos os 131** casos do placar, de 1 dia até 2 anos de jogo, incluindo eventos raros (acidentes, roubos, liquidações, a IA negociando ações) (Tutorial, Example com trens, quatro mapas .MP2 e saves e mapas antigos convertidos na carga); inclusive New Games dos 18 cenários da campanha original; e os 18 cenários da Second Century · [placar de fidelidade](docs/fidelity-status.md) |
-| Interface do jogo | ✅ | App `rrt2`: menu principal com a arte original, moldura de metal e bússola no HUD, todas as 81 telas do inventário implementadas ou adaptadas, listas de cenários e saves, texto vetorial nítido com fontes OFL equivalentes às originais, escala de UI de 100–300% · [docs](docs/ui.md) |
+| Interface do jogo | ✅ | App `rrt2`: menus, campanha, HUD, painéis de construção, janelas de compra/detalhe de estações e trens, listas em tela cheia, livros de empresa/jogador, bolsa de valores e diálogos com a arte original `.win`/`.imb`; todas as 84 telas do inventário implementadas, texto vetorial nítido com fontes OFL, escala de UI de 100–300% · [docs](docs/ui.md) |
 | Editor de mapas e cenários | ✅ | Terreno, árvores, territórios, prédios, lugares, rios e estradas; importação de heightmap PCX, todas as 14 páginas de opções do mapa, metas e editor de regras com validação ao vivo; salvar preserva todos os mapas da instalação |
 | Multiplayer | ✅ | `rt2-net` e `rt2-game`: lockstep sequenciado pelo anfitrião por TCP/IP ou em memória, com as regras de rede do original no `rt2-sim`, checksum mensal com dump do diff, migração de anfitrião, entrada no meio da partida, reconexão, lobby completo (K1–K3, H3) e chat em jogo com indicadores de ping/jogadores no HUD · [spec](docs/spec/multiplayer.md) · [protocolo](docs/net-protocol.md) |
 
@@ -116,11 +116,11 @@ cargo run --release -p rt2-game -- set-path ~/Games/railroad-tycoon-2   # uma ve
 cargo run --release -p rt2-game
 ```
 
-Já dá para começar qualquer cenário ou campanha do zero, fundar a empresa, construir trilhos, estações e prédios de apoio, comprar trens e definir rotas, comprar indústrias e acompanhar jornais, finanças e a bolsa enquanto a simulação roda. Ainda faltam títulos, negociação de ações e algumas telas (veja o inventário em `docs/reference/screens.md`). Configurações e atalhos ficam em `~/.config/rrt2/config.toml`; os saves vão para `~/.local/share/rrt2/saves`.
+Já dá para começar qualquer cenário ou campanha do zero, fundar a empresa, construir trilhos, estações e prédios de apoio, comprar trens e definir rotas, comprar indústrias, emitir títulos, negociar ações e acompanhar jornais, finanças e a bolsa enquanto a simulação roda (veja o inventário de telas e pendências restantes em `docs/reference/screens.md`). Configurações e atalhos ficam em `~/.config/rrt2/config.toml`; os saves vão para `~/.local/share/rrt2/saves`.
 
 ## 🧰 Ferramentas
 
-Por enquanto o projeto é um conjunto de ferramentas de inspeção. O jogo vem depois.
+O workspace também inclui ferramentas de inspeção e extração (`rt2-tools`):
 
 ```bash
 # listar o conteúdo de um PK2, nomeando o que for conhecido

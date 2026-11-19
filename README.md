@@ -49,7 +49,7 @@ _The 1998 classic you know, from the same isometric viewpoint,<br>now native at 
 | Differential test harness (Unicorn) | ✅ | Runs original functions in an emulator for bit-exact comparison · [docs](docs/oracle.md) |
 | Rendering engine (wgpu) | ✅ | Original maps with the game's exact terrain textures, rivers, roads, beaches, track, trees, towns, industries and stations, plus **moving trains and smoke** with smooth interpolation; sprites upscaled for high DPI; ~70 fps at 4K · `cargo run --release -p rt2-viewer -- <map>` |
 | Playable simulation | ✅ | `rt2-sim` world loop with trains, stations, economy, finance, town growth, scenario rules and the competitor AI: original saves advanced in the clone are **identical to the original** field by field in **all 131** scoreboard cases, from 1 day up to 2 years of play and including rare events (crashes, theft, liquidations, AI stock trading) (Tutorial, Example with trains, four .MP2 maps, and old-layout saves and maps converted on load); including fresh New Games of all 18 original campaign scenarios; and all 18 Second Century scenarios · [fidelity scoreboard](docs/fidelity-status.md) |
-| Game UI | ✅ | `rrt2` app: main menu with original art, metal frame and compass HUD, all 81 original inventory screens implemented or mapped, scenario/save lists, crisp vector text with OFL fonts matched to the originals, UI scale 100–300% · [docs](docs/ui.md) |
+| Game UI | ✅ | `rrt2` app: menus, campaign, HUD, construction panels, station/train buy & detail windows, full-screen lists, company/player books, stock market, and file/help dialogs rendered with the original `.win`/`.imb` artwork; all 84 original inventory screens implemented, crisp vector text with OFL fonts, UI scale 100–300% · [docs](docs/ui.md) |
 | Map and scenario editor | ✅ | Terrain, trees, territories, buildings, places, rivers and roads; PCX heightmap import, all 14 map options pages, goals and live rules editor; saves round-trip all shipped maps |
 | Multiplayer | ✅ | `rt2-net` and `rt2-game`: host-sequenced lockstep over TCP/IP or in memory, network rules in `rt2-sim`, monthly checksum with diff dump, host migration, join in progress, reconnect, full lobby (K1–K3, H3) and in-game chat with HUD ping/player indicators · [spec](docs/spec/multiplayer.md) · [protocol](docs/net-protocol.md) |
 
@@ -109,18 +109,18 @@ RT2_DIR=~/Games/railroad-tycoon-2 cargo nextest run
 
 `RRT2_CONFIG` and `RRT2_SAVES` override the two locations. The macOS and Windows builds come from CI and are untested by the author so far.
 
-## 🎮 Running the game (early preview)
+## 🎮 Running the game
 
 ```bash
 cargo run --release -p rt2-game -- set-path ~/Games/railroad-tycoon-2   # once
 cargo run --release -p rt2-game
 ```
 
-You can start any scenario or campaign from scratch, found your company, lay track, build stations and their support buildings, buy trains and set their routes, buy industries, and follow the newspapers, finances and stock market while the simulation runs. Bonds, stock trading and a few screens are still missing (see the screen inventory in `docs/reference/screens.md`). Settings and key bindings live in `~/.config/rrt2/config.toml`; saves go to `~/.local/share/rrt2/saves`.
+You can start any scenario or campaign from scratch, found your company, lay track, build stations and their support buildings, buy trains and set their routes, buy industries, issue bonds, trade stocks, and follow the newspapers, finances and stock market while the simulation runs (see the screen inventory and remaining gaps in `docs/reference/screens.md`). Settings and key bindings live in `~/.config/rrt2/config.toml`; saves go to `~/.local/share/rrt2/saves`.
 
 ## 🧰 Tools
 
-For now the project is a set of inspection tools. The game comes later.
+The workspace also includes inspection and extraction CLIs (`rt2-tools`):
 
 ```bash
 # list a PK2 archive, naming the entries we know
