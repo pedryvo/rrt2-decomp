@@ -62,13 +62,25 @@ fn blend(dst: &mut RgbaImage, src: &RgbaImage, dx: i32, dy: i32) {
     }
 }
 
-fn add1x(assets: &GameAssets, bank: &str, rec: usize, b: &mut SkinBuilder) -> Option<(SpriteId, RgbaImage)> {
+fn add1x(
+    assets: &GameAssets,
+    bank: &str,
+    rec: usize,
+    b: &mut SkinBuilder,
+) -> Option<(SpriteId, RgbaImage)> {
     let img = ui_record_pub(assets, bank, rec)?;
     let id = b.add(to_skin_image(&img, 1));
     Some((id, img))
 }
 
-fn placed(assets: &GameAssets, bank: &str, rec: usize, ox: i32, oy: i32, b: &mut SkinBuilder) -> Option<Placed> {
+fn placed(
+    assets: &GameAssets,
+    bank: &str,
+    rec: usize,
+    ox: i32,
+    oy: i32,
+    b: &mut SkinBuilder,
+) -> Option<Placed> {
     let (sprite, img) = add1x(assets, bank, rec, b)?;
     Some(Placed {
         sprite,
@@ -91,7 +103,12 @@ fn ctrl_rect(w: Option<&Window>, id: u16, fallback: [f32; 4]) -> [f32; 4] {
         })
 }
 
-fn compose_bg(assets: &GameAssets, bank: &str, recs: &[usize], b: &mut SkinBuilder) -> Option<SpriteId> {
+fn compose_bg(
+    assets: &GameAssets,
+    bank: &str,
+    recs: &[usize],
+    b: &mut SkinBuilder,
+) -> Option<SpriteId> {
     let mut canvas = RgbaImage {
         width: 1024,
         height: 728,
@@ -109,7 +126,11 @@ fn compose_bg(assets: &GameAssets, bank: &str, recs: &[usize], b: &mut SkinBuild
     any.then(|| b.add(to_skin_image(&canvas, 1)))
 }
 
-fn load_spreads(assets: &GameAssets, w: Option<&Window>, b: &mut SkinBuilder) -> [Option<SpriteId>; 5] {
+fn load_spreads(
+    assets: &GameAssets,
+    w: Option<&Window>,
+    b: &mut SkinBuilder,
+) -> [Option<SpriteId>; 5] {
     let has_bank = w
         .map(|win| {
             win.controls
@@ -124,8 +145,12 @@ fn load_spreads(assets: &GameAssets, w: Option<&Window>, b: &mut SkinBuilder) ->
 }
 
 pub(crate) fn load(assets: &GameAssets, b: &mut SkinBuilder) -> BookArt {
-    let comp_win = assets.blob("compndtl.win").and_then(|d| Window::parse(d).ok());
-    let playr_win = assets.blob("playrdtl.win").and_then(|d| Window::parse(d).ok());
+    let comp_win = assets
+        .blob("compndtl.win")
+        .and_then(|d| Window::parse(d).ok());
+    let playr_win = assets
+        .blob("playrdtl.win")
+        .and_then(|d| Window::parse(d).ok());
 
     let compndtl_bg = comp_win
         .as_ref()

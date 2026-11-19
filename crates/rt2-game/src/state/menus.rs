@@ -1741,7 +1741,12 @@ impl AppState {
             let b = ui.add(
                 root,
                 button(n, mfont(1, s * 0.68), A_CAMP_SET + i as u32, None),
-                at((322.0 + i as f32 * 182.0) * s, 228.0 * s, 176.0 * s, 26.0 * s),
+                at(
+                    (322.0 + i as f32 * 182.0) * s,
+                    228.0 * s,
+                    176.0 * s,
+                    26.0 * s,
+                ),
             );
             tips.push((
                 b,
@@ -1763,7 +1768,12 @@ impl AppState {
                     A_CAMP_DIFF + i as u32,
                     camp.difficulty == i,
                 ),
-                at((326.0 + i as f32 * 118.0) * s, 268.0 * s, 112.0 * s, 22.0 * s),
+                at(
+                    (326.0 + i as f32 * 118.0) * s,
+                    268.0 * s,
+                    112.0 * s,
+                    22.0 * s,
+                ),
             );
             tips.push((b, t.get(*tip_id, "Choose the campaign difficulty.")));
         }
@@ -1846,7 +1856,11 @@ impl AppState {
             } else {
                 pv.info.title.clone()
             };
-            let mut lines = vec![title.to_uppercase(), format!("{}", pv.info.year), String::new()];
+            let mut lines = vec![
+                title.to_uppercase(),
+                format!("{}", pv.info.year),
+                String::new(),
+            ];
             lines.extend(wrap_text(
                 &pv.info.description,
                 (tw / (size * 0.56)).floor().max(10.0) as usize,
@@ -1867,7 +1881,12 @@ impl AppState {
         let by = 390.0 * s;
         ui.add(
             root,
-            label(&t.a("Starting bonus"), mfont(1, s * 0.65), dark_ink, Align::Left),
+            label(
+                &t.a("Starting bonus"),
+                mfont(1, s * 0.65),
+                dark_ink,
+                Align::Left,
+            ),
             at(rx, by, rw, 16.0 * s),
         );
         if camp.set == 0

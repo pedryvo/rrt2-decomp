@@ -278,35 +278,37 @@ impl AppState {
             lbl(hint, fnt(2, 13.0 * s), DESK_MUTED, Align::Left),
             at(190.0 * s, 735.0 * s, 645.0 * s, 30.0 * s),
         );
-        let mut add_od_btn =
-            |rect: Layout, sprites: Option<(rt2_ui::SpriteId, rt2_ui::SpriteId)>, action: u32, fallback: String| {
-                if let Some((up, down)) = sprites {
-                    ui.add(
-                        root,
-                        Kind::Icon {
-                            up: Some(up),
-                            down: Some(down),
-                            fallback,
-                            font: fnt(1, 12.0 * s),
-                            action,
-                            on: false,
-                        },
-                        rect,
-                    );
-                } else {
-                    ui.add(
-                        root,
-                        Kind::Button {
-                            text: fallback,
-                            font: fnt(1, 12.0 * s),
-                            action,
-                            enabled: true,
-                            hotkey: None,
-                        },
-                        rect,
-                    );
-                }
-            };
+        let mut add_od_btn = |rect: Layout,
+                              sprites: Option<(rt2_ui::SpriteId, rt2_ui::SpriteId)>,
+                              action: u32,
+                              fallback: String| {
+            if let Some((up, down)) = sprites {
+                ui.add(
+                    root,
+                    Kind::Icon {
+                        up: Some(up),
+                        down: Some(down),
+                        fallback,
+                        font: fnt(1, 12.0 * s),
+                        action,
+                        on: false,
+                    },
+                    rect,
+                );
+            } else {
+                ui.add(
+                    root,
+                    Kind::Button {
+                        text: fallback,
+                        font: fnt(1, 12.0 * s),
+                        action,
+                        enabled: true,
+                        hotkey: None,
+                    },
+                    rect,
+                );
+            }
+        };
         add_od_btn(
             at(845.0 * s, 735.0 * s, 32.0 * s, 29.0 * s),
             det.odbottom_prev,
@@ -336,7 +338,12 @@ impl AppState {
     }
 
     /// Company book (`compndtl.win`) laid out over the original desk/book artwork.
-    pub(super) fn build_company_book_art(&self, ui: &mut Ui, screen: InfoScreen, page: Option<&Page>) {
+    pub(super) fn build_company_book_art(
+        &self,
+        ui: &mut Ui,
+        screen: InfoScreen,
+        page: Option<&Page>,
+    ) {
         let book = &self.dialog_art.book;
         let Some(bg) = book.compndtl_bg else {
             return;
@@ -456,7 +463,12 @@ impl AppState {
             t.get(crate::text::id::FINANCES, "Finances"),
         ];
         for (i, (name, &action)) in sec_names.iter().zip(&tab_actions).enumerate() {
-            let rect = at((160.0 + i as f32 * 116.0) * s, 58.0 * s, 110.0 * s, 22.0 * s);
+            let rect = at(
+                (160.0 + i as f32 * 116.0) * s,
+                58.0 * s,
+                110.0 * s,
+                22.0 * s,
+            );
             ui.add(
                 root,
                 Kind::Panel {
@@ -504,7 +516,15 @@ impl AppState {
         if let Some(page) = page {
             match screen {
                 InfoScreen::Territories(_, mode) => {
-                    self.draw_territories_book(ui, root, s, company, mode, book.comp_left, book.comp_right);
+                    self.draw_territories_book(
+                        ui,
+                        root,
+                        s,
+                        company,
+                        mode,
+                        book.comp_left,
+                        book.comp_right,
+                    );
                 }
                 InfoScreen::Overview(_) => {
                     self.draw_overview_book(ui, root, s, company, page, book);
@@ -547,8 +567,14 @@ impl AppState {
             for (i, (text, action)) in acts.iter().enumerate() {
                 let c = (i % per_row) as f32;
                 let r = (i / per_row) as f32;
-                let font_sz = (bw / (text.chars().count().max(1) as f32 * 0.72)).clamp(8.0 * s, 10.5 * s);
-                let rect = at(504.0 * s + c * (bw + gap), 636.0 * s + r * (bh + 4.0 * s), bw, bh);
+                let font_sz =
+                    (bw / (text.chars().count().max(1) as f32 * 0.72)).clamp(8.0 * s, 10.5 * s);
+                let rect = at(
+                    504.0 * s + c * (bw + gap),
+                    636.0 * s + r * (bh + 4.0 * s),
+                    bw,
+                    bh,
+                );
                 ui.add(
                     root,
                     Kind::Panel {
@@ -730,7 +756,12 @@ impl AppState {
             at(lx, ly + 42.0 * s + mh, lw, 42.0 * s),
         );
 
-        let (rx, ry, rw, rh) = (r_right[0] * s, r_right[1] * s, r_right[2] * s, r_right[3] * s);
+        let (rx, ry, rw, rh) = (
+            r_right[0] * s,
+            r_right[1] * s,
+            r_right[2] * s,
+            r_right[3] * s,
+        );
         let Some(table) = table else {
             ui.add(
                 root,
@@ -815,7 +846,12 @@ impl AppState {
                     sprite: frame.sprite,
                     fit: Fit::Stretch,
                 },
-                at(frame.x as f32 * s, frame.y as f32 * s, frame.w * s, frame.h * s),
+                at(
+                    frame.x as f32 * s,
+                    frame.y as f32 * s,
+                    frame.w * s,
+                    frame.h * s,
+                ),
             );
         }
 

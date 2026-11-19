@@ -66,14 +66,17 @@ pub(crate) fn load(assets: &GameAssets, b: &mut SkinBuilder) -> ListArt {
         return ListArt::default();
     }
     let rect = |id: u16, fallback: [f32; 4]| -> [f32; 4] {
-        w.controls.iter().find(|c| c.id == id).map_or(fallback, |c| {
-            [
-                f32::from(c.rect.x),
-                f32::from(c.rect.y),
-                f32::from(c.rect.w),
-                f32::from(c.rect.h),
-            ]
-        })
+        w.controls
+            .iter()
+            .find(|c| c.id == id)
+            .map_or(fallback, |c| {
+                [
+                    f32::from(c.rect.x),
+                    f32::from(c.rect.y),
+                    f32::from(c.rect.w),
+                    f32::from(c.rect.h),
+                ]
+            })
     };
     ListArt {
         frame: Some(b.add(to_skin_image(&canvas, 1))),

@@ -213,7 +213,10 @@ fn load_helpd(assets: &GameAssets, b: &mut SkinBuilder) -> Option<HelpdArt> {
                 f32::from(c.rect.h),
             ]
         });
-    let btn = |id: u16, fallback: [f32; 4], b: &mut SkinBuilder| -> (u16, [f32; 4], Option<(SpriteId, SpriteId)>) {
+    let btn = |id: u16,
+               fallback: [f32; 4],
+               b: &mut SkinBuilder|
+     -> (u16, [f32; 4], Option<(SpriteId, SpriteId)>) {
         let Some(c) = w.controls.iter().find(|c| c.id == id) else {
             return (id, fallback, None);
         };
@@ -223,9 +226,9 @@ fn load_helpd(assets: &GameAssets, b: &mut SkinBuilder) -> Option<HelpdArt> {
             f32::from(c.rect.w),
             f32::from(c.rect.h),
         ];
-        let sprites = c.button_frames().and_then(|(up, down)| {
-            pair1x(assets, &c.bank, usize::from(up), usize::from(down), b)
-        });
+        let sprites = c
+            .button_frames()
+            .and_then(|(up, down)| pair1x(assets, &c.bank, usize::from(up), usize::from(down), b));
         (id, rect, sprites)
     };
     let buttons = [

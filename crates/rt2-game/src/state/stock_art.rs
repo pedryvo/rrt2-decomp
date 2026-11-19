@@ -184,7 +184,12 @@ impl AppState {
                         font: font(fsize),
                         action: A_ROW,
                     },
-                    at(px, table_y + head_h - 1.0, table_w, rowh * shown as f32 + 2.0),
+                    at(
+                        px,
+                        table_y + head_h - 1.0,
+                        table_w,
+                        rowh * shown as f32 + 2.0,
+                    ),
                 );
                 draw_table(
                     ui,

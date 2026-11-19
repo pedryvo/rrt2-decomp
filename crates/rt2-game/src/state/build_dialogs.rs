@@ -613,7 +613,10 @@ impl AppState {
             );
         }
         // Control 676 (<), 677 (>), 679 (List), 678 (OK).
-        let mut add_btn = |rect: Layout, sprites: Option<(rt2_ui::SpriteId, rt2_ui::SpriteId)>, action: u32, fallback: String| {
+        let mut add_btn = |rect: Layout,
+                           sprites: Option<(rt2_ui::SpriteId, rt2_ui::SpriteId)>,
+                           action: u32,
+                           fallback: String| {
             if let Some((up, down)) = sprites {
                 ui.add(
                     root,
@@ -663,9 +666,7 @@ impl AppState {
         self.with_game(|s, _, co| {
             let own = bt::rec(&s.stations, current).is_some_and(|st| st.i32(0x39) == co);
             let slots: Vec<i32> = (0..s.stations.next.len() as i32)
-                .filter(|&i| {
-                    bt::rec(&s.stations, i).is_some_and(|st| !own || st.i32(0x39) == co)
-                })
+                .filter(|&i| bt::rec(&s.stations, i).is_some_and(|st| !own || st.i32(0x39) == co))
                 .collect();
             if slots.is_empty() {
                 return current;
@@ -949,7 +950,12 @@ impl AppState {
         ui.add(
             root,
             lbl(&page.title, fnt(1, s * 0.95), HEAD, Align::Left),
-            at(td.r_name[0] * s, td.r_name[1] * s, 260.0 * s, td.r_name[3] * s),
+            at(
+                td.r_name[0] * s,
+                td.r_name[1] * s,
+                260.0 * s,
+                td.r_name[3] * s,
+            ),
         );
 
         // Top-right facts (`727`, `728`).
@@ -1197,7 +1203,11 @@ impl AppState {
                     );
                 }
             } else {
-                ui.add(root, button(text.clone(), fnt(1, s * 0.65), action, enabled), l);
+                ui.add(
+                    root,
+                    button(text.clone(), fnt(1, s * 0.65), action, enabled),
+                    l,
+                );
             }
             ui.add(
                 root,
@@ -1211,7 +1221,12 @@ impl AppState {
                     },
                     Align::Center,
                 ),
-                at(rect[0] * s, (rect[1] + 6.0) * s, rect[2] * s, (rect[3] - 12.0) * s),
+                at(
+                    rect[0] * s,
+                    (rect[1] + 6.0) * s,
+                    rect[2] * s,
+                    (rect[3] - 12.0) * s,
+                ),
             );
         };
         oval_btn(

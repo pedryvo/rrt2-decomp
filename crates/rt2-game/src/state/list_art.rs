@@ -45,9 +45,16 @@ impl AppState {
         let s = (cw / 1024.0).min(ch / 768.0);
         let (w, h) = (1024.0 * s, 768.0 * s);
 
-        ui.add_root(Kind::Panel { fill: Fill::Solid(BG) }, Layout::fill());
+        ui.add_root(
+            Kind::Panel {
+                fill: Fill::Solid(BG),
+            },
+            Layout::fill(),
+        );
         let root = ui.add_root(
-            Kind::Panel { fill: Fill::Solid(BG) },
+            Kind::Panel {
+                fill: Fill::Solid(BG),
+            },
             Layout::at(Anchor::Center, w, h),
         );
 
@@ -191,7 +198,12 @@ impl AppState {
                     enabled: true,
                     hotkey: None,
                 },
-                at((sx + sw - 172.0) * s, (sy + 2.0) * s, 166.0 * s, (sh - 5.0) * s),
+                at(
+                    (sx + sw - 172.0) * s,
+                    (sy + 2.0) * s,
+                    166.0 * s,
+                    (sh - 5.0) * s,
+                ),
             );
         }
 
@@ -228,12 +240,7 @@ impl AppState {
                 );
             }
         };
-        add_btn(
-            list_art.r_btn_map,
-            list_art.btn_map,
-            A_CLOSE,
-            String::new(),
-        );
+        add_btn(list_art.r_btn_map, list_art.btn_map, A_CLOSE, String::new());
         let ok_str = self.texts.get(lng::OK, "OK");
         let ok_sprites = list_art.btn_ok.or(self.dialog_art.detail.odbottom_ok);
         add_btn(list_art.r_btn_ok, ok_sprites, A_CLOSE, ok_str.clone());

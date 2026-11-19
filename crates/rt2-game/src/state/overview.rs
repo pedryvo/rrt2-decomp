@@ -830,17 +830,7 @@ impl AppState {
                 let (supply, demand) = &o.roles;
                 let cargos: Vec<u8> = supply.union(demand).copied().collect();
                 if !cargos.is_empty() {
-                    self.overview_cargo_cells(
-                        ui,
-                        root,
-                        lx,
-                        ly,
-                        lw,
-                        128.0 * k,
-                        dz,
-                        &cargos,
-                        supply,
-                    );
+                    self.overview_cargo_cells(ui, root, lx, ly, lw, 128.0 * k, dz, &cargos, supply);
                 }
                 let mut add_ov_btn = |rect: Layout,
                                       sprites: Option<(rt2_ui::SpriteId, rt2_ui::SpriteId)>,
@@ -875,7 +865,12 @@ impl AppState {
                     };
                     ui.add(
                         root,
-                        lbl(&text, fnt(1, dz * 0.82), Color::rgb(0x1e, 0x16, 0x0a), Align::Center),
+                        lbl(
+                            &text,
+                            fnt(1, dz * 0.82),
+                            Color::rgb(0x1e, 0x16, 0x0a),
+                            Align::Center,
+                        ),
                         rect,
                     );
                     tips.push((node, tip));
@@ -885,7 +880,10 @@ impl AppState {
                     self.dialog_art.detail.bpovervw_all,
                     A_OV_ALL,
                     t.get(1932, "All"),
-                    t.get(1933, "Select all of the cargos for viewing in the resource map."),
+                    t.get(
+                        1933,
+                        "Select all of the cargos for viewing in the resource map.",
+                    ),
                 );
                 add_ov_btn(
                     p(323.0, 138.0, 60.0, 21.0),
@@ -987,12 +985,7 @@ impl AppState {
         // Bottom `bpmisc.imb` strip: caption `2016` and Cancel `2015`.
         ui.add(
             root,
-            lbl(
-                &t.a(o.layer.caption()),
-                fnt(1, k * 0.72),
-                HEAD,
-                Align::Left,
-            ),
+            lbl(&t.a(o.layer.caption()), fnt(1, k * 0.72), HEAD, Align::Left),
             p(112.0, 175.0, 218.0, 28.0),
         );
         let cancel_rect = p(354.0, 175.0, 84.0, 29.0);

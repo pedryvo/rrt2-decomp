@@ -123,7 +123,12 @@ pub(super) fn pair(
     Some((u, d))
 }
 
-fn win_btn(assets: &GameAssets, win: &str, id: u16, b: &mut SkinBuilder) -> Option<(SpriteId, SpriteId)> {
+fn win_btn(
+    assets: &GameAssets,
+    win: &str,
+    id: u16,
+    b: &mut SkinBuilder,
+) -> Option<(SpriteId, SpriteId)> {
     let w = rt2_formats::ui::Window::parse(assets.blob(win)?).ok()?;
     let c = w.controls.iter().find(|c| c.id == id)?;
     let up = usize::from(c.tail_u16(0)?);
