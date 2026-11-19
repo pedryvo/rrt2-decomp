@@ -31,6 +31,7 @@ use crate::text::Texts;
 
 mod bldinfo;
 mod build_dialogs;
+mod stock_art;
 mod build_ui;
 mod buy_ui;
 mod campaign;
@@ -245,6 +246,7 @@ pub struct AppState {
     choice_answers: Vec<(u32, u8)>,
     sprite_uploads: std::cell::RefCell<Vec<(SpriteId, Vec<u8>)>>,
     station_view_key: std::cell::RefCell<Option<(u8, i32, u32)>>,
+    stock_tab: u8,
     /// The engine whose picture is in the Purchase Train window's reserved sprite.
     buy_view_key: std::cell::RefCell<Option<i32>>,
     pub(crate) texts: Texts,
@@ -347,6 +349,7 @@ impl AppState {
             choice_answers: Vec::new(),
             sprite_uploads: Default::default(),
             station_view_key: Default::default(),
+            stock_tab: 0,
             buy_view_key: Default::default(),
             texts,
             binds,

@@ -722,6 +722,20 @@ impl AppState {
                 let row = (a - A_STOCK_BUY) % 60;
                 self.stock_trade_row(row as usize);
             }
+            a if (super::stock_art::A_STOCK_VIEW..super::stock_art::A_STOCK_VIEW + 60)
+                .contains(&a) =>
+            {
+                let row = (a - super::stock_art::A_STOCK_VIEW) as usize;
+                self.info_row(row);
+            }
+            super::stock_art::A_STOCK_TAB_PERSONAL => {
+                self.stock_tab = 0;
+                self.rebuild_ui();
+            }
+            super::stock_art::A_STOCK_TAB_CORPORATE => {
+                self.stock_tab = 1;
+                self.rebuild_ui();
+            }
             A_INFO_FLEET => {
                 let co = self.player().unwrap_or(0) as u8;
                 self.push_dialog(Dialog::Fleet {
@@ -846,6 +860,10 @@ impl AppState {
             Screen::Game(g) => g.info.map_or(0, |i| i.scroll),
             Screen::Menu(_) => 0,
         };
+        if matches!(screen, InfoScreen::Stock) && self.dialog_art.stock.frame.is_some() {
+            self.build_stock_art(ui, content, first_scroll);
+            return;
+        }
         let company_nav = matches!(
             screen,
             InfoScreen::Finance(_) | InfoScreen::Overview(_) | InfoScreen::Territories(..)

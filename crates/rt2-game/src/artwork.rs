@@ -9,6 +9,7 @@ pub mod buywin;
 pub mod detailwin;
 pub mod listwin;
 pub mod mainwin;
+pub mod stockwin;
 
 use rt2_ui::{NineSlice, Skin, SkinBuilder, SkinImage, SpriteId, Theme};
 
@@ -83,6 +84,8 @@ pub struct DialogArt {
     pub detail: detailwin::DetailArt,
     /// The full-screen list windows (`artwork/listwin.rs`).
     pub list: listwin::ListArt,
+    /// The stock market window (`artwork/stockwin.rs`).
+    pub stock: stockwin::StockArt,
 }
 
 /// Size of the video frame sprite (clips are scaled into it).
@@ -246,6 +249,7 @@ pub fn load(assets: &GameAssets) -> Artwork {
     let dialogs = DialogArt {
         detail: Default::default(),
         list: Default::default(),
+        stock: Default::default(),
         eagle: all([
             add("eagled.imb", 0),
             add("eagled.imb", 1),
@@ -320,6 +324,7 @@ pub fn load(assets: &GameAssets) -> Artwork {
     dialogs.buy = buywin::load(assets, &mut b);
     dialogs.detail = detailwin::load(assets, &mut b);
     dialogs.list = listwin::load(assets, &mut b);
+    dialogs.stock = stockwin::load(assets, &mut b);
     dialogs.video_frame = Some(b.reserve(VIDEO_FRAME.0, VIDEO_FRAME.1));
     if assets.contains("sdmbkg1.imb") {
         dialogs.station_view =

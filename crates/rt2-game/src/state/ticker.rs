@@ -67,10 +67,24 @@ impl AppState {
 
     /// Draws the band at `(x, y)` inside `panel`; returns its height.
     pub(super) fn draw_ticker(&self, ui: &mut Ui, panel: NodeId, x: f32, y: f32, w: f32) -> f32 {
+        self.draw_ticker_sized(ui, panel, x, y, w, 28.0, 16.0)
+    }
+
+    /// Draws the scrolling ticker band at `(x, y, w, h)` with font `size`.
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn draw_ticker_sized(
+        &self,
+        ui: &mut Ui,
+        panel: NodeId,
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
+        size: f32,
+    ) -> f32 {
         let Some(items) = self.with_info(|i| i.ticker_items()) else {
             return 0.0;
         };
-        let h = 28.0;
         let dome = ui.add(
             panel,
             Kind::Panel {
@@ -78,8 +92,7 @@ impl AppState {
             },
             Layout::at(Anchor::TopLeft, w, h).offset(x, y),
         );
-        let size = 16.0;
-        let width = ((w - 16.0) / (size * 0.62)) as usize;
+        let width = ((w - 16.0) / (size * 0.62)).max(1.0) as usize;
         let text = ticker_window(&items, now_ms(), width);
         ui.add(
             dome,

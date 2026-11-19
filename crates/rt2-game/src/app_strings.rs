@@ -766,6 +766,9 @@ pub static APP_EN: &[&str] = &[
     "Value",
     "No stock holdings.",
     "Left / Right: player   Esc: close",
+    "Personal",
+    "Corporate",
+    "View",
 ];
 
 /// The id of an English default.
@@ -791,6 +794,7 @@ mod tests {
             include_str!("state/saves_ui.rs"),
             include_str!("state/menus.rs"),
             include_str!("state/info_ui.rs"),
+            include_str!("state/stock_art.rs"),
             include_str!("state/build_ui.rs"),
             include_str!("state/build_dialogs.rs"),
             include_str!("state/dialogs/fin.rs"),
