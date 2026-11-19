@@ -26,6 +26,12 @@ pub struct DetailArt {
     pub odbottom_list: Option<(SpriteId, SpriteId)>,
     /// `odbottom.imb` rec 9, 10: OK button at `(962, 734, 60, 32)`.
     pub odbottom_ok: Option<(SpriteId, SpriteId)>,
+    /// `bpovervw.win` control 2000: game-mode Map Overview 458x166 background.
+    pub bpovervw_bg: Option<SpriteId>,
+    /// `bpovervw.win` control 3603: All button (up, down) at `(256, 138, 60, 21)`.
+    pub bpovervw_all: Option<(SpriteId, SpriteId)>,
+    /// `bpovervw.win` control 3604: Clear button (up, down) at `(323, 138, 60, 21)`.
+    pub bpovervw_clear: Option<(SpriteId, SpriteId)>,
 }
 
 fn crop_if_needed(img: RgbaImage, max_w: Option<usize>, max_h: Option<usize>) -> RgbaImage {
@@ -94,6 +100,21 @@ fn pair(
     Some((u, d))
 }
 
+fn win_btn(assets: &GameAssets, win: &str, id: u16, b: &mut SkinBuilder) -> Option<(SpriteId, SpriteId)> {
+    let w = rt2_formats::ui::Window::parse(assets.blob(win)?).ok()?;
+    let c = w.controls.iter().find(|c| c.id == id)?;
+    let up = usize::from(c.tail_u16(0)?);
+    let down = usize::from(c.tail_u16(2).unwrap_or(up as u16));
+    pair(assets, &c.bank, up, down, None, None, b)
+}
+
+fn win_img(assets: &GameAssets, win: &str, id: u16, b: &mut SkinBuilder) -> Option<SpriteId> {
+    let w = rt2_formats::ui::Window::parse(assets.blob(win)?).ok()?;
+    let c = w.controls.iter().find(|c| c.id == id)?;
+    let rec = usize::from(c.image_record()?);
+    add2x(assets, &c.bank, rec, None, None, b).map(|(id, _)| id)
+}
+
 pub(crate) fn load(assets: &GameAssets, b: &mut SkinBuilder) -> DetailArt {
     DetailArt {
         statndtl_frame: placed(assets, "statndtl.imb", 0, 0, 0, b),
@@ -104,5 +125,8 @@ pub(crate) fn load(assets: &GameAssets, b: &mut SkinBuilder) -> DetailArt {
         odbottom_next: pair(assets, "odbottom.imb", 7, 8, None, None, b),
         odbottom_list: pair(assets, "odbottom.imb", 1, 2, Some(40), Some(31), b),
         odbottom_ok: pair(assets, "odbottom.imb", 9, 10, None, None, b),
+        bpovervw_bg: win_img(assets, "bpovervw.win", 2000, b),
+        bpovervw_all: win_btn(assets, "bpovervw.win", 3603, b),
+        bpovervw_clear: win_btn(assets, "bpovervw.win", 3604, b),
     }
 }

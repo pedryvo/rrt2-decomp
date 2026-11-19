@@ -414,6 +414,9 @@ impl AppState {
         dz: f32,
         tips: &mut Vec<(NodeId, String)>,
     ) {
+        if self.build_overview_art_panel(ui, parent, w, h, tips) {
+            return;
+        }
         let t = &self.texts;
         let o = &self.ga.overview;
         o.cargo_nodes.borrow_mut().clear();
@@ -503,7 +506,7 @@ impl AppState {
                 );
             }
             Layer::Grade => {
-                let names = ["< 1%", "1 - 2%", "2 - 3%", "3 - 5%", "5% +"];
+                let names = ["< 1%", "1 - 2%", "2 - 3%", "3 - 5%", "5% +"].map(str::to_owned);
                 self.overview_legend(
                     ui,
                     parent,
@@ -696,6 +699,23 @@ impl AppState {
         }
         let gy = y + bh + 4.0 * dz;
         let gh = (h - bh - 4.0 * dz).max(20.0);
+        self.overview_cargo_cells(ui, parent, x, gy, w, gh, dz, &cargos, supply);
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn overview_cargo_cells(
+        &self,
+        ui: &mut Ui,
+        parent: NodeId,
+        x: f32,
+        gy: f32,
+        w: f32,
+        gh: f32,
+        dz: f32,
+        cargos: &[u8],
+        supply: &BTreeSet<u8>,
+    ) {
+        let o = &self.ga.overview;
         let min_cell = 15.0 * dz;
         let max_rows = ((gh / min_cell).floor() as usize).max(1);
         let cols = cargos.len().div_ceil(max_rows).max(1);
@@ -736,6 +756,267 @@ impl AppState {
             );
             o.cargo_nodes.borrow_mut().push((n, c));
         }
+    }
+
+    /// Map Overview (`bpovervw.win`) laid out over the original `bpovervw.imb` + `bpmisc.imb` art.
+    fn build_overview_art_panel(
+        &self,
+        ui: &mut Ui,
+        parent: NodeId,
+        area_w: f32,
+        area_h: f32,
+        tips: &mut Vec<(NodeId, String)>,
+    ) -> bool {
+        let (Some(bg), Some(misc)) = (
+            self.dialog_art.detail.bpovervw_bg,
+            self.dialog_art.editor.misc,
+        ) else {
+            return false;
+        };
+        let t = &self.texts;
+        let o = &self.ga.overview;
+        o.cargo_nodes.borrow_mut().clear();
+
+        let (cw, ch) = (458.0f32, 216.0f32);
+        let k = (area_w / cw).min(area_h / ch).max(0.1);
+        let (w, h) = (cw * k, ch * k);
+        let root = ui.add(
+            parent,
+            Kind::Panel { fill: Fill::None },
+            Layout::at(Anchor::TopLeft, w, h)
+                .offset(((area_w - w) / 2.0).round(), ((area_h - h) / 2.0).round()),
+        );
+        let p = |x: f32, y: f32, pw: f32, ph: f32| at(x * k, y * k, pw * k, ph * k);
+
+        ui.add(
+            root,
+            Kind::Image {
+                sprite: bg,
+                fit: rt2_ui::Fit::Stretch,
+            },
+            p(0.0, 0.0, 458.0, 166.0),
+        );
+        ui.add(
+            root,
+            Kind::Image {
+                sprite: misc,
+                fit: rt2_ui::Fit::Stretch,
+            },
+            p(0.0, 166.0, 458.0, 50.0),
+        );
+
+        // Five mode bars on the right (`2008..2012` at 397, 4 + 32*i, 56x31).
+        for (i, l) in Layer::ALL.iter().take(5).enumerate() {
+            let (id, en) = l.tip();
+            let tip_text = if id != 0 { t.get(id, en) } else { t.a(en) };
+            let n = ui.add(
+                root,
+                Kind::Hotspot {
+                    action: A_OV_LAYER + i as u32,
+                    on: o.layer == *l,
+                    enabled: true,
+                },
+                p(397.0, 4.0 + 32.0 * i as f32, 56.0, 31.0),
+            );
+            tips.push((n, tip_text));
+        }
+
+        // Left list area (`3605` at 5, 2, 383x167).
+        let (lx, ly, lw) = (8.0 * k, 5.0 * k, 376.0 * k);
+        let lh = 154.0 * k;
+        let dz = k * 0.72;
+        match o.layer {
+            Layer::Resource | Layer::SupplyDemand => {
+                let (supply, demand) = &o.roles;
+                let cargos: Vec<u8> = supply.union(demand).copied().collect();
+                if !cargos.is_empty() {
+                    self.overview_cargo_cells(
+                        ui,
+                        root,
+                        lx,
+                        ly,
+                        lw,
+                        128.0 * k,
+                        dz,
+                        &cargos,
+                        supply,
+                    );
+                }
+                let mut add_ov_btn = |rect: Layout,
+                                      sprites: Option<(rt2_ui::SpriteId, rt2_ui::SpriteId)>,
+                                      action: u32,
+                                      text: String,
+                                      tip: String| {
+                    let node = if let Some((up, down)) = sprites {
+                        ui.add(
+                            root,
+                            Kind::Icon {
+                                up: Some(up),
+                                down: Some(down),
+                                fallback: text.clone(),
+                                font: fnt(1, dz * 0.85),
+                                action,
+                                on: false,
+                            },
+                            rect,
+                        )
+                    } else {
+                        ui.add(
+                            root,
+                            Kind::Button {
+                                text: text.clone(),
+                                font: fnt(1, dz * 0.85),
+                                action,
+                                enabled: true,
+                                hotkey: None,
+                            },
+                            rect,
+                        )
+                    };
+                    ui.add(
+                        root,
+                        lbl(&text, fnt(1, dz * 0.82), Color::rgb(0x1e, 0x16, 0x0a), Align::Center),
+                        rect,
+                    );
+                    tips.push((node, tip));
+                };
+                add_ov_btn(
+                    p(256.0, 138.0, 60.0, 21.0),
+                    self.dialog_art.detail.bpovervw_all,
+                    A_OV_ALL,
+                    t.get(1932, "All"),
+                    t.get(1933, "Select all of the cargos for viewing in the resource map."),
+                );
+                add_ov_btn(
+                    p(323.0, 138.0, 60.0, 21.0),
+                    self.dialog_art.detail.bpovervw_clear,
+                    A_OV_CLEAR,
+                    t.get(1934, "Clear"),
+                    t.get(1935, "Clear all selected cargos."),
+                );
+            }
+            Layer::Stations => {
+                self.overview_note(
+                    ui,
+                    root,
+                    lx,
+                    ly,
+                    lw,
+                    lh,
+                    dz,
+                    &t.a("A box at each station shows how many lots are waiting there: green is little, red is a lot."),
+                );
+            }
+            Layer::Grade => {
+                let names = ["< 1%", "1 - 2%", "2 - 3%", "3 - 5%", "5% +"].map(str::to_owned);
+                self.overview_legend(
+                    ui,
+                    root,
+                    lx,
+                    ly,
+                    lw,
+                    dz,
+                    &t.a("Track Grade"),
+                    &grade_colors(self.config.accessibility.colorblind),
+                    &names,
+                );
+            }
+            Layer::Traffic => {
+                let names = [
+                    t.a("Light"),
+                    t.a("Moderate"),
+                    t.a("Busy"),
+                    t.a("Heavy"),
+                    t.a("Very heavy"),
+                ];
+                self.overview_legend(
+                    ui,
+                    root,
+                    lx,
+                    ly,
+                    lw,
+                    dz,
+                    &t.a("Traffic Density"),
+                    &traffic_colors(self.config.accessibility.colorblind),
+                    &names,
+                );
+            }
+            Layer::Profit => {
+                let names = [
+                    t.a("High profit"),
+                    t.a("Moderate profit"),
+                    t.a("Break-even"),
+                    t.a("Minor loss"),
+                    t.a("Heavy loss"),
+                ];
+                self.overview_legend(
+                    ui,
+                    root,
+                    lx,
+                    ly,
+                    lw,
+                    dz,
+                    &t.a("Track Profitability"),
+                    &profit_colors(self.config.accessibility.colorblind),
+                    &names,
+                );
+            }
+            Layer::Congestion => {
+                let names = [
+                    t.a("Free flow"),
+                    t.a("Light delay"),
+                    t.a("Moderate delay"),
+                    t.a("Heavy queue"),
+                    t.a("Bottleneck"),
+                ];
+                self.overview_legend(
+                    ui,
+                    root,
+                    lx,
+                    ly,
+                    lw,
+                    dz,
+                    &t.a("Track Congestion & Bottlenecks"),
+                    &congestion_colors(self.config.accessibility.colorblind),
+                    &names,
+                );
+            }
+            Layer::Company => self.overview_company_list(ui, root, lx, ly, lw, lh, dz),
+        }
+
+        // Bottom `bpmisc.imb` strip: caption `2016` and Cancel `2015`.
+        ui.add(
+            root,
+            lbl(
+                &t.a(o.layer.caption()),
+                fnt(1, k * 0.72),
+                HEAD,
+                Align::Left,
+            ),
+            p(112.0, 175.0, 218.0, 28.0),
+        );
+        let cancel_rect = p(354.0, 175.0, 84.0, 29.0);
+        let cancel = ui.add(
+            root,
+            Kind::Hotspot {
+                action: A_OV_CANCEL,
+                on: false,
+                enabled: true,
+            },
+            cancel_rect,
+        );
+        ui.add(
+            root,
+            lbl(
+                &t.get(1929, "Cancel"),
+                fnt(1, k * 0.72),
+                Color::rgb(0x1e, 0x16, 0x0a),
+                Align::Center,
+            ),
+            cancel_rect,
+        );
+        tips.push((cancel, t.get(1930, "Cancel out of 'Map Overview'")));
+        true
     }
 
     #[allow(clippy::too_many_arguments)]

@@ -5,6 +5,7 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 ## Unreleased
 
 - Improved: Station Detail (`statndtl.win`) now renders with the original `statndtl.imb` frame, Buy oval button, Supply/Demand table, and `odbottom.imb` navigation bar (`<`, `>`, list, and tab switches).
+- Improved: Map Overview (`bpovervw.win`) now renders in the center panel with the original `bpovervw.imb` and `bpmisc.imb` artwork, five mode bars, and `All`/`Clear`/`Cancel` buttons.
 
 ## v0.4.2 — 2026-11-18
 
