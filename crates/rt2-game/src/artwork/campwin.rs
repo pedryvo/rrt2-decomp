@@ -23,6 +23,17 @@ pub struct CampModalArt {
     pub fileopt: Option<FileOptArt>,
     /// `helpd.win` frame, text rect, and button plates.
     pub helpd: Option<HelpdArt>,
+    /// `filerq.win` frame and Load/Save + Cancel brass plates.
+    pub filerq: Option<FilerqArt>,
+}
+
+/// Composed `filerq.win` frame (`562x572`) and its two bottom button controls (`406`, `407`).
+#[derive(Clone, Debug)]
+pub struct FilerqArt {
+    pub w: f32,
+    pub h: f32,
+    pub frame: SpriteId,
+    pub buttons: [HelpdButton; 2],
 }
 
 /// Composed `fileopt.win` frame (`475x592`) and its 7 button controls.
@@ -245,6 +256,38 @@ fn load_helpd(assets: &GameAssets, b: &mut SkinBuilder) -> Option<HelpdArt> {
     })
 }
 
+fn load_filerq(assets: &GameAssets, b: &mut SkinBuilder) -> Option<FilerqArt> {
+    let w = Window::parse(assets.blob("filerq.win")?).ok()?;
+    let width = (w.width as usize).max(562);
+    let height = (w.height as usize).max(572);
+    let frame = compose_window_images(assets, &w, width, height, b)?;
+    let btn = |id: u16, fallback: [f32; 4], b: &mut SkinBuilder| -> HelpdButton {
+        let Some(c) = w.controls.iter().find(|c| c.id == id) else {
+            return (id, fallback, None);
+        };
+        let rect = [
+            f32::from(c.rect.x),
+            f32::from(c.rect.y),
+            f32::from(c.rect.w),
+            f32::from(c.rect.h),
+        ];
+        let sprites = c
+            .button_frames()
+            .and_then(|(up, down)| pair1x(assets, &c.bank, usize::from(up), usize::from(down), b));
+        (id, rect, sprites)
+    };
+    let buttons = [
+        btn(406, [113.0, 448.0, 128.0, 50.0], b),
+        btn(407, [327.0, 448.0, 128.0, 50.0], b),
+    ];
+    Some(FilerqArt {
+        w: width as f32,
+        h: height as f32,
+        frame,
+        buttons,
+    })
+}
+
 pub(crate) fn load(assets: &GameAssets, b: &mut SkinBuilder) -> CampModalArt {
     CampModalArt {
         campaign_bg: load_campaign_bg(assets, b),
@@ -257,5 +300,6 @@ pub(crate) fn load(assets: &GameAssets, b: &mut SkinBuilder) -> CampModalArt {
         lock_x: add2x(assets, "campmisc.imb", 5, b),
         fileopt: load_fileopt(assets, b),
         helpd: load_helpd(assets, b),
+        filerq: load_filerq(assets, b),
     }
 }

@@ -22,6 +22,8 @@ pub(super) const A_TP_SELL: u32 = 11202;
 pub(super) const A_TP_CLASS: u32 = 11203;
 pub(super) const A_TP_CARS: u32 = 11204;
 pub(super) const A_TP_SUGGEST: u32 = 11205;
+pub(super) const A_TP_THROTTLE_DEC: u32 = 11206;
+pub(super) const A_TP_THROTTLE_INC: u32 = 11207;
 /// Car list: remove the car in slot `a - A_CL_REMOVE` (6 slots).
 pub(super) const A_CL_REMOVE: u32 = 11220;
 /// Car list: add the cargo `a - A_CL_ADD` (cargo ids below 0x2c).
@@ -304,12 +306,27 @@ impl AppState {
                 None,
             );
         }
+        let thr_x = x + (if steam { 3.0 } else { 2.0 }) * (gw + 8.0 * dz);
         put(
             ui,
             t.a("Throttle"),
             p.throttle,
             Color::rgb(0x60, 0xc0, 0x60),
             Some(85.0),
+        );
+        let tbw = 18.0 * dz;
+        let tbh = 16.0 * dz;
+        let tby = gy + 26.0 * dz;
+        let tf = fnt(1, dz * 0.65);
+        ui.add(
+            root,
+            button("-".to_owned(), tf, A_TP_THROTTLE_DEC, true),
+            at(thr_x, tby, tbw, tbh),
+        );
+        ui.add(
+            root,
+            button("+".to_owned(), tf, A_TP_THROTTLE_INC, true),
+            at(thr_x + gw - tbw, tby, tbw, tbh),
         );
         let info = format!(
             "{}   {}   {}",
@@ -410,6 +427,21 @@ impl AppState {
                     train,
                     stop,
                     cargo: c,
+                }
+            }
+            A_TP_THROTTLE_DEC | A_TP_THROTTLE_INC => {
+                let cur = self
+                    .with_info(|i| i.train_panel(train as u32))
+                    .flatten()
+                    .map_or(100, |p| (p.throttle * 100.0).round() as i32);
+                let next = if action == A_TP_THROTTLE_INC {
+                    (cur + 10).min(100)
+                } else {
+                    (cur - 10).max(0)
+                };
+                BuildCmd::TrainThrottle {
+                    train,
+                    value: next as u8,
                 }
             }
             _ => return,

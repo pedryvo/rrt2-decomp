@@ -45,6 +45,7 @@ pub(super) const A_LIST_SCREEN: u32 = 341;
 pub(super) const A_BRIEFING: u32 = 342;
 /// The small message button of the activity box: history on / off.
 pub(super) const A_NEWS: u32 = 343;
+pub(super) const A_CENTER_EXPAND: u32 = 344;
 
 /// The eight action icons: first record of the (up, down) pair in `mainbut.imb`, the LNG id of
 /// the status-line hint, the English hint and a short caption for when there is no art.
@@ -107,6 +108,8 @@ pub(super) struct CenterState {
     pub scroll: usize,
     /// The activity box shows the message history instead of the logo.
     pub news_open: bool,
+    /// Expanded center box (`mwexpand`): doubles the height upward over the map.
+    pub expanded: bool,
 }
 
 impl Default for CenterState {
@@ -117,6 +120,7 @@ impl Default for CenterState {
             sel: None,
             scroll: 0,
             news_open: false,
+            expanded: false,
         }
     }
 }
@@ -319,7 +323,10 @@ pub(super) fn hud_blockers(cw: f32, ch: f32) -> Vec<[f32; 4]> {
 
 /// Row height, header height and the number of rows the center list shows for `tab`.
 fn center_rows(gm: &Geometry, tab: usize) -> (f32, f32, usize) {
-    let h = gm.center()[3];
+    center_rows_for(gm, tab, gm.center()[3])
+}
+
+fn center_rows_for(gm: &Geometry, tab: usize, h: f32) -> (f32, f32, usize) {
     // The companies tab has no header and taller rows (logo, name, cash and profits).
     let (rowh, head_h) = if tab == 3 {
         ((40.0 * gm.dz).round(), 0.0)
@@ -359,7 +366,7 @@ impl AppState {
     fn center_table(&self, tab: usize) -> Table {
         self.with_info(|i| match tab {
             0 => i.stations_list().table,
-            1 => i.trains_list().table,
+            1 => i.center_trains_table(),
             2 => i.players_list().table,
             _ => {
                 let mut t = Table::new(&[("", 1.0, false)]);
@@ -470,12 +477,14 @@ impl AppState {
         let gm = geometry(cw, ch);
         let a = gm.dz;
         let art = self.dialog_art.main;
-        let (center_tab, center_sel, center_scroll, news_open) = match &self.screen {
+        let (center_tab, center_sel, center_scroll, news_open, center_expanded) = match &self.screen
+        {
             Screen::Game(g) => (
                 g.center.tab,
                 g.center.sel,
                 g.center.scroll,
                 g.center.news_open,
+                g.center.expanded,
             ),
             Screen::Menu(_) => return,
         };
@@ -504,7 +513,12 @@ impl AppState {
         // ---- what shows through the holes of the frame -------------------------------------
         let radar_rect = gm.rl(21.0, 467.0, 236.0, 244.0);
         let act_rect = gm.rr(766.0, 497.0, 237.0, 214.0);
-        let center = gm.center();
+        let mut center = gm.center();
+        if center_expanded {
+            let extra = (center[3] * 1.1).min(center[1] - 40.0 * a).max(0.0);
+            center[1] -= extra;
+            center[3] += extra;
+        }
         solid(ui, radar_rect, metal);
         solid(ui, act_rect, Color(0x12, 0x14, 0x34, 0xff));
         for y in &PLATE_Y[1..] {
@@ -690,6 +704,18 @@ impl AppState {
                 [center[2], center[3]],
                 &gm,
                 &mut center_node,
+            );
+            let eb_size = (18.0 * a).round();
+            ui.add(
+                cbox,
+                Kind::Button {
+                    text: if center_expanded { "v" } else { "^" }.to_owned(),
+                    font: font(1, a * 0.65),
+                    action: A_CENTER_EXPAND,
+                    enabled: true,
+                    hotkey: None,
+                },
+                at(center[2] - eb_size - 2.0, 2.0, eb_size, eb_size),
             );
         }
         // Inner shadows of the three boxes.
@@ -997,7 +1023,7 @@ impl AppState {
         center_node: &mut Option<NodeId>,
     ) {
         let dz = gm.dz;
-        let (rowh, head_h, visible) = center_rows(gm, tab);
+        let (rowh, head_h, visible) = center_rows_for(gm, tab, h);
         let mut table = self.center_table(tab);
         let n = table.rows.len();
         let first = scroll.min(n.saturating_sub(visible));
@@ -1173,6 +1199,12 @@ impl AppState {
             A_LIST_SCREEN => self.center_list_screen(),
             A_BRIEFING => self.push_dialog(Dialog::Goals),
             A_NEWS => self.toggle_news(),
+            A_CENTER_EXPAND => {
+                if let Screen::Game(g) = &mut self.screen {
+                    g.center.expanded = !g.center.expanded;
+                }
+                self.rebuild_ui();
+            }
             _ => return false,
         }
         true
@@ -1226,6 +1258,7 @@ impl AppState {
                 sel: None,
                 scroll: 0,
                 news_open: g.center.news_open,
+                expanded: g.center.expanded,
             };
         }
         self.rebuild_ui();

@@ -565,6 +565,10 @@ impl AppState {
             },
             Layout::fill(),
         );
+        if let Some(fq) = &self.dialog_art.camp.filerq {
+            self.build_saves_art(ui, st, fq, cw, ch);
+            return;
+        }
         let (pw, ph) = ((cw - 16.0).min(860.0), (ch - 16.0).min(600.0));
         let panel = ui.add_root(
             Kind::Panel { fill: Fill::Panel },
@@ -768,6 +772,215 @@ impl AppState {
             },
             at(pw - pad - bw, foot_y, bw, foot_h),
         );
+    }
+
+    /// Renders the Load/Save screen with the original `filerq.win` frame (`562x572`) and brass
+    /// buttons, placing the save thumbnail card beside it when the canvas is wide enough.
+    fn build_saves_art(
+        &self,
+        ui: &mut Ui,
+        st: &SavesState,
+        fq: &crate::artwork::campwin::FilerqArt,
+        cw: f32,
+        ch: f32,
+    ) {
+        let t = &self.texts;
+        let s = ((cw - 16.0) / fq.w)
+            .min((ch - 16.0) / fq.h)
+            .clamp(0.45, 1.45);
+        let (fw, fh) = (fq.w * s, fq.h * s);
+        let side_w = if cw >= fw + 260.0 * s { 240.0 * s } else { 0.0 };
+        let total_w = fw + if side_w > 0.0 { side_w + 12.0 * s } else { 0.0 };
+        let wrap = ui.add_root(
+            Kind::Panel { fill: Fill::None },
+            Layout::at(Anchor::Center, total_w, fh),
+        );
+        ui.add(
+            wrap,
+            Kind::Image {
+                sprite: fq.frame,
+                fit: rt2_ui::Fit::Stretch,
+            },
+            at(0.0, 0.0, fw, fh),
+        );
+        // Header title (`Save Game` / `Load Game`).
+        let title = if st.mode == SavesMode::Save {
+            t.a("Save Game")
+        } else {
+            t.a("Load Game")
+        };
+        ui.add(
+            wrap,
+            Kind::Label {
+                text: title.to_uppercase(),
+                font: game_font(3)
+                    .with_size((15.0 * s).round().max(11.0))
+                    .with_shadow(),
+                color: GOLD,
+                align: Align::Center,
+                wrap: false,
+            },
+            at(95.0 * s, 44.0 * s, 404.0 * s, 24.0 * s),
+        );
+        // Save list inside `filerq.win` list rect `(95, 70, 404, 321)`.
+        let fs = (13.5 * s).round().max(10.0);
+        let items: Vec<String> = st
+            .rows
+            .iter()
+            .map(|r| {
+                let tag = match (r.original, r.entry.kind()) {
+                    (true, _) => t.a("(original)"),
+                    (_, SaveKind::Auto) => t.a("(auto)"),
+                    (_, SaveKind::Quick) => t.a("(quick)"),
+                    _ => String::new(),
+                };
+                if tag.is_empty() {
+                    r.entry.stem.clone()
+                } else {
+                    format!("{}  {tag}", r.entry.stem)
+                }
+            })
+            .collect();
+        let empty = items.is_empty();
+        let list = ui.add(
+            wrap,
+            Kind::List {
+                items,
+                selected: st.sel,
+                scroll: st.sel.unwrap_or(0).saturating_sub(5),
+                row_h: (fs * 1.5).round(),
+                font: game_font(8).with_size(fs),
+                action: A_SV_LIST,
+            },
+            at(95.0 * s, 70.0 * s, 404.0 * s, 321.0 * s),
+        );
+        if st.mode == SavesMode::Load {
+            ui.set_focus(Some(list));
+        }
+        if empty {
+            ui.add(
+                wrap,
+                Kind::Label {
+                    text: t.a("No saved games yet."),
+                    font: game_font(8).with_size(fs).with_shadow(),
+                    color: MUTED,
+                    align: Align::Center,
+                    wrap: false,
+                },
+                at(95.0 * s, 210.0 * s, 404.0 * s, 24.0 * s),
+            );
+        }
+        // Text box `(97, 414, 375, 25)`: typed name in Save mode, or status/selection in Load mode.
+        let field_text = if st.mode == SavesMode::Save {
+            format!("{}_", st.name)
+        } else if let Some((m, _)) = &st.message {
+            m.clone()
+        } else {
+            st.sel
+                .and_then(|i| st.rows.get(i))
+                .map_or_else(String::new, |r| r.entry.stem.clone())
+        };
+        ui.add(
+            wrap,
+            Kind::Label {
+                text: field_text,
+                font: game_font(8).with_size((13.0 * s).round().max(10.0)),
+                color: if st.message.as_ref().is_some_and(|(_, bad)| *bad) {
+                    WARN
+                } else {
+                    GOLD
+                },
+                align: Align::Left,
+                wrap: false,
+            },
+            at(104.0 * s, 414.0 * s, 360.0 * s, 25.0 * s),
+        );
+        // Bottom brass buttons (`406` = OK, `407` = Cancel) + Delete button between them.
+        let overwrite = st.mode == SavesMode::Save
+            && st
+                .rows
+                .iter()
+                .any(|r| !r.original && r.entry.stem == saves::sanitize_stem(&st.name));
+        let ok_text = match (st.mode, overwrite) {
+            (SavesMode::Load, _) => t.a("Load"),
+            (SavesMode::Save, true) => t.a("Overwrite"),
+            (SavesMode::Save, false) => t.a("Save"),
+        };
+        let ok_enabled = match st.mode {
+            SavesMode::Load => st.sel.is_some(),
+            SavesMode::Save => !st.name.trim().is_empty(),
+        };
+        let bf = game_font(3).with_size((13.0 * s).round().max(10.0));
+        let dark_ink = Color::rgb(0x2a, 0x1c, 0x0c);
+        for ((_, rect, sprites), label_str, action, enabled) in [
+            (&fq.buttons[0], ok_text, A_SV_OK, ok_enabled),
+            (&fq.buttons[1], t.a("Cancel"), A_SV_CANCEL, true),
+        ] {
+            let (bx, by, bw, bh) = (rect[0] * s, rect[1] * s, rect[2] * s, rect[3] * s);
+            if let Some((up, down)) = sprites
+                && enabled
+            {
+                ui.add(
+                    wrap,
+                    Kind::Icon {
+                        up: Some(*up),
+                        down: Some(*down),
+                        fallback: label_str.clone(),
+                        font: bf,
+                        action,
+                        on: false,
+                    },
+                    at(bx, by, bw, bh),
+                );
+                ui.add(
+                    wrap,
+                    Kind::Label {
+                        text: label_str,
+                        font: bf,
+                        color: dark_ink,
+                        align: Align::Center,
+                        wrap: false,
+                    },
+                    at(bx + bw * 0.1, by, bw * 0.8, bh),
+                );
+            } else {
+                ui.add(
+                    wrap,
+                    Kind::Button {
+                        text: label_str,
+                        font: bf,
+                        action,
+                        enabled,
+                        hotkey: None,
+                    },
+                    at(bx + 6.0 * s, by + 6.0 * s, bw - 12.0 * s, bh - 12.0 * s),
+                );
+            }
+        }
+        let sel_own = st
+            .sel
+            .and_then(|i| st.rows.get(i))
+            .is_some_and(|r| !r.original);
+        if sel_own {
+            ui.add(
+                wrap,
+                Kind::Button {
+                    text: if st.armed {
+                        t.a("Really delete?")
+                    } else {
+                        t.a("Delete")
+                    },
+                    font: game_font(2).with_size((11.0 * s).round().max(9.0)),
+                    action: A_SV_DELETE,
+                    enabled: true,
+                    hotkey: None,
+                },
+                at(244.0 * s, 456.0 * s, 80.0 * s, 32.0 * s),
+            );
+        }
+        if side_w > 0.0 {
+            self.build_save_detail(ui, wrap, st, fw + 12.0 * s, 40.0 * s, side_w, 380.0 * s, fs);
+        }
     }
 
     #[allow(clippy::too_many_arguments)]

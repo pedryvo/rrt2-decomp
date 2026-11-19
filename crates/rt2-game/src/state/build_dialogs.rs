@@ -1586,7 +1586,33 @@ impl AppState {
             x: 0,
             y: 0,
         }) {
-            Ok(_) => self.rebuild_ui(),
+            Ok(_) => {
+                // When the route has at least 2 stops, pre-fill any unconfigured stop with
+                // demand-matched cars so newly created trains start with a useful consist.
+                if let Some(stops) = self.with_game(|s, _, _| bt::train_stops(s, train))
+                    && stops.len() >= 2
+                {
+                    for (idx, st) in stops.iter().enumerate() {
+                        if !st.waypoint
+                            && st.cargo.is_empty()
+                            && let Some(auto) =
+                                self.with_info(|i| i.auto_consist_for_stop(train, idx))
+                            && !auto.is_empty()
+                        {
+                            let mut c = [0xffu8; 6];
+                            for (slot, v) in c.iter_mut().zip(&auto) {
+                                *slot = *v;
+                            }
+                            let _ = self.issue(BuildCmd::StopCargo {
+                                train,
+                                stop: idx as i32,
+                                cargo: c,
+                            });
+                        }
+                    }
+                }
+                self.rebuild_ui();
+            }
             Err(e) => {
                 let m = self.cmd_error_text(e, 394);
                 self.toast_text(m);

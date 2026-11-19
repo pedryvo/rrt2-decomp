@@ -66,6 +66,7 @@ impl Tab {
                 Setting::InvertZoom,
                 Setting::ZoomSpeed,
                 Setting::IntroVideo,
+                Setting::GridLines,
             ],
             Tab::Notices => &[
                 Setting::NoticeScenario,
@@ -111,10 +112,11 @@ pub enum Setting {
     Colorblind,
     FontScale,
     SoundSubtitles,
+    GridLines,
 }
 
 impl Setting {
-    pub const ALL: [Setting; 26] = [
+    pub const ALL: [Setting; 27] = [
         Setting::WindowMode,
         Setting::Resolution,
         Setting::Monitor,
@@ -141,6 +143,7 @@ impl Setting {
         Setting::Colorblind,
         Setting::FontScale,
         Setting::SoundSubtitles,
+        Setting::GridLines,
     ];
 
     pub fn index(self) -> u32 {
@@ -183,6 +186,7 @@ impl Setting {
             Setting::InvertZoom => "Reverse wheel zoom",
             Setting::ZoomSpeed => "Wheel zoom speed",
             Setting::IntroVideo => "Play the intro video",
+            Setting::GridLines => "Grid lines",
             Setting::NoticeScenario => Category::Scenario.english(),
             Setting::NoticeFinance => Category::Finance.english(),
             Setting::NoticeTowns => Category::Towns.english(),
@@ -407,6 +411,7 @@ fn row(s: Setting, c: &Config, env: &Env, t: &Texts) -> Row {
         Setting::InvertDrag => toggle(s, label, g.invert_drag),
         Setting::InvertZoom => toggle(s, label, g.invert_zoom),
         Setting::IntroVideo => toggle(s, label, g.intro_video),
+        Setting::GridLines => toggle(s, label, g.grid_lines),
         Setting::NoticeScenario
         | Setting::NoticeFinance
         | Setting::NoticeTowns
@@ -590,6 +595,11 @@ pub fn apply(c: &mut Config, s: Setting, change: Change, env: &Env) -> Effects {
         Setting::IntroVideo => {
             if change == Change::Toggle {
                 g.intro_video = !g.intro_video;
+            }
+        }
+        Setting::GridLines => {
+            if change == Change::Toggle {
+                g.grid_lines = !g.grid_lines;
             }
         }
         Setting::ZoomSpeed => {

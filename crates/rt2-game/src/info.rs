@@ -940,8 +940,12 @@ impl<'a> Info<'a> {
                     } else {
                         DASH.into()
                     },
-                    // TODO: the train's profit counter is not identified in trains.md.
-                    DASH.into(),
+                    // `+0xfd`: YTD revenue/profit counter of the train (trains.md 1.1).
+                    if d {
+                        money(f64::from(rr.i32(0xfd)))
+                    } else {
+                        DASH.into()
+                    },
                 ],
             );
         }
@@ -949,6 +953,49 @@ impl<'a> Info<'a> {
             title: self.t(978, "Trains"),
             table: t,
         }
+    }
+
+    /// Compact 5-column table for the main window's Trains center tab (`Name`, `Class`, `Cars`,
+    /// `Speed`, `Profit`), keeping all key metrics visible without truncation.
+    pub fn center_trains_table(&self) -> Table {
+        let mut t = Table::new(&[
+            (&self.t(216, "Name"), 2.4, false),
+            (&self.a("Class"), 1.2, false),
+            (&self.a("Cars"), 0.8, true),
+            (&self.a("Speed"), 1.2, true),
+            (&self.t(36, "Profit"), 1.4, true),
+        ]);
+        let d = self.detailed();
+        let classes = [
+            self.a("Halted"),
+            self.a("Slow"),
+            self.a("Normal"),
+            self.a("Express"),
+        ];
+        for r in self.save.trains.ordered() {
+            let rr = Rec(&r.data);
+            let cars = self.cars(&rr);
+            let cls = classes[usize::from(rr.u8(0xa7).min(3))].clone();
+            t.push(
+                r.slot as u32,
+                vec![
+                    self.train_name(&rr),
+                    if d { cls } else { DASH.into() },
+                    if d {
+                        cars.len().to_string()
+                    } else {
+                        DASH.into()
+                    },
+                    if d { self.mph(&rr) } else { DASH.into() },
+                    if d {
+                        money(f64::from(rr.i32(0xfd)))
+                    } else {
+                        DASH.into()
+                    },
+                ],
+            );
+        }
+        t
     }
 
     pub fn train_page(&self, slot: u32) -> Page {
@@ -1017,7 +1064,14 @@ impl<'a> Info<'a> {
                     DASH.into()
                 },
             ),
-            (self.t(36, "Profit"), DASH.to_owned()),
+            (
+                self.t(36, "Profit"),
+                if d {
+                    money(f64::from(rr.i32(0xfd)))
+                } else {
+                    DASH.to_owned()
+                },
+            ),
         ];
         if d && rr.u8(0xed) != 0 {
             facts.push((self.a("Condition"), self.a("broken down")));

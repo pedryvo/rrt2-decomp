@@ -29,6 +29,8 @@ pub(super) const A_ROW: u32 = 120;
 pub(super) const A_TOOL: u32 = 130;
 pub(super) const A_INFO_FLEET: u32 = 140;
 pub(super) const A_LIST_TAB: u32 = 150;
+/// Column sort buttons of the full-screen lists (`A_SORT_COL + col`).
+pub(super) const A_SORT_COL: u32 = 160;
 /// Per-row Buy / Sell buttons of the stock list (row = action - base, 60 rows each).
 pub(super) const A_STOCK_BUY: u32 = 6200;
 pub(super) const A_STOCK_SELL: u32 = 6260;
@@ -144,13 +146,15 @@ impl InfoScreen {
     }
 }
 
-/// What is open: the screen and the first visible row of a list.
+/// What is open: the screen, the first visible row of a list, and optional column sort.
 #[derive(Clone, Copy, Debug)]
 pub(super) struct InfoState {
     pub screen: InfoScreen,
     pub scroll: usize,
     /// Day of the last build, to refresh the numbers when the simulated day changes.
     pub day: i32,
+    /// Active sort `(column, ascending)` for list screens.
+    pub sort: Option<(usize, bool)>,
 }
 
 pub(super) enum Content {
@@ -212,6 +216,36 @@ fn max_cols(blocks: &[Block]) -> usize {
         })
         .max()
         .unwrap_or(1)
+}
+
+fn sort_table(table: &mut Table, col: usize, asc: bool) {
+    if col >= table.cols.len() || table.rows.len() <= 1 {
+        return;
+    }
+    let mut pairs: Vec<(u32, Vec<String>)> = table
+        .ids
+        .iter()
+        .copied()
+        .zip(table.rows.iter().cloned())
+        .collect();
+    let total_tail: Vec<_> = pairs
+        .iter()
+        .filter(|(id, _)| *id == TOTAL)
+        .cloned()
+        .collect();
+    pairs.retain(|(id, _)| *id != TOTAL);
+    pairs.sort_by(|a, b| {
+        let sa = a.1.get(col).map_or("", String::as_str);
+        let sb = b.1.get(col).map_or("", String::as_str);
+        let ord = match (AppState::parse_sort_num(sa), AppState::parse_sort_num(sb)) {
+            (Some(na), Some(nb)) => na.partial_cmp(&nb).unwrap_or(std::cmp::Ordering::Equal),
+            _ => sa.to_lowercase().cmp(&sb.to_lowercase()),
+        };
+        if asc { ord } else { ord.reverse() }
+    });
+    pairs.extend(total_tail);
+    table.ids = pairs.iter().map(|(id, _)| *id).collect();
+    table.rows = pairs.into_iter().map(|(_, r)| r).collect();
 }
 
 /// Draws a header row and the rows of a table at `(x, y)`; returns the y below it. `visible`
@@ -410,7 +444,7 @@ impl AppState {
             day: i32::from(d.day),
             minutes: g.world.minutes(),
         };
-        Some(match screen {
+        let mut content = match screen {
             InfoScreen::Finance(c) => {
                 let slot = if c == 0 {
                     info.player_company().unwrap_or(0)
@@ -495,7 +529,45 @@ impl AppState {
                 s,
                 save.territories.ordered().next().map(|r| r.slot as u32),
             ))),
-        })
+        };
+        if let Content::List(ref mut lp) = content
+            && let Some((col, asc)) = g.info.and_then(|i| i.sort)
+        {
+            sort_table(&mut lp.table, col, asc);
+        }
+        Some(content)
+    }
+
+    /// Parses a formatted table cell (`"$1,234K"`, `"-$500"`, `"42 mph"`, `"12%"`, `"-"` -> None).
+    fn parse_sort_num(s: &str) -> Option<f64> {
+        let s = s.trim();
+        if s.is_empty() || s == "-" || s == "--" {
+            return None;
+        }
+        let neg = s.starts_with('-');
+        let mut clean = s.trim_start_matches(['-', '+', '$', ' ']);
+        let mult = if let Some(rest) = clean.strip_suffix('K') {
+            clean = rest;
+            1_000.0
+        } else if let Some(rest) = clean.strip_suffix('M') {
+            clean = rest;
+            1_000_000.0
+        } else if let Some(rest) = clean.strip_suffix('B') {
+            clean = rest;
+            1_000_000_000.0
+        } else {
+            1.0
+        };
+        let num_str: String = clean
+            .chars()
+            .take_while(|c| c.is_ascii_digit() || *c == '.' || *c == ',')
+            .filter(|c| *c != ',')
+            .collect();
+        if num_str.is_empty() {
+            return None;
+        }
+        let v: f64 = num_str.parse().ok()?;
+        Some(if neg { -v * mult } else { v * mult })
     }
 
     /// The company slots in list order (for the finance screen's previous / next).
@@ -546,14 +618,15 @@ impl AppState {
             return;
         };
         let day = g.world.minutes() / 1440;
-        let keep = g
+        let (keep, keep_sort) = g
             .info
             .filter(|i| i.screen == screen)
-            .map_or(0, |i| i.scroll);
+            .map_or((0, None), |i| (i.scroll, i.sort));
         g.info = Some(InfoState {
             screen,
             scroll: keep,
             day,
+            sort: keep_sort,
         });
         self.rebuild_ui();
     }
@@ -801,6 +874,26 @@ impl AppState {
                     _ => InfoScreen::Companies,
                 };
                 self.open_info(next);
+            }
+            a if (A_SORT_COL..A_SORT_COL + 16).contains(&a) => {
+                let col = (a - A_SORT_COL) as usize;
+                let default_asc = self
+                    .info_content(screen)
+                    .and_then(|c| match c {
+                        Content::List(lp) => lp.table.cols.get(col).map(|c| !c.right),
+                        _ => None,
+                    })
+                    .unwrap_or(true);
+                if let Screen::Game(g) = &mut self.screen
+                    && let Some(i) = &mut g.info
+                {
+                    i.sort = match i.sort {
+                        Some((c, asc)) if c == col => Some((col, !asc)),
+                        _ => Some((col, default_asc)),
+                    };
+                    i.scroll = 0;
+                }
+                self.rebuild_ui();
             }
             A_ROW => {
                 // Enter on the selected row of a list.
@@ -1314,19 +1407,51 @@ impl AppState {
             at(x, y + head_h - 1.0, w, rowh * shown as f32 + 2.0),
         );
         let _ = sel;
+        let sort_state = match &self.screen {
+            Screen::Game(g) => g.info.and_then(|i| i.sort),
+            _ => None,
+        };
+        let mut display_table = list.table.clone();
+        if let Some((scol, asc)) = sort_state
+            && let Some(c) = display_table.cols.get_mut(scol)
+        {
+            c.head = format!("{} {}", c.head, if asc { "^" } else { "v" });
+        }
+        let table_w = w - if n > visible { 10.0 } else { 0.0 };
         draw_table(
             ui,
             panel,
-            &list.table,
+            &display_table,
             x,
             y + 2.0,
-            w - if n > visible { 10.0 } else { 0.0 },
+            table_w,
             rowh,
             size,
             first,
             visible,
             false,
         );
+        // Clickable column header hotspots for sorting.
+        let total_weight: f32 = display_table
+            .cols
+            .iter()
+            .map(|c| c.weight)
+            .sum::<f32>()
+            .max(0.1);
+        let mut hx = x;
+        for (ci, c) in display_table.cols.iter().enumerate() {
+            let cw = table_w * c.weight / total_weight;
+            ui.add(
+                panel,
+                Kind::Hotspot {
+                    action: A_SORT_COL + ci as u32,
+                    on: sort_state.is_some_and(|(sc, _)| sc == ci),
+                    enabled: true,
+                },
+                at(hx, y + 2.0, cw.max(1.0), rowh),
+            );
+            hx += cw;
+        }
         if let Some(person) = trade {
             let (buy_t, sell_t) = (
                 self.texts.get(305, "Buy").replace('&', ""),

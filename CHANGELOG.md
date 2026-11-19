@@ -4,6 +4,16 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 
 ## Unreleased
 
+## v0.6.0 — 2026-11-19
+
+- Feature: automatic demand-matched car pre-fill when adding stops in `TrainEdit`, plus live YTD train profit (`+0xfd`), class/speed/cars in the main window's Trains tab, and an expand/collapse toggle (`mwexpand`) on the center box.
+- Feature: highlight covered industry and city building tiles inside the station catchment radius preview, and add a `Grid lines` toggle in Gameplay options.
+- Feature: clickable column header sorting (`^`/`v`, numeric-aware) across full-screen list screens (`Trains`, `Stations`, `Companies`, `Players`, `Cities`, `Industries`).
+- Feature: Second Century (`set 1`) campaign scenario titles and starting bonuses from `default2.lng` (`3100..3171`), order-notice bypass for both campaigns, and campaign briefing Smacker clips (`CA01..18` / `CAE01..18`).
+- Improved: Load/Save Game screen (`saves_ui.rs`) now renders with the original `filerq.win` / `filerq.imb` artwork (`FilerqArt`).
+- Feature: interactive `-` / `+` manual throttle controls (`BuildCmd::TrainThrottle` `0x29`) on the Train Detail instrument panel, and `extra_computers` player slot activation in `Setup::new_game_options`.
+- Fix: respect disabled Scenario notices in `poll_world` so `history_tests` passes when Scenario pop-ups are turned off.
+
 ## v0.5.5 — 2026-11-19
 
 - Feature: route- and demand-aware car suggestions (`Info::suggested_cars_for_stop` and `Info::auto_consist_for_stop`) in Train Detail (`Suggest` stop button) and Car List (`Suggested: ...` summary, `* ` cargo highlights, and `Suggest` auto-fill button).

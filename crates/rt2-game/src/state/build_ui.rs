@@ -1118,13 +1118,15 @@ impl AppState {
         let Some(g) = self.game() else {
             return;
         };
-        let Some(kind) = g.build.tool else {
-            return;
-        };
         let Some(save) = g.world.save_ref() else {
             return;
         };
         let map = &save.map;
+        let show_grid = self.config.gameplay.grid_lines;
+        let kind = g.build.tool;
+        if !show_grid && kind.is_none() {
+            return;
+        }
         let root = ui.add_root(Kind::Panel { fill: Fill::None }, Layout::fill());
         let tile = |ui: &mut Ui, x: i32, y: i32, c: Color, shrink: f32| {
             if x < 0 || y < 0 || x as usize >= map.width || y as usize >= map.height {
@@ -1138,6 +1140,20 @@ impl AppState {
                 },
                 at(px, py, w, h),
             );
+        };
+        if show_grid {
+            let cx = g.camera.target.x.round() as i32;
+            let cy = g.camera.target.y.round() as i32;
+            let span = (26.0 / g.camera.zoom.max(0.25)).ceil().min(48.0) as i32;
+            let grid_c = Color(0xff, 0xff, 0xff, 0x18);
+            for dx in -span..=span {
+                for dy in -span..=span {
+                    tile(ui, cx + dx, cy + dy, grid_c, 0.02);
+                }
+            }
+        }
+        let Some(kind) = kind else {
+            return;
         };
         let plan = g.build.plan.as_ref();
         let ok = plan.is_none_or(Plan::ok);
@@ -1159,7 +1175,17 @@ impl AppState {
                     for dx in -r..=r {
                         for dy in -r..=r {
                             if dx * dx + dy * dy <= r * r + r / 2 {
-                                tile(ui, cx + dx, cy + dy, c, 0.15);
+                                let (tx, ty) = (cx + dx, cy + dy);
+                                if tx >= 0
+                                    && ty >= 0
+                                    && (tx as usize) < map.width
+                                    && (ty as usize) < map.height
+                                    && map.tile(tx as usize, ty as usize).struct_id != 0
+                                {
+                                    tile(ui, tx, ty, Color(0x50, 0xf0, 0xa0, 0x60), 0.1);
+                                } else {
+                                    tile(ui, tx, ty, c, 0.15);
+                                }
                             }
                         }
                     }

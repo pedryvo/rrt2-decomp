@@ -160,6 +160,8 @@ pub struct Gameplay {
     pub zoom_speed: u32,
     /// Play the opening video (`anim\INTRO_01.SMK`) when the game starts.
     pub intro_video: bool,
+    /// Show isometric tile grid lines over the map.
+    pub grid_lines: bool,
 }
 
 impl Default for Gameplay {
@@ -174,6 +176,7 @@ impl Default for Gameplay {
             invert_zoom: false,
             zoom_speed: 100,
             intro_video: true,
+            grid_lines: false,
         }
     }
 }

@@ -229,11 +229,12 @@ pub(super) fn campaign_entries(install: &std::path::Path, set: usize) -> Vec<Ent
     v
 }
 
-/// LNG ids of a classic campaign scenario's name and its three bonuses (`2765 + 4 i`, then
-/// `+1..+3`; `default2.lng` "campaign scenario names and bonuses").
-pub(super) fn campaign_text_ids(index: usize) -> Option<(u32, [u32; 3])> {
+/// LNG ids of a campaign scenario's name and its three bonuses (`2765 + 4 i` for the Classic
+/// Campaign, `3100 + 4 i` for The Second Century; `default2.lng`).
+pub(super) fn campaign_text_ids(set: usize, index: usize) -> Option<(u32, [u32; 3])> {
     (index < 18).then(|| {
-        let b = 2765 + 4 * index as u32;
+        let base = if set == 1 { 3100 } else { 2765 };
+        let b = base + 4 * index as u32;
         (b, [b + 1, b + 2, b + 3])
     })
 }
@@ -539,8 +540,8 @@ impl AppState {
                 Screen::Menu(m)
                     if m.data.notice.is_some() || m.data.bypassed_scenario == Some(scenario)
             );
-        if first_time && set == 0 {
-            let name = campaign_text_ids(furthest)
+        if first_time {
+            let name = campaign_text_ids(set, furthest)
                 .map(|(n, _)| self.texts.get(n, "The Iron Seed"))
                 .unwrap_or_else(|| format!("Scenario {}", furthest + 1));
             let msg = self.texts.get(
@@ -562,6 +563,14 @@ impl AppState {
             bonus,
         };
         self.start_flow(&path, StartMode::Campaign(setup, c));
+        if matches!(self.screen, Screen::Game(_)) {
+            let clip = if set == 1 {
+                format!("CAE{:02}", scenario + 1)
+            } else {
+                format!("CA{:02}", scenario + 1)
+            };
+            self.video_event(&clip);
+        }
     }
 
     /// Starts a scenario from the menus: the game opens with the briefing on top and, for a
@@ -1576,13 +1585,9 @@ impl AppState {
             .iter()
             .enumerate()
             .map(|(i, e)| {
-                let name = if camp.set == 0 {
-                    campaign_text_ids(i)
-                        .map(|(n, _)| t.get(n, &e.title))
-                        .unwrap_or_else(|| e.title.clone())
-                } else {
-                    e.title.clone()
-                };
+                let name = campaign_text_ids(camp.set, i)
+                    .map(|(n, _)| t.get(n, &e.title))
+                    .unwrap_or_else(|| e.title.clone());
                 format!(
                     "{:>2}. {name}{}",
                     i + 1,
@@ -1636,13 +1641,9 @@ impl AppState {
             );
             let size = 12.5 * z;
             let tw = rw - thumb - 10.0 * z;
-            let title = if camp.set == 0 {
-                campaign_text_ids(camp.scenario)
-                    .map(|(n, _)| t.get(n, &pv.info.title))
-                    .unwrap_or_else(|| pv.info.title.clone())
-            } else {
-                pv.info.title.clone()
-            };
+            let title = campaign_text_ids(camp.set, camp.scenario)
+                .map(|(n, _)| t.get(n, &pv.info.title))
+                .unwrap_or_else(|| pv.info.title.clone());
             let mut lines = vec![
                 title.to_uppercase(),
                 format!("{}", pv.info.year),
@@ -1671,9 +1672,7 @@ impl AppState {
             label(&t.a("Starting bonus"), mfont(1, z * 0.8), GOLD, Align::Left),
             at(rx, by, rw, 22.0 * z),
         );
-        if camp.set == 0
-            && let Some((_, bonus)) = campaign_text_ids(camp.scenario)
-        {
+        if let Some((_, bonus)) = campaign_text_ids(camp.set, camp.scenario) {
             for (i, id) in bonus.iter().enumerate() {
                 let text = t.get(*id, "");
                 let b = ui.add(
@@ -1844,13 +1843,9 @@ impl AppState {
             .iter()
             .enumerate()
             .map(|(i, e)| {
-                let name = if camp.set == 0 {
-                    campaign_text_ids(i)
-                        .map(|(n, _)| t.get(n, &e.title))
-                        .unwrap_or_else(|| e.title.clone())
-                } else {
-                    e.title.clone()
-                };
+                let name = campaign_text_ids(camp.set, i)
+                    .map(|(n, _)| t.get(n, &e.title))
+                    .unwrap_or_else(|| e.title.clone());
                 format!(
                     "{:>2}. {name}{}",
                     i + 1,
@@ -1910,13 +1905,9 @@ impl AppState {
             );
             let size = 9.5 * s;
             let tw = rw - thumb - 6.0 * s;
-            let title = if camp.set == 0 {
-                campaign_text_ids(camp.scenario)
-                    .map(|(n, _)| t.get(n, &pv.info.title))
-                    .unwrap_or_else(|| pv.info.title.clone())
-            } else {
-                pv.info.title.clone()
-            };
+            let title = campaign_text_ids(camp.set, camp.scenario)
+                .map(|(n, _)| t.get(n, &pv.info.title))
+                .unwrap_or_else(|| pv.info.title.clone());
             let mut lines = vec![
                 title.to_uppercase(),
                 format!("{}", pv.info.year),
@@ -1950,9 +1941,7 @@ impl AppState {
             ),
             at(rx, by, rw, 16.0 * s),
         );
-        if camp.set == 0
-            && let Some((_, bonus)) = campaign_text_ids(camp.scenario)
-        {
+        if let Some((_, bonus)) = campaign_text_ids(camp.set, camp.scenario) {
             for (i, id) in bonus.iter().enumerate() {
                 let text = t.get(*id, "");
                 let yy = by + 18.0 * s + i as f32 * 24.0 * s;
@@ -2193,9 +2182,12 @@ mod tests {
 
     #[test]
     fn campaign_texts_follow_the_lng_layout() {
-        assert_eq!(campaign_text_ids(0), Some((2765, [2766, 2767, 2768])));
-        assert_eq!(campaign_text_ids(17), Some((2833, [2834, 2835, 2836])));
-        assert_eq!(campaign_text_ids(18), None);
+        assert_eq!(campaign_text_ids(0, 0), Some((2765, [2766, 2767, 2768])));
+        assert_eq!(campaign_text_ids(0, 17), Some((2833, [2834, 2835, 2836])));
+        assert_eq!(campaign_text_ids(0, 18), None);
+        assert_eq!(campaign_text_ids(1, 0), Some((3100, [3101, 3102, 3103])));
+        assert_eq!(campaign_text_ids(1, 17), Some((3168, [3169, 3170, 3171])));
+        assert_eq!(campaign_text_ids(1, 18), None);
     }
 
     #[test]

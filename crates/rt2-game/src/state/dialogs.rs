@@ -941,8 +941,7 @@ impl AppState {
             }
             // A category switched off in the options shows no pop-up (docs/ui.md); a scenario
             // choice the world waits for is not one of these (`pending_choice_dialog`).
-            let is_opening = matches!(m, GameMessage::Scenario(sm) if sm.trigger == 6);
-            if (self.config.notices.get(category) || is_opening)
+            if self.config.notices.get(category)
                 && let Some(d) = self.message_dialog(m)
             {
                 dialogs.push(d);

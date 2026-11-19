@@ -230,6 +230,23 @@ impl Setup {
             // `+0x34` and `+0x35`: human and computer revenue modifiers (0..=10, 5 neutral).
             o.trailer[0x34] = ((self.human_revenue / 5) + 5).clamp(0, 10) as u8;
             o.trailer[0x35] = ((self.computer_revenue / 5) + 5).clamp(0, 10) as u8;
+            // Activate extra computer player slots in `trailer[0x36 + 4*i]` for non-campaign games.
+            if campaign.is_none() && self.extra_computers > 0 {
+                let mut added = 0usize;
+                for i in 0..8usize {
+                    let e = 0x36 + 4 * i;
+                    if e + 3 >= o.trailer.len() || added >= self.extra_computers {
+                        break;
+                    }
+                    if o.trailer[e + 3] & 1 == 0 {
+                        o.trailer[e] = (i % 24) as u8;
+                        o.trailer[e + 1] = 0xff;
+                        o.trailer[e + 3] |= 1;
+                        added += 1;
+                    }
+                }
+                o.trailer[0] = o.trailer[0].saturating_add(added as u8);
+            }
         }
         if let Some(c) = campaign {
             // `world-tick.md` 10: `0x566d00 + 0` difficulty, `+0x16` index, `+0x1a` running,

@@ -771,6 +771,7 @@ pub static APP_EN: &[&str] = &[
     "View",
     "Suggest",
     "Suggested: %1",
+    "Grid lines",
 ];
 
 /// The id of an English default.
