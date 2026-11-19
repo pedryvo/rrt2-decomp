@@ -1451,6 +1451,10 @@ impl AppState {
             ),
             Screen::Game(_) => return,
         };
+        if let Some(bg) = self.dialog_art.camp.campaign_bg {
+            self.build_campaign_art(ui, layer, cw, ch, bg, camp, preview, entries, notice, tips);
+            return;
+        }
         let t = &self.texts;
         let (_, y, w, h) = Self::dialog_rect(
             cw,
@@ -1690,6 +1694,269 @@ impl AppState {
                 Some('c'),
             ),
             Layout::at(Anchor::Left, rw - 12.0 * z - pw, rowh),
+        );
+        if let Some(msg) = notice {
+            self.build_notice(ui, layer, cw, ch, z, &msg);
+        }
+    }
+
+    /// New Campaign (`campaign.win`) laid out over the original rural station backdrop.
+    #[allow(clippy::too_many_arguments)]
+    fn build_campaign_art(
+        &mut self,
+        ui: &mut Ui,
+        layer: NodeId,
+        cw: f32,
+        ch: f32,
+        bg: rt2_ui::SpriteId,
+        camp: Campaign,
+        preview: Option<Preview>,
+        entries: Vec<Entry>,
+        notice: Option<String>,
+        tips: &mut Vec<(NodeId, String)>,
+    ) {
+        let s = (cw / 1024.0).min(ch / 768.0);
+        let (w, h) = (1024.0 * s, 768.0 * s);
+        let root = ui.add(
+            layer,
+            Kind::Panel {
+                fill: Fill::Solid(Color::rgb(0x10, 0x10, 0x10)),
+            },
+            Layout::at(Anchor::Center, w, h),
+        );
+        ui.add(
+            root,
+            Kind::Image {
+                sprite: bg,
+                fit: rt2_ui::Fit::Stretch,
+            },
+            at(0.0, 0.0, w, h),
+        );
+        let t = &self.texts;
+        let z = mz(ch);
+        let dark_ink = Color::rgb(0x1e, 0x18, 0x12);
+        // Wooden lintel above whiteboard: campaign set choice.
+        let names = [t.a("Classic Campaign"), t.a("The Second Century")];
+        for (i, n) in names.iter().enumerate() {
+            let b = ui.add(
+                root,
+                button(n, mfont(1, s * 0.68), A_CAMP_SET + i as u32, None),
+                at((322.0 + i as f32 * 182.0) * s, 228.0 * s, 176.0 * s, 26.0 * s),
+            );
+            tips.push((
+                b,
+                t.get(if i == 0 { 3388 } else { 3386 }, "Play a campaign."),
+            ));
+        }
+        // Top of whiteboard: difficulty choice.
+        let diffs = [
+            (2756, "Easy", 2645),
+            (2757, "Normal", 2647),
+            (2758, "Hard", 2649),
+        ];
+        for (i, (id, en, tip_id)) in diffs.iter().enumerate() {
+            let b = ui.add(
+                root,
+                toggle(
+                    &t.get(*id, en),
+                    mfont(1, s * 0.68),
+                    A_CAMP_DIFF + i as u32,
+                    camp.difficulty == i,
+                ),
+                at((326.0 + i as f32 * 118.0) * s, 268.0 * s, 112.0 * s, 22.0 * s),
+            );
+            tips.push((b, t.get(*tip_id, "Choose the campaign difficulty.")));
+        }
+        // Scenario list on the left half of the whiteboard.
+        let progress = self.campaign_progress();
+        let items: Vec<String> = entries
+            .iter()
+            .enumerate()
+            .map(|(i, e)| {
+                let name = if camp.set == 0 {
+                    campaign_text_ids(i)
+                        .map(|(n, _)| t.get(n, &e.title))
+                        .unwrap_or_else(|| e.title.clone())
+                } else {
+                    e.title.clone()
+                };
+                format!(
+                    "{:>2}. {name}{}",
+                    i + 1,
+                    self.campaign_medal_text(&progress, camp.set, i)
+                )
+            })
+            .collect();
+        let list = ui.add(
+            root,
+            Kind::List {
+                items,
+                selected: Some(camp.scenario).filter(|&sc| sc < entries.len()),
+                scroll: 0,
+                row_h: 15.0 * s,
+                font: mfont(2, s * 0.62),
+                action: A_CAMP_LIST,
+            },
+            at(326.0 * s, 294.0 * s, 174.0 * s, 276.0 * s),
+        );
+        tips.push((
+            list,
+            t.get(
+                2253,
+                "Single click to view the map for this scenario.  Double click to play this scenario.",
+            ),
+        ));
+        self.menu_scroll_to(ui, list, camp.scenario);
+        ui.set_focus(Some(list));
+        // Right half of the whiteboard: minimap + description + bonuses.
+        let rx = 506.0 * s;
+        let rw = 172.0 * s;
+        let thumb = 70.0 * s;
+        if let Some(pv) = &preview {
+            ui.add(
+                root,
+                Kind::Panel {
+                    fill: Fill::Solid(INSET),
+                },
+                at(rx, 294.0 * s, thumb, thumb),
+            );
+            let (cols, rows) = (pv.radar.cols as f32, pv.radar.rows as f32);
+            let fit = (thumb - 4.0) / cols.max(rows);
+            ui.add(
+                root,
+                Kind::Cells {
+                    cols: pv.radar.cols,
+                    rows: pv.radar.rows,
+                    colors: Arc::new(pv.radar.colors().to_vec()),
+                    action: 0,
+                },
+                at(
+                    rx + (thumb - cols * fit) / 2.0,
+                    294.0 * s + (thumb - rows * fit) / 2.0,
+                    cols * fit,
+                    rows * fit,
+                ),
+            );
+            let size = 9.5 * s;
+            let tw = rw - thumb - 6.0 * s;
+            let title = if camp.set == 0 {
+                campaign_text_ids(camp.scenario)
+                    .map(|(n, _)| t.get(n, &pv.info.title))
+                    .unwrap_or_else(|| pv.info.title.clone())
+            } else {
+                pv.info.title.clone()
+            };
+            let mut lines = vec![title.to_uppercase(), format!("{}", pv.info.year), String::new()];
+            lines.extend(wrap_text(
+                &pv.info.description,
+                (tw / (size * 0.56)).floor().max(10.0) as usize,
+            ));
+            ui.add(
+                root,
+                Kind::Text {
+                    lines,
+                    scroll: 0,
+                    row_h: (size * 1.25).round().max(10.0),
+                    font: game_font(8).with_size(size.round().max(9.0)),
+                    color: dark_ink,
+                },
+                at(rx + thumb + 6.0 * s, 294.0 * s, tw, 92.0 * s),
+            );
+        }
+        // Starting bonus toggles.
+        let by = 390.0 * s;
+        ui.add(
+            root,
+            label(&t.a("Starting bonus"), mfont(1, s * 0.65), dark_ink, Align::Left),
+            at(rx, by, rw, 16.0 * s),
+        );
+        if camp.set == 0
+            && let Some((_, bonus)) = campaign_text_ids(camp.scenario)
+        {
+            for (i, id) in bonus.iter().enumerate() {
+                let text = t.get(*id, "");
+                let yy = by + 18.0 * s + i as f32 * 24.0 * s;
+                if let Some((off, on)) = self.dialog_art.camp.radio {
+                    ui.add(
+                        root,
+                        Kind::Icon {
+                            up: Some(if camp.bonus == i { on } else { off }),
+                            down: Some(on),
+                            fallback: String::new(),
+                            font: mfont(1, s * 0.55),
+                            action: A_CAMP_BONUS + i as u32,
+                            on: camp.bonus == i,
+                        },
+                        at(rx, yy + 3.0 * s, 16.0 * s, 16.0 * s),
+                    );
+                }
+                let b = ui.add(
+                    root,
+                    toggle(
+                        &text,
+                        mfont(1, s * 0.52),
+                        A_CAMP_BONUS + i as u32,
+                        camp.bonus == i,
+                    ),
+                    at(rx + 20.0 * s, yy, rw - 20.0 * s, 21.0 * s),
+                );
+                tips.push((
+                    b,
+                    t.get(
+                        2254,
+                        "Choose this item as your starting bonus in this scenario.",
+                    ),
+                ));
+            }
+        } else {
+            ui.add(
+                root,
+                Kind::Label {
+                    text: t.a("TODO: the bonuses of this campaign are not decoded."),
+                    font: mfont(1, s * 0.54),
+                    color: dark_ink,
+                    align: Align::Left,
+                    wrap: true,
+                },
+                at(rx, by + 18.0 * s, rw, 44.0 * s),
+            );
+        }
+        // Medals count.
+        let (g, sv, br) = progress.counts(camp.set);
+        ui.add(
+            root,
+            Kind::Label {
+                text: t.af(
+                    "Medals: %1 gold, %2 silver, %3 bronze",
+                    &[g.to_string(), sv.to_string(), br.to_string()],
+                ),
+                font: mfont(1, s * 0.58),
+                color: dark_ink,
+                align: Align::Left,
+                wrap: false,
+            },
+            at(rx, 490.0 * s, rw, 18.0 * s),
+        );
+        // Play / Cancel buttons.
+        ui.add(
+            root,
+            button(
+                &t.get(2255, "<Play this Scenario>"),
+                mfont(1, s * 0.6),
+                A_CAMP_PLAY,
+                Some('p'),
+            ),
+            at(rx, 540.0 * s, 108.0 * s, 26.0 * s),
+        );
+        ui.add(
+            root,
+            button(
+                &t.get(lng::CANCEL, "Cancel"),
+                mfont(1, s * 0.65),
+                super::A_BACK,
+                Some('c'),
+            ),
+            at(rx + 112.0 * s, 540.0 * s, 60.0 * s, 26.0 * s),
         );
         if let Some(msg) = notice {
             self.build_notice(ui, layer, cw, ch, z, &msg);

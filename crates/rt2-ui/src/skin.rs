@@ -129,7 +129,7 @@ impl Skin {
     }
 }
 
-pub const ATLAS_WIDTH: u32 = 4096;
+pub const ATLAS_WIDTH: u32 = 8192;
 pub const MAX_ATLAS_HEIGHT: u32 = 8192;
 /// Border of extruded edge texels around each sprite (keeps bilinear filtering inside it).
 const GUTTER: u32 = 2;

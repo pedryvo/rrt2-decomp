@@ -6,6 +6,7 @@ use rt2_render::assets::{GameAssets, LoadedBank, RgbaImage};
 use rt2_render::atlas::scale2x;
 pub mod brand;
 pub mod buywin;
+pub mod campwin;
 pub mod detailwin;
 pub mod listwin;
 pub mod mainwin;
@@ -86,6 +87,8 @@ pub struct DialogArt {
     pub list: listwin::ListArt,
     /// The stock market window (`artwork/stockwin.rs`).
     pub stock: stockwin::StockArt,
+    /// Campaign, File Options, and Help dialogs (`artwork/campwin.rs`).
+    pub camp: campwin::CampModalArt,
 }
 
 /// Size of the video frame sprite (clips are scaled into it).
@@ -280,6 +283,7 @@ pub fn load(assets: &GameAssets) -> Artwork {
         video_frame: None,
         main: mainwin::MainArt::default(),
         buy: buywin::BuyArt::default(),
+        camp: campwin::CampModalArt::default(),
     };
     let mut dialogs = dialogs;
     for (i, name) in EDITOR_PANELS.iter().enumerate() {
@@ -325,6 +329,7 @@ pub fn load(assets: &GameAssets) -> Artwork {
     dialogs.detail = detailwin::load(assets, &mut b);
     dialogs.list = listwin::load(assets, &mut b);
     dialogs.stock = stockwin::load(assets, &mut b);
+    dialogs.camp = campwin::load(assets, &mut b);
     dialogs.video_frame = Some(b.reserve(VIDEO_FRAME.0, VIDEO_FRAME.1));
     if assets.contains("sdmbkg1.imb") {
         dialogs.station_view =

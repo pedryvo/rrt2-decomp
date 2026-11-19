@@ -462,6 +462,10 @@ impl AppState {
                 return true;
             }
             "file" => Dialog::FileOptions,
+            "tips" => {
+                self.show_tip(0);
+                return true;
+            }
             n if n.starts_with("tool-") => {
                 let i = n["tool-".len()..].parse::<usize>().unwrap_or(0).min(7);
                 Dialog::Tool(i)
@@ -1547,6 +1551,12 @@ impl AppState {
     }
 
     fn build_message(&self, ui: &mut Ui, title: &str, body: &str, buttons: &[(String, Act)]) {
+        if buttons.iter().any(|(_, a)| matches!(a, Act::Tip { .. }))
+            && let Some(hd) = &self.dialog_art.camp.helpd
+        {
+            self.build_helpd_art(ui, hd, title, body, buttons);
+            return;
+        }
         let (_, ch) = ui.logical_size();
         let sx0 = ((ch / 620.0).clamp(1.0, 2.0) * 0.95).min(1.6);
         let size = 15.0 * sx0;
@@ -1592,7 +1602,85 @@ impl AppState {
         );
     }
 
+    fn build_helpd_art(
+        &self,
+        ui: &mut Ui,
+        hd: &crate::artwork::campwin::HelpdArt,
+        title: &str,
+        body: &str,
+        buttons: &[(String, Act)],
+    ) {
+        let (cw, ch) = ui.logical_size();
+        let sx = ((ch / 620.0).clamp(1.0, 2.0) * 0.95)
+            .min((cw - 16.0) / hd.w)
+            .min((ch - 16.0) / hd.h)
+            .max(0.3);
+        let root = ui.add_root(
+            Kind::Panel { fill: Fill::None },
+            Layout::at(Anchor::Center, hd.w * sx, hd.h * sx),
+        );
+        ui.add(
+            root,
+            Kind::Image {
+                sprite: hd.frame,
+                fit: Fit::Stretch,
+            },
+            at(0.0, 0.0, hd.w * sx, hd.h * sx),
+        );
+        let size = (11.0 * sx).round().max(9.0);
+        // Use the full inner olive panel `(56, 88, 306, 142)` so title + body fit cleanly.
+        let (tx, ty, tw, th) = (56.0 * sx, 88.0 * sx, 306.0 * sx, 142.0 * sx);
+        let mut lines = Self::body_lines(body, tw, size);
+        if !title.is_empty() {
+            lines.insert(0, String::new());
+            lines.insert(0, title.to_uppercase());
+        }
+        ui.add(
+            root,
+            Kind::Text {
+                lines,
+                scroll: 0,
+                row_h: (size * 1.25).round(),
+                font: game_font(8).with_size(size),
+                color: CREAM,
+            },
+            at(tx, ty, tw, th),
+        );
+        let f = game_font(3).with_size((game_font(3).size * sx * 0.85).round().max(10.0));
+        for (i, (text, _)) in buttons.iter().take(3).enumerate() {
+            let (_, r, sprites) = hd.buttons[i];
+            let (up, down) = match sprites {
+                Some((u, d)) => (Some(u), Some(d)),
+                None => (None, None),
+            };
+            let (bx, by, bw, bh) = (r[0] * sx, r[1] * sx, r[2] * sx, r[3] * sx);
+            ui.add(
+                root,
+                Kind::Icon {
+                    up,
+                    down,
+                    fallback: text.clone(),
+                    font: f,
+                    action: A_DLG_BTN + i as u32,
+                    on: false,
+                },
+                at(bx, by, bw, bh),
+            );
+            if up.is_some() {
+                ui.add(
+                    root,
+                    label(text, f, BROWN, Align::Center),
+                    at(bx + bw * 0.13, by, bw * 0.74, bh),
+                );
+            }
+        }
+    }
+
     fn build_file_options(&self, ui: &mut Ui) {
+        if let Some(fo) = &self.dialog_art.camp.fileopt {
+            self.build_file_options_art(ui, fo);
+            return;
+        }
         let t = &self.texts;
         let fr = self.eagle(ui, 4);
         let sx = fr.sx;
@@ -1643,6 +1731,81 @@ impl AppState {
             );
         }
         let _ = fr.strips;
+    }
+
+    fn build_file_options_art(&self, ui: &mut Ui, fo: &crate::artwork::campwin::FileOptArt) {
+        let (cw, ch) = ui.logical_size();
+        let sx = ((ch / 620.0).clamp(1.0, 2.0) * 0.95)
+            .min((cw - 16.0) / fo.w)
+            .min((ch - 16.0) / fo.h)
+            .max(0.3);
+        let root = ui.add_root(
+            Kind::Panel { fill: Fill::None },
+            Layout::at(Anchor::Center, fo.w * sx, fo.h * sx),
+        );
+        ui.add(
+            root,
+            Kind::Image {
+                sprite: fo.frame,
+                fit: Fit::Stretch,
+            },
+            at(0.0, 0.0, fo.w * sx, fo.h * sx),
+        );
+        let t = &self.texts;
+        let f = game_font(3).with_size((game_font(3).size * sx * 0.78).round().max(10.0));
+        ui.add(
+            root,
+            Kind::Label {
+                text: t.get(1787, "File options").to_uppercase(),
+                font: game_font(8).with_size((13.0 * sx).round().max(10.0)),
+                color: GOLD,
+                align: Align::Center,
+                wrap: false,
+            },
+            at(56.0 * sx, 124.0 * sx, 326.0 * sx, 22.0 * sx),
+        );
+        for &(id, r, (up, down)) in &fo.buttons {
+            let (text, action) = match id {
+                501 => (t.get(lng::LOAD_GAME, "Load Game"), A_FILE_LOAD),
+                502 => (t.a("Save"), A_FILE_SAVE),
+                506 => (t.get(lng::NEW_GAME, "New Game"), A_FILE_NEW),
+                507 => (t.a("Options"), A_FILE_OPTIONS),
+                503 => (t.a("Main Menu"), A_FILE_MENU),
+                504 => (t.get(lng::QUIT, "Quit"), A_FILE_QUIT),
+                505 => (t.get(lng::CANCEL, "Cancel"), A_DLG_CLOSE),
+                _ => continue,
+            };
+            let (bx, by, bw, bh) = (r[0] * sx, r[1] * sx, r[2] * sx, r[3] * sx);
+            ui.add(
+                root,
+                Kind::Icon {
+                    up: Some(up),
+                    down: Some(down),
+                    fallback: text.clone(),
+                    font: f,
+                    action,
+                    on: false,
+                },
+                at(bx, by, bw, bh),
+            );
+            ui.add(
+                root,
+                label(&text, f, BROWN, Align::Center),
+                at(bx + bw * 0.12, by, bw * 0.76, bh),
+            );
+        }
+        // Tips button (clone extra) placed cleanly in the header panel above the button grid.
+        ui.add(
+            root,
+            Kind::Button {
+                text: t.get(2407, "Tips"),
+                font: f,
+                action: A_FILE_TIPS,
+                enabled: true,
+                hotkey: None,
+            },
+            at(158.0 * sx, 148.0 * sx, 120.0 * sx, 22.0 * sx),
+        );
     }
 
     fn build_goals(&self, ui: &mut Ui) {
