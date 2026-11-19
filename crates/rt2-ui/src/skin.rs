@@ -161,18 +161,20 @@ impl SkinBuilder {
         })
     }
 
-    /// Packs the images (shelf packing, tallest first is not needed: images are few and big).
+    /// Packs the images (shelf packing, tallest first so big backgrounds don't waste tiny shelves).
     pub fn build(self, theme: Theme) -> Skin {
-        // Reserve a white block first, then the images in order.
-        let mut placements: Vec<Option<(u32, u32)>> = Vec::new();
+        // Reserve a white block first, then place images sorted by height descending.
+        let mut placements: Vec<Option<(u32, u32)>> = vec![None; self.images.len()];
         let (mut x, mut y, mut shelf_h) = (0u32, 0u32, 0u32);
         let white_size = 4 + 2 * GUTTER;
         x += white_size;
         shelf_h = shelf_h.max(white_size);
-        for img in &self.images {
+        let mut order: Vec<usize> = (0..self.images.len()).collect();
+        order.sort_by(|&a, &b| self.images[b].height.cmp(&self.images[a].height));
+        for idx in order {
+            let img = &self.images[idx];
             let (w, h) = (img.width + 2 * GUTTER, img.height + 2 * GUTTER);
             if w > ATLAS_WIDTH {
-                placements.push(None);
                 continue;
             }
             if x + w > ATLAS_WIDTH {
@@ -181,10 +183,9 @@ impl SkinBuilder {
                 shelf_h = 0;
             }
             if y + h > MAX_ATLAS_HEIGHT {
-                placements.push(None);
                 continue;
             }
-            placements.push(Some((x, y)));
+            placements[idx] = Some((x, y));
             x += w;
             shelf_h = shelf_h.max(h);
         }
