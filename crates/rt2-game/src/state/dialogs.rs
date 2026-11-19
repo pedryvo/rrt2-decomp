@@ -562,7 +562,7 @@ impl AppState {
                 MessageKind::Choice => {
                     // Interactive games show the pending choice instead (`pending_choice_dialog`):
                     // the message of the replayed step is only a line of the activity box.
-                    if self.interactive_choices {
+                    if self.interactive_choices && self.pending_choice_dialog().is_some() {
                         return None;
                     }
                     let first = |button| Act::Choice {

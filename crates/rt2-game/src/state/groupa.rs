@@ -14,6 +14,10 @@ pub(super) struct GroupA {
     pub video: VideoState,
     /// Where the right button went down on the map (a click shows the information box).
     pub right_press: Option<(f32, f32)>,
+    /// Frames drawn and remaining ms of input guard after opening a game with modal dialogs,
+    /// preventing buffered menu clicks from dismissing the opening briefing before it renders.
+    pub opening_frames: u32,
+    pub opening_guard_ms: f32,
 }
 
 use super::AppState;
@@ -24,6 +28,13 @@ impl AppState {
     pub(super) fn ga_tick(&mut self, dt_ms: f32) {
         if !self.in_game() {
             self.ga.overview.open = false;
+            self.ga.opening_frames = 0;
+            self.ga.opening_guard_ms = 0.0;
+        } else if self.ga.opening_guard_ms > 0.0 {
+            self.ga.opening_frames = self.ga.opening_frames.saturating_add(1);
+            if self.ga.opening_frames >= 2 {
+                self.ga.opening_guard_ms = (self.ga.opening_guard_ms - dt_ms.min(50.0)).max(0.0);
+            }
         }
         self.credits_tick(dt_ms);
         self.video_tick(dt_ms);

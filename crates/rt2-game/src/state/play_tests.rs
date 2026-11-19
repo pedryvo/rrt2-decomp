@@ -137,3 +137,70 @@ fn simulation_messages_become_dialogs_and_activity_lines() {
     });
     assert!(line.contains('2'), "{line}");
 }
+
+#[test]
+fn campaign_opening_briefing_survives_buffered_clicks_and_order_notice_can_be_bypassed() {
+    let Some(mut s) = state() else {
+        return;
+    };
+    s.set_interactive_choices(true);
+    s.open_page(menus::Page::NewCampaign);
+
+    // A single mouse click on the already-selected row 0 should only arm the double-click timer,
+    // not immediately launch the campaign while the player is moving to click <Play this Scenario>.
+    s.via_mouse = true;
+    s.menu_activated(menus::A_CAMP_LIST);
+    s.via_mouse = false;
+    assert!(
+        matches!(s.screen, Screen::Menu(_)),
+        "single click on pre-selected row 0 must not start the campaign immediately"
+    );
+
+    // Clicking <Play this Scenario> starts Campaign #1 (#01 B&O) with the Eagle Briefing Dialog open.
+    s.menu_activated(menus::A_CAMP_PLAY);
+    assert!(
+        matches!(top(&s), Some(Dialog::Message(_))),
+        "opening briefing dialog must be on screen: {:?}",
+        top(&s)
+    );
+
+    // A buffered click at the exact coordinates of <Play this Scenario> / the Eagle Dialog OK button
+    // (before 2 rendered frames + 350ms) must not dismiss the opening briefing dialog.
+    s.cursor_moved(800.0, 620.0);
+    s.mouse_button(true, true);
+    s.mouse_button(true, false);
+    assert!(
+        matches!(top(&s), Some(Dialog::Message(_))),
+        "buffered click must not dismiss the opening briefing dialog"
+    );
+
+    // After rendering frames past the 350ms opening guard, clicking OK closes the briefing dialog.
+    for _ in 0..10 {
+        s.update(50.0);
+    }
+    s.dialog_activated(dialogs::A_DLG_BTN);
+    assert!(top(&s).is_none(), "briefing dialog closed after guard");
+
+    // Campaign #3 (#03Bri~1.MAP) is beyond furthest_unlocked (0) and starts without a player company:
+    // the first Play attempt shows the order notice; acknowledging it and pressing Play again bypasses
+    // the notice and opens the Briefing Dialog on top of Start New Company (Dialog::Founding).
+    s.open_page(menus::Page::NewCampaign);
+    s.menu_event(&rt2_ui::UiEvent::Selected(menus::A_CAMP_LIST, 2));
+    s.menu_activated(menus::A_CAMP_PLAY);
+    assert!(
+        matches!(&s.screen, Screen::Menu(m) if m.data.notice.is_some()),
+        "first attempt on locked campaign #3 shows the order notice"
+    );
+    s.menu_activated(menus::A_NOTICE_OK);
+    s.menu_activated(menus::A_CAMP_PLAY);
+    assert!(
+        matches!(top(&s), Some(Dialog::Message(_))),
+        "second attempt bypasses the notice and opens the briefing dialog"
+    );
+    s.dialog_activated(dialogs::A_DLG_BTN);
+    assert!(
+        matches!(top(&s), Some(Dialog::Founding { .. })),
+        "closing the briefing reveals Start New Company on Campaign #3: {:?}",
+        top(&s)
+    );
+}

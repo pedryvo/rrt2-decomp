@@ -611,6 +611,9 @@ impl AppState {
         if pressed && self.video_skip() {
             return;
         }
+        if self.ga.opening_guard_ms > 0.0 && self.has_dialog() {
+            return;
+        }
         let b = if left {
             MouseButton::Left
         } else {
@@ -775,6 +778,9 @@ impl AppState {
         }
         match &self.screen {
             Screen::Game(_) => {
+                if self.ga.opening_guard_ms > 0.0 && self.has_dialog() {
+                    return;
+                }
                 if self.editor_active() {
                     if !repeat || self.editor_modal_open() {
                         self.editor_key(code, text);

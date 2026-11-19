@@ -137,10 +137,10 @@ impl Tables {
             s[3] = s[2] + n[2];
             s[4] = s[3] + n[3];
             let mut at = s[4] + FILLERS;
-            for j in 0..CLASS_COUNT {
+            for (j, slot) in t.transition_start[c].iter_mut().enumerate() {
                 let k = pair_count(c, j);
                 if k != 0 {
-                    t.transition_start[c][j] = at;
+                    *slot = at;
                     at += k;
                 }
             }

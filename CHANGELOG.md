@@ -4,6 +4,10 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 
 ## Unreleased
 
+## v0.5.3 — 2026-11-19
+
+- Fix: guard opening briefing and `Start New Company` dialogs against buffered mouse/key clicks during scenario load (`<Play this Scenario>` overlaps the Eagle Dialog `OK` button), require a real 500 ms double-click on pre-selected menu list rows, and fix the campaign order notice bypass so scenarios beyond `#01 B&O` (such as `#03 Joining a Nation`, which starts with `Start New Company`) can be played.
+
 ## v0.5.2 — 2026-11-19
 
 - Fix: show `<<<Start a new company>>>` in the HUD and full-screen Companies lists when the player has no company, filter inactive map companies, and prevent double-clicks on `<Play this Scenario>` from dismissing the opening briefing dialog.

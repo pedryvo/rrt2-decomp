@@ -6,7 +6,7 @@ members = ["crates/*"]
 license = "GPL-3.0-or-later"
 repository = "https://github.com/pedryvo/rrt2-decomp"
 edition = "2024"
-version = "0.5.2"
+version = "0.5.3"
 
 [workspace.dependencies]
 rt2-formats = { path = "crates/rt2-formats" }
@@ -20,3 +20,4 @@ png = "0.17"
 
 [workspace.lints.clippy]
 all = { level = "warn", priority = -1 }
+needless_range_loop = "allow"

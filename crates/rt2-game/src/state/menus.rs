@@ -128,6 +128,11 @@ pub(super) struct MenuData {
     pub campaign: Campaign,
     /// An explanation shown over the page (campaign order, missing files).
     pub notice: Option<String>,
+    /// Campaign scenario index for which the order notice was already acknowledged once.
+    pub bypassed_scenario: Option<usize>,
+    /// Last mouse click on a scenario list `(action, row, timestamp)` so a single click on the
+    /// pre-selected row 0 does not immediately launch the game without a real double-click.
+    pub list_click: Option<(u32, usize, std::time::Instant)>,
 }
 
 impl Default for MenuData {
@@ -141,6 +146,8 @@ impl Default for MenuData {
             preview: None,
             campaign: Campaign::default(),
             notice: None,
+            bypassed_scenario: None,
+            list_click: None,
         }
     }
 }
@@ -278,6 +285,7 @@ impl AppState {
             Page::Credits => self.credits_reset(),
             _ => {}
         }
+        data.list_click = None;
         self.screen = Screen::Menu(super::MenuState {
             page,
             entries,
@@ -317,8 +325,17 @@ impl AppState {
                 self.edit_setup(|s| s.extra_computers = s.extra_computers.saturating_sub(1))
             }
             A_SETUP_OK => self.start_new_scenario(),
-            A_MAP_OK | A_MAP_LIST => self.set_side(Side::None),
-            A_CAMP_LIST => self.campaign_play(),
+            A_MAP_OK => self.set_side(Side::None),
+            A_MAP_LIST => {
+                if !self.via_mouse || self.consume_list_double_click(A_MAP_LIST) {
+                    self.set_side(Side::None);
+                }
+            }
+            A_CAMP_LIST => {
+                if !self.via_mouse || self.consume_list_double_click(A_CAMP_LIST) {
+                    self.campaign_play();
+                }
+            }
             A_MAP_CANCEL => {
                 let back = self.menu_data().map_or(0, |d| d.sel_backup);
                 self.select_scenario(back);
@@ -373,13 +390,47 @@ impl AppState {
         match *e {
             UiEvent::Selected(A_MAP_LIST, row) => {
                 self.select_scenario(row);
+                if self.via_mouse
+                    && let Some(d) = self.menu_data()
+                {
+                    d.list_click = Some((A_MAP_LIST, row, std::time::Instant::now()));
+                }
                 true
             }
             UiEvent::Selected(A_CAMP_LIST, row) => {
                 self.select_campaign_scenario(row);
+                if self.via_mouse
+                    && let Some(d) = self.menu_data()
+                {
+                    d.list_click = Some((A_CAMP_LIST, row, std::time::Instant::now()));
+                }
                 true
             }
             _ => false,
+        }
+    }
+
+    fn consume_list_double_click(&mut self, action: u32) -> bool {
+        let Some(d) = self.menu_data() else {
+            return false;
+        };
+        let row = if action == A_CAMP_LIST {
+            d.campaign.scenario
+        } else {
+            d.sel
+        };
+        let now = std::time::Instant::now();
+        let is_double = d.list_click.is_some_and(|(a, r, t)| {
+            a == action
+                && r == row
+                && now.duration_since(t) <= std::time::Duration::from_millis(500)
+        });
+        if is_double {
+            d.list_click = None;
+            true
+        } else {
+            d.list_click = Some((action, row, now));
+            false
         }
     }
 
@@ -483,7 +534,11 @@ impl AppState {
         let progress = self.campaign_progress();
         let furthest = progress.furthest_unlocked(set);
         let first_time = scenario > furthest
-            && !matches!(&self.screen, Screen::Menu(m) if m.data.notice.is_some());
+            && !matches!(
+                &self.screen,
+                Screen::Menu(m)
+                    if m.data.notice.is_some() || m.data.bypassed_scenario == Some(scenario)
+            );
         if first_time && set == 0 {
             let name = campaign_text_ids(furthest)
                 .map(|(n, _)| self.texts.get(n, "The Iron Seed"))
@@ -495,6 +550,7 @@ impl AppState {
             let msg = crate::text::subst(&msg, &[name]);
             if let Some(d) = self.menu_data() {
                 d.notice = Some(msg);
+                d.bypassed_scenario = Some(scenario);
             }
             self.rebuild_ui();
             return;
@@ -544,6 +600,10 @@ impl AppState {
                 .is_some_and(|s| !s.briefing.is_empty() || !s.goals.is_empty())
         {
             g.dialogs.push(super::dialogs::Dialog::Goals);
+        }
+        if self.interactive_choices && !g.dialogs.is_empty() {
+            self.ga.opening_frames = 0;
+            self.ga.opening_guard_ms = 350.0;
         }
         self.rebuild_ui();
     }
