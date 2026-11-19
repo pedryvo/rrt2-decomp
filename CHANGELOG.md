@@ -4,6 +4,8 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 
 ## Unreleased
 
+## v0.5.4 — 2026-11-19
+
 - Improved: Control Panel (`settings.win`, main-window icon 6) now opens the Options screen instead of a placeholder dialog, and renders with the original `settings.win`, `trainbuy.imb`, `horsb_2.imb`, `eventset.imb`, and `trndbut.imb` artwork.
 - Fix: prevent `message_dialog` from suppressing trigger 6 (`MessageKind::Choice`) opening briefings while still keeping interactive replayed choices suppressed.
 
