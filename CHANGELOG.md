@@ -4,6 +4,10 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 
 ## Unreleased
 
+## v0.5.1 — 2026-11-18
+
+- Feature: translucent station building sprite preview (`GhostStation`) and directional single/double track rail preview (`Fill::Segment`) on the map while placing stations or dragging track.
+
 ## v0.5.0 — 2026-11-18
 
 - Improved: Station Detail (`statndtl.win`) now renders with the original `statndtl.imb` frame, Buy oval button, Supply/Demand table, and `odbottom.imb` navigation bar (`<`, `>`, list, and tab switches).
