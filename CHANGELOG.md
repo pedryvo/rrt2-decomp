@@ -4,6 +4,10 @@ Entry format: `- <Kind>: text`, where Kind is Feature, Improved, Change, Fix, Do
 
 ## Unreleased
 
+## v0.5.2 — 2026-11-19
+
+- Fix: show `<<<Start a new company>>>` in the HUD and full-screen Companies lists when the player has no company, filter inactive map companies, and prevent double-clicks on `<Play this Scenario>` from dismissing the opening briefing dialog.
+
 ## v0.5.1 — 2026-11-18
 
 - Feature: translucent station building sprite preview (`GhostStation`) and directional single/double track rail preview (`Fill::Segment`) on the map while placing stations or dragging track.
