@@ -28,6 +28,7 @@ pub(super) const A_NEXT_CO: u32 = 113;
 pub(super) const A_ROW: u32 = 120;
 pub(super) const A_TOOL: u32 = 130;
 pub(super) const A_INFO_FLEET: u32 = 140;
+pub(super) const A_LIST_TAB: u32 = 150;
 /// Per-row Buy / Sell buttons of the stock list (row = action - base, 60 rows each).
 pub(super) const A_STOCK_BUY: u32 = 6200;
 pub(super) const A_STOCK_SELL: u32 = 6260;
@@ -732,6 +733,15 @@ impl AppState {
                     train: None,
                 });
             }
+            a if (A_LIST_TAB..A_LIST_TAB + 4).contains(&a) => {
+                let next = match a - A_LIST_TAB {
+                    0 => InfoScreen::Stations,
+                    1 => InfoScreen::Trains,
+                    2 => InfoScreen::Players,
+                    _ => InfoScreen::Companies,
+                };
+                self.open_info(next);
+            }
             A_ROW => {
                 // Enter on the selected row of a list.
                 if let Some(row) = self.ui.focused().and_then(|f| self.ui.selected(f)) {
@@ -824,6 +834,13 @@ impl AppState {
         let Some(screen) = self.info_screen() else {
             return;
         };
+        if matches!(
+            screen,
+            InfoScreen::Stations | InfoScreen::Trains | InfoScreen::Players | InfoScreen::Companies
+        ) && self.dialog_art.list.frame.is_some()
+        {
+            return self.build_list_art(ui, screen);
+        }
         let content = self.info_content(screen);
         let first_scroll = match &self.screen {
             Screen::Game(g) => g.info.map_or(0, |i| i.scroll),

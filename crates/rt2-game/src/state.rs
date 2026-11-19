@@ -45,6 +45,7 @@ mod groupa;
 mod hiscores;
 mod history;
 mod info_ui;
+mod list_art;
 mod mainwin;
 mod maplabels;
 mod menus;

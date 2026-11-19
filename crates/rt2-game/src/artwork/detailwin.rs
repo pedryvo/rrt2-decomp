@@ -91,7 +91,7 @@ fn add2x(
     Some((id, img))
 }
 
-fn placed(
+pub(super) fn placed(
     assets: &GameAssets,
     bank: &str,
     rec: usize,
@@ -109,7 +109,7 @@ fn placed(
     })
 }
 
-fn pair(
+pub(super) fn pair(
     assets: &GameAssets,
     bank: &str,
     up: usize,
@@ -138,7 +138,7 @@ fn win_img(assets: &GameAssets, win: &str, id: u16, b: &mut SkinBuilder) -> Opti
     add2x(assets, &c.bank, rec, None, None, b).map(|(id, _)| id)
 }
 
-fn blend(dst: &mut RgbaImage, src: &RgbaImage, dx: i32, dy: i32) {
+pub(super) fn blend(dst: &mut RgbaImage, src: &RgbaImage, dx: i32, dy: i32) {
     for sy in 0..src.height {
         let ty = dy + src.y + sy as i32;
         if ty < 0 || ty >= dst.height as i32 {
